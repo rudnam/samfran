@@ -40,6 +40,8 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:-true}
       PUBLIC_ORIGIN: https://${DOMAIN:-localhost}
       ALLOW_SIGNUP: ${ALLOW_SIGNUP:-true}
+      # With ALLOW_SIGNUP=false, these addresses (comma-separated) may still sign up.
+      SIGNUP_EMAILS: ${SIGNUP_EMAILS:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       ANDROID_PACKAGE: ${ANDROID_PACKAGE:-}
       ANDROID_CERT_FINGERPRINTS: ${ANDROID_CERT_FINGERPRINTS:-}
