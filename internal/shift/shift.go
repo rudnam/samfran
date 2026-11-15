@@ -198,66 +198,117 @@ type MonthView struct {
 }
 
 func (h *Handler) month(w http.ResponseWriter, r *http.Request) error {
-	month := r.URL.Query().Get("month")
-	st, zone, err := h.loadSettings(r)
+	view, err := h.store.Month(r.Context(), space.SpaceFrom(r), r.URL.Query().Get("month"), h.now())
+	var inv *InvalidError
+	if errors.As(err, &inv) {
+		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
+	}
 	if err != nil {
 		return err
 	}
-	if month == "" {
-		month = h.now().In(zone).Format("2006-01")
-	}
-	first, last, ok := monthRange(month)
-	if !ok {
-		return httpx.Errorf(http.StatusBadRequest, "month must be YYYY-MM")
-	}
-	codes, err := h.store.codes(r.Context(), space.SpaceFrom(r), first.Format(time.DateOnly), last.Format(time.DateOnly))
-	if err != nil {
-		return err
-	}
-	view := MonthView{Month: month, Settings: st.Settings, Days: []Day{}}
-	for _, c := range codes {
-		view.Days = append(view.Days, Explain(c[0], c[1], st.Lengths, zone))
-	}
+	view.Settings.Reader = h.reader != nil
 	httpx.WriteJSON(w, http.StatusOK, view)
 	return nil
 }
 
 const maxCode = 12
 
+// InvalidError is a request that breaks a rule; Msg says which, for people.
+type InvalidError struct{ Msg string }
+
+func (e *InvalidError) Error() string { return e.Msg }
+
+func invalidf(format string, args ...any) error { return &InvalidError{fmt.Sprintf(format, args...)} }
+
+// DayCode is a day and its code, as typed or read.
+type DayCode struct {
+	Date string `json:"date"`
+	Code string `json:"code"`
+}
+
+// Settings returns the space's shift settings and their time zone.
+func (s *Store) Settings(ctx context.Context, spaceID int64) (Settings, *time.Location, error) {
+	st, err := s.settings(ctx, spaceID)
+	if err != nil {
+		return Settings{}, nil, err
+	}
+	zone, err := time.LoadLocation(st.TimeZone)
+	if err != nil {
+		zone = time.UTC
+	}
+	return st.Settings, zone, nil
+}
+
+// Month returns a month of shifts ("YYYY-MM"; "" is the month it is now).
+func (s *Store) Month(ctx context.Context, spaceID int64, month string, now time.Time) (MonthView, error) {
+	st, zone, err := s.Settings(ctx, spaceID)
+	if err != nil {
+		return MonthView{}, err
+	}
+	if month == "" {
+		month = now.In(zone).Format("2006-01")
+	}
+	first, last, ok := monthRange(month)
+	if !ok {
+		return MonthView{}, invalidf("month must be YYYY-MM")
+	}
+	codes, err := s.codes(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly))
+	if err != nil {
+		return MonthView{}, err
+	}
+	view := MonthView{Month: month, Settings: st, Days: []Day{}}
+	for _, c := range codes {
+		view.Days = append(view.Days, Explain(c[0], c[1], st.Lengths, zone))
+	}
+	return view, nil
+}
+
+// SaveMonth makes a month's days exactly days (an empty code clears a day),
+// and returns the month as saved.
+func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days []DayCode) (MonthView, error) {
+	first, last, ok := monthRange(month)
+	if !ok {
+		return MonthView{}, invalidf("month must be YYYY-MM")
+	}
+	codes := map[string]string{}
+	for _, d := range days {
+		date, err := time.Parse(time.DateOnly, d.Date)
+		if err != nil || date.Before(first) || date.After(last) {
+			return MonthView{}, invalidf("every day must be in %s", month)
+		}
+		code := normalize(d.Code)
+		if utf8.RuneCountInString(code) > maxCode {
+			return MonthView{}, invalidf("a shift code must be at most %d characters", maxCode)
+		}
+		if code != "" {
+			codes[d.Date] = code
+		}
+	}
+	if err := s.replaceMonth(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly), codes); err != nil {
+		return MonthView{}, err
+	}
+	return s.Month(ctx, spaceID, month, time.Time{})
+}
+
 func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
-		Month string `json:"month"`
-		Days  []struct {
-			Date string `json:"date"`
-			Code string `json:"code"`
-		} `json:"days"`
+		Month string    `json:"month"`
+		Days  []DayCode `json:"days"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	first, last, ok := monthRange(in.Month)
-	if !ok {
-		return httpx.Errorf(http.StatusBadRequest, "month must be YYYY-MM")
+	view, err := h.store.SaveMonth(r.Context(), space.SpaceFrom(r), in.Month, in.Days)
+	var inv *InvalidError
+	if errors.As(err, &inv) {
+		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
 	}
-	days := map[string]string{}
-	for _, d := range in.Days {
-		date, err := time.Parse(time.DateOnly, d.Date)
-		if err != nil || date.Before(first) || date.After(last) {
-			return httpx.Errorf(http.StatusBadRequest, "every day must be in %s", in.Month)
-		}
-		code := normalize(d.Code)
-		if utf8.RuneCountInString(code) > maxCode {
-			return httpx.Errorf(http.StatusBadRequest, "a shift code must be at most %d characters", maxCode)
-		}
-		if code != "" {
-			days[d.Date] = code
-		}
-	}
-	if err := h.store.replaceMonth(r.Context(), space.SpaceFrom(r), first.Format(time.DateOnly), last.Format(time.DateOnly), days); err != nil {
+	if err != nil {
 		return err
 	}
-	r.URL.RawQuery = "month=" + in.Month
-	return h.month(w, r)
+	view.Settings.Reader = h.reader != nil
+	httpx.WriteJSON(w, http.StatusOK, view)
+	return nil
 }
 
 // maxPhoto is the largest photo accepted. The app shrinks photos before

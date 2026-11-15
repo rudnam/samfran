@@ -3,6 +3,7 @@ import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { LanguagePicker } from './components/LanguagePicker';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
+import { ConnectPage, rememberConnect, resumeConnect } from './features/connect/ConnectPage';
 import { RestaurantDetail } from './features/restaurants/RestaurantDetail';
 import { RestaurantForm } from './features/restaurants/RestaurantForm';
 import { RestaurantsPage } from './features/restaurants/RestaurantsPage';
@@ -62,6 +63,11 @@ export function App() {
     [],
   );
 
+  // Signing in with Google comes back to /app/, without the Connect request.
+  useEffect(() => {
+    if (session.status === 'signed-in') resumeConnect();
+  }, [session.status]);
+
   // A place shared from Google Maps (the Android app, or the installed web
   // app): open Add a place with it filled in, once signed in.
   const [shared, setShared] = useState<string | null>(sharedAtLaunch);
@@ -83,11 +89,17 @@ export function App() {
           setSession({ status: 'error', message: errorMessage(err) });
           return;
         }
-        if (demoRequested) {
+        // Claude asking to connect waits for the person to sign in.
+        rememberConnect();
+        const connecting = location.hash.startsWith('#/connect?');
+        if (demoRequested && !connecting) {
           startDemo();
           return;
         }
-        setSession({ status: 'signed-out', notice: initialNotice });
+        setSession({
+          status: 'signed-out',
+          notice: initialNotice ?? (connecting ? { message: t('Sign in to connect Claude to samfran.'), ok: true } : null),
+        });
       });
   }, []);
 
@@ -228,6 +240,8 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     }
     case 'shifts/settings':
       return <ShiftSettingsPage />;
+    case 'connect':
+      return <ConnectPage route={route} email={me.email} />;
     case 'us':
       return <UsPage me={me} onSignOut={onSignOut} />;
     default:

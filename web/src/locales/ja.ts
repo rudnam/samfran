@@ -177,6 +177,28 @@ export const ja = {
   'Turn off': 'オフにする',
   'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
+  // Claude (the connector)
+  'Sign in to connect Claude to samfran.': 'Claudeをsamfranにつなぐには、ログインしてください。',
+  'Connect {app}': '{app}を接続',
+  '{app} is asking to reach samfran, signed in as {email}. It will be able to:': '{app}が、{email}としてsamfranへのアクセスを求めています。できること:',
+  'see and save the shifts, e.g. from a photo of the sheet you share with it': 'シフトを見て保存する（共有した勤務表の写真からなど）',
+  'see restaurants, add them, log visits, and set your rating': 'お店を見る・追加する・訪問を記録する・あなたの評価をつける',
+  'It can’t delete anything or see your password. You can disconnect it at any time in Us → Claude.': '削除やパスワードの閲覧はできません。「ふたり → Claude」からいつでも接続を解除できます。',
+  'You’ll go back to {host}.': '{host}に戻ります。',
+  Deny: '拒否',
+  Allow: '許可',
+  'Go to samfran': 'samfranへ',
+  Claude: 'Claude',
+  'Connect Claude to samfran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.': 'Claudeをsamfranにつなぐと、あなたのClaudeプランで勤務表の写真を読み、確認後に月のシフトを保存したり、お店を追加・評価したりできます。',
+  'In Claude (claude.ai), open Settings › Connectors › Add custom connector.': 'Claude（claude.ai）で「設定 › コネクタ › カスタムコネクタを追加」を開きます。',
+  'Name it samfran and paste this address:': '名前を samfran にして、このアドレスを貼り付けます:',
+  'Connector address': 'コネクタのアドレス',
+  'Claude then asks you to sign in here and allow it. After that, share a photo of the sheet in a chat and ask it to add the shifts.': 'Claudeがここでのログインと許可を求めます。その後、チャットで勤務表の写真を共有して、シフトの追加を頼んでください。',
+  Connections: '接続',
+  'Last used {date}': '最終利用 {date}',
+  'Not used yet': 'まだ使われていません',
+  Disconnect: '接続を解除',
+
   // Us
   'The two of you': 'ふたり',
   Members: 'メンバー',

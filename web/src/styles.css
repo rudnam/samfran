@@ -288,3 +288,7 @@ select.language { width: auto; padding: 6px 10px; }
 .length { display: flex; align-items: center; gap: 6px; font-weight: 400; }
 .length .letter { width: 2.6rem; flex: none; text-align: center; font-weight: 700; padding: 8px 4px; }
 .length input[type='number'] { padding: 8px; }
+
+/* Connecting Claude */
+.connect-list, .steps { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
+.connect .row button { padding: 10px 20px; }

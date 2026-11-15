@@ -133,6 +133,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/demo/` | Fills a demo account with sample restaurants, in English and Japanese. |
 | `internal/space/` | The space the two of you share: members, display names, invitations, and `Require`, the middleware that gives every other feature the space to scope its queries by. A new account joins its space at sign-up (`account.Config.Created`). |
 | `internal/shift/` | Feature: one person's shifts. `codes.go` turns a sheet's codes (`13F`, `普`, `有休`) into times with an editable table of shift lengths, `reader.go` reads a person's row from a photo with Claude (the photo is never stored), `ics.go` writes the calendar feed. |
+| `internal/mcp/` | Feature: Claude as a connector, as in RudWallet: the MCP server at `/mcp` and its OAuth 2.1 sign-in (`oauth.go`). Its tools (`tools.go`) let Claude read a shift-sheet photo on the person's own Claude plan and save the month after they confirm, and list, add, visit and rate restaurants. |
 | `internal/restaurant/` | Feature: restaurants, their visits, and each member's rating. A restaurant with no visits is on the want-to-go list. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -194,6 +195,13 @@ The language follows the device until someone picks one (the picker in the top b
 | GET, PUT | `/api/shifts/settings` | user | `{person_name, name_on_sheet, lengths: {letter: hours}, time_zone, feed_path, reader}`. PUT changes the fields given. |
 | POST, DELETE | `/api/shifts/feed` | user | Turns the calendar feed on with a new secret address (`feed_path`), or off. |
 | GET | `/api/shifts/feed/{secret}.ics` | – | The calendar feed (iCalendar), for Google Calendar's "From URL". The secret address is the key. |
+| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`; without one, `401` with `WWW-Authenticate: Bearer resource_metadata="…"`. Tools: `get_shift_settings`, `get_shifts`, `save_month_shifts`, `list_restaurants`, `add_restaurant`, `log_visit`, `rate_restaurant`. |
+| GET, DELETE | `/api/mcp/tokens[/{id}]` | user | Claude's connections: `{id, name, created_at, last_used_at, signed_in}`. Deleting one disconnects it. |
+| GET | `/.well-known/oauth-protected-resource[/mcp]`, `/.well-known/oauth-authorization-server` | – | Sign-in metadata for MCP clients (RFC 9728, RFC 8414). |
+| POST | `/oauth/register` | – | Dynamic client registration (RFC 7591). |
+| GET | `/oauth/authorize` | – | Checks the client, redirect URI and PKCE (S256), then sends the browser to the Connect page (`/app/#/connect`). |
+| GET, POST | `/api/mcp/authorize` | user | For the Connect page: who is asking, then allow or deny; answers `{redirect_to}`. |
+| POST | `/oauth/token` | – | `authorization_code` or `refresh_token` grants: `{access_token, token_type, expires_in: 3600, refresh_token}`. |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |

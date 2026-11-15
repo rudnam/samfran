@@ -174,6 +174,13 @@ export const api = {
     if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
     return data as ShiftMonth;
   },
+  mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
+  deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
+  mcpClient: (clientId: string, redirectUri: string) =>
+    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })}`),
+  /** Allows or denies a connection; answers where to send the browser. */
+  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
+    request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
 };
@@ -215,6 +222,23 @@ export interface ShiftMonth {
   /** From a photo: the name on the row that was read, and the reader's doubts. */
   name_as_read?: string;
   notes?: string;
+}
+
+/** A connection from Claude (or another MCP client). */
+export interface MCPToken {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  /** True for a connection made by signing in from the app. */
+  signed_in?: boolean;
+}
+
+/** An MCP client asking to connect, for the Connect page. */
+export interface MCPClientInfo {
+  client_name: string;
+  /** Where the browser goes back to after the person answers. */
+  redirect_host: string;
 }
 
 /** What the server offers to download: the Android app's APK, or null. */

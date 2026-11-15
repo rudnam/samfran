@@ -313,7 +313,9 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
 	return h.respond(w, r, http.StatusOK, id)
 }
 
-func clean(f Fields) (Fields, error) {
+// Clean trims what was typed in and checks it; the error is an *httpx.Error
+// whose message is for people.
+func Clean(f Fields) (Fields, error) {
 	f.Name, f.Area, f.Cuisine = strings.TrimSpace(f.Name), strings.TrimSpace(f.Area), strings.TrimSpace(f.Cuisine)
 	f.MapURL, f.Notes = strings.TrimSpace(f.MapURL), strings.TrimSpace(f.Notes)
 	switch {
@@ -343,16 +345,24 @@ type visitIn struct {
 }
 
 func (h *Handler) checkVisit(v visitIn) (visitIn, error) {
-	v.Note = strings.TrimSpace(v.Note)
-	d, err := time.Parse(time.DateOnly, v.VisitedOn)
+	var err error
+	v.VisitedOn, v.Note, err = CheckVisit(v.VisitedOn, v.Note, h.now())
+	return v, err
+}
+
+// CheckVisit checks a visit's date (YYYY-MM-DD, no later than today) and
+// trims its note; the error is an *httpx.Error whose message is for people.
+func CheckVisit(on, note string, now time.Time) (string, string, error) {
+	note = strings.TrimSpace(note)
+	d, err := time.Parse(time.DateOnly, on)
 	// A day ahead of the server allows for any time zone.
-	if err != nil || d.Year() < 1900 || d.After(h.now().AddDate(0, 0, 1)) {
-		return v, httpx.Errorf(http.StatusBadRequest, "enter the date you went, no later than today")
+	if err != nil || d.Year() < 1900 || d.After(now.AddDate(0, 0, 1)) {
+		return on, note, httpx.Errorf(http.StatusBadRequest, "enter the date you went, no later than today")
 	}
-	if utf8.RuneCountInString(v.Note) > maxNote {
-		return v, httpx.Errorf(http.StatusBadRequest, "a visit's note must be at most %d characters", maxNote)
+	if utf8.RuneCountInString(note) > maxNote {
+		return on, note, httpx.Errorf(http.StatusBadRequest, "a visit's note must be at most %d characters", maxNote)
 	}
-	return v, nil
+	return on, note, nil
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
@@ -366,7 +376,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	f, err := clean(in.Fields)
+	f, err := Clean(in.Fields)
 	if err != nil {
 		return err
 	}
@@ -430,7 +440,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 			*p.dst = *p.src
 		}
 	}
-	if f, err = clean(f); err != nil {
+	if f, err = Clean(f); err != nil {
 		return err
 	}
 	if err := h.store.Update(r.Context(), space.SpaceFrom(r), id, f); errors.Is(err, db.ErrNotFound) {
