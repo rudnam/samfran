@@ -45,7 +45,8 @@ func TestICS(t *testing.T) {
 		"BEGIN:VCALENDAR\r\n",
 		"DTSTART:20261106T130000Z\r\n", // 22:00 in Tokyo
 		"DTEND:20261106T210000Z\r\n",
-		`SUMMARY:Sam\, the best: Night (22F)` + "\r\n",
+		`SUMMARY:Sam\, the best 夜勤 22F` + "\r\n",
+		"SUMMARY:Sam\\, the best 休み\r\n",
 		"DTSTART;VALUE=DATE:20261108\r\nDTEND;VALUE=DATE:20261109\r\n",
 		"TRANSP:TRANSPARENT\r\n",
 		"END:VCALENDAR\r\n",

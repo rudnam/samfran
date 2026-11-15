@@ -6,8 +6,9 @@ import (
 )
 
 // ICS writes days as an iCalendar feed (RFC 5545). Shifts are timed events
-// in UTC; days off, leave and training are all-day events. who names the
-// person ("Sam") in each title, so the feed reads well next to your own.
+// in UTC; days off, leave and training are all-day events. Titles use the
+// workplace's own words (早番, 遅番, 夜勤…) and the code, after who
+// ("Sam"), so the feed reads well next to your own events.
 func ICS(days []Day, who string, now time.Time) string {
 	if who == "" {
 		who = "Shift"
@@ -32,14 +33,14 @@ func ICS(days []Day, who string, now time.Time) string {
 		case d.Start != nil && d.End != nil:
 			line("DTSTART:" + d.Start.UTC().Format("20060102T150405Z"))
 			line("DTEND:" + d.End.UTC().Format("20060102T150405Z"))
-			line("SUMMARY:" + escape(who+": "+d.Label+" ("+d.Code+")"))
+			line("SUMMARY:" + escape(who+" "+japanese(d.Label)+" "+d.Code))
 		default:
 			next, _ := time.Parse("20060102", date)
 			line("DTSTART;VALUE=DATE:" + date)
 			line("DTEND;VALUE=DATE:" + next.AddDate(0, 0, 1).Format("20060102"))
-			title := who + ": " + d.Label
+			title := who + " " + japanese(d.Label)
 			if d.Kind == Work { // a shift whose length isn't known
-				title += " (" + d.Code + ")"
+				title += " " + d.Code
 			}
 			line("SUMMARY:" + escape(title))
 			// Days off don't make anyone busy.
@@ -49,6 +50,17 @@ func ICS(days []Day, who string, now time.Time) string {
 	}
 	line("END:VCALENDAR")
 	return b.String()
+}
+
+// japanese is a day's label as the workplace says it.
+func japanese(label string) string {
+	if ja, ok := map[string]string{
+		"Early": "早番", "Middle": "中番", "Late": "遅番", "Night": "夜勤",
+		"Day off": "休み", "Paid leave": "有休", "Training": "研修",
+	}[label]; ok {
+		return ja
+	}
+	return label // a code kept as written, e.g. 出張
 }
 
 // escape escapes text for an iCalendar value.

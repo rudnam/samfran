@@ -47,5 +47,5 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(link).toHaveValue(/\/api\/shifts\/feed\/[\w-]+\.ics$/);
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
-  expect(await feed.text()).toContain('SUMMARY:Sam: Night (22F)');
+  expect(await feed.text()).toContain('SUMMARY:Sam 夜勤 22F');
 });

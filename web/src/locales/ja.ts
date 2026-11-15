@@ -146,7 +146,7 @@ export const ja = {
   Early: '早番',
   Middle: '中番',
   Late: '遅番',
-  Night: 'ナイト',
+  Night: '夜勤',
   'Day off': '休み',
   'Paid leave': '有休',
   Training: '研修',
