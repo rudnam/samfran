@@ -19,6 +19,7 @@ import (
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/mailer"
 	"github.com/rudnam/samfran/internal/restaurant"
+	"github.com/rudnam/samfran/internal/shift"
 	"github.com/rudnam/samfran/internal/space"
 )
 
@@ -91,6 +92,11 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	spaceHandler := space.NewHandler(spaces, accounts.RequireUser)
 	spaceHandler.Register(mux)
 	restaurant.NewHandler(restaurants).Register(mux, spaceHandler.Require)
+	reader := cfg.ShiftReader
+	if reader == nil && cfg.AnthropicAPIKey != "" {
+		reader = shift.NewClaude(cfg.AnthropicAPIKey, "")
+	}
+	shift.NewHandler(shift.NewStore(conn), reader).Register(mux, spaceHandler.Require)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

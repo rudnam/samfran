@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rudnam/samfran/internal/mailer"
+	"github.com/rudnam/samfran/internal/shift"
 )
 
 type Config struct {
@@ -61,6 +62,12 @@ type Config struct {
 	SMTPUsername string
 	SMTPPassword string
 	MailFrom     string
+	// AnthropicAPIKey, when set, lets the app read photos of shift sheets
+	// with Claude (internal/shift).
+	AnthropicAPIKey string
+	// ShiftReader is not read from the environment; tests set a fake. When
+	// nil, one is made from AnthropicAPIKey.
+	ShiftReader shift.Reader
 	// Mailer is not read from the environment; tests set a fake. When nil,
 	// one is built from the SMTP settings.
 	Mailer mailer.Sender
@@ -90,6 +97,7 @@ func Load(getenv func(string) string) (Config, error) {
 		SMTPUsername:            r.str("SMTP_USERNAME", ""),
 		SMTPPassword:            r.str("SMTP_PASSWORD", ""),
 		MailFrom:                r.str("MAIL_FROM", ""),
+		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
 	}
 	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {

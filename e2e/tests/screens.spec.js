@@ -47,9 +47,25 @@ for (const [name, viewport] of [
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
     await shot('5-add');
 
+    // Shifts, with a few days of this month.
+    const d = new Date();
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
+    const codes = ['7F', '9F', '13F', '22F', '普', '13F', '法', '有休', '13F', '22F'];
+    const res = await page.request.put('/api/shifts/month', {
+      data: { month, days: codes.map((code, i) => ({ date: `${month}-${String(i + 1).padStart(2, '0')}`, code })) },
+    });
+    expect(res.status()).toBe(200);
+    await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+    await shot('6-shifts');
+    await page.getByRole('link', { name: 'Edit by hand' }).click();
+    await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
+    await shot('7-shift-edit');
+
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
-    await shot('6-us');
+    await shot('8-us');
 
     // Nothing may overflow sideways.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

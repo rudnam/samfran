@@ -154,9 +154,68 @@ export const api = {
   deleteVisit: (id: number, visit: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/visits/${visit}`),
   /** The place's name from a Google Maps link, '' if it can't be read. */
   lookupMap: (url: string) => request<{ name: string; map_url: string }>('POST', '/api/restaurants/lookup', { url }),
+  shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
+  saveShifts: (month: string, days: { date: string; code: string }[]) =>
+    request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
+  shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
+  saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone'>>) =>
+    request<ShiftSettings>('PUT', '/api/shifts/settings', s),
+  shiftFeed: (on: boolean) => request<ShiftSettings>(on ? 'POST' : 'DELETE', '/api/shifts/feed'),
+  /** Reads a photo of the sheet; nothing is saved until saveShifts. */
+  readShiftPhoto: async (photo: Blob) => {
+    const form = new FormData();
+    form.append('photo', photo, 'sheet.jpg');
+    const res = await fetch(server + '/api/shifts/read', {
+      method: 'POST',
+      headers: { 'Accept-Language': language(), ...appHeaders() },
+      body: form,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
+    return data as ShiftMonth;
+  },
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
 };
+
+export type ShiftKind = 'work' | 'off' | 'leave' | 'training' | 'other';
+
+export interface ShiftDay {
+  /** YYYY-MM-DD */
+  date: string;
+  /** As on the sheet: "13F", "普", "有休"… */
+  code: string;
+  kind: ShiftKind;
+  /** "Early", "Late", "Night", "Day off"… (English; the app translates). */
+  label: string;
+  /** ISO times, for a working day whose length is known. */
+  start?: string;
+  end?: string;
+  /** Why a working day has no times, e.g. "unknown length for Z". */
+  problem?: string;
+}
+
+export interface ShiftSettings {
+  person_name: string;
+  name_on_sheet: string;
+  /** Hours on site for each letter of a shift code. */
+  lengths: Record<string, number>;
+  time_zone: string;
+  /** The calendar feed's path on this site, or "" while it's off. */
+  feed_path: string;
+  /** Photos can be read on this server. */
+  reader: boolean;
+}
+
+export interface ShiftMonth {
+  /** YYYY-MM */
+  month: string;
+  settings: ShiftSettings;
+  days: ShiftDay[];
+  /** From a photo: the name on the row that was read, and the reader's doubts. */
+  name_as_read?: string;
+  notes?: string;
+}
 
 /** What the server offers to download: the Android app's APK, or null. */
 export interface Downloads {

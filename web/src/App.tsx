@@ -6,6 +6,9 @@ import { ResetPasswordForm } from './components/ResetPasswordForm';
 import { RestaurantDetail } from './features/restaurants/RestaurantDetail';
 import { RestaurantForm } from './features/restaurants/RestaurantForm';
 import { RestaurantsPage } from './features/restaurants/RestaurantsPage';
+import { ShiftEditor } from './features/shifts/ShiftEditor';
+import { ShiftSettingsPage } from './features/shifts/ShiftSettingsPage';
+import { ShiftsPage } from './features/shifts/ShiftsPage';
 import { UsPage } from './features/us/UsPage';
 import { t, tx, useLanguage } from './i18n';
 import { onAuthLinks, onSharedText } from './native';
@@ -116,7 +119,7 @@ export function App() {
 
   if (!resetting && session.status === 'signed-in') {
     const { me, notice } = session;
-    const tab = route.page === 'us' ? 'us' : 'food';
+    const tab = route.page === 'us' ? 'us' : route.page.startsWith('shifts') ? 'shifts' : 'food';
     return (
       <SpaceProvider>
         <div className="app">
@@ -128,6 +131,10 @@ export function App() {
               <a href={href('home')} className={tab === 'food' ? 'active' : ''} aria-current={tab === 'food' ? 'page' : undefined}>
                 <FoodIcon />
                 {t('Food')}
+              </a>
+              <a href={href('shifts')} className={tab === 'shifts' ? 'active' : ''} aria-current={tab === 'shifts' ? 'page' : undefined}>
+                <ShiftsIcon />
+                {t('Shifts')}
               </a>
               <a href={href('us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
                 <UsIcon />
@@ -209,6 +216,18 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
       );
     case 'edit':
       return id > 0 ? <RestaurantForm key={id} id={id} /> : <RestaurantsPage tab="been" />;
+    case 'shifts':
+      return <ShiftsPage key={route.params.get('month') ?? ''} month={route.params.get('month') ?? undefined} />;
+    case 'shifts/edit': {
+      const month = route.params.get('month') ?? '';
+      return /^\d{4}-\d{2}$/.test(month) ? (
+        <ShiftEditor key={route.params.toString()} month={month} fromPhoto={route.params.get('from') === 'photo'} />
+      ) : (
+        <ShiftsPage />
+      );
+    }
+    case 'shifts/settings':
+      return <ShiftSettingsPage />;
     case 'us':
       return <UsPage me={me} onSignOut={onSignOut} />;
     default:
@@ -220,6 +239,15 @@ function FoodIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9" />
+    </svg>
+  );
+}
+
+function ShiftsIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
     </svg>
   );
 }

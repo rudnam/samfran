@@ -1,6 +1,6 @@
 # Samfran
 
-**samfran** is a private app for two people. Everything in it is shared between you: right now, the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try. Coming next: turning a photo of a monthly shift sheet into calendar events, and a wake-up alarm before the bus stop on the way home.
+**samfran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. Coming next: a wake-up alarm before the bus stop on the way home.
 
 Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab. Whoever is invited joins the owner's space when they first sign in, with Google or a password.
 
@@ -96,6 +96,7 @@ All settings are environment variables (read in `internal/config`).
 | `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created, except by `SIGNUP_EMAILS` and invited addresses. Production runs with `false`. |
 | `ANDROID_APK` | empty | The Android app's APK (`docker-compose.yml` sets `/downloads/samfran.apk`). While the file exists, the Us tab offers it and the app is told its version. See [android/README.md](android/README.md). |
+| `ANTHROPIC_API_KEY` | empty | Lets the app read photos of shift sheets with Claude (`internal/shift/reader.go`). Without it, shifts are entered by hand. |
 | `SIGNUP_EMAILS` | empty | Comma-separated addresses that may create an account even with `ALLOW_SIGNUP=false`: the owner's, who then invites their partner. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | Publish `/.well-known/assetlinks.json` for the Android app. See [android/README.md](android/README.md). |
@@ -131,6 +132,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/mailer/` | Sends the app's emails over SMTP (`SMTP_*`). |
 | `internal/demo/` | Fills a demo account with sample restaurants, in English and Japanese. |
 | `internal/space/` | The space the two of you share: members, display names, invitations, and `Require`, the middleware that gives every other feature the space to scope its queries by. A new account joins its space at sign-up (`account.Config.Created`). |
+| `internal/shift/` | Feature: one person's shifts. `codes.go` turns a sheet's codes (`13F`, `普`, `有休`) into times with an editable table of shift lengths, `reader.go` reads a person's row from a photo with Claude (the photo is never stored), `ics.go` writes the calendar feed. |
 | `internal/restaurant/` | Feature: restaurants, their visits, and each member's rating. A restaurant with no visits is on the want-to-go list. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -186,6 +188,12 @@ The language follows the device until someone picks one (the picker in the top b
 | POST | `/api/restaurants/{id}/visits` | user | `201` and the restaurant. Body `{visited_on: "YYYY-MM-DD", note}`. |
 | DELETE | `/api/restaurants/{id}/visits/{visit}` | user | The restaurant |
 | PUT | `/api/restaurants/{id}/rating` | user | Body `{stars}`, 1 to 5, or 0 to clear yours. The restaurant. |
+| GET | `/api/shifts?month=YYYY-MM` | user | `{month, settings, days: [{date, code, kind, label, start, end, problem}]}`; the current month by default. Times are worked out from the codes when read. |
+| PUT | `/api/shifts/month` | user | Body `{month, days: [{date, code}]}`: replaces the month's days (an empty code clears a day). The month, as above. |
+| POST | `/api/shifts/read` | user | Multipart `photo` (JPEG, PNG or WebP, up to 8 MB). Reads the person's row (settings `name_on_sheet`) and answers with the month as above plus `name_as_read` and `notes`; **saves nothing**. `503` without `ANTHROPIC_API_KEY`. |
+| GET, PUT | `/api/shifts/settings` | user | `{person_name, name_on_sheet, lengths: {letter: hours}, time_zone, feed_path, reader}`. PUT changes the fields given. |
+| POST, DELETE | `/api/shifts/feed` | user | Turns the calendar feed on with a new secret address (`feed_path`), or off. |
+| GET | `/api/shifts/feed/{secret}.ics` | – | The calendar feed (iCalendar), for Google Calendar's "From URL". The secret address is the key. |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |

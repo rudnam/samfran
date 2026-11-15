@@ -53,6 +53,8 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Reading photos of shift sheets (internal/shift).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # Offered on the Us tab, and to the Android app as an update, while
       # the file exists. On the server, rudnam-downloads copies it into
       # downloads/ (rudnam/rudnam-infra); android/publish.sh puts it there.
