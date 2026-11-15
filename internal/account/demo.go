@@ -61,6 +61,9 @@ func (h *Handler) startDemo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := h.created(r.Context(), id); err != nil {
+		return err
+	}
 	if err := h.cfg.Demo(r.Context(), id, httpx.Language(r), zone); err != nil {
 		_ = h.store.deleteUser(context.WithoutCancel(r.Context()), id)
 		return fmt.Errorf("fill demo %d: %w", id, err)

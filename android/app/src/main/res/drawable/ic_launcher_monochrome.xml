@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13's themed icon: the egg's outline and yolk in one colour. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="512" android:viewportHeight="512">
+    <group android:scaleX="0.62" android:scaleY="0.62" android:pivotX="256" android:pivotY="256">
+        <path android:pathData="M256,104c70,0 118,34 140,82 26,56 6,120 -34,160 -42,42 -112,66 -172,46 -58,-20 -96,-74 -92,-136 4,-80 76,-152 158,-152z" android:strokeColor="#FFFFFFFF" android:strokeWidth="22" android:fillColor="#00000000" />
+        <path android:pathData="M262,262m-70,0a70,70 0,1 1,140 0a70,70 0,1 1,-140 0" android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

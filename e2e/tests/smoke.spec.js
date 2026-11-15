@@ -22,7 +22,7 @@ test('client-side routes load the app', async ({ page }) => {
 test('the introduction at / leads to the app at /app/', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.getByRole('link', { name: 'Get started' }).first().click();
+  await page.getByRole('link', { name: 'Sign in' }).first().click();
   await expect(page).toHaveURL(/\/app\/$/);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 

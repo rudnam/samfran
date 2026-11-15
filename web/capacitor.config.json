@@ -1,0 +1,14 @@
+{
+  "appId": "com.rudnam.samfran",
+  "appName": "samfran",
+  "webDir": "dist-android",
+  "android": {
+    "path": "../android"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

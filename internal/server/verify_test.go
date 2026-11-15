@@ -127,8 +127,8 @@ func TestDeleteAccount(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)
 	c.signup("ada@example.com")
-	if code := c.do("POST", "/api/notes", map[string]string{"body": "Bank PIN hint"}, nil); code != 201 {
-		t.Fatalf("create note: %d", code)
+	if code := c.do("POST", "/api/restaurants", map[string]string{"name": "Secret spot"}, nil); code != 201 {
+		t.Fatalf("add restaurant: %d", code)
 	}
 	other := newClient(t, ts)
 	other.signup("bob@example.com")
@@ -147,9 +147,9 @@ func TestDeleteAccount(t *testing.T) {
 	}
 	// The address is free again, and the new account starts empty.
 	c.signup("ada@example.com")
-	var notes []struct{ Body string }
-	if c.do("GET", "/api/notes", nil, &notes); len(notes) != 0 {
-		t.Errorf("the deleted account's data is still there: %+v", notes)
+	var list []struct{ Name string }
+	if c.do("GET", "/api/restaurants", nil, &list); len(list) != 0 {
+		t.Errorf("the deleted account's data is still there: %+v", list)
 	}
 	// Nobody else is affected.
 	if code := other.do("GET", "/api/me", nil, nil); code != 200 {

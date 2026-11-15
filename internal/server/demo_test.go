@@ -1,7 +1,6 @@
 package server_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/rudnam/samfran/internal/config"
@@ -29,18 +28,18 @@ func startDemo(t *testing.T, c *client, lang string) meJSON {
 	return me
 }
 
-// notesOf lists the signed-in person's notes, newest first.
-func notesOf(t *testing.T, c *client) []string {
+// restaurantsOf lists the names of the signed-in person's restaurants, in the order added.
+func restaurantsOf(t *testing.T, c *client) []string {
 	t.Helper()
-	var notes []struct{ Body string }
-	if code := c.do("GET", "/api/notes", nil, &notes); code != 200 {
-		t.Fatalf("GET /api/notes: %d", code)
+	var list []struct{ Name string }
+	if code := c.do("GET", "/api/restaurants", nil, &list); code != 200 {
+		t.Fatalf("GET /api/restaurants: %d", code)
 	}
-	bodies := make([]string, len(notes))
-	for i, n := range notes {
-		bodies[i] = n.Body
+	names := make([]string, len(list))
+	for i, r := range list {
+		names[i] = r.Name
 	}
-	return bodies
+	return names
 }
 
 func TestDemoInJapanese(t *testing.T) {
@@ -51,9 +50,9 @@ func TestDemoInJapanese(t *testing.T) {
 		t.Fatal("options don't offer the demo")
 	}
 	startDemo(t, c, "ja")
-	notes := notesOf(t, c)
-	if len(notes) < 3 || !strings.HasPrefix(notes[len(notes)-1], "デモへようこそ") {
-		t.Errorf("notes %q", notes)
+	names := restaurantsOf(t, c)
+	if len(names) < 3 || names[0] != "はなび亭" {
+		t.Errorf("restaurants %q", names)
 	}
 }
 
@@ -61,9 +60,9 @@ func TestDemoInEnglish(t *testing.T) {
 	ts := newTestServer(t, withDemo)
 	c := newClient(t, ts)
 	startDemo(t, c, "en-US,en;q=0.9")
-	notes := notesOf(t, c)
-	if len(notes) < 3 || !strings.HasPrefix(notes[len(notes)-1], "Welcome to the demo") {
-		t.Errorf("notes %q", notes)
+	names := restaurantsOf(t, c)
+	if len(names) < 3 || names[0] != "Hanabi Grill" {
+		t.Errorf("restaurants %q", names)
 	}
 }
 
@@ -94,7 +93,7 @@ func TestDemoIsDeleted(t *testing.T) {
 		t.Errorf("%d demos; the expired one should be gone", n)
 	}
 	var orphans int
-	conn.QueryRow(`SELECT count(*) FROM notes WHERE user_id NOT IN (SELECT id FROM users)`).Scan(&orphans)
+	conn.QueryRow(`SELECT count(*) FROM restaurants WHERE space_id NOT IN (SELECT space_id FROM space_members)`).Scan(&orphans)
 	if orphans != 0 {
 		t.Errorf("%d records outlived their demo", orphans)
 	}

@@ -47,8 +47,8 @@ func TestAppSignIn(t *testing.T) {
 		t.Fatalf("me with the token: %d %+v", code, me)
 	}
 	// It can change data: the token isn't a cookie, so no CSRF check applies.
-	if code := app.do("POST", "/api/notes", map[string]string{"body": "from the phone"}, nil); code != 201 {
-		t.Errorf("create a note from the app: %d", code)
+	if code := app.do("POST", "/api/restaurants", map[string]string{"name": "from the phone"}, nil); code != 201 {
+		t.Errorf("add a restaurant from the app: %d", code)
 	}
 
 	// A browser signing in still gets a cookie and no token.
@@ -96,7 +96,7 @@ func TestAppCORS(t *testing.T) {
 	evil := newClient(t, ts)
 	evil.signup("bob@example.com")
 	evil.headers["Origin"] = "https://evil.example"
-	if code := evil.do("POST", "/api/notes", map[string]string{"body": "x"}, nil); code != 403 {
+	if code := evil.do("POST", "/api/restaurants", map[string]string{"name": "x"}, nil); code != 403 {
 		t.Errorf("cross-site request with a cookie: %d", code)
 	}
 }

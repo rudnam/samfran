@@ -3,10 +3,17 @@ import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { LanguagePicker } from './components/LanguagePicker';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
-import { NotesPage } from './features/notes/NotesPage';
+import { RestaurantDetail } from './features/restaurants/RestaurantDetail';
+import { RestaurantForm } from './features/restaurants/RestaurantForm';
+import { RestaurantsPage } from './features/restaurants/RestaurantsPage';
+import { UsPage } from './features/us/UsPage';
 import { t, tx, useLanguage } from './i18n';
-import { initialNotice, type Notice } from './notice';
-import { replaceRoute, useRoute } from './router';
+import { onAuthLinks, onSharedText } from './native';
+import { initialNotice, signinErrors, type Notice } from './notice';
+import { takeSharedFromUrl } from './share';
+import { useUpdate } from './updates';
+import { href, navigate, replaceRoute, useRoute, type Route } from './router';
+import { SpaceProvider } from './space';
 
 /**
  * The introduction page's "Try the demo" opens /app/?demo. Read once when
@@ -22,6 +29,9 @@ const demoRequested = (() => {
   return true;
 })();
 
+/** Text shared to the installed web app when it opened (share_target). */
+const sharedAtLaunch = takeSharedFromUrl();
+
 type Session =
   | { status: 'loading'; demo?: boolean }
   | { status: 'signed-out'; notice?: Notice | null; mode?: 'sign-up' }
@@ -32,6 +42,33 @@ export function App() {
   const [session, setSession] = useState<Session>({ status: 'loading' });
   const route = useRoute();
   useLanguage(); // redraw everything when the language changes
+
+  // In the Android app: Google sign-in coming back from the phone's browser.
+  useEffect(
+    () =>
+      onAuthLinks((result) => {
+        if ('error' in result) {
+          setSession({ status: 'signed-out', notice: { message: t(signinErrors[result.error] ?? signinErrors.failed), ok: false } });
+          return;
+        }
+        api.appToken(result.code, result.verifier).then(
+          (me) => setSession({ status: 'signed-in', me }),
+          (err) => setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } }),
+        );
+      }),
+    [],
+  );
+
+  // A place shared from Google Maps (the Android app, or the installed web
+  // app): open Add a place with it filled in, once signed in.
+  const [shared, setShared] = useState<string | null>(sharedAtLaunch);
+  useEffect(() => onSharedText(setShared), []);
+  useEffect(() => {
+    if (shared && session.status === 'signed-in') {
+      navigate('add', { shared });
+      setShared(null);
+    }
+  }, [shared, session.status]);
 
   useEffect(() => {
     api
@@ -64,36 +101,67 @@ export function App() {
   /** From a demo to the sign-up form. Signing out deletes the demo. */
   async function leaveDemo() {
     await api.signOut();
+    replaceRoute('home'); // whoever signs in next starts at the list
     setSession({ status: 'signed-out', mode: 'sign-up' });
   }
 
   async function signOut() {
     await api.signOut();
+    replaceRoute('home');
     setSession({ status: 'signed-out' });
   }
 
   // The emailed reset link, whether or not this browser is signed in.
   const resetting = route.page === 'reset' && (session.status === 'signed-in' || session.status === 'signed-out');
 
+  if (!resetting && session.status === 'signed-in') {
+    const { me, notice } = session;
+    const tab = route.page === 'us' ? 'us' : 'food';
+    return (
+      <SpaceProvider>
+        <div className="app">
+          <header className="appbar">
+            <a className="brand" href={href('home')}>
+              samfran
+            </a>
+            <nav className="tabbar" aria-label={t('Sections')}>
+              <a href={href('home')} className={tab === 'food' ? 'active' : ''} aria-current={tab === 'food' ? 'page' : undefined}>
+                <FoodIcon />
+                {t('Food')}
+              </a>
+              <a href={href('us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
+                <UsIcon />
+                {t('Us')}
+              </a>
+            </nav>
+          </header>
+          <main className="page with-tabs">
+            <div className="stack">
+              {notice && (
+                <p role={notice.ok ? 'status' : 'alert'} className={notice.ok ? 'notice' : 'notice error'}>
+                  {notice.message}
+                </p>
+              )}
+              {me.demo && <DemoBanner onCreateAccount={leaveDemo} />}
+              {me.confirm_email && <ConfirmEmail email={me.email} />}
+              <UpdateBanner />
+              <Page route={route} me={me} onSignOut={signOut} />
+            </div>
+          </main>
+        </div>
+      </SpaceProvider>
+    );
+  }
+
   return (
     <>
       <header className="topbar">
         <a className="brand" href="/">
-          Samfran
+          samfran
         </a>
-        <span className="account">
-          {session.status === 'signed-in' && (
-            <>
-              <span className="muted">{session.me.demo ? t('Demo') : session.me.email}</span>
-              <button className="link" onClick={signOut}>
-                {session.me.demo ? t('End demo') : t('Sign out')}
-              </button>
-            </>
-          )}
-          <LanguagePicker />
-        </span>
+        <LanguagePicker />
       </header>
-      <main className="page">
+      <main className="page narrow">
         {session.status === 'loading' && (
           <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>
         )}
@@ -122,20 +190,66 @@ export function App() {
             onDemo={startDemo}
           />
         )}
-        {!resetting && session.status === 'signed-in' && (
-          <div className="stack">
-            {session.notice && (
-              <p role={session.notice.ok ? 'status' : 'alert'} className={session.notice.ok ? 'notice' : 'notice error'}>
-                {session.notice.message}
-              </p>
-            )}
-            {session.me.demo && <DemoBanner onCreateAccount={leaveDemo} />}
-            {session.me.confirm_email && <ConfirmEmail email={session.me.email} />}
-            <NotesPage />
-          </div>
-        )}
       </main>
     </>
+  );
+}
+
+/** The signed-in page for the address. */
+function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () => void }) {
+  const id = Number(route.params.get('id'));
+  switch (route.page) {
+    case 'want':
+      return <RestaurantsPage tab="want" />;
+    case 'restaurant':
+      return id > 0 ? <RestaurantDetail key={id} id={id} /> : <RestaurantsPage tab="been" />;
+    case 'add':
+      return (
+        <RestaurantForm key={route.params.toString()} want={route.params.has('want')} shared={route.params.get('shared') ?? undefined} />
+      );
+    case 'edit':
+      return id > 0 ? <RestaurantForm key={id} id={id} /> : <RestaurantsPage tab="been" />;
+    case 'us':
+      return <UsPage me={me} onSignOut={onSignOut} />;
+    default:
+      return <RestaurantsPage tab="been" />;
+  }
+}
+
+function FoodIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9" />
+    </svg>
+  );
+}
+
+function UsIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.5" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 1.8 6 5.5" />
+    </svg>
+  );
+}
+
+/** In the Android app: a newer build is out (updates.ts). */
+function UpdateBanner() {
+  const { update, install, later } = useUpdate();
+  if (!update) return null;
+  return (
+    <div className="notice row" role="status">
+      <span className="grow">
+        {update.name ? t('samfran {version} is available.', { version: update.name }) : t('A new version of samfran is available.')}
+      </span>
+      <button type="button" className="link quiet" onClick={later}>
+        {t('Later')}
+      </button>
+      <button type="button" onClick={install}>
+        {t('Update')}
+      </button>
+    </div>
   );
 }
 

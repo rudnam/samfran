@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">samfran</string>
+    <string name="title_activity_main">samfran</string>
+    <string name="package_name">com.rudnam.samfran</string>
+    <string name="custom_url_scheme">com.rudnam.samfran</string>
+</resources>

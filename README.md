@@ -1,6 +1,10 @@
 # Samfran
 
-A web app with a Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
+**samfran** is a private app for two people. Everything in it is shared between you: right now, the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try. Coming next: turning a photo of a monthly shift sheet into calendar events, and a wake-up alarm before the bus stop on the way home.
+
+Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab. Whoever is invited joins the owner's space when they first sign in, with Google or a password.
+
+A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
 - **Backend:** Go, standard library plus one PostgreSQL driver (`github.com/lib/pq`).
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. An introduction page at `/` and the app at `/app/`, both in English and Japanese. Installable as a PWA.
@@ -90,7 +94,9 @@ All settings are environment variables (read in `internal/config`).
 | `COOKIE_SECURE` | `true` | Send the session cookie over HTTPS only. Set `false` only for local http. |
 | `TRUST_PROXY` | `false` | Read the client IP from the last `X-Forwarded-For` entry, which the reverse proxy adds. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it; `deploy/local.yml` turns it off. |
 | `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
-| `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
+| `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created, except by `SIGNUP_EMAILS` and invited addresses. Production runs with `false`. |
+| `ANDROID_APK` | empty | The Android app's APK (`docker-compose.yml` sets `/downloads/samfran.apk`). While the file exists, the Us tab offers it and the app is told its version. See [android/README.md](android/README.md). |
+| `SIGNUP_EMAILS` | empty | Comma-separated addresses that may create an account even with `ALLOW_SIGNUP=false`: the owner's, who then invites their partner. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | Publish `/.well-known/assetlinks.json` for the Android app. See [android/README.md](android/README.md). |
 | `DEMO` | as `ALLOW_SIGNUP` | Offer "Try the demo": each visitor gets a throwaway account with sample data in their language (`internal/demo`), without signing up. It has no password and is deleted when they end it or after a day. |
@@ -123,8 +129,9 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
 | `internal/account/` | Feature: sign-up, sign-in, sessions and the `RequireUser` middleware; also Sign in with Google (`google.go`), confirming emails (`verify.go`), password reset (`reset.go`), demo accounts (`demo.go`) and an Android app's bearer-token sign-in (`app.go`). |
 | `internal/mailer/` | Sends the app's emails over SMTP (`SMTP_*`). |
-| `internal/demo/` | Fills a demo account with sample data: the example's notes, in English and Japanese. Fill your own feature's instead. |
-| `internal/notes/` | Feature: **the example**. A per-user list of notes. |
+| `internal/demo/` | Fills a demo account with sample restaurants, in English and Japanese. |
+| `internal/space/` | The space the two of you share: members, display names, invitations, and `Require`, the middleware that gives every other feature the space to scope its queries by. A new account joins its space at sign-up (`account.Config.Created`). |
+| `internal/restaurant/` | Feature: restaurants, their visits, and each member's rating. A restaurant with no visits is on the want-to-go list. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
 | `web/src/` | The React app: `api.ts` (typed API client), `App.tsx` (sign-in gate), `components/`, and `features/<name>/` pages. `i18n.tsx`, `language.ts` and `locales/ja.ts` translate it (below). |
@@ -135,10 +142,10 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 
 ### Adding a feature
 
-Follow the notes example; a feature is about five files:
+Follow `internal/restaurant`; a feature is about five files:
 
 1. `internal/db/migrations/00N_<name>.sql`: the tables, numbered one above the highest. Never edit a migration that has been deployed, and never reuse a number, even a deleted one's: a database that ran it would skip the new file.
-2. `internal/<name>/<name>.go`: a `Store` (all the SQL, every query scoped by user) and a `Handler` with `Register(mux, requireUser)`. Handlers return errors: `httpx.Errorf(404, "...")` reaches the user, and anything else becomes a logged 500.
+2. `internal/<name>/<name>.go`: a `Store` (all the SQL, every query scoped by the space) and a `Handler` with `Register(mux, requireSpace)`, its routes behind `space.Handler.Require`. Handlers return errors: `httpx.Errorf(404, "...")` reaches the user, and anything else becomes a logged 500.
 3. One line in `internal/server/server.go` to register it.
 4. `internal/server/<name>_test.go`: API tests against the real database.
 5. `web/src/api.ts` (types and calls), `web/src/features/<name>/` (the page), and `e2e/tests/<name>.spec.js` (a browser test).
@@ -149,10 +156,6 @@ Follow the notes example; a feature is about five files:
 The app is written in English, and the English is the key: `t('Save')` shows "Save", or its entry in `web/src/locales/ja.ts` in Japanese. A key missing from `ja.ts` fails the type check, so nothing ships half-translated. Use `tn()` for counts and `tx()` for text with elements in it. The server's messages stay in English (old clients show them as they are); list each in `jaServer`, and `errorMessage()` shows it in Japanese. The app sends its language as `Accept-Language`, and `httpx.Language(r)` reads it, for anything the server writes, such as emails.
 
 The language follows the device until someone picks one (the picker in the top bar, or the switch on the introduction page); the choice is kept in the browser and shared by both pages.
-
-### Removing the example
-
-Delete `internal/notes/`, `internal/db/migrations/002_notes.sql`, `internal/server/notes_test.go`, `web/src/features/notes/` and `e2e/tests/notes.spec.js`, then remove its line in `internal/server/server.go`, the note calls in `web/src/api.ts`, the notes strings in `web/src/locales/ja.ts`, and the `<NotesPage />` in `web/src/App.tsx` (plus the note steps in `e2e/tests/screens.spec.js` and `auth.spec.js`, the sample notes in `e2e/seed/main.go`, and `internal/demo`'s). Do this **before the first deploy**; afterwards, add a migration that drops the table instead.
 
 ## API
 
@@ -170,9 +173,21 @@ Delete `internal/notes/`, `internal/db/migrations/002_notes.sql`, `internal/serv
 | POST | `/api/password/forgot` | – | Body `{email}`. `204` whether or not an account uses it; if one does, a link to `/app/#/reset?token=…` is emailed (at most one a minute). `404` without the `SMTP_*` settings. Rate-limited like sign-in. |
 | POST | `/api/password/reset` | – | Body `{token, password}`, the token from that link (single use, an hour). Sets the password, confirms the email, ends every other session and signs in: returns `/api/me`'s answer. `400` if the link expired or was used. |
 | POST | `/api/auth/app-token` | – | For an Android app: trades the one-time code from Google sign-in in the phone's browser for a session token (`internal/account/app.go`). |
-| GET | `/api/notes` | user | `[{id, body, created_at}]`, newest first |
-| POST | `/api/notes` | user | `201` and the note. Body `{body}`. |
-| DELETE | `/api/notes/{id}` | user | `204`, or `404` |
+| GET | `/api/space` | user | `{members: [{name, email, me}], invites: [{email, created_at}]}` |
+| PUT | `/api/space/me` | user | Body `{name}` (empty: the part of the email before the @). The space, as above. |
+| POST | `/api/space/invites` | user | Body `{email}`. The space. `409` if the address has an account or is invited elsewhere. Not in a demo. |
+| DELETE | `/api/space/invites/{email}` | user | The space, or `404` |
+| GET | `/api/restaurants` | user | `[restaurant]`: `{id, name, area, cuisine, map_url, notes, added_by, created_at, visit_count, last_visit, ratings: [{name, me, stars}]}` |
+| POST | `/api/restaurants` | user | `201` and the restaurant with its `visits`. Body `{name, area, cuisine, map_url, notes}`, plus optionally `visit: {visited_on, note}` (a first visit) and `stars` (your rating). |
+| POST | `/api/restaurants/lookup` | user | Body `{url}`, a Google Maps link. `{name, map_url}`: the place's name read from where the link leads (`""` if it can't be read). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
+| GET | `/api/restaurants/{id}` | user | The restaurant, with `visits: [{id, visited_on, note, added_by}]`, newest first |
+| PATCH | `/api/restaurants/{id}` | user | Changes the fields given; others stay. The restaurant. |
+| DELETE | `/api/restaurants/{id}` | user | `204`. Its visits and ratings go with it. |
+| POST | `/api/restaurants/{id}/visits` | user | `201` and the restaurant. Body `{visited_on: "YYYY-MM-DD", note}`. |
+| DELETE | `/api/restaurants/{id}/visits/{visit}` | user | The restaurant |
+| PUT | `/api/restaurants/{id}/rating` | user | Body `{stars}`, 1 to 5, or 0 to clear yours. The restaurant. |
+| GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
+| GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
 Errors are `{"error": "message"}` with a matching status code. Requests that change data must come from the site itself (the `Origin` check), and the session cookie is `HttpOnly` and `SameSite=Lax`.

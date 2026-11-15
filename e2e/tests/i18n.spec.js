@@ -20,25 +20,27 @@ test.describe('on a Japanese device', () => {
     await page.getByLabel('言語').selectOption('en');
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await page.goto('/');
-    await expect(page.getByRole('link', { name: 'Get started' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible();
   });
 });
 
 test('the introduction switches to Japanese and back', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '日本語' }).click();
-  await expect(page.getByRole('link', { name: 'はじめる' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'ログイン' }).first()).toBeVisible();
   // The app opens in the language picked here.
-  await page.getByRole('link', { name: 'はじめる' }).first().click();
+  await page.getByRole('link', { name: 'ログイン' }).first().click();
   await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible();
   await page.goto('/');
   await page.getByRole('button', { name: 'English' }).click();
-  await expect(page.getByRole('link', { name: 'Get started' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible();
 });
 
-test('the example feature is in Japanese too', async ({ page }) => {
+test('the restaurant list is in Japanese too', async ({ page }) => {
   await signUp(page);
+  await page.getByRole('link', { name: 'Us', exact: true }).click();
   await page.getByLabel('Language').selectOption('ja');
-  await expect(page.getByRole('heading', { name: 'メモ' })).toBeVisible();
-  await expect(page.getByText('メモはまだありません。')).toBeVisible();
+  await page.getByRole('link', { name: 'ごはん' }).click();
+  await expect(page.getByRole('heading', { name: 'ふたりのお店' })).toBeVisible();
+  await expect(page.getByText('まだお店がありません')).toBeVisible();
 });

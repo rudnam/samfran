@@ -17,16 +17,23 @@ import (
 	"log"
 	"net/http"
 	"net/http/cookiejar"
+	"strconv"
 	"time"
 )
 
-// notes are added oldest first, so the list shows the last one at the top.
-var notes = []string{
-	"Welcome! This preview starts with a few sample notes.",
-	"Groceries: eggs, rice, miso, spring onions",
-	"Book the dentist for next month",
-	"Idea: a weekly summary email",
-	"Call the bank about the card replacement",
+type place struct {
+	name, area, cuisine, notes string
+	daysAgo                    []int // visits; none puts it on the want-to-go list
+	mine, theirs               int   // ratings
+}
+
+var places = []place{
+	{"Hanabi Grill", "Station East", "Hamburg steak", "Book ahead on weekends: the wait was two hours.", []int{3, 40}, 5, 5},
+	{"Gyoza Komachi", "Station East", "Gyoza", "", []int{12}, 5, 4},
+	{"Ramen Tsubaki", "Old Town", "Ramen", "", []int{20}, 4, 3},
+	{"Unagi Mizuno", "Lakeside", "Eel", "For a special occasion.", []int{75}, 4, 5},
+	{"Blue Sky Café", "Riverside", "Café", "Their pancakes are supposed to be great.", nil, 0, 0},
+	{"Taco Loco", "Station East", "Mexican", "", nil, 0, 0},
 }
 
 func main() {
@@ -35,13 +42,41 @@ func main() {
 	password := flag.String("password", "preview-password", "its password")
 	flag.Parse()
 
-	jar, _ := cookiejar.New(nil)
-	c := &client{base: *base, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
-	c.must("POST", "/api/login", map[string]string{"email": *email, "password": *password})
-	for _, body := range notes {
-		c.must("POST", "/api/notes", map[string]string{"body": body})
+	me := newClient(*base)
+	me.must("POST", "/api/login", map[string]string{"email": *email, "password": *password}, nil)
+	me.must("PUT", "/api/space/me", map[string]string{"name": "Fran"}, nil)
+
+	// A partner, invited and signed up, so ratings show both of you.
+	partner := newClient(*base)
+	partnerEmail := "sam-" + strconv.FormatInt(time.Now().Unix(), 36) + "@example.com"
+	me.must("POST", "/api/space/invites", map[string]string{"email": partnerEmail}, nil)
+	partner.must("POST", "/api/signup", map[string]string{"email": partnerEmail, "password": "partner-password"}, nil)
+	partner.must("PUT", "/api/space/me", map[string]string{"name": "Sam"}, nil)
+
+	for _, p := range places {
+		var r struct{ ID int64 }
+		me.must("POST", "/api/restaurants", map[string]string{"name": p.name, "area": p.area, "cuisine": p.cuisine, "notes": p.notes}, &r)
+		path := "/api/restaurants/" + strconv.FormatInt(r.ID, 10)
+		for i, d := range p.daysAgo {
+			who := me
+			if i%2 == 1 {
+				who = partner
+			}
+			who.must("POST", path+"/visits", map[string]string{"visited_on": time.Now().AddDate(0, 0, -d).Format(time.DateOnly)}, nil)
+		}
+		if p.mine > 0 {
+			me.must("PUT", path+"/rating", map[string]int{"stars": p.mine}, nil)
+		}
+		if p.theirs > 0 {
+			partner.must("PUT", path+"/rating", map[string]int{"stars": p.theirs}, nil)
+		}
 	}
-	fmt.Printf("Added %d sample notes for %s\n", len(notes), *email)
+	fmt.Printf("Added %d sample places for %s, shared with %s\n", len(places), *email, partnerEmail)
+}
+
+func newClient(base string) *client {
+	jar, _ := cookiejar.New(nil)
+	return &client{base: base, http: &http.Client{Jar: jar, Timeout: 30 * time.Second}}
 }
 
 type client struct {
@@ -51,7 +86,7 @@ type client struct {
 
 // must sends body as JSON and stops the program on anything but a 2xx. The
 // Origin header passes the app's cross-site check, as a browser's would.
-func (c *client) must(method, path string, body any) {
+func (c *client) must(method, path string, body, out any) {
 	b, err := json.Marshal(body)
 	if err != nil {
 		log.Fatal(err)
@@ -71,5 +106,8 @@ func (c *client) must(method, path string, body any) {
 		var e struct{ Error string }
 		_ = json.NewDecoder(res.Body).Decode(&e)
 		log.Fatalf("%s %s: %s %s", method, path, res.Status, e.Error)
+	}
+	if out != nil {
+		_ = json.NewDecoder(res.Body).Decode(out)
 	}
 }

@@ -30,6 +30,12 @@ type Config struct {
 	SecureCookies bool
 	TrustProxy    bool
 	AllowSignup   bool
+	// SignupAllowed, if set, lets this (normalized) email create an account
+	// even when AllowSignup is off, e.g. because someone invited it.
+	SignupAllowed func(ctx context.Context, email string) (bool, error)
+	// Created, if set, runs for every new account, e.g. to put it in the
+	// space it was invited to. If it fails, the account is deleted again.
+	Created func(ctx context.Context, userID int64) error
 	// AttemptsPerMinute limits sign-in and sign-up attempts per client IP.
 	AttemptsPerMinute int
 	SessionTTL        time.Duration
@@ -177,6 +183,36 @@ func (h *Handler) rateLimited(fn httpx.HandlerFunc) httpx.HandlerFunc {
 	}
 }
 
+// created runs Config.Created for a new account, and deletes the account
+// if it fails, so a retry starts clean.
+func (h *Handler) created(ctx context.Context, id int64) error {
+	if h.cfg.Created == nil {
+		return nil
+	}
+	if err := h.cfg.Created(ctx, id); err != nil {
+		_ = h.store.deleteUser(context.WithoutCancel(ctx), id)
+		return fmt.Errorf("set up new account %d: %w", id, err)
+	}
+	return nil
+}
+
+// canSignUp reports whether email may create an account.
+func (h *Handler) canSignUp(ctx context.Context, email string) (bool, error) {
+	if h.cfg.AllowSignup {
+		return true, nil
+	}
+	if h.cfg.SignupAllowed == nil {
+		return false, nil
+	}
+	return h.cfg.SignupAllowed(ctx, email)
+}
+
+// NormalizeEmail lower-cases and checks an address, as accounts store them.
+func NormalizeEmail(raw string) (string, bool) {
+	e, err := normalizeEmail(raw)
+	return e, err == nil
+}
+
 func normalizeEmail(raw string) (string, error) {
 	e := strings.ToLower(strings.TrimSpace(raw))
 	addr, err := mail.ParseAddress(e)
@@ -187,16 +223,21 @@ func normalizeEmail(raw string) (string, error) {
 }
 
 func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
-	if !h.cfg.AllowSignup {
-		return httpx.Errorf(http.StatusForbidden, "sign-up is closed on this server")
-	}
 	var in credentials
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
 	email, err := normalizeEmail(in.Email)
 	if err != nil {
+		if !h.cfg.AllowSignup {
+			return httpx.Errorf(http.StatusForbidden, "sign-up is closed on this server")
+		}
 		return err
+	}
+	if ok, err := h.canSignUp(r.Context(), email); err != nil {
+		return err
+	} else if !ok {
+		return httpx.Errorf(http.StatusForbidden, "sign-up is closed on this server")
 	}
 	if utf8.RuneCountInString(in.Password) < MinPasswordLen || len(in.Password) > MaxPasswordLen {
 		return httpx.Errorf(http.StatusBadRequest, "password must be %d to %d characters", MinPasswordLen, MaxPasswordLen)
@@ -210,6 +251,9 @@ func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Errorf(http.StatusConflict, "an account with this email already exists")
 	}
 	if err != nil {
+		return err
+	}
+	if err := h.created(r.Context(), id); err != nil {
 		return err
 	}
 	token, err := h.startSession(w, r, id)

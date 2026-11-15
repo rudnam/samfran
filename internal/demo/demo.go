@@ -2,45 +2,68 @@
 // so they can see the app as it looks in use without making an account
 // (DEMO, README.md). The account itself (no password, deleted after a day)
 // is internal/account's; see its demo.go.
-//
-// It fills the example feature (notes). When you replace that, fill your
-// own feature here instead, in both languages.
 package demo
 
 import (
 	"context"
 	"time"
 
-	"github.com/rudnam/samfran/internal/notes"
+	"github.com/rudnam/samfran/internal/restaurant"
+	"github.com/rudnam/samfran/internal/space"
 )
 
-// sample notes, oldest first, so the list shows the last at the top.
-var sample = map[string][]string{
+type sample struct {
+	restaurant.Fields
+	daysAgo []int // visits; none puts it on the want-to-go list
+	stars   int
+}
+
+var samples = map[string][]sample{
 	"en": {
-		"Welcome to the demo! Everything here is sample data, and it's deleted after a day.",
-		"Groceries: eggs, rice, miso, spring onions",
-		"Book the dentist for next month",
-		"Idea: a weekly summary email",
+		{Fields: restaurant.Fields{Name: "Hanabi Grill", Area: "Station East", Cuisine: "Hamburg steak", Notes: "Book ahead on weekends: the wait was two hours."}, daysAgo: []int{3, 40}, stars: 5},
+		{Fields: restaurant.Fields{Name: "Gyoza Komachi", Area: "Station East", Cuisine: "Gyoza"}, daysAgo: []int{12}, stars: 4},
+		{Fields: restaurant.Fields{Name: "Unagi Mizuno", Area: "Lakeside", Cuisine: "Eel", Notes: "For a special occasion."}, daysAgo: []int{75}, stars: 5},
+		{Fields: restaurant.Fields{Name: "Ramen Tsubaki", Area: "Old Town", Cuisine: "Ramen"}, daysAgo: []int{20}, stars: 3},
+		{Fields: restaurant.Fields{Name: "Blue Sky Café", Area: "Riverside", Cuisine: "Café", Notes: "Their pancakes are supposed to be great."}},
+		{Fields: restaurant.Fields{Name: "Taco Loco", Area: "Station East", Cuisine: "Mexican"}},
 	},
 	"ja": {
-		"デモへようこそ！ここにあるのはすべてサンプルで、1日後に削除されます。",
-		"買い物: 卵、お米、味噌、ねぎ",
-		"来月の歯医者を予約する",
-		"アイデア: 週ごとのまとめメール",
+		{Fields: restaurant.Fields{Name: "はなび亭", Area: "駅東", Cuisine: "ハンバーグ", Notes: "週末は2時間待ち。早めに行く。"}, daysAgo: []int{3, 40}, stars: 5},
+		{Fields: restaurant.Fields{Name: "餃子小町", Area: "駅東", Cuisine: "餃子"}, daysAgo: []int{12}, stars: 4},
+		{Fields: restaurant.Fields{Name: "うなぎ水野", Area: "湖畔", Cuisine: "うなぎ", Notes: "特別な日に。"}, daysAgo: []int{75}, stars: 5},
+		{Fields: restaurant.Fields{Name: "ラーメン椿", Area: "旧市街", Cuisine: "ラーメン"}, daysAgo: []int{20}, stars: 3},
+		{Fields: restaurant.Fields{Name: "ブルースカイカフェ", Area: "川沿い", Cuisine: "カフェ", Notes: "パンケーキがおいしいらしい。"}},
+		{Fields: restaurant.Fields{Name: "タコロコ", Area: "駅東", Cuisine: "メキシコ料理"}},
 	},
 }
 
 // Filler returns the function that fills a new demo account, in lang ("en"
-// or "ja"). zone is the visitor's time zone, for anything dated.
-func Filler(n *notes.Store) func(ctx context.Context, userID int64, lang string, zone *time.Location) error {
+// or "ja"). zone is the visitor's time zone, for the visits' dates.
+func Filler(spaces *space.Store, restaurants *restaurant.Store) func(ctx context.Context, userID int64, lang string, zone *time.Location) error {
 	return func(ctx context.Context, userID int64, lang string, zone *time.Location) error {
-		bodies, ok := sample[lang]
+		list, ok := samples[lang]
 		if !ok {
-			bodies = sample["en"]
+			list = samples["en"]
 		}
-		for _, body := range bodies {
-			if _, err := n.Create(ctx, userID, body); err != nil {
+		sp, err := spaces.Of(ctx, userID)
+		if err != nil {
+			return err
+		}
+		today := time.Now().In(zone)
+		for _, s := range list {
+			id, err := restaurants.Create(ctx, sp, userID, s.Fields)
+			if err != nil {
 				return err
+			}
+			for _, d := range s.daysAgo {
+				if err := restaurants.AddVisit(ctx, sp, userID, id, today.AddDate(0, 0, -d).Format(time.DateOnly), ""); err != nil {
+					return err
+				}
+			}
+			if s.stars > 0 {
+				if err := restaurants.Rate(ctx, sp, userID, id, s.stars); err != nil {
+					return err
+				}
 			}
 		}
 		return nil

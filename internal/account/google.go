@@ -212,10 +212,16 @@ func (h *Handler) googleUser(ctx context.Context, sub, email string) (int64, err
 	case !errors.Is(err, db.ErrNotFound):
 		return 0, err
 	}
-	if !h.cfg.AllowSignup {
+	if ok, err := h.canSignUp(ctx, email); err != nil {
+		return 0, err
+	} else if !ok {
 		return 0, errSignupClosed
 	}
-	return h.store.createGoogleUser(ctx, email, sub)
+	id, err = h.store.createGoogleUser(ctx, email, sub)
+	if err != nil {
+		return 0, err
+	}
+	return id, h.created(ctx, id)
 }
 
 type googleClaims struct {

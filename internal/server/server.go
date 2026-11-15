@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,8 @@ import (
 	"github.com/rudnam/samfran/internal/demo"
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/mailer"
-	"github.com/rudnam/samfran/internal/notes"
+	"github.com/rudnam/samfran/internal/restaurant"
+	"github.com/rudnam/samfran/internal/space"
 )
 
 // appName is what emails call the app.
@@ -33,6 +35,8 @@ func init() {
 func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", health(conn, version))
+	mux.Handle("GET /api/downloads", downloads(cfg.AndroidAPK))
+	mux.Handle("GET "+apkPath, apk(cfg.AndroidAPK))
 	if cfg.AndroidPackage != "" {
 		mux.Handle("GET /.well-known/assetlinks.json", assetLinks(cfg.AndroidPackage, cfg.AndroidCertFingerprints))
 	}
@@ -53,16 +57,29 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		sender = &mailer.SMTP{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername,
 			Password: cfg.SMTPPassword, From: cfg.MailFrom}
 	}
-	notesStore := notes.NewStore(conn)
+	spaces := space.NewStore(conn)
+	restaurants := restaurant.NewStore(conn)
 	var demoFiller account.DemoFiller
 	if cfg.Demo {
-		demoFiller = demo.Filler(notesStore)
+		demoFiller = demo.Filler(spaces, restaurants)
+	}
+	// With sign-up closed, the listed emails and anyone invited may still join.
+	signupAllowed := func(ctx context.Context, email string) (bool, error) {
+		if slices.Contains(cfg.SignupEmails, email) {
+			return true, nil
+		}
+		return spaces.Invited(ctx, email)
 	}
 	accounts := account.NewHandler(account.Config{
-		AppName:           appName,
-		SecureCookies:     cfg.SecureCookies,
-		TrustProxy:        cfg.TrustProxy,
-		AllowSignup:       cfg.AllowSignup,
+		AppName:       appName,
+		SecureCookies: cfg.SecureCookies,
+		TrustProxy:    cfg.TrustProxy,
+		AllowSignup:   cfg.AllowSignup,
+		SignupAllowed: signupAllowed,
+		Created: func(ctx context.Context, userID int64) error {
+			_, err := spaces.Of(ctx, userID) // joins the space it was invited to
+			return err
+		},
 		AttemptsPerMinute: cfg.AuthRateLimit,
 		Google:            google,
 		Mail:              sender,
@@ -71,7 +88,9 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		Demo:              demoFiller,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
-	notes.NewHandler(notesStore).Register(mux, accounts.RequireUser)
+	spaceHandler := space.NewHandler(spaces, accounts.RequireUser)
+	spaceHandler.Register(mux)
+	restaurant.NewHandler(restaurants).Register(mux, spaceHandler.Require)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

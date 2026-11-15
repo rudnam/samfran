@@ -39,7 +39,7 @@ async function signUp(page) {
   // Open the emailed link, so screens look as they do for a settled account.
   await page.request.get(await confirmationLink(page.request, email));
   await page.goto('/app/');
-  await base.expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await base.expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
   return email;
 }
 

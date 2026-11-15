@@ -36,10 +36,10 @@ func TestServesWebApp(t *testing.T) {
 	}{
 		{"/", "<title>Landing</title>", "no-cache", 200},
 		{"/app/", "<title>App</title>", "no-cache", 200},
-		{"/app/notes/42", "<title>App</title>", "no-cache", 200}, // client-side route
-		{"/app?x=1", "<title>App</title>", "no-cache", 200},      // redirected to /app/?x=1
-		{"/assets", "404", "", 404},                              // no directory listings
-		{"/notes/42", "404", "", 404},                            // not under /app/
+		{"/app/restaurants/42", "<title>App</title>", "no-cache", 200}, // client-side route
+		{"/app?x=1", "<title>App</title>", "no-cache", 200},            // redirected to /app/?x=1
+		{"/assets", "404", "", 404},                                    // no directory listings
+		{"/restaurants/42", "404", "", 404},                            // not under /app/
 		{"/assets/app-1.js", "console.log", "immutable", 200},
 		{"/assets/missing.js", "404", "", 404},
 	}

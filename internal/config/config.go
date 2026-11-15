@@ -31,6 +31,9 @@ type Config struct {
 	PublicOrigin string
 	// AllowSignup lets new accounts be created.
 	AllowSignup bool
+	// SignupEmails may create an account even with AllowSignup off, e.g. the
+	// owner's, before they can invite anyone. Invited emails always may.
+	SignupEmails []string
 	// Demo lets visitors try a throwaway demo account full of sample data,
 	// without signing up. It defaults to AllowSignup.
 	Demo bool
@@ -41,6 +44,9 @@ type Config struct {
 	// full screen. See android/README.md.
 	AndroidPackage          string
 	AndroidCertFingerprints []string
+	// AndroidAPK is the path of the Android app's APK, offered for download
+	// on the Us tab, and to the app as an update, while the file exists.
+	AndroidAPK string
 	// GoogleClientID and GoogleClientSecret turn on Sign in with Google.
 	// They need PublicOrigin, which gives the callback address.
 	GoogleClientID     string
@@ -72,9 +78,11 @@ func Load(getenv func(string) string) (Config, error) {
 		TrustProxy:              r.bool("TRUST_PROXY", false),
 		PublicOrigin:            strings.TrimSuffix(r.str("PUBLIC_ORIGIN", ""), "/"),
 		AllowSignup:             r.bool("ALLOW_SIGNUP", true),
+		SignupEmails:            lower(r.list("SIGNUP_EMAILS")),
 		AuthRateLimit:           r.positiveInt("AUTH_RATE_LIMIT", 10),
 		AndroidPackage:          r.str("ANDROID_PACKAGE", ""),
 		AndroidCertFingerprints: r.list("ANDROID_CERT_FINGERPRINTS"),
+		AndroidAPK:              r.str("ANDROID_APK", ""),
 		GoogleClientID:          r.str("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:      r.str("GOOGLE_CLIENT_SECRET", ""),
 		SMTPHost:                r.str("SMTP_HOST", ""),
@@ -170,4 +178,11 @@ func (r *reader) list(key string) []string {
 		}
 	}
 	return out
+}
+
+func lower(list []string) []string {
+	for i, s := range list {
+		list[i] = strings.ToLower(s)
+	}
+	return list
 }

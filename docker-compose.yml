@@ -51,6 +51,12 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Offered on the Us tab, and to the Android app as an update, while
+      # the file exists. On the server, rudnam-downloads copies it into
+      # downloads/ (rudnam/rudnam-infra); android/publish.sh puts it there.
+      ANDROID_APK: /downloads/samfran.apk
+    volumes:
+      - ./downloads:/downloads:ro
     # No ports here; the deploy/ layer decides how traffic reaches the app.
 
 volumes:

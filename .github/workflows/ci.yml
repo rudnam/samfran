@@ -1,5 +1,9 @@
 # verify: on every push and pull request, ./verify.sh, with the browser
 #   tests' screenshots kept as the e2e-results artifact.
+# android: on every push and pull request, the Android app (Capacitor, as in
+#   RudWallet): its unit tests, and an unsigned release APK kept a week as the
+#   android-apk artifact. android/build.sh sign signs it; the key never comes here.
+#   (Android releases: android-release.yml.)
 # deploy: on pushes to main, build the image, push it to ECR and run it on
 #   the AWS instance (rudnam/rudnam-infra). Also on demand from main: Actions
 #   → CI → Run workflow with a commit SHA redeploys that commit (a rollback);
@@ -144,3 +148,30 @@ jobs:
             --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text | tail -20
           echo "status: $status"
           [ "$status" = Success ]
+
+  android:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      # The web app, built for the app and copied in (the runner has the Android SDK).
+      - run: npm ci --no-audit --no-fund && npm run android
+        working-directory: web
+      # Unit tests, and the release APK unsigned: android/build.sh sign signs it with the key.
+      - run: ./gradlew testReleaseUnitTest assembleRelease
+        working-directory: android
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-apk
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 7

@@ -1,13 +1,13 @@
 # Notes for AI agents
 
-Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). README.md explains the layout and how to add a feature; follow the `notes` example.
+Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). README.md explains the layout and how to add a feature; follow `internal/restaurant`. Everything belongs to a **space** shared by two people (`internal/space`), not to one user.
 
 ## Verify your work before calling it done
 
 ```sh
 ./verify.sh                 # everything: go vet, all Go tests, browser tests
 ./verify.sh go              # Go only
-./verify.sh e2e -g notes    # browser tests only; extra args go to `playwright test`
+./verify.sh e2e -g place    # browser tests only; extra args go to `playwright test`
 ```
 
 - It needs only Docker. It builds the working tree, runs it against a throwaway database, and tears everything down. It ends with `VERIFY PASSED` or `VERIFY FAILED`. CI runs the same script on every push and pull request.
@@ -30,7 +30,7 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 - Never edit a migration in `internal/db/migrations/` that may have been deployed; add a new file numbered one above the highest. The number is the version recorded in `schema_migrations`, so never reuse one, even a deleted migration's: a database that ran it would silently skip the new file. Keep each migration compatible with the previous release (README.md, "Production").
 - **Merge `origin/main` into your branch** before choosing a migration number, and again before opening a pull request. Several branches are usually open at once, and they all add to the ends of the same files (`web/src/locales/ja.ts`, `web/src/api.ts`, `web/src/styles.css`, the README's tables), so a branch that falls behind conflicts. Merge rather than rebase a branch you've pushed. A clash between two migrations with the same number isn't a git conflict, so `internal/db`'s tests check for it.
 - **Keep the API backward compatible** once anything but this server's own web page calls it (an installed mobile app, which can be months old, or an MCP client): add fields and endpoints; don't rename, remove or change the meaning of existing ones.
-- Every query on user data is scoped by user ID in the feature's `Store`. Another user's row is a 404, not a 403.
+- Every query on shared data is scoped by space ID (`space.SpaceFrom(r)`) in the feature's `Store`; only truly personal rows (a rating) also carry the user. Another space's row is a 404, not a 403.
 - Handlers return errors: `httpx.Errorf(status, msg)` for messages the user should see, and any other error for a logged 500. Don't leak internal errors to the client.
 - Keep dependencies minimal: standard library first in Go; no new npm packages without a clear reason.
 - When you add or change an endpoint, a setting or a package, update its table in README.md (API, Configuration, or How the code is organized).
