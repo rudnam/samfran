@@ -181,6 +181,9 @@ export const api = {
   /** Allows or denies a connection; answers where to send the browser. */
   mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
     request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
+  calendar: () => request<CalendarStatus>('GET', '/api/calendar'),
+  syncCalendar: () => request<CalendarStatus>('POST', '/api/calendar/sync'),
+  disconnectCalendar: () => request<CalendarStatus>('DELETE', '/api/calendar'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
 };
@@ -239,6 +242,16 @@ export interface MCPClientInfo {
   client_name: string;
   /** Where the browser goes back to after the person answers. */
   redirect_host: string;
+}
+
+/** Google Calendar sync, for the signed-in person. */
+export interface CalendarStatus {
+  /** The server can sync with Google Calendar. */
+  available: boolean;
+  connected: boolean;
+  synced_at: string | null;
+  /** Why the last update failed; '' when it worked. */
+  error: string;
 }
 
 /** What the server offers to download: the Android app's APK, or null. */

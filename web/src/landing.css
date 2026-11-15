@@ -18,3 +18,5 @@
 @media (max-width: 760px) {
   .landing-hero { grid-template-columns: 1fr; gap: 36px; padding: 24px 0 56px; }
 }
+.landing-foot { max-width: 1040px; margin: 0 auto; padding: 0 calc(var(--space) * 1.25) 32px; font-size: 0.875rem; }
+.landing-foot a { color: var(--muted); }

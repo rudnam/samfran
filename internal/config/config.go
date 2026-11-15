@@ -3,6 +3,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -65,6 +66,16 @@ type Config struct {
 	// AnthropicAPIKey, when set, lets the app read photos of shift sheets
 	// with Claude (internal/shift).
 	AnthropicAPIKey string
+	// GoogleCalendarClientID and GoogleCalendarClientSecret (a separate
+	// Google client with the calendar.app.created scope) and SecretsKey
+	// turn on Google Calendar sync (internal/gcal). They need PublicOrigin.
+	GoogleCalendarClientID     string
+	GoogleCalendarClientSecret string
+	// SecretsKey seals stored secrets (32 bytes, base64 in SECRETS_KEY).
+	SecretsKey []byte
+	// GoogleCalendarURLs are not read from the environment; tests point
+	// them at a fake Google: auth, token, API base, revoke.
+	GoogleCalendarURLs [4]string
 	// ShiftReader is not read from the environment; tests set a fake. When
 	// nil, one is made from AnthropicAPIKey.
 	ShiftReader shift.Reader
@@ -78,28 +89,37 @@ type Config struct {
 func Load(getenv func(string) string) (Config, error) {
 	r := reader{getenv: getenv}
 	c := Config{
-		Addr:                    r.str("ADDR", ":8080"),
-		DatabaseURL:             r.required("DATABASE_URL"),
-		LogLevel:                r.level("LOG_LEVEL", slog.LevelInfo),
-		SecureCookies:           r.bool("COOKIE_SECURE", true),
-		TrustProxy:              r.bool("TRUST_PROXY", false),
-		PublicOrigin:            strings.TrimSuffix(r.str("PUBLIC_ORIGIN", ""), "/"),
-		AllowSignup:             r.bool("ALLOW_SIGNUP", true),
-		SignupEmails:            lower(r.list("SIGNUP_EMAILS")),
-		AuthRateLimit:           r.positiveInt("AUTH_RATE_LIMIT", 10),
-		AndroidPackage:          r.str("ANDROID_PACKAGE", ""),
-		AndroidCertFingerprints: r.list("ANDROID_CERT_FINGERPRINTS"),
-		AndroidAPK:              r.str("ANDROID_APK", ""),
-		GoogleClientID:          r.str("GOOGLE_CLIENT_ID", ""),
-		GoogleClientSecret:      r.str("GOOGLE_CLIENT_SECRET", ""),
-		SMTPHost:                r.str("SMTP_HOST", ""),
-		SMTPPort:                r.positiveInt("SMTP_PORT", 587),
-		SMTPUsername:            r.str("SMTP_USERNAME", ""),
-		SMTPPassword:            r.str("SMTP_PASSWORD", ""),
-		MailFrom:                r.str("MAIL_FROM", ""),
-		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
+		Addr:                       r.str("ADDR", ":8080"),
+		DatabaseURL:                r.required("DATABASE_URL"),
+		LogLevel:                   r.level("LOG_LEVEL", slog.LevelInfo),
+		SecureCookies:              r.bool("COOKIE_SECURE", true),
+		TrustProxy:                 r.bool("TRUST_PROXY", false),
+		PublicOrigin:               strings.TrimSuffix(r.str("PUBLIC_ORIGIN", ""), "/"),
+		AllowSignup:                r.bool("ALLOW_SIGNUP", true),
+		SignupEmails:               lower(r.list("SIGNUP_EMAILS")),
+		AuthRateLimit:              r.positiveInt("AUTH_RATE_LIMIT", 10),
+		AndroidPackage:             r.str("ANDROID_PACKAGE", ""),
+		AndroidCertFingerprints:    r.list("ANDROID_CERT_FINGERPRINTS"),
+		AndroidAPK:                 r.str("ANDROID_APK", ""),
+		GoogleClientID:             r.str("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:         r.str("GOOGLE_CLIENT_SECRET", ""),
+		SMTPHost:                   r.str("SMTP_HOST", ""),
+		SMTPPort:                   r.positiveInt("SMTP_PORT", 587),
+		SMTPUsername:               r.str("SMTP_USERNAME", ""),
+		SMTPPassword:               r.str("SMTP_PASSWORD", ""),
+		MailFrom:                   r.str("MAIL_FROM", ""),
+		AnthropicAPIKey:            r.str("ANTHROPIC_API_KEY", ""),
+		GoogleCalendarClientID:     r.str("GOOGLE_CALENDAR_CLIENT_ID", ""),
+		GoogleCalendarClientSecret: r.str("GOOGLE_CALENDAR_CLIENT_SECRET", ""),
 	}
 	c.Demo = r.bool("DEMO", c.AllowSignup)
+	if raw := r.str("SECRETS_KEY", ""); raw != "" {
+		key, err := base64.StdEncoding.DecodeString(raw)
+		if err != nil || len(key) != 32 {
+			r.errs = append(r.errs, errors.New("SECRETS_KEY must be 32 random bytes, base64 (openssl rand -base64 32)"))
+		}
+		c.SecretsKey = key
+	}
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
 		r.errs = append(r.errs, errors.New("set both ANDROID_PACKAGE and ANDROID_CERT_FINGERPRINTS, or neither"))
 	}

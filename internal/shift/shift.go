@@ -38,7 +38,14 @@ type Settings struct {
 
 // ---------- Store ----------
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db *sql.DB
+	// Saved, if set, runs after a month is saved (Google Calendar sync).
+	Saved func(spaceID int64, month string)
+	// Changed, if set, runs after settings change, which can change every
+	// day's times and the calendar's name.
+	Changed func(spaceID int64)
+}
 
 func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 
@@ -287,6 +294,9 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 	if err := s.replaceMonth(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly), codes); err != nil {
 		return MonthView{}, err
 	}
+	if s.Saved != nil {
+		s.Saved(spaceID, month)
+	}
 	return s.Month(ctx, spaceID, month, time.Time{})
 }
 
@@ -434,6 +444,9 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := h.store.saveSettings(r.Context(), space.SpaceFrom(r), st); err != nil {
 		return err
+	}
+	if h.store.Changed != nil {
+		h.store.Changed(space.SpaceFrom(r))
 	}
 	return h.getSettings(w, r)
 }

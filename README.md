@@ -97,6 +97,8 @@ All settings are environment variables (read in `internal/config`).
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created, except by `SIGNUP_EMAILS` and invited addresses. Production runs with `false`. |
 | `ANDROID_APK` | empty | The Android app's APK (`docker-compose.yml` sets `/downloads/samfran.apk`). While the file exists, the Us tab offers it and the app is told its version. See [android/README.md](android/README.md). |
 | `ANTHROPIC_API_KEY` | empty | Lets the app read photos of shift sheets with Claude (`internal/shift/reader.go`). Without it, shifts are entered by hand. |
+| `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` | empty | Turn on Google Calendar sync (`internal/gcal`): a Google OAuth client of its own (Google Cloud project `samfran`, scope `calendar.app.created`, redirect `/api/calendar/google/callback`). Need `SECRETS_KEY` and `PUBLIC_ORIGIN`. |
+| `SECRETS_KEY` | empty | 32 random bytes, base64 (`openssl rand -base64 32`). Seals people's Google refresh tokens at rest. Changing it disconnects everyone's Google Calendar. |
 | `SIGNUP_EMAILS` | empty | Comma-separated addresses that may create an account even with `ALLOW_SIGNUP=false`: the owner's, who then invites their partner. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | Publish `/.well-known/assetlinks.json` for the Android app. See [android/README.md](android/README.md). |
@@ -133,6 +135,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/demo/` | Fills a demo account with sample restaurants, in English and Japanese. |
 | `internal/space/` | The space the two of you share: members, display names, invitations, and `Require`, the middleware that gives every other feature the space to scope its queries by. A new account joins its space at sign-up (`account.Config.Created`). |
 | `internal/shift/` | Feature: one person's shifts. `codes.go` turns a sheet's codes (`13F`, `普`, `有休`) into times with an editable table of shift lengths, `reader.go` reads a person's row from a photo with Claude (the photo is never stored), `ics.go` writes the calendar feed. |
+| `internal/gcal/` | Feature: Google Calendar sync. Each person can connect their own Google account; samfran makes a "Sam's shifts" calendar there and writes each day as an event (早番, 遅番, 夜勤…) whenever shifts are saved, from the app or from Claude. It may only touch calendars it created. |
 | `internal/mcp/` | Feature: Claude as a connector, as in RudWallet: the MCP server at `/mcp` and its OAuth 2.1 sign-in (`oauth.go`). Its tools (`tools.go`) let Claude read a shift-sheet photo on the person's own Claude plan and save the month after they confirm, and list, add, visit and rate restaurants. |
 | `internal/restaurant/` | Feature: restaurants, their visits, and each member's rating. A restaurant with no visits is on the want-to-go list. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
@@ -202,6 +205,11 @@ The language follows the device until someone picks one (the picker in the top b
 | GET | `/oauth/authorize` | – | Checks the client, redirect URI and PKCE (S256), then sends the browser to the Connect page (`/app/#/connect`). |
 | GET, POST | `/api/mcp/authorize` | user | For the Connect page: who is asking, then allow or deny; answers `{redirect_to}`. |
 | POST | `/oauth/token` | – | `authorization_code` or `refresh_token` grants: `{access_token, token_type, expires_in: 3600, refresh_token}`. |
+| GET | `/api/calendar` | user | `{available, connected, synced_at, error}`: the signed-in person's Google Calendar sync. |
+| GET | `/api/calendar/google/start`, `/api/calendar/google/callback` | user | Connect Google Calendar (redirects, PKCE). The callback creates the calendar and fills it in the background, then sends the browser to `/app/#/shifts/settings?calendar=connected` (or `cancelled`, `expired`, `failed`). |
+| POST | `/api/calendar/sync` | user | Writes two months back to a year ahead now. `{available, connected, synced_at, error}`. |
+| DELETE | `/api/calendar` | user | Disconnects and revokes Google's token; the calendar stays in the person's account. |
+| GET | `/privacy` | – | The privacy page (Google's consent screen links to it). |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |

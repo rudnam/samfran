@@ -34,12 +34,12 @@ func ICS(days []Day, who string, now time.Time) string {
 		case d.Start != nil && d.End != nil:
 			line("DTSTART:" + d.Start.UTC().Format("20060102T150405Z"))
 			line("DTEND:" + d.End.UTC().Format("20060102T150405Z"))
-			line("SUMMARY:" + escape(japanese(d.Label)))
+			line("SUMMARY:" + escape(Japanese(d.Label)))
 		default:
 			next, _ := time.Parse("20060102", date)
 			line("DTSTART;VALUE=DATE:" + date)
 			line("DTEND;VALUE=DATE:" + next.AddDate(0, 0, 1).Format("20060102"))
-			line("SUMMARY:" + escape(japanese(d.Label)))
+			line("SUMMARY:" + escape(Japanese(d.Label)))
 			// Days off don't make anyone busy.
 			line("TRANSP:TRANSPARENT")
 		}
@@ -49,8 +49,8 @@ func ICS(days []Day, who string, now time.Time) string {
 	return b.String()
 }
 
-// japanese is a day's label as the workplace says it.
-func japanese(label string) string {
+// Japanese is a day's label as the workplace says it.
+func Japanese(label string) string {
 	if ja, ok := map[string]string{
 		"Early": "早番", "Middle": "中番", "Late": "遅番", "Night": "夜勤",
 		"Day off": "休み", "Paid leave": "有休", "Training": "研修",

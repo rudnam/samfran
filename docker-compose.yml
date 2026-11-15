@@ -55,6 +55,11 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       # Reading photos of shift sheets (internal/shift).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Google Calendar sync (internal/gcal): its own Google client, and the
+      # key that seals people's Google tokens.
+      GOOGLE_CALENDAR_CLIENT_ID: ${GOOGLE_CALENDAR_CLIENT_ID:-}
+      GOOGLE_CALENDAR_CLIENT_SECRET: ${GOOGLE_CALENDAR_CLIENT_SECRET:-}
+      SECRETS_KEY: ${SECRETS_KEY:-}
       # Offered on the Us tab, and to the Android app as an update, while
       # the file exists. On the server, rudnam-downloads copies it into
       # downloads/ (rudnam/rudnam-infra); android/publish.sh puts it there.

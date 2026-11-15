@@ -170,6 +170,23 @@ export const ja = {
   'Turn off': 'オフにする',
   'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
+  // Google Calendar
+  'Or subscribe with a link': 'リンクで登録する',
+  'For other calendar apps. Google Calendar checks a link only about once a day, so changes show up late.': 'ほかのカレンダーアプリ向けです。Googleカレンダーはリンクを1日に1回ほどしか確認しないため、反映が遅れます。',
+  'Connected. The shifts are being added to your Google Calendar.': '接続しました。シフトをGoogleカレンダーに追加しています。',
+  'Google Calendar wasn’t connected.': 'Googleカレンダーは接続されませんでした。',
+  'That took too long. Try connecting again.': '時間がかかりすぎました。もう一度接続してください。',
+  'Google Calendar couldn’t be connected. Try again.': 'Googleカレンダーに接続できませんでした。もう一度お試しください。',
+  'Google Calendar': 'Googleカレンダー',
+  'Adds the shifts to a calendar of their own in your Google account (早番, 遅番, 夜勤…), and updates it within seconds whenever they change. Each of you can connect your own Google account.': 'あなたのGoogleアカウントにシフト専用のカレンダー（早番・遅番・夜勤…）を作り、変更があれば数秒で更新します。ふたりそれぞれのGoogleアカウントで接続できます。',
+  Connected: '接続済み',
+  'updated {when}': '{when}に更新',
+  'Updating…': '更新しています…',
+  'Update now': '今すぐ更新',
+  'Disconnecting stops updates; the calendar stays in your Google account until you delete it there.': '接続を解除すると更新が止まります。カレンダーはGoogleアカウントで削除するまで残ります。',
+  'Connect from samfran.rudnam.com in your phone’s browser or on a computer: Google doesn’t allow it inside the app.': 'スマホのブラウザかパソコンで samfran.rudnam.com から接続してください（アプリ内ではGoogleが許可していません）。',
+  'Connect Google Calendar': 'Googleカレンダーに接続',
+
   // Claude (the connector)
   'Sign in to connect Claude to samfran.': 'Claudeをsamfranにつなぐには、ログインしてください。',
   'Connect {app}': '{app}を接続',
@@ -247,6 +264,9 @@ export const jaServer = {
   'a name must be at most 40 characters, and the name on the sheet 80': '名前は40文字以内、勤務表上の名前は80文字以内にしてください',
   'each shift letter needs a length of more than 0 and at most 24 hours': 'シフトの英字ごとに、0より長く24時間以内の長さを指定してください',
   'unknown time zone': '不明なタイムゾーンです',
+  "Google Calendar isn't set up on this server": 'このサーバーではGoogleカレンダーが設定されていません',
+  'Google no longer allows samfran to update the calendar; connect it again.': 'Googleがsamfranによるカレンダーの更新を許可しなくなりました。もう一度接続してください。',
+  'The last update to Google Calendar failed; it will try again with the next change.': 'Googleカレンダーへの前回の更新に失敗しました。次の変更のときにもう一度試します。',
   'not found': '見つかりません',
   'that sign-in took too long; try again': 'ログインに時間がかかりすぎました。もう一度お試しください',
   "the demo can't do this; create an account to use it": 'デモではこの操作はできません。使うにはアカウントを作成してください',
