@@ -10,6 +10,7 @@ public class MainActivity extends BridgeActivity {
         // Before super.onCreate, which starts the bridge.
         registerPlugin(UpdatesPlugin.class);
         registerPlugin(ShareTargetPlugin.class);
+        registerPlugin(BusAlarmPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

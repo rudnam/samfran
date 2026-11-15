@@ -53,7 +53,7 @@ func TestLookupFollowsOnlyMaps(t *testing.T) {
 		hits = append(hits, r.URL.Path)
 		switch r.URL.Path {
 		case "/short":
-			w.Header().Set("Location", "https://www.google.com/maps/place/Hanabi+Grill/@35,137")
+			w.Header().Set("Location", "https://www.google.com/maps/place/Hanabi+Grill/@35.0,137.0,17z")
 		case "/elsewhere":
 			w.Header().Set("Location", "https://evil.example/steal")
 		}
@@ -63,11 +63,11 @@ func TestLookupFollowsOnlyMaps(t *testing.T) {
 	// Send every request to the fake, whatever its host.
 	h := &Handler{maps: &http.Client{CheckRedirect: noRedirects, Transport: rewrite(google.URL)}}
 
-	if name, err := h.lookup(context.Background(), "https://maps.app.goo.gl/short"); err != nil || name != "Hanabi Grill" {
-		t.Errorf("short link: %q %v", name, err)
+	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/short"); err != nil || p.Name != "Hanabi Grill" || p.Lat == nil || *p.Lat != 35 {
+		t.Errorf("short link: %+v %v", p, err)
 	}
-	if name, err := h.lookup(context.Background(), "https://maps.app.goo.gl/elsewhere"); err != nil || name != "" {
-		t.Errorf("redirect off Maps: %q %v", name, err)
+	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/elsewhere"); err != nil || p.Name != "" {
+		t.Errorf("redirect off Maps: %+v %v", p, err)
 	}
 	if _, err := h.lookup(context.Background(), "https://evil.example/x"); err != errNotMaps {
 		t.Errorf("non-Maps link: %v", err)
@@ -84,4 +84,22 @@ func (to rewrite) RoundTrip(r *http.Request) (*http.Response, error) {
 	r2 := r.Clone(r.Context())
 	r2.URL.Scheme, r2.URL.Host = u.Scheme, u.Host
 	return http.DefaultTransport.RoundTrip(r2)
+}
+
+func TestPlaceCoords(t *testing.T) {
+	for raw, want := range map[string][2]float64{
+		"https://www.google.com/maps/place/X/@34.7108,137.7261,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x1!8m2!3d34.7111!4d137.7265": {34.7111, 137.7265},
+		"https://www.google.com/maps/@34.70,137.73,15z":                                                                      {34.70, 137.73},
+		"https://maps.google.com/?q=34.7101,137.7342":                                                                        {34.7101, 137.7342},
+	} {
+		u, _ := url.Parse(raw)
+		lat, lng := placeCoords(u)
+		if lat == nil || *lat != want[0] || *lng != want[1] {
+			t.Errorf("placeCoords(%s) = %v %v", raw, lat, lng)
+		}
+	}
+	u, _ := url.Parse("https://www.google.com/maps/place/X")
+	if lat, _ := placeCoords(u); lat != nil {
+		t.Errorf("no coordinates, got %v", *lat)
+	}
 }

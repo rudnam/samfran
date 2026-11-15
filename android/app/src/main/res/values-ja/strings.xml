@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="trip_title">降りるバス停を見ています</string>
+    <string name="trip_title_named">%1$sを見ています</string>
+    <string name="trip_starting">現在地を確認しています…</string>
+    <string name="trip_distance">あと%1$s</string>
+    <string name="trip_stop">止める</string>
+    <string name="channel_trip">バスの移動中</string>
+    <string name="channel_alarm">起きるためのアラーム</string>
+    <string name="alarm_title">起きて！</string>
+    <string name="alarm_text">もうすぐ降りるバス停です。</string>
+    <string name="alarm_text_named">もうすぐ%1$sです。</string>
+    <string name="alarm_awake">起きた</string>
+</resources>

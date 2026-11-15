@@ -153,7 +153,7 @@ export const api = {
     request<Restaurant>('POST', `/api/restaurants/${id}/visits`, { visited_on, note }),
   deleteVisit: (id: number, visit: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/visits/${visit}`),
   /** The place's name from a Google Maps link, '' if it can't be read. */
-  lookupMap: (url: string) => request<{ name: string; map_url: string }>('POST', '/api/restaurants/lookup', { url }),
+  lookupMap: (url: string) => request<{ name: string; map_url: string; lat?: number; lng?: number }>('POST', '/api/restaurants/lookup', { url }),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (month: string, days: { date: string; code: string }[]) =>
     request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
@@ -184,6 +184,8 @@ export const api = {
   calendar: () => request<CalendarStatus>('GET', '/api/calendar'),
   syncCalendar: () => request<CalendarStatus>('POST', '/api/calendar/sync'),
   disconnectCalendar: () => request<CalendarStatus>('DELETE', '/api/calendar'),
+  busStop: () => request<BusStop>('GET', '/api/bus/stop'),
+  saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number }) => request<BusStop>('PUT', '/api/bus/stop', s),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
 };
@@ -252,6 +254,17 @@ export interface CalendarStatus {
   synced_at: string | null;
   /** Why the last update failed; '' when it worked. */
   error: string;
+}
+
+/** Where the signed-in person gets off the bus. */
+export interface BusStop {
+  /** False until a stop is chosen. */
+  set: boolean;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Ring this many metres before the stop. */
+  alert_meters: number;
 }
 
 /** What the server offers to download: the Android app's APK, or null. */

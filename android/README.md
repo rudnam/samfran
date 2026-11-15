@@ -55,6 +55,12 @@ The app's requests come from `https://localhost`, another origin, so the browser
 
 Export isn't offered in the app (the download needs the browser's sign-in); use the website.
 
+## The bus-stop alarm
+
+The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance it rings `AlarmActivity.java`: full screen over the lock screen, the alarm sound and vibration on repeat, until "I'm awake". An insistent notification rings too, in case the phone doesn't allow full-screen alarms (Android 14+ lets people turn that off: the Bus tab offers the setting). A trip stops after ringing, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
+
+Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), a location foreground service, and full-screen alarms.
+
 ## Adding a place from Google Maps
 
 In Google Maps, open a place, tap **Share**, and pick **samfran**. Android hands the app the text Maps shares (the place's name and a `maps.app.goo.gl` link; `ShareTargetPlugin.java` declares the app as a share target in `AndroidManifest.xml`), and the app opens Add a place with the name and the link filled in (`web/src/share.ts`). When Maps shares only the link, the server reads the place's name from where the link leads (`POST /api/restaurants/lookup`).

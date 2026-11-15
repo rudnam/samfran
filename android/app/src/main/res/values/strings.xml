@@ -4,4 +4,15 @@
     <string name="title_activity_main">samfran</string>
     <string name="package_name">com.rudnam.samfran</string>
     <string name="custom_url_scheme">com.rudnam.samfran</string>
+    <string name="trip_title">Watching for your stop</string>
+    <string name="trip_title_named">Watching for %1$s</string>
+    <string name="trip_starting">Finding where you are…</string>
+    <string name="trip_distance">%1$s to go</string>
+    <string name="trip_stop">Stop</string>
+    <string name="channel_trip">Bus trip</string>
+    <string name="channel_alarm">Wake-up alarm</string>
+    <string name="alarm_title">Wake up!</string>
+    <string name="alarm_text">Your stop is coming up.</string>
+    <string name="alarm_text_named">%1$s is coming up.</string>
+    <string name="alarm_awake">I\'m awake</string>
 </resources>

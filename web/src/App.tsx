@@ -3,6 +3,7 @@ import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { LanguagePicker } from './components/LanguagePicker';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
+import { BusPage } from './features/bus/BusPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/connect/ConnectPage';
 import { RestaurantDetail } from './features/restaurants/RestaurantDetail';
 import { RestaurantForm } from './features/restaurants/RestaurantForm';
@@ -131,7 +132,7 @@ export function App() {
 
   if (!resetting && session.status === 'signed-in') {
     const { me, notice } = session;
-    const tab = route.page === 'us' ? 'us' : route.page.startsWith('shifts') ? 'shifts' : 'food';
+    const tab = route.page === 'us' ? 'us' : route.page === 'bus' ? 'bus' : route.page.startsWith('shifts') ? 'shifts' : 'food';
     return (
       <SpaceProvider>
         <div className="app">
@@ -147,6 +148,10 @@ export function App() {
               <a href={href('shifts')} className={tab === 'shifts' ? 'active' : ''} aria-current={tab === 'shifts' ? 'page' : undefined}>
                 <ShiftsIcon />
                 {t('Shifts')}
+              </a>
+              <a href={href('bus')} className={tab === 'bus' ? 'active' : ''} aria-current={tab === 'bus' ? 'page' : undefined}>
+                <BusIcon />
+                {t('Bus')}
               </a>
               <a href={href('us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
                 <UsIcon />
@@ -240,6 +245,8 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     }
     case 'shifts/settings':
       return <ShiftSettingsPage />;
+    case 'bus':
+      return <BusPage />;
     case 'connect':
       return <ConnectPage route={route} email={me.email} />;
     case 'us':
@@ -262,6 +269,15 @@ function ShiftsIcon() {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <rect x="3" y="5" width="18" height="16" rx="3" />
       <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function BusIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="5" y="3" width="14" height="15" rx="3" />
+      <path d="M5 11h14M8 21v-3M16 21v-3" />
     </svg>
   );
 }

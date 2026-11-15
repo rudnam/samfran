@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rudnam/samfran/internal/account"
+	"github.com/rudnam/samfran/internal/bus"
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/demo"
 	"github.com/rudnam/samfran/internal/gcal"
@@ -113,6 +114,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		shifts.Changed = func(spaceID int64) { gcal.Later(func(ctx context.Context) { syncer.All(ctx, spaceID) }) }
 	}
 	shift.NewHandler(shifts, reader).Register(mux, spaceHandler.Require)
+	bus.NewHandler(conn).Register(mux, accounts.RequireUser)
 	gcal.NewHandler(syncer, spaceHandler.Require).Register(mux)
 	mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
 		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy}).Register(mux, accounts.RequireUser)

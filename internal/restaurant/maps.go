@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,9 @@ import (
 type Place struct {
 	Name   string `json:"name"`
 	MapURL string `json:"map_url"`
+	// Lat and Lng, when the address gives a position (a bus stop's, say).
+	Lat *float64 `json:"lat,omitempty"`
+	Lng *float64 `json:"lng,omitempty"`
 }
 
 var errNotMaps = errors.New("not a Google Maps link")
@@ -74,39 +78,77 @@ func looksLikeCoordinates(s string) bool {
 }
 
 // lookup follows a Maps link's redirects, staying on Maps addresses, and
-// returns the name the final address names ("" if none does).
-func (h *Handler) lookup(ctx context.Context, raw string) (string, error) {
-	u, err := url.Parse(strings.TrimSpace(raw))
+// returns the place's name and position as the final address gives them
+// (empty when it doesn't).
+func (h *Handler) lookup(ctx context.Context, raw string) (Place, error) {
+	place := Place{MapURL: strings.TrimSpace(raw)}
+	u, err := url.Parse(place.MapURL)
 	if err != nil || !mapsHost(u) {
-		return "", errNotMaps
+		return place, errNotMaps
 	}
 	ctx, cancel := context.WithTimeout(ctx, 6*time.Second)
 	defer cancel()
-	for hop := 0; hop < 5; hop++ {
-		if name := placeName(u); name != "" {
-			return name, nil
+	for hop := 0; ; hop++ {
+		if place.Name == "" {
+			place.Name = placeName(u)
+		}
+		if place.Lat == nil {
+			place.Lat, place.Lng = placeCoords(u)
+		}
+		if place.Name != "" && place.Lat != nil || hop == 5 {
+			return place, nil
 		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 		if err != nil {
-			return "", err
+			return place, err
 		}
 		req.Header.Set("User-Agent", "Mozilla/5.0 (samfran)")
 		res, err := h.maps.Do(req)
 		if err != nil {
-			return "", err
+			return place, err
 		}
 		res.Body.Close() // only the redirect matters
 		loc := res.Header.Get("Location")
 		if res.StatusCode < 300 || res.StatusCode > 399 || loc == "" {
-			return "", nil
+			return place, nil
 		}
 		next, err := u.Parse(loc)
 		if err != nil || !mapsHost(next) {
-			return "", nil // led somewhere else (e.g. a consent page): no name
+			return place, nil // led somewhere else (e.g. a consent page)
 		}
 		u = next
 	}
-	return "", nil
+}
+
+var (
+	// !3d<lat>!4d<lng>: the place itself, in a /maps/place/ address's data.
+	pinCoords = regexp.MustCompile(`!3d(-?[0-9]+\.[0-9]+)!4d(-?[0-9]+\.[0-9]+)`)
+	// @<lat>,<lng>,<zoom>: where the map is centred.
+	viewCoords = regexp.MustCompile(`@(-?[0-9]+\.[0-9]+),(-?[0-9]+\.[0-9]+)`)
+	// ?q=<lat>,<lng>
+	queryCoords = regexp.MustCompile(`^(-?[0-9]+\.[0-9]+), *(-?[0-9]+\.[0-9]+)$`)
+)
+
+// placeCoords reads a position from a Maps address: the pin if there is
+// one, else coordinates searched for, else the centre of the map.
+func placeCoords(u *url.URL) (lat, lng *float64) {
+	for _, try := range []func() []string{
+		func() []string { return pinCoords.FindStringSubmatch(u.Path) },
+		func() []string { return queryCoords.FindStringSubmatch(strings.TrimSpace(u.Query().Get("q"))) },
+		func() []string { return queryCoords.FindStringSubmatch(strings.TrimSpace(u.Query().Get("query"))) },
+		func() []string { return viewCoords.FindStringSubmatch(u.Path) },
+	} {
+		m := try()
+		if m == nil {
+			continue
+		}
+		a, err1 := strconv.ParseFloat(m[1], 64)
+		b, err2 := strconv.ParseFloat(m[2], 64)
+		if err1 == nil && err2 == nil && a >= -90 && a <= 90 && b >= -180 && b <= 180 {
+			return &a, &b
+		}
+	}
+	return nil, nil
 }
 
 func (h *Handler) lookupHandler(w http.ResponseWriter, r *http.Request) error {
@@ -116,15 +158,15 @@ func (h *Handler) lookupHandler(w http.ResponseWriter, r *http.Request) error {
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	name, err := h.lookup(r.Context(), in.URL)
+	place, err := h.lookup(r.Context(), in.URL)
 	if errors.Is(err, errNotMaps) {
 		return httpx.Errorf(http.StatusBadRequest, "that isn't a Google Maps link")
 	}
 	if err != nil {
 		// Google unreachable or slow: the person can still type the name.
-		name = ""
+		place = Place{MapURL: strings.TrimSpace(in.URL)}
 	}
-	httpx.WriteJSON(w, http.StatusOK, Place{Name: name, MapURL: strings.TrimSpace(in.URL)})
+	httpx.WriteJSON(w, http.StatusOK, place)
 	return nil
 }
 

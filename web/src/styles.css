@@ -292,3 +292,11 @@ select.language { width: auto; padding: 6px 10px; }
 /* Connecting Claude */
 .connect-list, .steps { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
 .connect .row button { padding: 10px 20px; }
+
+/* ---------- Bus ---------- */
+.trip { align-items: stretch; }
+.trip.on { background: var(--tile-yellow); color: var(--tile-yellow-ink); box-shadow: none; }
+.trip.on .eyebrow { color: inherit; opacity: 0.8; }
+.trip-big { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); margin: 0; font-variant-numeric: tabular-nums; }
+button.big { padding: 18px; font-size: 1.15rem; border-radius: 16px; }
+select { width: 100%; }

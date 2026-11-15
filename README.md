@@ -1,6 +1,6 @@
 # Samfran
 
-**samfran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. Coming next: a wake-up alarm before the bus stop on the way home.
+**samfran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
 
 Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab. Whoever is invited joins the owner's space when they first sign in, with Google or a password.
 
@@ -127,6 +127,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | Path | What it does |
 |---|---|
 | `cmd/server/` | Entry point: loads config, connects, migrates, serves, and shuts down cleanly on `SIGTERM`. |
+| `internal/bus/` | Feature: where each person gets off the bus (`/api/bus/stop`), for the Android app's wake-up alarm. The phone watches its own position during a trip; the server never stores it. |
 | `internal/config/` | Reads and validates every setting from the environment. |
 | `internal/db/` | Connection pool, migrations (`migrations/*.sql`, embedded), shared errors. |
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
@@ -185,7 +186,7 @@ The language follows the device until someone picks one (the picker in the top b
 | DELETE | `/api/space/invites/{email}` | user | The space, or `404` |
 | GET | `/api/restaurants` | user | `[restaurant]`: `{id, name, area, cuisine, map_url, notes, added_by, created_at, visit_count, last_visit, ratings: [{name, me, stars}]}` |
 | POST | `/api/restaurants` | user | `201` and the restaurant with its `visits`. Body `{name, area, cuisine, map_url, notes}`, plus optionally `visit: {visited_on, note}` (a first visit) and `stars` (your rating). |
-| POST | `/api/restaurants/lookup` | user | Body `{url}`, a Google Maps link. `{name, map_url}`: the place's name read from where the link leads (`""` if it can't be read). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
+| POST | `/api/restaurants/lookup` | user | Body `{url}`, a Google Maps link. `{name, map_url, lat?, lng?}`: the place's name read from where the link leads (`""` if it can't be read). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
 | GET | `/api/restaurants/{id}` | user | The restaurant, with `visits: [{id, visited_on, note, added_by}]`, newest first |
 | PATCH | `/api/restaurants/{id}` | user | Changes the fields given; others stay. The restaurant. |
 | DELETE | `/api/restaurants/{id}` | user | `204`. Its visits and ratings go with it. |
@@ -210,6 +211,7 @@ The language follows the device until someone picks one (the picker in the top b
 | POST | `/api/calendar/sync` | user | Writes two months back to a year ahead now. `{available, connected, synced_at, error}`. |
 | DELETE | `/api/calendar` | user | Disconnects and revokes Google's token; the calendar stays in the person's account. |
 | GET | `/privacy` | – | The privacy page (Google's consent screen links to it). |
+| GET, PUT | `/api/bus/stop` | user | `{set, name, lat, lng, alert_meters}`: the signed-in person's stop. PUT `{name, lat, lng, alert_meters}` (200 m to 5 km; 800 by default). |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
