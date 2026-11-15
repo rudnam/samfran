@@ -1,0 +1,90 @@
+// Japanese. Keys are the English the app is written in (see i18n.tsx); a
+// key missing here fails the type check. {name} placeholders are filled in
+// by t(); they may move, but keep their names.
+export const ja = {
+  // The shell and signing in
+  'Loading…': '読み込み中…',
+  'Could not reach the server: {error}': 'サーバーに接続できませんでした: {error}',
+  'Sign out': 'ログアウト',
+  Language: '言語',
+  // The language picker's choice to follow the device's language.
+  Auto: '自動',
+  'Sign in': 'ログイン',
+  'Create an account': 'アカウントを作成',
+  Email: 'メールアドレス',
+  Password: 'パスワード',
+  'Create account': 'アカウントを作成',
+  'New here? Create an account': 'はじめての方はこちら: アカウントを作成',
+  'Have an account? Sign in': 'アカウントをお持ちの方: ログイン',
+
+  // More ways in: Google, forgotten passwords, confirming the email, the demo
+  'An account with this email is already linked to a different Google account.': 'このメールアドレスのアカウントは、別のGoogleアカウントと連携済みです。',
+  'Google sign-in was cancelled.': 'Googleでのログインはキャンセルされました。',
+  'That confirmation link has expired or was already used.': 'この確認リンクは期限切れか、すでに使われています。',
+  'That sign-in attempt expired. Please try again.': 'ログインの有効期限が切れました。もう一度お試しください。',
+  'Too many attempts. Wait a minute and try again.': '試行回数が多すぎます。1分ほど待ってからお試しください。',
+  'Your email address is confirmed.': 'メールアドレスを確認しました。',
+  "Couldn't confirm your email. Please try again.": 'メールアドレスを確認できませんでした。もう一度お試しください。',
+  "Couldn't sign in with Google. Please try again.": 'Googleでログインできませんでした。もう一度お試しください。',
+  "This server isn't taking new accounts.": 'このサーバーでは新しいアカウントを受け付けていません。',
+  "Your Google account's email address isn't verified with Google.": 'Googleアカウントのメールアドレスが、Googleで確認されていません。',
+  'Back to sign in': 'ログインに戻る',
+  'Change anything you like: nobody else sees it, and it’s deleted within a day.': '自由に変更できます。ほかの人には見えず、1日以内に削除されます。',
+  'Choose a new password': '新しいパスワードを設定',
+  'Confirm your email: open the link we sent to {email}.': 'メールアドレスの確認: {email} にお送りしたリンクを開いてください。',
+  'Continue with Google': 'Googleで続ける',
+  'Create your account': 'アカウントを作成',
+  Demo: 'デモ',
+  'End demo': 'デモを終了',
+  "Enter your account's email, and we'll send you a link to choose a new password.": 'アカウントのメールアドレスを入力してください。新しいパスワードを設定するためのリンクをお送りします。',
+  'Forgot your password?': 'パスワードをお忘れの方',
+  "If an account uses this email, we've sent it a link to choose a new password. The link works for an hour.": 'このメールアドレスのアカウントがあれば、新しいパスワードを設定するためのリンクを送信しました。リンクの有効期限は1時間です。',
+  'Just looking?': 'まずは見てみたい方は',
+  'New password': '新しいパスワード',
+  'Reset your password': 'パスワードの再設定',
+  'Save password': 'パスワードを保存',
+  'Send again': '再送する',
+  'Send link': 'リンクを送信',
+  'Sent. Check your inbox at {email}.': '送信しました。{email} の受信箱をご確認ください。',
+  'Setting up your demo…': 'デモを準備しています…',
+  'This is a demo with sample data.': 'サンプルデータのデモです。',
+  'This link is incomplete. Open it from the email again, or ask for a new one.': 'このリンクは不完全です。メールからもう一度開くか、新しいリンクを依頼してください。',
+  'Try the demo': 'デモを試す',
+  "You'll be signed out on your other devices.": 'ほかの端末ではログアウトされます。',
+  'Your new password is saved.': '新しいパスワードを保存しました。',
+  or: 'または',
+
+  // The example feature (notes): replace these with your own feature's
+  Notes: 'メモ',
+  'New note': '新しいメモ',
+  'Write a note…': 'メモを書く…',
+  Add: '追加',
+  'No notes yet.': 'メモはまだありません。',
+  'Delete note: {body}': 'メモを削除: {body}',
+  Delete: '削除',
+} as const;
+
+// The server's messages, which are written in English (internal/, the
+// httpx.Errorf calls). serverText() shows these in Japanese; {name} parts
+// match anything, and {msg} is itself translated.
+export const jaServer = {
+  'sign in required': 'ログインしてください',
+  'session expired; sign in again': 'セッションの有効期限が切れました。もう一度ログインしてください',
+  'too many attempts; wait a minute and try again': '試行回数が多すぎます。1分ほど待ってからもう一度お試しください',
+  'enter a valid email address': '有効なメールアドレスを入力してください',
+  'sign-up is closed on this server': 'このサーバーでは新規登録を受け付けていません',
+  'password must be {min} to {max} characters': 'パスワードは{min}〜{max}文字にしてください',
+  'an account with this email already exists': 'このメールアドレスのアカウントはすでにあります',
+  'email or password is incorrect': 'メールアドレスまたはパスワードが正しくありません',
+  'a note must be 1 to {max} characters': 'メモは1〜{max}文字にしてください',
+  'no such note': 'メモが見つかりません',
+  'not found': '見つかりません',
+  'that sign-in took too long; try again': 'ログインに時間がかかりすぎました。もう一度お試しください',
+  "the demo can't do this; create an account to use it": 'デモではこの操作はできません。使うにはアカウントを作成してください',
+  'the email could not be sent; try again in a few minutes': 'メールを送信できませんでした。数分後にお試しください',
+  'the password is incorrect': 'パスワードが違います',
+  'this link has expired or was already used; ask for a new one': 'このリンクは期限切れか、すでに使われています。新しいリンクを依頼してください',
+  "this server doesn't send email": 'このサーバーはメールを送信しません',
+  'type your email address to confirm': '確認のためメールアドレスを入力してください',
+  'your email is already confirmed': 'メールアドレスはすでに確認済みです',
+} as const;

@@ -1,0 +1,114 @@
+# Throwaway stack for ./verify.sh and ./preview.sh. Always run it through
+# those scripts: they give it its own Compose project (<folder>-verify or
+# <folder>-preview), so it never touches the live stack, and the database
+# lives in tmpfs, so nothing persists.
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: verify
+      POSTGRES_DB: app
+    volumes:
+      # Also creates app_test, which the Go integration tests wipe freely.
+      - ./initdb.sql:/docker-entrypoint-initdb.d/initdb.sql:ro
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # The app built exactly as production builds it, from the working tree or
+  # (with preview.sh --ref) from a git ref.
+  # Not named "app": Chrome forces HTTPS for that hostname (.app is HSTS-preloaded).
+  server:
+    build:
+      context: ${BUILD_CONTEXT:-..}
+      args:
+        VERSION: ${APP_VERSION:-verify}
+      # The image never leaves this machine, and writing an attestation for
+      # it adds seconds to every build, even a fully cached one.
+      provenance: false
+    depends_on:
+      db:
+        condition: service_healthy
+      mail:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://app:verify@db:5432/app?sslmode=disable
+      COOKIE_SECURE: "false"
+      # Every browser test signs up its own user, all from this one IP.
+      AUTH_RATE_LIMIT: "1000"
+      LOG_LEVEL: debug
+      # Links in emails point here; preview.yml changes it to localhost.
+      PUBLIC_ORIGIN: http://server:8080
+      # Sign in with Google shows, with a client Google doesn't know: the
+      # tests stop at the redirect (the Go tests cover the rest).
+      GOOGLE_CLIENT_ID: e2e-client.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: e2e-client-secret
+      # Confirmation and password reset emails go to the mail catcher below.
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      MAIL_FROM: Samfran <no-reply@example.test>
+    healthcheck:
+      test: ["CMD", "/server", "healthcheck"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
+  # Catches the app's outgoing email. Tests read it through its API;
+  # preview.sh shows its inbox at http://localhost:8025.
+  mail:
+    image: axllent/mailpit:v1.27
+
+  # go vet plus every Go test, including the HTTP integration tests.
+  gotest:
+    image: ${GO_IMAGE:?run through verify.sh}
+    profiles: [go]
+    working_dir: /src
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CGO_ENABLED: "0"
+      TEST_DATABASE_URL: postgres://app:verify@db:5432/app_test?sslmode=disable
+    volumes:
+      - ..:/src:ro
+      # GO_MOD_CACHE and GO_BUILD_CACHE, if set, are host directories used
+      # instead of the volumes (CI keeps them between runs with actions/cache).
+      - ${GO_MOD_CACHE:-gomod}:/go/pkg/mod
+      - ${GO_BUILD_CACHE:-gobuild}:/root/.cache/go-build
+    command: ["sh", "-c", "go vet ./... && go test -p 1 -count=1 ./..."]
+
+  # Playwright browser tests against the app. The image tag comes from
+  # @playwright/test's version in package.json (see verify.sh). It idles:
+  # verify.sh starts it while the app builds and runs the tests in it with
+  # `exec`, since creating a container takes seconds on Docker Desktop.
+  e2e:
+    image: mcr.microsoft.com/playwright:v${PW_VERSION:?run through verify.sh}-noble
+    profiles: [e2e]
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    working_dir: /e2e
+    init: true
+    command: ["sleep", "infinity"]
+    environment:
+      HOME: /tmp
+      BASE_URL: http://server:8080
+      MAIL_API: http://mail:8025
+    volumes:
+      - .:/e2e
+
+# The Go caches are shared by every checkout and worktree, so a new one
+# starts warm instead of recompiling everything. External, so that
+# `down --volumes` (preview.sh) and the preview's reaper leave them alone;
+# verify.sh and preview.sh create them.
+volumes:
+  gomod:
+    external: true
+    name: samfran-gomod
+  gobuild:
+    external: true
+    name: samfran-gobuild
