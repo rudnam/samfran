@@ -122,12 +122,10 @@ export function ShiftSettingsPage() {
             </div>
           </form>
 
-          <GoogleCalendarCard />
-
           <div className="card stack">
-            <h2>{t('Or subscribe with a link')}</h2>
+            <h2>{t('In your calendar')}</h2>
             <p className="muted">
-              {t('For other calendar apps. Google Calendar checks a link only about once a day, so changes show up late.')}
+              {t('Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.')}
             </p>
             {feedUrl ? (
               <>
@@ -157,6 +155,7 @@ export function ShiftSettingsPage() {
               </button>
             )}
           </div>
+          <GoogleCalendarCard />
         </>
       )}
     </section>
@@ -197,14 +196,14 @@ function GoogleCalendarCard() {
   if (!st?.available) return null;
   return (
     <div className="card stack">
-      <h2>{t('Google Calendar')}</h2>
+      <h2>{t('Or connect Google Calendar')}</h2>
       {result && (
         <p role="status" className={result.ok ? 'notice' : 'notice error'}>
           {result.text()}
         </p>
       )}
       <p className="muted">
-        {t('Adds the shifts to a calendar of their own in your Google account (早番, 遅番, 夜勤…), and updates it within seconds whenever they change. Each of you can connect your own Google account.')}
+        {t('Optional, instead of the link: samfran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.')}
       </p>
       {st.connected ? (
         <>
