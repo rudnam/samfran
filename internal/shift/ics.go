@@ -6,12 +6,13 @@ import (
 )
 
 // ICS writes days as an iCalendar feed (RFC 5545). Shifts are timed events
-// in UTC; days off, leave and training are all-day events. Titles use the
-// workplace's own words (早番, 遅番, 夜勤…) and the code, after who
-// ("Sam"), so the feed reads well next to your own events.
+// in UTC; days off, leave and training are all-day events. Each title is
+// just the workplace's own word for the day (早番, 遅番, 夜勤, 休み…); who
+// ("Sam") names the calendar.
 func ICS(days []Day, who string, now time.Time) string {
-	if who == "" {
-		who = "Shift"
+	name := "シフト"
+	if who != "" {
+		name = who + "'s shifts"
 	}
 	stamp := now.UTC().Format("20060102T150405Z")
 	var b strings.Builder
@@ -20,7 +21,7 @@ func ICS(days []Day, who string, now time.Time) string {
 	line("VERSION:2.0")
 	line("PRODID:-//samfran//shifts//EN")
 	line("CALSCALE:GREGORIAN")
-	line("X-WR-CALNAME:" + escape(who+"'s shifts"))
+	line("X-WR-CALNAME:" + escape(name))
 	// Ask calendar apps to check for changes every few hours.
 	line("REFRESH-INTERVAL;VALUE=DURATION:PT3H")
 	line("X-PUBLISHED-TTL:PT3H")
@@ -33,16 +34,12 @@ func ICS(days []Day, who string, now time.Time) string {
 		case d.Start != nil && d.End != nil:
 			line("DTSTART:" + d.Start.UTC().Format("20060102T150405Z"))
 			line("DTEND:" + d.End.UTC().Format("20060102T150405Z"))
-			line("SUMMARY:" + escape(who+" "+japanese(d.Label)+" "+d.Code))
+			line("SUMMARY:" + escape(japanese(d.Label)))
 		default:
 			next, _ := time.Parse("20060102", date)
 			line("DTSTART;VALUE=DATE:" + date)
 			line("DTEND;VALUE=DATE:" + next.AddDate(0, 0, 1).Format("20060102"))
-			title := who + " " + japanese(d.Label)
-			if d.Kind == Work { // a shift whose length isn't known
-				title += " " + d.Code
-			}
-			line("SUMMARY:" + escape(title))
+			line("SUMMARY:" + escape(japanese(d.Label)))
 			// Days off don't make anyone busy.
 			line("TRANSP:TRANSPARENT")
 		}

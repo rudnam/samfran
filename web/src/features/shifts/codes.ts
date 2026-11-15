@@ -2,7 +2,7 @@
 // screen can show what a code means while it's typed. The server's reading
 // is the one that counts.
 import type { ShiftDay, ShiftKind } from '../../api';
-import { t, type Key } from '../../i18n';
+import { t } from '../../i18n';
 import { locale } from '../../language';
 
 const work = /^([0-9]{1,2})([A-Z])$/;
@@ -34,19 +34,21 @@ export function explain(code: string, lengths: Record<string, number>): { kind: 
   return { kind: 'other', label: code };
 }
 
-const labels: Record<string, Key> = {
-  Early: 'Early',
-  Middle: 'Middle',
-  Late: 'Late',
-  Night: 'Night',
-  'Day off': 'Day off',
-  'Paid leave': 'Paid leave',
-  Training: 'Training',
+// The workplace's own words, in every language of the app: they're what's
+// on the sheet and what Sam says (the calendar feed uses them too).
+const labels: Record<string, string> = {
+  Early: '早番',
+  Middle: '中番',
+  Late: '遅番',
+  Night: '夜勤',
+  'Day off': '休み',
+  'Paid leave': '有休',
+  Training: '研修',
 };
 
-/** A day's label in the language in use (the server writes English). */
+/** A day's label as the workplace says it (the server writes English). */
 export function labelOf(label: string): string {
-  return label in labels ? t(labels[label]) : label;
+  return labels[label] ?? label;
 }
 
 /** "13:00", or "6:00 (+1)" for the next morning. */

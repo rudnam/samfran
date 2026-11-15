@@ -24,19 +24,19 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   const month = thisMonth();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await days.nth(0).getByRole('combobox').fill('22F'); // the 1st
-  await expect(days.nth(0)).toContainText('Night · 22:00–6:00 (+1)');
+  await expect(days.nth(0)).toContainText('夜勤 · 22:00–6:00 (+1)');
   await days.nth(1).getByRole('combobox').fill('普');
   await days.nth(2).getByRole('combobox').fill('13z');
   await expect(days.nth(2)).toContainText('Unknown length');
   await days.nth(2).getByRole('combobox').fill('１３Ｆ'); // full-width works too
-  await expect(days.nth(2)).toContainText('Late · 13:00–21:00');
+  await expect(days.nth(2)).toContainText('遅番 · 13:00–21:00');
   await page.getByRole('button', { name: /^Save / }).click();
 
   const list = page.getByRole('list', { name: 'Shifts' }).getByRole('listitem');
   await expect(list).toHaveCount(3);
-  await expect(list.nth(0)).toContainText('Night');
+  await expect(list.nth(0)).toContainText('夜勤');
   await expect(list.nth(0)).toContainText('22:00–6:00');
-  await expect(list.nth(1)).toContainText('Day off');
+  await expect(list.nth(1)).toContainText('休み');
   await expect(list.nth(2)).toContainText('13F');
   await expect(page).toHaveURL(new RegExp(`month=${month}`));
 
@@ -47,5 +47,5 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(link).toHaveValue(/\/api\/shifts\/feed\/[\w-]+\.ics$/);
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
-  expect(await feed.text()).toContain('SUMMARY:Sam 夜勤 22F');
+  expect(await feed.text()).toContain('SUMMARY:夜勤');
 });
