@@ -76,6 +76,8 @@ object ServerText {
         "the photo couldn't be read just now; try again, or enter the shifts by hand" to "今は写真を読めませんでした。もう一度試すか、手で入力してください",
         "couldn't find {name} on the sheet; check the name in settings" to "勤務表に{name}が見つかりませんでした。設定の名前を確認してください",
         "couldn't tell which month the sheet is for" to "何月の勤務表か分かりませんでした",
+        "a photo is already being read; wait for it to finish" to "写真を読み込み中です。終わるまでお待ちください",
+        "that photo isn't being read any more; send it again" to "その写真はもう読み込まれていません。もう一度送ってください",
         "month must be YYYY-MM" to "月は YYYY-MM の形式で指定してください",
         "every day must be in {month}" to "すべての日付を{month}の中にしてください",
         "a shift code must be at most {max} characters" to "シフト記号は{max}文字以内にしてください",

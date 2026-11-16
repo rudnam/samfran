@@ -316,6 +316,8 @@ select.language { width: auto; padding: 6px 10px; }
 .shift-edit { list-style: none; margin: 0; padding: 4px 14px; }
 .shift-edit li { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--divider); }
 .shift-edit li:first-child { border-top: 0; }
+.shift-edit .grow { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.with-input { width: 100%; padding: 6px 10px; font-size: 0.85rem; }
 .code-input { width: 5.5rem; flex: none; padding: 8px 10px; text-align: center; font-weight: 700; }
 .sticky-actions { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); padding: 10px 0; background: linear-gradient(to top, var(--bg) 70%, transparent); }
 @media (min-width: 720px) { .sticky-actions { bottom: 0; } }

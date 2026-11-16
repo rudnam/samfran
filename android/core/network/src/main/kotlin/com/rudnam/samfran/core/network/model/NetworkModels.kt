@@ -38,6 +38,10 @@ import java.time.YearMonth
 @Serializable
 data class NetworkError(val error: String = "")
 
+/** A photo of the sheet being read: asked after by its id. */
+@Serializable
+data class NetworkReadStarted(val id: String)
+
 @Serializable
 data class NetworkMe(
     val email: String,

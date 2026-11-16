@@ -158,6 +158,8 @@ export const ja = {
   'Read {name}’s row for {month}. Compare it with the sheet and fix any day before saving.': '{month}の{name}の行を読みました。勤務表と見比べて、違う日を直してから保存してください。',
   Days: '日付',
   'Code for {day}': '{day}の記号',
+  'Who else is on this shift (separate with commas)': '一緒の人（「、」か「,」で区切る）',
+  'Who is with you on {day}': '{day}に一緒の人',
   'Save {month}': '{month}を保存',
   'Shift settings': 'シフトの設定',
   'Whose shifts': '誰のシフト',
@@ -393,4 +395,6 @@ export const jaServer = {
   'your email is already confirmed': 'メールアドレスはすでに確認済みです',
   'the place search isn’t answering; try again in a moment': 'お店の検索が応答しません。少し待ってからもう一度お試しください',
   'the stop search isn’t answering; try again in a moment': 'バス停の検索が応答しません。少し待ってからもう一度お試しください',
+  'a photo is already being read; wait for it to finish': '写真を読み込み中です。終わるまでお待ちください',
+  "that photo isn't being read any more; send it again": 'その写真はもう読み込まれていません。もう一度送ってください',
 } as const;

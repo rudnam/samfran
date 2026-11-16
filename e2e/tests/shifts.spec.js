@@ -98,18 +98,78 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   // Editing: still there while the code is the same; a different code is a different shift.
   await page.getByRole('link', { name: 'Edit by hand' }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
-  await expect(days.nth(0)).toContainText('With タナカ ユイ, スズキ ケン');
+  const who = days.nth(0).getByRole('textbox');
+  await expect(who).toHaveValue('タナカ ユイ, スズキ ケン');
   await days.nth(0).getByRole('combobox').fill('13F');
-  await expect(days.nth(0)).not.toContainText('With');
+  await expect(who).toHaveValue('');
   await days.nth(0).getByRole('combobox').fill('22F');
-  await expect(days.nth(0)).toContainText('With タナカ ユイ');
+  await expect(who).toHaveValue('タナカ ユイ, スズキ ケン');
+  // A wrong read can be fixed by hand: change a name, add one.
+  await who.fill('タナカ ユイ, サトウ ミキ');
   await page.getByRole('button', { name: /^Save / }).click();
   await page.getByRole('radio', { name: 'List' }).click();
-  await expect(list.nth(0)).toContainText('With タナカ ユイ, スズキ ケン');
+  await expect(list.nth(0)).toContainText('With タナカ ユイ, サトウ ミキ');
 
   // The calendar feed says who too.
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
-  expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、スズキ ケン');
+  expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、サトウ ミキ');
+});
+
+test('read a photo of the sheet: the page waits for the read, then opens the month to check', async ({ page }) => {
+  await signUp(page);
+  const month = thisMonth();
+  await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
+
+  // This server has no Claude key, so stand in for it: photos can be read,
+  // and the read takes a few askings to finish (like the minute Claude takes).
+  await page.route(/\/api\/shifts(\?.*)?$/, async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    body.settings.reader = true;
+    await route.fulfill({ response: res, json: body });
+  });
+  let started = 0;
+  await page.route('**/api/shifts/reads', (route) => {
+    started++;
+    return route.fulfill({ status: 202, json: { id: 'r1' } });
+  });
+  let asked = 0;
+  await page.route('**/api/shifts/reads/r1', async (route) => {
+    if (++asked < 3) return route.fulfill({ status: 202, json: { status: 'reading' } });
+    const settings = await (await page.request.get('/api/shifts/settings')).json();
+    return route.fulfill({
+      json: {
+        month,
+        settings: { ...settings, reader: true },
+        days: [{ date: `${month}-01`, code: '22F', kind: 'work', label: '夜勤', with: ['タナカ ユエ'] }],
+        name_as_read: 'オトル サマンタ',
+        notes: '',
+      },
+    });
+  });
+
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  // A real (1×1 PNG) photo, so the page can shrink it.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.getByLabel('Photo of the sheet').setInputFiles({ name: 'sheet.png', mimeType: 'image/png', buffer: png });
+  await expect(page.getByRole('button', { name: 'Reading the sheet…' })).toBeDisabled();
+
+  await expect(page.getByRole('heading', { name: 'Check the shifts' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('status')).toContainText('オトル サマンタ');
+  const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
+  await expect(days.nth(0).getByRole('combobox')).toHaveValue('22F');
+  expect(started).toBe(1);
+  expect(asked).toBe(3);
+
+  // A misread name is fixed by hand, and the fix is sent so the next scan gets it right.
+  const who = days.nth(0).getByRole('textbox');
+  await expect(who).toHaveValue('タナカ ユエ');
+  await who.fill('タナカ ユイ');
+  const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));
+  await page.getByRole('button', { name: /^Save / }).click();
+  const sent = (await saving).postDataJSON();
+  expect(sent.days[0].with).toEqual(['タナカ ユイ']);
+  expect(sent.corrections).toEqual([{ from: 'タナカ ユエ', to: 'タナカ ユイ' }]);
 });

@@ -115,6 +115,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
+/** How often a photo being read is asked after, and when to give up on it (the server gives up after 3 minutes). */
+const readPollMs = 2000;
+const readGiveUpMs = 5 * 60_000;
+
 export const api = {
   me: () => request<Me>('GET', '/api/me'),
   signUp: (email: string, password: string) => request<Me>('POST', '/api/signup', { email, password }),
@@ -156,24 +160,50 @@ export const api = {
   searchPlaces: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundPlace[]>('GET', `/api/restaurants/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
-  saveShifts: (month: string, days: { date: string; code: string; with?: string[] }[]) =>
-    request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
+  saveShifts: (
+    month: string,
+    days: { date: string; code: string; with?: string[] }[],
+    corrections?: { from: string; to: string }[],
+  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
   saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
   shiftFeed: (on: boolean) => request<ShiftSettings>(on ? 'POST' : 'DELETE', '/api/shifts/feed'),
-  /** Reads a photo of the sheet; nothing is saved until saveShifts. */
+  /**
+   * Reads a photo of the sheet; nothing is saved until saveShifts. Reading
+   * takes about a minute, longer than one request may last, so this starts
+   * the read and asks after it until it's done.
+   */
   readShiftPhoto: async (photo: Blob) => {
     const form = new FormData();
     form.append('photo', photo, 'sheet.jpg');
-    const res = await fetch('/api/shifts/read', {
+    const res = await fetch('/api/shifts/reads', {
       method: 'POST',
       headers: { 'Accept-Language': language() },
       body: form,
     });
-    const data = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
-    return data as ShiftMonth;
+    const started = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(started?.error ?? res.statusText, res.status);
+    const until = Date.now() + readGiveUpMs;
+    let failures = 0;
+    while (Date.now() < until) {
+      await new Promise((resolve) => setTimeout(resolve, readPollMs));
+      let res: Response;
+      try {
+        res = await fetch(`/api/shifts/reads/${started.id}`, {
+          headers: { 'Accept-Language': language() },
+        });
+      } catch (err) {
+        // A phone moving between networks: try again a few times.
+        if (++failures > 3) throw err;
+        continue;
+      }
+      if (res.status === 202) continue;
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
+      return data as ShiftMonth;
+    }
+    throw new ApiError("the photo couldn't be read just now; try again, or enter the shifts by hand", 504);
   },
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
