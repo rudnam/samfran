@@ -53,7 +53,7 @@ func TestICS(t *testing.T) {
 		Explain("2026-11-06", "22F", DefaultLengths, tokyo),
 		Explain("2026-11-08", "普", DefaultLengths, tokyo),
 	}
-	got := ICS(days, "Sam, the best", time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
+	got := ICS(days, []string{"2026-11-15"}, "Sam, the best", time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
 	for _, want := range []string{
 		"BEGIN:VCALENDAR\r\n",
 		"DTSTART:20261106T130000Z\r\n", // 22:00 in Tokyo
@@ -63,6 +63,7 @@ func TestICS(t *testing.T) {
 		`X-WR-CALNAME:Sam\, the best's shifts` + "\r\n",
 		"DTSTART;VALUE=DATE:20261108\r\nDTEND;VALUE=DATE:20261109\r\n",
 		"TRANSP:TRANSPARENT\r\n",
+		"UID:20261115-closing@samfran\r\nDTSTAMP:20261101T000000Z\r\nDTSTART;VALUE=DATE:20261115\r\nDTEND;VALUE=DATE:20261116\r\nSUMMARY:締め申請通知\r\n",
 		"END:VCALENDAR\r\n",
 	} {
 		if !strings.Contains(got, want) {
@@ -73,5 +74,19 @@ func TestICS(t *testing.T) {
 		if len(l) > 75 {
 			t.Errorf("line longer than 75 bytes: %q", l)
 		}
+	}
+}
+
+func TestClosingDates(t *testing.T) {
+	from := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
+	got := strings.Join(ClosingDates(from, to, []int{31, 15, 30}), " ")
+	// February has no 30th or 31st: both mean the 28th, once.
+	want := "2026-01-15 2026-01-30 2026-01-31 2026-02-15 2026-02-28 2026-03-15 2026-03-30 2026-03-31"
+	if got != want {
+		t.Errorf("ClosingDates = %s, want %s", got, want)
+	}
+	if got := ClosingDates(from, to, nil); len(got) != 0 {
+		t.Errorf("no closing days: %v", got)
 	}
 }

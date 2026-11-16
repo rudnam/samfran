@@ -166,7 +166,7 @@ export const api = {
     corrections?: { from: string; to: string }[],
   ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
-  saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone'>>) =>
+  saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone' | 'closing_days'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
   shiftFeed: (on: boolean) => request<ShiftSettings>(on ? 'POST' : 'DELETE', '/api/shifts/feed'),
   /**
@@ -247,6 +247,8 @@ export interface ShiftSettings {
   /** Hours on site for each letter of a shift code. */
   lengths: Record<string, number>;
   time_zone: string;
+  /** 締め申請通知: days of the month the hours are sent in; 31 means the last day. */
+  closing_days: number[];
   /** The calendar feed's path on this site, or "" while it's off. */
   feed_path: string;
   /** Photos can be read on this server. */

@@ -78,7 +78,9 @@ class FakeUserRepository(me: Me? = Me("fran@example.com")) : UserRepository {
 }
 
 class FakeUpdateRepository(var update: AppUpdate? = null) : UpdateRepository {
-    override suspend fun check() = update
+    var checks = 0
+
+    override suspend fun check() = update.also { checks++ }
     override suspend fun later(update: AppUpdate) {
         this.update = null
     }
@@ -178,9 +180,10 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     override fun takePendingRead(month: YearMonth): ShiftMonth? = pending?.takeIf { it.month == month }.also { pending = null }
     override val settings: Flow<ShiftSettings?> = settingsFlow
     override suspend fun refreshSettings(): Outcome<ShiftSettings> = next ?: Outcome.Done(settingsFlow.value ?: ShiftSettings())
-    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>): Outcome<ShiftSettings> {
+    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>?): Outcome<ShiftSettings> {
         next?.let { return it }
-        val s = (settingsFlow.value ?: ShiftSettings()).copy(personName = personName, nameOnSheet = nameOnSheet, lengths = lengths)
+        val before = settingsFlow.value ?: ShiftSettings()
+        val s = before.copy(personName = personName, nameOnSheet = nameOnSheet, lengths = lengths, closingDays = closingDays?.distinct()?.sorted() ?: before.closingDays)
         settingsFlow.value = s
         return Outcome.Done(s)
     }

@@ -23,6 +23,8 @@ data class ShiftSettingsUiState(
     val onSheet: String = "",
     /** Letter and hours, as typed. */
     val lengths: List<Pair<String, String>> = emptyList(),
+    /** 締め申請通知 days; 31 is the last day. */
+    val closing: List<Int> = emptyList(),
     val busy: Boolean = false,
     val done: SettingsDone? = null,
     val problem: Outcome<Any>? = null,
@@ -36,6 +38,9 @@ interface ShiftSettingsActions {
     fun setLength(index: Int, letter: String, hours: String)
     fun addLetter()
     fun removeLetter(index: Int)
+    fun setClosing(index: Int, day: Int)
+    fun addClosing()
+    fun removeClosing(index: Int)
     fun save()
     fun feed(on: Boolean)
 }
@@ -63,6 +68,7 @@ class ShiftSettingsViewModel @Inject constructor(
             person = s.personName,
             onSheet = s.nameOnSheet,
             lengths = s.lengths.entries.sortedBy { e -> e.key }.map { (k, v) -> k to hours(v) },
+            closing = s.closingDays,
             feedUrl = if (s.feedPath.isNotEmpty()) shifts.address(s.feedPath) else "",
         )
     }
@@ -81,10 +87,18 @@ class ShiftSettingsViewModel @Inject constructor(
 
     override fun removeLetter(index: Int) = _state.update { it.copy(lengths = it.lengths.filterIndexed { i, _ -> i != index }) }
 
+    override fun setClosing(index: Int, day: Int) = _state.update {
+        it.copy(closing = it.closing.mapIndexed { i, d -> if (i == index) day.coerceIn(1, 31) else d }, done = null)
+    }
+
+    override fun addClosing() = _state.update { if (it.closing.size >= 10) it else it.copy(closing = it.closing + 15, done = null) }
+
+    override fun removeClosing(index: Int) = _state.update { it.copy(closing = it.closing.filterIndexed { i, _ -> i != index }, done = null) }
+
     override fun save() {
         val s = _state.value
         val table = s.lengths.filter { it.first.isNotBlank() }.associate { (k, v) -> k.trim().uppercase() to (v.replace(',', '.').toDoubleOrNull() ?: 0.0) }
-        run(SettingsDone.Saved) { shifts.saveSettings(s.person, s.onSheet, table) }
+        run(SettingsDone.Saved) { shifts.saveSettings(s.person, s.onSheet, table, s.closing) }
     }
 
     override fun feed(on: Boolean) = run(if (on && _state.value.feedUrl.isNotEmpty()) SettingsDone.NewLink else if (on) null else SettingsDone.LinkOff) { shifts.feed(on) }

@@ -34,11 +34,12 @@ fun describe(e: ActivityEntry): String {
                     },
                 )
             }
-            for (key in listOf("person_name", "name_on_sheet", "time_zone")) {
+            for (key in listOf("person_name", "name_on_sheet", "time_zone", "closing_days")) {
                 val change = d.settings[key] ?: continue
                 val what = when (key) {
                     "person_name" -> stringResource(R.string.setting_person)
                     "name_on_sheet" -> stringResource(R.string.setting_on_sheet)
+                    "closing_days" -> stringResource(R.string.setting_closing_days)
                     else -> stringResource(R.string.setting_time_zone)
                 }
                 add(stringResource(R.string.change_setting, what, change.second))

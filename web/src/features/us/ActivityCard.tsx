@@ -12,6 +12,7 @@ const setting: Record<string, () => string> = {
   person_name: () => t('whose shifts'),
   name_on_sheet: () => t('the name on the sheet'),
   time_zone: () => t('the time zone'),
+  closing_days: () => t('the 締め申請通知 days'),
 };
 
 /** What happened, worded; '' for a kind this version doesn't know. */
