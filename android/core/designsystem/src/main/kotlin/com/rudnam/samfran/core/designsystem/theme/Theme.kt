@@ -187,7 +187,8 @@ private fun SamFranColors.asColorScheme(): ColorScheme {
         inverseSurface = text,
         inverseOnSurface = bg,
         inversePrimary = accentInk,
-        outline = muted,
+        // Field borders: a soft warm line, not the grey of muted text, so outlined fields sit as quietly as the website's.
+        outline = if (isDark) Color(0xFF4A3D31) else Color(0xFFDCCBB3),
         outlineVariant = border,
         error = danger,
         onError = surface,
