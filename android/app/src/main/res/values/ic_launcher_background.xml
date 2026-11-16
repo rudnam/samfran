@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Cream, as behind the two plushies in web/public/icon.svg. -->
-    <color name="ic_launcher_background">#FFEDC8</color>
+    <!-- Burnt orange, as behind the two plushies in web/public/icon.svg. -->
+    <color name="ic_launcher_background">#D46A20</color>
 </resources>

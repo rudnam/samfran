@@ -254,8 +254,8 @@ private fun TabBar(current: TopLevelDestination, unseen: Int, onSelect: (TopLeve
                 },
                 label = { Text(stringResource(tab.label), style = MaterialTheme.typography.labelMedium) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = colors.text,
-                    selectedTextColor = colors.text,
+                    selectedIconColor = colors.accentInk,
+                    selectedTextColor = colors.accentInk,
                     indicatorColor = colors.highlight,
                     unselectedIconColor = colors.muted,
                     unselectedTextColor = colors.muted,

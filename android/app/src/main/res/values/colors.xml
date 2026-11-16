@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The web app's background and accent (web/src/styles.css); values-night has the dark ones. -->
-    <color name="paper">#FAF8F4</color>
-    <color name="accent">#E23D28</color>
+    <color name="paper">#FDF6EE</color>
+    <color name="accent">#B9520C</color>
 </resources>

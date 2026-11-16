@@ -1,7 +1,6 @@
-/* The icon's colours: cream and peach behind the two plushies, the
-   penguin's ink for the main action, the bear's caramel for links, and the
-   heart eyes' red for alerts. Fran is red and Sam orange. Dark mode follows
-   the OS unless one is picked on this device (theme.ts). */
+/* Burnt orange: a warm cream page, deep orange for the main action and
+   links, and the icon's heart red for alerts. Fran is red and Sam orange.
+   Dark mode follows the OS unless one is picked on this device (theme.ts). */
 @font-face {
   font-family: 'Plus Jakarta Sans';
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
@@ -10,21 +9,21 @@
 }
 
 :root {
-  --bg: #fdf7ec;
-  --surface: #fffdf9;
-  --sunken: #f6ecdc;
-  --highlight: #ffe6bd; /* the icon's peach: what's picked */
+  --bg: #fdf6ee;
+  --surface: #fffdfa;
+  --sunken: #f5e8d8;
+  --highlight: #fbe0c6; /* what's picked: the tab, a notice */
   --text: #241f1c;
-  --muted: #7a6d60;
-  --border: #efe3d0;
-  --divider: #f3eadb;
-  --accent: #262221; /* the penguin: the main action */
-  --accent-text: #fff8ec;
-  --accent-ink: #9a5a24; /* the bear's caramel, as text and links */
-  --heart: #e0402f; /* the heart eyes: alerts and what's new */
+  --muted: #7a6c5f;
+  --border: #f0e1cf;
+  --divider: #f4e8da;
+  --accent: #b9520c; /* burnt orange: the main action */
+  --accent-text: #ffffff;
+  --accent-ink: #a3480b; /* burnt orange as text and links */
+  --heart: #e0402f; /* the icon's heart eyes: alerts and what's new */
   --heart-text: #ffffff;
   --star: #f2a31b;
-  --star-off: #ecdec8;
+  --star-off: #eddcc6;
   --danger: #b3261e;
   /* The two people: the first to join (Fran) is red, the second (Sam) orange. */
   --a-bg: #ffe1dc; --a-text: #a8291a; --a-solid: #e0402f; --a-on: #ffffff;
@@ -56,17 +55,17 @@
    (Us → This device → Appearance). Keep the two blocks the same. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #16120e;
-    --surface: #211b16;
-    --sunken: #2c241d;
-    --highlight: #3d2e1d;
+    --bg: #17120e;
+    --surface: #221b15;
+    --sunken: #2d241c;
+    --highlight: #45291a;
     --text: #f7efe4;
-    --muted: #ad9f90;
-    --border: #362c23;
-    --divider: #2d251e;
-    --accent: #f7ead6;
+    --muted: #ae9f8f;
+    --border: #382c22;
+    --divider: #2e251d;
+    --accent: #ff9a4d;
     --accent-text: #1c1714;
-    --accent-ink: #e9b47e;
+    --accent-ink: #ffb27a;
     --heart: #ff6b57;
     --heart-text: #1c1714;
     --star-off: #463a30;
@@ -83,17 +82,17 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #16120e;
-  --surface: #211b16;
-  --sunken: #2c241d;
-  --highlight: #3d2e1d;
+  --bg: #17120e;
+  --surface: #221b15;
+  --sunken: #2d241c;
+  --highlight: #45291a;
   --text: #f7efe4;
-  --muted: #ad9f90;
-  --border: #362c23;
-  --divider: #2d251e;
-  --accent: #f7ead6;
+  --muted: #ae9f8f;
+  --border: #382c22;
+  --divider: #2e251d;
+  --accent: #ff9a4d;
   --accent-text: #1c1714;
-  --accent-ink: #e9b47e;
+  --accent-ink: #ffb27a;
   --heart: #ff6b57;
   --heart-text: #1c1714;
   --star-off: #463a30;
@@ -159,7 +158,7 @@ a { color: var(--accent-ink); }
 }
 .tabbar svg { stroke-width: 1.8; }
 @media (hover: hover) { .tabbar a:hover:not(.active) { color: var(--text); background: color-mix(in srgb, var(--text) 5%, transparent); } }
-.tabbar a.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.tabbar a.active { background: var(--surface); color: var(--accent-ink); box-shadow: var(--shadow); }
 @media (max-width: 719px) {
   .appbar { padding-top: 18px; }
   .tabbar {

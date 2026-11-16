@@ -32,9 +32,8 @@ data class Pair2(val bg: Color, val ink: Color)
 data class PersonColors(val bg: Color, val text: Color, val solid: Color, val on: Color)
 
 /**
- * The icon's colours: cream and peach behind the two plushies, the
- * penguin's ink for the main action, the bear's caramel for links, and the
- * heart eyes' red for alerts. The tokens at the top of web/src/styles.css, light and dark, so
+ * Burnt orange: a warm cream page, deep orange for the main action and
+ * links, and the icon's heart red for alerts. The tokens at the top of web/src/styles.css, light and dark, so
  * the app and the website look the same. Material 3's roles are filled from
  * these, so its components look like the app.
  */
@@ -44,16 +43,16 @@ data class SamFranColors(
     val bg: Color,
     val surface: Color,
     val sunken: Color,
-    /** The icon's peach: what's picked (the tab, a notice). */
+    /** What's picked: the tab, a notice. */
     val highlight: Color,
     val text: Color,
     val muted: Color,
     val border: Color,
     val divider: Color,
-    /** Ink: the main action. */
+    /** Burnt orange: the main action. */
     val accent: Color,
     val accentText: Color,
-    /** Caramel, as text and links. */
+    /** Burnt orange as text and links. */
     val accentInk: Color,
     /** Heart red: alerts, today, and what's new. */
     val heart: Color,
@@ -91,21 +90,21 @@ object ShiftDotColors {
 
 val LightSamFranColors = SamFranColors(
     isDark = false,
-    bg = Color(0xFFFDF7EC),
-    surface = Color(0xFFFFFDF9),
-    sunken = Color(0xFFF6ECDC),
-    highlight = Color(0xFFFFE6BD),
+    bg = Color(0xFFFDF6EE),
+    surface = Color(0xFFFFFDFA),
+    sunken = Color(0xFFF5E8D8),
+    highlight = Color(0xFFFBE0C6),
     text = Color(0xFF241F1C),
-    muted = Color(0xFF7A6D60),
-    border = Color(0xFFEFE3D0),
-    divider = Color(0xFFF3EADB),
-    accent = Color(0xFF262221),
-    accentText = Color(0xFFFFF8EC),
-    accentInk = Color(0xFF9A5A24),
+    muted = Color(0xFF7A6C5F),
+    border = Color(0xFFF0E1CF),
+    divider = Color(0xFFF4E8DA),
+    accent = Color(0xFFB9520C),
+    accentText = Color(0xFFFFFFFF),
+    accentInk = Color(0xFFA3480B),
     heart = Color(0xFFE0402F),
     heartText = Color(0xFFFFFFFF),
     star = Color(0xFFF2A31B),
-    starOff = Color(0xFFECDEC8),
+    starOff = Color(0xFFEDDCC6),
     danger = Color(0xFFB3261E),
     a = PersonColors(Color(0xFFFFE1DC), Color(0xFFA8291A), Color(0xFFE0402F), Color(0xFFFFFFFF)),
     b = PersonColors(Color(0xFFFFE7D1), Color(0xFF964400), Color(0xFFFF8A1F), Color(0xFF241F1C)),
@@ -123,17 +122,17 @@ val LightSamFranColors = SamFranColors(
 
 val DarkSamFranColors = SamFranColors(
     isDark = true,
-    bg = Color(0xFF16120E),
-    surface = Color(0xFF211B16),
-    sunken = Color(0xFF2C241D),
-    highlight = Color(0xFF3D2E1D),
+    bg = Color(0xFF17120E),
+    surface = Color(0xFF221B15),
+    sunken = Color(0xFF2D241C),
+    highlight = Color(0xFF45291A),
     text = Color(0xFFF7EFE4),
-    muted = Color(0xFFAD9F90),
-    border = Color(0xFF362C23),
-    divider = Color(0xFF2D251E),
-    accent = Color(0xFFF7EAD6),
+    muted = Color(0xFFAE9F8F),
+    border = Color(0xFF382C22),
+    divider = Color(0xFF2E251D),
+    accent = Color(0xFFFF9A4D),
     accentText = Color(0xFF1C1714),
-    accentInk = Color(0xFFE9B47E),
+    accentInk = Color(0xFFFFB27A),
     heart = Color(0xFFFF6B57),
     heartText = Color(0xFF1C1714),
     star = Color(0xFFF2A31B),
@@ -188,7 +187,7 @@ private fun SamFranColors.asColorScheme(): ColorScheme {
         inverseOnSurface = bg,
         inversePrimary = accentInk,
         // Field borders: a soft warm line, not the grey of muted text, so outlined fields sit as quietly as the website's.
-        outline = if (isDark) Color(0xFF4A3D31) else Color(0xFFDCCBB3),
+        outline = if (isDark) Color(0xFF4C3B2D) else Color(0xFFE0C8AE),
         outlineVariant = border,
         error = danger,
         onError = surface,
