@@ -23,6 +23,7 @@ allprojects {
 tasks.register("lintNative") {
     group = "verification"
     description = "Runs Android Lint on app, core:* and feature:*."
-    // core:model is plain Kotlin, with no Android to lint.
-    dependsOn(subprojects.filter { it.path != ":core:model" }.map { "${it.path}:lintDebug" })
+    // The modules themselves, not the core and feature folders; core:model is plain Kotlin, with no Android to lint.
+    val native = subprojects.filter { it.path == ":app" || it.path.startsWith(":core:") || it.path.startsWith(":feature:") }
+    dependsOn(native.filter { it.path != ":core:model" }.map { "${it.path}:lintDebug" })
 }
