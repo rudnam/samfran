@@ -215,8 +215,6 @@ export const ja = {
   'Couldn’t tell where you are. Check that location is on, and allowed for SamFran.': '現在地が分かりませんでした。位置情報がオンで、SamFranに許可されているか確認してください。',
   'Where do you get off?': 'どこで降りますか？',
   'Stop name': 'バス停の名前',
-  'e.g. Kamijima Station': '例: 上島駅',
-  'Where it is': '場所',
   'Google Maps link to the stop': 'バス停のGoogleマップのリンク',
   'Paste a Google Maps link to the stop': 'バス停のGoogleマップのリンクを貼り付け',
   'Use link': 'リンクを使う',
@@ -303,6 +301,14 @@ export const ja = {
   'Saved.': '保存しました。',
   'Shown next to your ratings.': '評価の横に表示されます。',
   'This device': 'この端末',
+  'Type part of it, e.g. 葵西': '名前の一部を入力（例: 葵西）',
+  'Matching stops': '見つかったバス停',
+  'The stop search isn’t answering. Paste a Google Maps link instead.': 'バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。',
+  'No stops by that name. Try fewer characters, written as on the stop’s sign.': 'その名前のバス停はありません。文字を減らすか、バス停の表示どおり（漢字）に入力してください。',
+  'Tap your stop.': '降りるバス停をタップしてください。',
+  'Stops from OpenStreetMap': 'バス停データ: OpenStreetMap',
+  'Start typing and choose your stop from the list.': '入力して、一覧からバス停を選んでください。',
+  'Or use a Google Maps link': 'またはGoogleマップのリンクで',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -360,4 +366,5 @@ export const jaServer = {
   "this server doesn't send email": 'このサーバーはメールを送信しません',
   'type your email address to confirm': '確認のためメールアドレスを入力してください',
   'your email is already confirmed': 'メールアドレスはすでに確認済みです',
+  'the stop search isn’t answering; try again in a moment': 'バス停の検索が応答しません。少し待ってからもう一度お試しください',
 } as const;

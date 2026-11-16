@@ -192,6 +192,9 @@ export const api = {
   syncCalendar: () => request<CalendarStatus>('POST', '/api/calendar/sync'),
   disconnectCalendar: () => request<CalendarStatus>('DELETE', '/api/calendar'),
   busStop: () => request<BusStop>('GET', '/api/bus/stop'),
+  /** Stops and stations whose names match q (2+ characters); near ones first when near is given. */
+  searchStops: (q: string, near?: { lat: number; lng: number }) =>
+    request<FoundStop[]>('GET', `/api/bus/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
   saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number }) => request<BusStop>('PUT', '/api/bus/stop', s),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
@@ -265,6 +268,15 @@ export interface CalendarStatus {
 }
 
 /** Where the signed-in person gets off the bus. */
+export interface FoundStop {
+  name: string;
+  /** City, district, street. */
+  area: string;
+  kind: 'bus' | 'train';
+  lat: number;
+  lng: number;
+}
+
 export interface BusStop {
   /** False until a stop is chosen. */
   set: boolean;

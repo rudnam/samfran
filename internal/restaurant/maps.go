@@ -133,7 +133,8 @@ var (
 )
 
 // placeCoords reads a position from a Maps address: the pin if there is
-// one, else coordinates searched for, else the centre of the map.
+// one, else coordinates searched for, else the centre of the map, else the
+// place's feature ID.
 func placeCoords(u *url.URL) (lat, lng *float64) {
 	for _, try := range []func() []string{
 		func() []string { return pinCoords.FindStringSubmatch(u.Path) },
@@ -151,7 +152,8 @@ func placeCoords(u *url.URL) (lat, lng *float64) {
 			return &a, &b
 		}
 	}
-	return nil, nil
+	// A place address with only the place's ID: the ID says where (s2.go).
+	return featureCoords(u.Path)
 }
 
 func (h *Handler) lookupHandler(w http.ResponseWriter, r *http.Request) error {
