@@ -4,12 +4,14 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import androidx.test.core.app.ApplicationProvider
+import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.testing.FakeShiftsRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.TestPreferences
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -50,18 +52,20 @@ class ReadPhotoFlowTest {
     }
 
     @Test
-    fun `a photo that comes back is read, once`() {
+    fun `a photo that comes back is read, once`() = runTest {
         val vm = viewModel()
+        backgroundScope.launch { vm.state.collect {} } // as the page does
         photos.arrived(Uri.parse("content://media/picker/0/1"))
-        assertEquals(ShiftsViewModel.PHOTO_UNREADABLE, (vm.state.value.problem as? com.rudnam.samfran.core.data.Outcome.Refused)?.message)
+        assertEquals(ShiftsViewModel.PHOTO_UNREADABLE, (vm.state.value.problem as? Outcome.Refused)?.message)
         assertNull(photos.photo.value)
     }
 
     @Test
-    fun `a photo that came back while the page was gone is read when it opens`() {
+    fun `a photo that came back while the page was gone is read when it opens`() = runTest {
         // Android remade the app while the camera was open: the activity has the photo before any Shifts page exists.
         photos.arrived(Uri.parse("content://com.rudnam.samfran.files/photos/sheet.jpg"))
         val vm = viewModel()
+        backgroundScope.launch { vm.state.collect {} } // as the page does
         assertNotNull(vm.state.value.problem)
         assertNull(photos.photo.value)
     }
