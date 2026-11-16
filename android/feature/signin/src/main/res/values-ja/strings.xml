@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sign_in">ログイン</string>
+    <string name="create_an_account">アカウントを作成</string>
+    <string name="create_account">アカウントを作成</string>
+    <string name="email">メールアドレス</string>
+    <string name="password">パスワード</string>
+    <string name="password_rule">10文字以上</string>
+    <string name="continue_with_google">Googleで続ける</string>
+    <string name="or">または</string>
+    <string name="forgot_password">パスワードをお忘れの方</string>
+    <string name="new_here">はじめての方はこちら: アカウントを作成</string>
+    <string name="have_account">アカウントをお持ちの方: ログイン</string>
+    <string name="just_looking">まずは見てみたい方は</string>
+    <string name="try_demo">デモを試す</string>
+    <string name="setting_up_demo">デモを準備しています…</string>
+    <string name="reset_password">パスワードの再設定</string>
+    <string name="reset_intro">アカウントのメールアドレスを入力してください。新しいパスワードを設定するためのリンクをお送りします。</string>
+    <string name="reset_sent">このメールアドレスのアカウントがあれば、新しいパスワードを設定するためのリンクを送信しました。リンクの有効期限は1時間です。</string>
+    <string name="send_link">リンクを送信</string>
+    <string name="send_again">再送する</string>
+    <string name="back_to_sign_in">ログインに戻る</string>
+    <string name="google_cancelled">Googleでのログインはキャンセルされました。</string>
+    <string name="google_expired">ログインの有効期限が切れました。もう一度お試しください。</string>
+    <string name="google_closed">このサーバーでは新しいアカウントを受け付けていません。</string>
+    <string name="google_unverified">Googleアカウントのメールアドレスが、Googleで確認されていません。</string>
+    <string name="google_linked">このメールアドレスのアカウントは、別のGoogleアカウントと連携済みです。</string>
+    <string name="google_busy">試行回数が多すぎます。1分ほど待ってからお試しください。</string>
+    <string name="google_failed">Googleでログインできませんでした。もう一度お試しください。</string>
+</resources>

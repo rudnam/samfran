@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Builds the Android app for release, as RudWallet's does: the web app
-# (bundled into the app), then a signed app bundle for the Play Store and an
-# APK to install directly.
+# Builds the Android app for release, as RudWallet's does: a signed app
+# bundle for the Play Store and an APK to install directly. The app is native
+# (README.md, "Native app"): nothing of the website is built into it.
 #
 #   ./android/build.sh                -> android/samfran.aab and android/samfran.apk
 #   ./android/build.sh install        also installs the APK on the phone plugged in (adb)
 #   ./android/build.sh sign app.apk   signs an unsigned APK, e.g. CI's android-apk artifact,
 #                                     for a machine without the memory to run Gradle
 #
-# Needs a JDK 21 and the Android SDK (JAVA_HOME and ANDROID_HOME, or the paths
-# in ~/.bubblewrap/config.json), Node, and keystore/samfran.jks with its
+# Needs a JDK 21 and the Android SDK (JAVA_HOME and ANDROID_HOME, or
+# ~/Android/Sdk, or the paths in ~/.bubblewrap/config.json), and keystore/samfran.jks with its
 # passwords in keystore/keystore.properties, next to this script. The version
 # comes from version.sh, or SAMFRAN_VERSION_CODE and SAMFRAN_VERSION_NAME if
 # they're set. CI's Android release workflow (.github/workflows/android-release.yml)
@@ -21,6 +21,7 @@ if [[ -f ~/.bubblewrap/config.json ]]; then
   : "${JAVA_HOME:=$(sed -n 's/.*"jdkPath": *"\([^"]*\)".*/\1/p' ~/.bubblewrap/config.json)}"
   : "${ANDROID_HOME:=$(sed -n 's/.*"androidSdkPath": *"\([^"]*\)".*/\1/p' ~/.bubblewrap/config.json)}"
 fi
+: "${ANDROID_HOME:=$([[ -d ~/Android/Sdk ]] && echo ~/Android/Sdk)}"
 : "${JAVA_HOME:?set JAVA_HOME to a JDK 21}" "${ANDROID_HOME:?set ANDROID_HOME to the Android SDK}"
 export JAVA_HOME ANDROID_HOME PATH="$JAVA_HOME/bin:$PATH"
 
@@ -46,13 +47,10 @@ fi
 
 # The version: one above what the site offers (version.sh), unless given.
 : "${SAMFRAN_VERSION_CODE:=$(./version.sh)}"
-: "${SAMFRAN_VERSION_NAME:=$(sed -n "s/.*SAMFRAN_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" app/build.gradle).$SAMFRAN_VERSION_CODE}"
+: "${SAMFRAN_VERSION_NAME:=$(sed -n "s/.*SAMFRAN_VERSION_NAME\") ?: \"\(.*\)\".*/\1/p" app/build.gradle.kts).$SAMFRAN_VERSION_CODE}"
 export SAMFRAN_VERSION_CODE SAMFRAN_VERSION_NAME
 
-# The web app, built for the app (web/.env.android) and copied in.
-(cd ../web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run android)
-
-./gradlew --quiet testReleaseUnitTest bundleRelease assembleRelease
+./gradlew --quiet testDebugUnitTest bundleRelease assembleRelease
 cp app/build/outputs/bundle/release/app-release.aab samfran.aab
 cp app/build/outputs/apk/release/app-release.apk samfran.apk
 # The local stack offers it too (ANDROID_APK, docker-compose.yml).

@@ -1,9 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">SamFran</string>
-    <string name="title_activity_main">SamFran</string>
-    <string name="package_name">com.rudnam.samfran</string>
-    <string name="custom_url_scheme">com.rudnam.samfran</string>
     <string name="trip_title">Watching for your stop</string>
     <string name="trip_title_named">Watching for %1$s</string>
     <string name="trip_starting">Finding where you are…</string>
@@ -31,4 +28,22 @@
         <item quantity="one">and %d more change</item>
         <item quantity="other">and %d more changes</item>
     </plurals>
+    <string name="tab_food">Food</string>
+    <string name="tab_shifts">Shifts</string>
+    <string name="tab_bus">Bus</string>
+    <string name="tab_us">Us</string>
+    <plurals name="new_changes">
+        <item quantity="one">%d new change</item>
+        <item quantity="other">%d new changes</item>
+    </plurals>
+    <string name="update_named">SamFran %1$s is available.</string>
+    <string name="update_unnamed">A new version of SamFran is available.</string>
+    <string name="update_later">Later</string>
+    <string name="update_now">Update</string>
+    <string name="demo_title">This is a demo with sample data.</string>
+    <string name="demo_body">Change anything you like: nobody else sees it, and it’s deleted within a day.</string>
+    <string name="demo_create">Create your account</string>
+    <string name="confirm_email">Confirm your email: open the link we sent to %1$s.</string>
+    <string name="confirm_sent">Sent. Check your inbox at %1$s.</string>
+    <string name="confirm_again">Send again</string>
 </resources>

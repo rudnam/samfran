@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the camera may write to: a photo of the shift sheet, in the app's cache (feature:shifts). -->
+<paths>
+    <cache-path name="photos" path="photos/" />
+</paths>

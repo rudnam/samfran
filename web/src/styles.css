@@ -299,7 +299,7 @@ select.language { width: auto; padding: 6px 10px; }
 .shift-dot.late { background: #ff8a1f; }
 .shift-dot.night { background: #5b4bc4; }
 .shift-dot.off { background: #b9e6c8; }
-.shift-dot.leave { background: #f28bb3; }
+.shift-dot.leave { background: #9fd8d0; } /* 有休: 休み's calm mint family, a little bluer */
 .shift-dot.training { background: #9aa4b2; }
 .code-chip {
   font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
@@ -417,7 +417,7 @@ select { width: 100%; }
 .cal-day.late { background: #ffd6ad; color: #6b3100; }
 .cal-day.night { background: #dcd6ff; color: #2f2480; }
 .cal-day.training { background: #dfe4ea; color: #37404c; }
-.cal-day.leave { background: #ffd9e6; color: #7a1d45; }
+.cal-day.leave { background: #eef7f2; color: #4f7a63; }
 .cal-day.off, .cal-day.other { color: var(--muted); }
 .cal-day.none { background: none; box-shadow: inset 0 0 0 1px var(--divider); color: var(--muted); }
 .cal-day.today { box-shadow: inset 0 0 0 2.5px var(--accent); }
@@ -430,14 +430,14 @@ select { width: 100%; }
   :root:not([data-theme="light"]) .cal-day.late { background: #5c3410; color: #ffc993; }
   :root:not([data-theme="light"]) .cal-day.night { background: #37307a; color: #d3ccff; }
   :root:not([data-theme="light"]) .cal-day.training { background: #3a424d; color: #d5dbe3; }
-  :root:not([data-theme="light"]) .cal-day.leave { background: #5c1f3a; color: #ffc2d9; }
+  :root:not([data-theme="light"]) .cal-day.leave { background: #1f2c26; color: #a6cdb7; }
 }
 :root[data-theme="dark"] .cal-day.early { background: #57440a; color: #ffe08a; }
 :root[data-theme="dark"] .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
 :root[data-theme="dark"] .cal-day.late { background: #5c3410; color: #ffc993; }
 :root[data-theme="dark"] .cal-day.night { background: #37307a; color: #d3ccff; }
 :root[data-theme="dark"] .cal-day.training { background: #3a424d; color: #d5dbe3; }
-:root[data-theme="dark"] .cal-day.leave { background: #5c1f3a; color: #ffc2d9; }
+:root[data-theme="dark"] .cal-day.leave { background: #1f2c26; color: #a6cdb7; }
 
 /* ---------- Dialogs, undo, and loading ---------- */
 dialog.ask {
