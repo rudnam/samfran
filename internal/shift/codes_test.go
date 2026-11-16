@@ -34,6 +34,19 @@ func TestExplain(t *testing.T) {
 	}
 }
 
+func TestCellCode(t *testing.T) {
+	for _, c := range []struct{ code, note, want string }{
+		{"13F", "", "13F"},
+		{"13F", "有休", "有休"}, // a small 有休 under the code: paid leave
+		{"7F", " 有給 ", "有休"},
+		{"13F", "研修", "13F"}, // other notes don't change the day
+	} {
+		if got := CellCode(c.code, c.note); got != c.want {
+			t.Errorf("CellCode(%q, %q) = %q, want %q", c.code, c.note, got, c.want)
+		}
+	}
+}
+
 func TestICS(t *testing.T) {
 	tokyo, _ := time.LoadLocation("Asia/Tokyo")
 	days := []Day{
