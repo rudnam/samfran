@@ -70,8 +70,8 @@ private fun ShiftTone.square(): Pair2? {
     }
 }
 
-/** 締め申請通知: hours are sent in on the 15th and on the last day of the month. */
-fun isClosingDay(date: LocalDate): Boolean = date.dayOfMonth == 15 || date.dayOfMonth == date.lengthOfMonth()
+/** 締め申請通知: a day the hours are sent in. A closing day past the month's end means its last day. */
+fun isClosingDay(date: LocalDate, closing: List<Int>): Boolean = closing.any { minOf(it, date.lengthOfMonth()) == date.dayOfMonth }
 
 /** The red dot that marks a 締め申請通知 day (.cal-flag). */
 @Composable
@@ -85,7 +85,7 @@ private fun ClosingFlag(modifier: Modifier = Modifier) {
  * shows its times underneath.
  */
 @Composable
-fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, picked: LocalDate?, onPick: (LocalDate) -> Unit) {
+fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, picked: LocalDate?, onPick: (LocalDate) -> Unit, closingDays: List<Int> = emptyList()) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
     val byDate = days.associateBy { it.date }
@@ -110,7 +110,7 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                     val d = byDate[date]
                     val square = d?.tone?.square()
                     val shape = RoundedCornerShape(10.dp)
-                    val closing = isClosingDay(date)
+                    val closing = isClosingDay(date, closingDays)
                     val what = listOfNotNull(
                         d?.let { listOf(it.workplaceLabel, it.times).filter(String::isNotEmpty).joinToString(" ") } ?: nothing,
                         hoursDue.takeIf { closing },
@@ -144,13 +144,13 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                 }
             }
         }
-        Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (closingDays.isNotEmpty()) Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ClosingFlag()
             Text(hoursDue, color = colors.muted, style = MaterialTheme.typography.bodySmall)
         }
         if (picked != null && YearMonth.from(picked) == month) {
             DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp))
-            if (isClosingDay(picked)) {
+            if (isClosingDay(picked, closingDays)) {
                 Row(Modifier.padding(start = 74.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ClosingFlag()
                     Text(hoursDue, color = colors.danger, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)

@@ -24,13 +24,14 @@ export function tone(d: ShiftDay): string {
   return d.kind === 'work' ? d.label.toLowerCase() : d.kind;
 }
 
-/** 締め申請通知: hours are sent in on the 15th and on the last day of the month. */
-export function isClosingDay(date: string): boolean {
+/** 締め申請通知: a day the hours are sent in. A closing day past the month's end means its last day. */
+export function isClosingDay(date: string, closing: number[]): boolean {
   const [y, m, d] = date.split('-').map(Number);
-  return d === 15 || d === new Date(y, m, 0).getDate();
+  const last = new Date(y, m, 0).getDate();
+  return closing.some((c) => Math.min(c, last) === d);
 }
 
-export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[] }) {
+export function ShiftCalendar({ month, days, closing }: { month: string; days: ShiftDay[]; closing: number[] }) {
   const now = today();
   const [picked, setPicked] = useState(now.startsWith(month) ? now : '');
   const byDate = new Map(days.map((d) => [d.date, d]));
@@ -54,8 +55,8 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
         ))}
         {dates.map((date) => {
           const d = byDate.get(date);
-          const closing = isClosingDay(date);
-          const what = [d ? [labelOf(d.label), timesOf(d)].filter(Boolean).join(' ') : t('Nothing entered'), closing ? t('Hours due (締め申請通知)') : '']
+          const isClosing = isClosingDay(date, closing);
+          const what = [d ? [labelOf(d.label), timesOf(d)].filter(Boolean).join(' ') : t('Nothing entered'), isClosing ? t('Hours due (締め申請通知)') : '']
             .filter(Boolean)
             .join(', ');
           return (
@@ -70,14 +71,16 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
             >
               <span className="cal-num">{Number(date.slice(8))}</span>
               <span className="cal-mark">{d ? mark(d) : ''}</span>
-              {closing && <span className="cal-flag" aria-hidden="true" />}
+              {isClosing && <span className="cal-flag" aria-hidden="true" />}
             </button>
           );
         })}
       </div>
-      <p className="cal-key small muted" aria-hidden="true">
-        <span className="cal-flag" /> {t('Hours due (締め申請通知)')}
-      </p>
+      {closing.length > 0 && (
+        <p className="cal-key small muted" aria-hidden="true">
+          <span className="cal-flag" /> {t('Hours due (締め申請通知)')}
+        </p>
+      )}
       {picked && (
         <p className="cal-detail" role="status">
           <span className="shift-date">{dayName(picked)}</span>
@@ -95,7 +98,7 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
           ) : (
             <span className="grow muted">{t('Nothing entered')}</span>
           )}
-          {isClosingDay(picked) && (
+          {isClosingDay(picked, closing) && (
             <span className="cal-closing small row-note">
               <span className="cal-flag" aria-hidden="true" /> {t('Hours due (締め申請通知)')}
             </span>

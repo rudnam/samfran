@@ -13,6 +13,12 @@
     <string name="no_shifts_hint">勤務表の写真を読み込むか、手で入力してください。</string>
     <string name="unknown_length">長さが不明です。設定で決めてください</string>
     <string name="hours_due">締め申請通知</string>
+    <string name="closing_days_hint">毎月、勤務時間を申請する日です。カレンダーに赤い点で表示されます。</string>
+    <string name="closing_day_n">締め日 %1$d</string>
+    <string name="remove_closing_day">締め日 %1$s を削除</string>
+    <string name="last_day">末日</string>
+    <string name="day_of_month">%1$d日%2$s</string>
+    <string name="day">日</string>
     <string name="nothing_entered">未入力</string>
     <string name="read_photo">勤務表の写真を読み込む</string>
     <string name="reading_sheet">勤務表を読んでいます…</string>

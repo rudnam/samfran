@@ -1,6 +1,14 @@
 package com.rudnam.samfran.feature.shifts
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -40,6 +48,7 @@ import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.copyText
+import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.core.ui.shareText
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
@@ -123,6 +132,7 @@ fun ShiftSettingsScreen(
                 }
                 LinkButton("+ " + stringResource(R.string.letter), actions::addLetter)
             }
+            ClosingDaysField(state.closing, actions)
             state.problem?.problem()?.let { ErrorText(it) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Hint(if (state.done == SettingsDone.Saved) stringResource(R.string.saved) else "", Modifier.weight(1f))
@@ -166,4 +176,54 @@ fun ShiftSettingsScreen(
         }
 
     }
+}
+
+/** 締め申請通知: the days of the month the hours are sent in, each picked from a menu (31 is the last day). */
+@Composable
+private fun ClosingDaysField(days: List<Int>, actions: ShiftSettingsActions) {
+    val colors = SamFranTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.hours_due), style = MaterialTheme.typography.labelLarge)
+        Hint(stringResource(R.string.closing_days_hint))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+            days.forEachIndexed { i, day ->
+                var open by rememberSaveable { mutableStateOf(false) }
+                val name = closingDayName(day)
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, colors.divider, RoundedCornerShape(12.dp)),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        Text(
+                            name,
+                            Modifier
+                                .clickable(onClickLabel = stringResource(R.string.closing_day_n, i + 1)) { open = true }
+                                .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                            for (n in 1..31) {
+                                DropdownMenuItem(text = { Text(closingDayName(n)) }, onClick = { actions.setClosing(i, n); open = false })
+                            }
+                        }
+                    }
+                    IconButton(onClick = { actions.removeClosing(i) }) { LineIcon(SamFranIcons.close, stringResource(R.string.remove_closing_day, name), tint = colors.muted) }
+                }
+            }
+            if (days.size < 10) LinkButton("+ " + stringResource(R.string.day), actions::addClosing)
+        }
+    }
+}
+
+/** 15日 / 15th, or the last day for 31. */
+@Composable
+private fun closingDayName(n: Int): String = if (n >= 31) stringResource(R.string.last_day) else stringResource(R.string.day_of_month, n, if (currentLocale.language == "en") ordinalSuffix(n) else "")
+
+private fun ordinalSuffix(n: Int): String = when {
+    n % 100 in 11..13 -> "th"
+    n % 10 == 1 -> "st"
+    n % 10 == 2 -> "nd"
+    n % 10 == 3 -> "rd"
+    else -> "th"
 }

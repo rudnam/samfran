@@ -13,6 +13,12 @@
     <string name="no_shifts_hint">Read a photo of the sheet, or enter the days by hand.</string>
     <string name="unknown_length">Unknown length: set it in Settings</string>
     <string name="hours_due">Hours due (締め申請通知)</string>
+    <string name="closing_days_hint">The days of the month the hours are sent in. The calendar marks them with a red dot.</string>
+    <string name="closing_day_n">Closing day %1$d</string>
+    <string name="remove_closing_day">Remove closing day %1$s</string>
+    <string name="last_day">Last day</string>
+    <string name="day_of_month">%1$d%2$s</string>
+    <string name="day">Day</string>
     <string name="nothing_entered">Nothing entered</string>
     <string name="read_photo">Read a photo of the sheet</string>
     <string name="reading_sheet">Reading the sheet…</string>

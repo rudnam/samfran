@@ -16,6 +16,8 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,6 +35,9 @@ type Settings struct {
 	NameOnSheet string             `json:"name_on_sheet"`
 	Lengths     map[string]float64 `json:"lengths"`
 	TimeZone    string             `json:"time_zone"`
+	// ClosingDays are the days of the month the hours are sent in (締め申請通知),
+	// marked on the calendar. A day past the month's end means its last day.
+	ClosingDays []int `json:"closing_days"`
 	// FeedPath is the calendar feed's address on this site, or "" while off.
 	FeedPath string `json:"feed_path"`
 	// Reader: photos can be read here (the server has an API key).
@@ -56,11 +61,16 @@ func (s *Store) settings(ctx context.Context, spaceID int64) (stored, error) {
 	var st stored
 	var lengths []byte
 	var token sql.NullString
+	var closing []int64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT person_name, name_on_sheet, lengths, time_zone, feed_token FROM shift_settings WHERE space_id = $1`, spaceID).
-		Scan(&st.PersonName, &st.NameOnSheet, &lengths, &st.TimeZone, &token)
+		SELECT person_name, name_on_sheet, lengths, time_zone, feed_token, closing_days FROM shift_settings WHERE space_id = $1`, spaceID).
+		Scan(&st.PersonName, &st.NameOnSheet, &lengths, &st.TimeZone, &token, (*pq.Int64Array)(&closing))
 	if errors.Is(err, sql.ErrNoRows) {
-		st.TimeZone, err = "Asia/Tokyo", nil
+		st.TimeZone, closing, err = "Asia/Tokyo", []int64{15, 31}, nil
+	}
+	st.ClosingDays = make([]int, len(closing))
+	for i, d := range closing {
+		st.ClosingDays[i] = int(d)
 	}
 	if err != nil {
 		return st, err
@@ -90,9 +100,9 @@ func (s *Store) saveSettings(ctx context.Context, spaceID int64, st Settings) er
 		return err
 	}
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO shift_settings (space_id, person_name, name_on_sheet, lengths, time_zone) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (space_id) DO UPDATE SET person_name = $2, name_on_sheet = $3, lengths = $4, time_zone = $5, updated_at = now()`,
-		spaceID, st.PersonName, st.NameOnSheet, lengths, st.TimeZone)
+		INSERT INTO shift_settings (space_id, person_name, name_on_sheet, lengths, time_zone, closing_days) VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (space_id) DO UPDATE SET person_name = $2, name_on_sheet = $3, lengths = $4, time_zone = $5, closing_days = $6, updated_at = now()`,
+		spaceID, st.PersonName, st.NameOnSheet, lengths, st.TimeZone, pq.Array(st.ClosingDays))
 	return err
 }
 
@@ -234,6 +244,9 @@ func SettingsChanges(before, after Settings) map[string]any {
 	}
 	if before.TimeZone != after.TimeZone {
 		d["time_zone"] = []string{before.TimeZone, after.TimeZone}
+	}
+	if b, a := daysText(before.ClosingDays), daysText(after.ClosingDays); b != a {
+		d["closing_days"] = []string{b, a}
 	}
 	lengths := map[string]any{}
 	for k, v := range after.Lengths {
@@ -579,12 +592,42 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) error {
 
 var letter = regexp.MustCompile(`^[A-Z]$`)
 
+// daysText writes closing days as the history shows them: "15, 31".
+func daysText(days []int) string {
+	parts := make([]string, len(days))
+	for i, d := range days {
+		parts[i] = strconv.Itoa(d)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// closingDays checks and tidies closing days: 1 to 31, each once, in order.
+func closingDays(in []int) ([]int, error) {
+	seen := map[int]bool{}
+	out := []int{}
+	for _, d := range in {
+		if d < 1 || d > 31 {
+			return nil, httpx.Errorf(http.StatusBadRequest, "a closing day must be from 1 to 31 (31 is the last day of any month)")
+		}
+		if !seen[d] {
+			seen[d] = true
+			out = append(out, d)
+		}
+	}
+	if len(out) > 10 {
+		return nil, httpx.Errorf(http.StatusBadRequest, "at most 10 closing days")
+	}
+	sort.Ints(out)
+	return out, nil
+}
+
 func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		PersonName  *string             `json:"person_name"`
 		NameOnSheet *string             `json:"name_on_sheet"`
 		Lengths     *map[string]float64 `json:"lengths"`
 		TimeZone    *string             `json:"time_zone"`
+		ClosingDays *[]int              `json:"closing_days"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -623,6 +666,11 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 			return httpx.Errorf(http.StatusBadRequest, "unknown time zone")
 		}
 		st.TimeZone = *in.TimeZone
+	}
+	if in.ClosingDays != nil {
+		if st.ClosingDays, err = closingDays(*in.ClosingDays); err != nil {
+			return err
+		}
 	}
 	if err := h.store.saveSettings(r.Context(), space.SpaceFrom(r), st); err != nil {
 		return err

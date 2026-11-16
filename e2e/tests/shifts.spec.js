@@ -75,6 +75,27 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');
+
+  // The 締め申請通知 days can be changed: the 10th and the 25th instead.
+  await page.getByLabel('Closing day 1').selectOption('10');
+  await page.getByLabel('Closing day 2').selectOption('25');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await page.getByRole('radio', { name: 'Calendar' }).click();
+  await expect(cal.locator('.cal-flag')).toHaveCount(2);
+  await expect(cal.getByRole('button', { name: /^10 \S+: Nothing entered, Hours due/ })).toBeVisible();
+  await expect(cal.getByRole('button', { name: /^25 \S+: Nothing entered, Hours due/ })).toBeVisible();
+  await expect(cal.getByRole('button', { name: /^15 \S+: Nothing entered$/ })).toBeVisible();
+
+  // Or none at all, and the calendar has no dots.
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Remove closing day 2' }).click();
+  await page.getByRole('button', { name: 'Remove closing day 1' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await expect(cal.locator('.cal-flag')).toHaveCount(0);
 });
 
 test('see who else is on the same shift, and lose them when the shift changes', async ({ page }) => {

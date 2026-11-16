@@ -170,7 +170,7 @@ fun ShiftsScreen(
                                 DayLine(d.date, d, Modifier.padding(vertical = 8.dp))
                             }
                         }
-                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick)
+                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.settings.closingDays)
                     }
                 }
             }

@@ -296,6 +296,13 @@ export const ja = {
   List: 'リスト',
   'Nothing entered': '未入力',
   'Hours due (締め申請通知)': '締め申請通知',
+  'The days of the month the hours are sent in. The calendar marks them with a red dot.': '毎月、勤務時間を申請する日です。カレンダーに赤い点で表示されます。',
+  'Closing day {n}': '締め日 {n}',
+  'Remove closing day {n}': '締め日 {n} を削除',
+  'Last day': '末日',
+  '{n}th': '{n}日',
+  Day: '日',
+  'the 締め申請通知 days': '締め申請通知の日',
   // New changes, and what the phone does while the app is closed
   New: '新着',
   '{n} new change': '新しい変更が{n}件',
@@ -398,4 +405,6 @@ export const jaServer = {
   'the stop search isn’t answering; try again in a moment': 'バス停の検索が応答しません。少し待ってからもう一度お試しください',
   'a photo is already being read; wait for it to finish': '写真を読み込み中です。終わるまでお待ちください',
   "that photo isn't being read any more; send it again": 'その写真はもう読み込まれていません。もう一度送ってください',
+  'a closing day must be from 1 to 31 (31 is the last day of any month)': '締め日は1〜31で指定してください（31は月末です）',
+  'at most 10 closing days': '締め日は10日までです',
 } as const;
