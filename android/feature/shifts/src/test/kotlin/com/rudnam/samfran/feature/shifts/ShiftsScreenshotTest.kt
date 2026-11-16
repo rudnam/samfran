@@ -50,6 +50,9 @@ class ShiftsScreenshotTest {
         override fun setLength(index: Int, letter: String, hours: String) {}
         override fun addLetter() {}
         override fun removeLetter(index: Int) {}
+        override fun setClosing(index: Int, day: Int) {}
+        override fun addClosing() {}
+        override fun removeClosing(index: Int) {}
         override fun save() {}
         override fun feed(on: Boolean) {}
     }
@@ -70,6 +73,11 @@ class ShiftsScreenshotTest {
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun calendarJapanese() = shot("calendar-ja") { ShiftsScreen(month, actions, {}, {}, {}, {}) }
+
+    /** Sam's phone (1080x2400, 420dpi, default text size), where the squares' kanji used to be cut off at the bottom. */
+    @Test
+    @Config(qualifiers = "w411dp-h914dp-420dpi")
+    fun calendarSamsPhone() = shot("calendar-sams-phone") { ShiftsScreen(month, actions, {}, {}, {}, {}) }
 
     @Test
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
@@ -102,6 +110,7 @@ class ShiftsScreenshotTest {
         person = "Sam",
         onSheet = "オトル サマンタ",
         lengths = listOf("D" to "8", "F" to "9"),
+        closing = listOf(15, 31),
         feedUrl = "https://samfran.rudnam.com/calendar/abc123.ics",
     )
 

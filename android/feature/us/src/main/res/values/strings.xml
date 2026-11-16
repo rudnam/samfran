@@ -52,6 +52,7 @@
     <string name="sign_out">Sign out</string>
     <string name="setting_person">whose shifts</string>
     <string name="setting_on_sheet">the name on the sheet</string>
+    <string name="setting_closing_days">the 締め申請通知 days</string>
     <string name="setting_time_zone">the time zone</string>
     <string name="change_shifts_saved">saved the shifts for %s</string>
     <string name="change_removed_letter">removed %s</string>

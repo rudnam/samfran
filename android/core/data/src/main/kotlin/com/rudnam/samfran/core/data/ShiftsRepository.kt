@@ -51,7 +51,7 @@ interface ShiftsRepository {
 
     suspend fun refreshSettings(): Outcome<ShiftSettings>
 
-    suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>): Outcome<ShiftSettings>
+    suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>? = null): Outcome<ShiftSettings>
 
     /** Turns the calendar link on (a new address each time) or off. */
     suspend fun feed(on: Boolean): Outcome<ShiftSettings>
@@ -127,8 +127,8 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
 
     override suspend fun refreshSettings() = settingsChange { network.shiftSettings() }
 
-    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>) = settingsChange {
-        network.saveShiftSettings(NetworkShiftSettingsInput(personName.trim(), nameOnSheet.trim(), lengths))
+    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>?) = settingsChange {
+        network.saveShiftSettings(NetworkShiftSettingsInput(personName.trim(), nameOnSheet.trim(), lengths, closingDays))
     }
 
     override suspend fun feed(on: Boolean) = settingsChange { network.feed(on) }

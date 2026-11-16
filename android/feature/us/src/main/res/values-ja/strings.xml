@@ -52,6 +52,7 @@
     <string name="sign_out">ログアウト</string>
     <string name="setting_person">誰のシフト</string>
     <string name="setting_on_sheet">勤務表上の名前</string>
+    <string name="setting_closing_days">締め申請通知の日</string>
     <string name="setting_time_zone">タイムゾーン</string>
     <string name="change_shifts_saved">%sのシフトを保存</string>
     <string name="change_removed_letter">%sを削除</string>

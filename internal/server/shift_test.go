@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -36,6 +37,7 @@ type monthJSON struct {
 		PersonName  string `json:"person_name"`
 		NameOnSheet string `json:"name_on_sheet"`
 		FeedPath    string `json:"feed_path"`
+		ClosingDays []int  `json:"closing_days"`
 		Reader      bool
 	}
 	Days []struct {
@@ -118,6 +120,19 @@ func TestShifts(t *testing.T) {
 	c.do("GET", "/api/shifts?month=2026-11", nil, &saved)
 	if !strings.HasPrefix(saved.Days[0].End, "2026-11-02T23:00:00+09:00") {
 		t.Errorf("13F with F = 10 hours: %+v", saved.Days[0])
+	}
+
+	// 締め申請通知: the 15th and the last day until changed; tidied when saved.
+	if got := fmt.Sprint(saved.Settings.ClosingDays); got != "[15 31]" {
+		t.Errorf("closing days by default: %s", got)
+	}
+	var st shift.Settings
+	c.do("PUT", "/api/shifts/settings", map[string]any{"closing_days": []int{25, 10, 10}}, &st)
+	if got := fmt.Sprint(st.ClosingDays); got != "[10 25]" || st.Lengths["F"] != 10 {
+		t.Errorf("closing days saved: %s, %+v", got, st)
+	}
+	if code := c.do("PUT", "/api/shifts/settings", map[string]any{"closing_days": []int{32}}, nil); code != 400 {
+		t.Errorf("closing day 32: %d, want 400", code)
 	}
 
 	// The calendar feed: off until turned on, then readable without a session.

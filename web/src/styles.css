@@ -481,6 +481,11 @@ select { width: 100%; }
 button.cal-day { transition: transform 0.15s var(--ease-out), outline-color 0.15s; }
 button.cal-day:active { transform: scale(0.92); }
 .cal-day[aria-pressed='true'] { outline: 2.5px solid var(--text); outline-offset: 1px; }
+.cal-day { position: relative; }
+/* 締め申請通知: a dot in the corner of the 15th and the last day. */
+.cal-flag { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); vertical-align: middle; }
+.cal-day .cal-flag { position: absolute; top: 5px; right: 5px; box-shadow: 0 0 0 1.5px var(--surface); }
+.cal-closing { color: var(--danger); font-weight: 600; }
 .cal-detail { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--divider); margin-top: 6px; font-size: 0.94rem; }
 /* Dark: the device's setting unless light is picked on Us, or dark picked there. */
 @media (prefers-color-scheme: dark) {
