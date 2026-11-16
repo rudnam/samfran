@@ -16,7 +16,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.getByLabel('Name on the sheet').fill('オトル サマンタ');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
-  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
 
   // By hand: the meaning shows as a code is typed.

@@ -76,7 +76,6 @@ export function ShiftsPage({ month }: { month?: string }) {
         <div className="row spread">
           <div>
             <h1 className="display">{data?.settings.person_name ? t('{name}’s shifts', { name: who }) : t('Shifts')}</h1>
-            {data && <p className="subtitle">{t('From the monthly sheet. Times follow the codes.')}</p>}
           </div>
           <a className="button secondary" href={href('shifts/settings')}>
             {t('Settings')}

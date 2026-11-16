@@ -1,4 +1,5 @@
 // One place: both ratings, notes, every visit, and logging another.
+import { BackLink } from '../../components/BackLink';
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
@@ -88,9 +89,7 @@ export function RestaurantDetail({ id }: { id: number }) {
   if (!r) {
     return (
       <section className="stack">
-        <a className="back" href={href('home')}>
-          ‹ {t('Our spots')}
-        </a>
+        <BackLink href={href('home')} label="Our spots" />
         {error ? (
           <p role="alert" className="error">
             {error}
@@ -109,9 +108,7 @@ export function RestaurantDetail({ id }: { id: number }) {
   const visitCount = r.visit_count - (removing ? 1 : 0);
   return (
     <section className="stack">
-      <a className="back" href={href(r.visit_count > 0 ? 'home' : 'want')}>
-        ‹ {t('Our spots')}
-      </a>
+      <BackLink href={href(r.visit_count > 0 ? 'home' : 'want')} label="Our spots" />
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
         {(r.area || r.cuisine) && <p className="lead">{[r.area, r.cuisine].filter(Boolean).join(' · ')}</p>}

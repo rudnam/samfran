@@ -133,6 +133,7 @@ export function App() {
         <div className="app">
           <header className="appbar">
             <a className="brand" href={href('home')}>
+              <img className="logo" src="/icon.svg" alt="" width="30" height="30" />
               SamFran
             </a>
             <nav className="tabbar" aria-label={t('Sections')}>
@@ -165,7 +166,10 @@ export function App() {
               )}
               {me.demo && <DemoBanner onCreateAccount={leaveDemo} />}
               {me.confirm_email && <ConfirmEmail email={me.email} />}
-              <Page route={route} me={me} onSignOut={signOut} />
+              {/* A new page fades up into place; switching between the two lists doesn't. */}
+              <div className="enter" key={enterKey(route)}>
+                <Page route={route} me={me} onSignOut={signOut} />
+              </div>
             </div>
           </main>
         </div>
@@ -177,11 +181,12 @@ export function App() {
     <>
       <header className="topbar">
         <a className="brand" href="/">
+          <img className="logo" src="/icon.svg" alt="" width="30" height="30" />
           SamFran
         </a>
         <LanguagePicker />
       </header>
-      <main className="page narrow">
+      <main className="page narrow enter">
         {session.status === 'loading' && (
           <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>
         )}
@@ -250,6 +255,12 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     default:
       return <RestaurantsPage tab="been" />;
   }
+}
+
+/** Which page is showing, for its entrance: the same for both lists and for every month of shifts. */
+function enterKey(route: Route): string {
+  if (route.page === 'want') return 'home';
+  return route.page + (route.params.get('id') ?? '');
 }
 
 /** On the Us tab: the other person changed something since this device last looked. */

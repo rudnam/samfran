@@ -85,7 +85,7 @@ export function BusPage() {
       <header className="page-head">
         <div>
           <h1 className="display">{t('Bus alarm')}</h1>
-          <p className="subtitle">{t('Buzzes your phone before your stop, so you don’t miss it.')}</p>
+          <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
         </div>
       </header>
 
@@ -499,7 +499,7 @@ function StopForm({ stop, first, onSaved, onCancel }: { stop: BusStop; first: bo
                       </a>
                     </>
                   )
-                : !pos && t('Start typing and choose your stop from the list.')}
+                : null}
         </span>
         {pos && !query && <StopMap lat={pos.lat} lng={pos.lng} name={name} />}
         {pos && !query && (
