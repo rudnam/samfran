@@ -10,7 +10,7 @@
     <string name="alarm_title">次で降ります</string>
     <string name="alarm_text">降りる準備をしましょう。</string>
     <string name="alarm_text_named">もうすぐ%1$sです。</string>
-    <string name="alarm_stop">起きた</string>
+    <string name="alarm_stop">止める</string>
     <string name="channel_shift_end">シフトが終わったとき</string>
     <string name="shift_end_title">バスアラームを開始しますか？</string>
     <string name="shift_end_text">シフトが終わりました。降りるバス停の手前で振動します。</string>

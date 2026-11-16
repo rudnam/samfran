@@ -8,6 +8,7 @@ import { href, navigate } from '../../router';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
 import { addMonths, dayName, labelOf, monthName, shrinkPhoto, timesOf } from './codes';
+import { WithNames } from './WithNames';
 import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
 
@@ -91,6 +92,7 @@ export function ShiftsPage({ month }: { month?: string }) {
             <strong className="block">
               {dayName(next.date)} · {labelOf(next.label)} · {timesOf(next)}
             </strong>
+            <WithNames names={next.with} className="with block" />
           </span>
           <span className="code-chip">{next.code}</span>
         </div>
@@ -140,6 +142,7 @@ export function ShiftsPage({ month }: { month?: string }) {
                 </span>
                 <span className="shift-time">{timesOf(d)}</span>
                 <span className="code-chip">{d.code}</span>
+                <WithNames names={d.with} className="with small row-note" />
               </li>
             ))}
           </ul>

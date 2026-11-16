@@ -18,7 +18,6 @@ import (
 	"github.com/rudnam/samfran/internal/bus"
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/demo"
-	"github.com/rudnam/samfran/internal/gcal"
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/mailer"
 	"github.com/rudnam/samfran/internal/mcp"
@@ -111,25 +110,11 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		reader = shift.NewClaude(cfg.AnthropicAPIKey, "")
 	}
 	shifts := shift.NewStore(conn)
-	syncer := gcal.New(gcal.Config{
-		ClientID: cfg.GoogleCalendarClientID, ClientSecret: cfg.GoogleCalendarClientSecret,
-		PublicOrigin: cfg.PublicOrigin, SecretKey: cfg.SecretsKey, SecureCookies: cfg.SecureCookies,
-		AuthURL: cfg.GoogleCalendarURLs[0], TokenURL: cfg.GoogleCalendarURLs[1],
-		APIBase: cfg.GoogleCalendarURLs[2], RevokeURL: cfg.GoogleCalendarURLs[3],
-	}, conn, shifts)
-	if syncer != nil {
-		// Saving shifts updates the connected calendars, after answering.
-		shifts.Saved = func(spaceID int64, month string) {
-			gcal.Later(func(ctx context.Context) { syncer.Months(ctx, spaceID, []string{month}) })
-		}
-		shifts.Changed = func(spaceID int64) { gcal.Later(func(ctx context.Context) { syncer.All(ctx, spaceID) }) }
-	}
 	shiftHandler := shift.NewHandler(shifts, reader)
 	shiftHandler.Log = activities.Log
 	shiftHandler.Register(mux, spaceHandler.Require)
 	activity.NewHandler(activities).Register(mux, spaceHandler.Require, func(r *http.Request) int64 { return account.UserFrom(r).ID })
 	bus.NewHandler(conn).Register(mux, accounts.RequireUser)
-	gcal.NewHandler(syncer, spaceHandler.Require).Register(mux)
 	mcpHandler := mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
 		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy})
 	mcpHandler.Log = activities.Log

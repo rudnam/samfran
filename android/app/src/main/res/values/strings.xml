@@ -11,7 +11,7 @@
     <string name="alarm_title">Your stop is next</string>
     <string name="alarm_text">Time to get ready to get off.</string>
     <string name="alarm_text_named">%1$s is coming up.</string>
-    <string name="alarm_stop">I\'m up</string>
+    <string name="alarm_stop">Stop</string>
     <string name="channel_shift_end">When a shift ends</string>
     <string name="shift_end_title">Start bus alarm?</string>
     <string name="shift_end_text">The shift is over. It buzzes before your stop.</string>

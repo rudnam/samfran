@@ -24,6 +24,7 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		"script-src 'self'",
 		"style-src 'self'",
 		"img-src 'self' data:",
+		"frame-src https://www.google.com", // the bus stop's map (web/src/features/bus/StopMap.tsx)
 		"connect-src 'self'",
 		"manifest-src 'self'",
 		"object-src 'none'",

@@ -18,15 +18,32 @@ type Sheet struct {
 	// Found is false if the person's row couldn't be found.
 	Found bool `json:"found"`
 	// NameAsRead is the name on the row that was read, as written.
-	NameAsRead string `json:"name_as_read"`
-	Year       int    `json:"year"`
-	Month      int    `json:"month"`
-	Days       []struct {
-		Day  int    `json:"day"`
-		Code string `json:"code"`
-	} `json:"days"`
+	NameAsRead string     `json:"name_as_read"`
+	Year       int        `json:"year"`
+	Month      int        `json:"month"`
+	Days       []SheetDay `json:"days"`
 	// Notes are the reader's doubts, e.g. a cell it couldn't make out.
 	Notes string `json:"notes"`
+}
+
+// SheetDay is one cell of the row: the code and, if there is one, the
+// smaller note printed under it.
+type SheetDay struct {
+	Day  int    `json:"day"`
+	Code string `json:"code"`
+	Note string `json:"note"`
+	// With are the others whose cell that day has exactly the same code.
+	With []string `json:"with"`
+}
+
+// CellCode is the code a cell stands for. A small 有休 under a shift's code
+// means the shift was taken as paid leave, so the day is 有休.
+func CellCode(code, note string) string {
+	switch normalize(note) {
+	case "有休", "有", "有給":
+		return "有休"
+	}
+	return code
 }
 
 // Reader reads one person's row from a photo of a shift sheet.
@@ -55,11 +72,11 @@ func NewClaude(apiKey, model string) *Claude {
 
 const systemPrompt = `You read photos of printed monthly work schedules (勤務表) from a Japanese workplace. The sheet is a grid: one row per employee (an employee number and a name, often in katakana), one column per day of the month (1, 2, 3…), and a code in each cell.
 
-Codes you'll see: a start hour and a letter for a working day, e.g. 7F, 9D, 12G, 13F, 22F; 普 and 法 for days off; 有休 for paid leave; トレ and 研修 for training. A cell can hold a second, smaller note (often 有休) under the code: when it does, report the cell's main code and mention the note in notes.
+Codes you'll see: a start hour and a letter for a working day, e.g. 7F, 9D, 12G, 13F, 22F; 普 and 法 for days off; 有休 for paid leave; トレ and 研修 for training. A cell can hold a second, smaller note (often 有休) under the code: when it does, report the cell's main code in code and the small note, exactly as printed, in note. Leave note empty when there's none.
 
 Read only the one row you're asked for, every day of the month, left to right. Copy each code exactly as printed, with ASCII digits and letters. Photos are often taken at an angle with highlighter on them; follow the row carefully across the page and don't drift into the row above or below. If a cell is empty, give an empty code. If you can't make out a cell, give your best reading and say which day in notes.
 
-Never report anyone else's name or shifts.`
+For each day the person works (a code like 13F), list in with the names of the other people whose cell that same day has exactly the same code, as their names are printed. Leave with empty on days off and when nobody else has the same code. Never report anything else about anyone else: not their other days, codes or employee numbers.`
 
 var sheetSchema = map[string]any{
 	"type": "object",
@@ -75,8 +92,14 @@ var sheetSchema = map[string]any{
 				"properties": map[string]any{
 					"day":  map[string]any{"type": "integer"},
 					"code": map[string]any{"type": "string"},
+					"note": map[string]any{"type": "string", "description": "The smaller note under the code, e.g. 有休; empty if none"},
+					"with": map[string]any{
+						"type":        "array",
+						"items":       map[string]any{"type": "string"},
+						"description": "Names of the others with exactly the same code that day; empty on days off",
+					},
 				},
-				"required":             []string{"day", "code"},
+				"required":             []string{"day", "code", "note", "with"},
 				"additionalProperties": false,
 			},
 		},

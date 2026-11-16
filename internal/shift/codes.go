@@ -46,6 +46,9 @@ type Day struct {
 	End   *time.Time `json:"end,omitempty"`
 	// Problem says why a working day has no times (an unknown letter).
 	Problem string `json:"problem,omitempty"`
+	// With are the others on the same shift (the same code that day), by
+	// their names as printed on the sheet. Only for working days.
+	With []string `json:"with,omitempty"`
 }
 
 // normalize tidies a code as typed or read: full-width letters and digits
