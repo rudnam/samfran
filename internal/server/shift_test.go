@@ -3,6 +3,7 @@ package server_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -302,5 +303,45 @@ func TestShiftNameMemory(t *testing.T) {
 	o.do("PUT", "/api/shifts/settings", map[string]any{"person_name": "Al", "name_on_sheet": "オトル サマンタ"}, nil)
 	if code := upload(t, o, &m); code != 200 || m.Days[0].With[0] != "タナカ ユエ" || len(reader.known) != 0 {
 		t.Errorf("another space: %d %+v known %v", code, m.Days, reader.known)
+	}
+}
+
+// A photo sent over a phone's slow upload takes longer to arrive than the
+// server lets other requests take (cmd/server). Cut off, the app could only
+// say the server couldn't be reached.
+func TestShiftPhotoOnASlowUpload(t *testing.T) {
+	const limit = 300 * time.Millisecond // cmd/server: 30 s
+	ts := newTimedTestServer(t, limit, func(c *config.Config) { c.ShiftReader = &fakeReader{} })
+	c := newClient(t, ts)
+	c.signup("fran@example.com")
+	c.do("PUT", "/api/shifts/settings", map[string]any{"name_on_sheet": "オトル サマンタ"}, nil)
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	fw, _ := mw.CreateFormFile("photo", "sheet.jpg")
+	fw.Write([]byte("\xff\xd8\xff\xe0" + strings.Repeat("x", 4000)))
+	mw.Close()
+
+	// The photo arrives in pieces over three times the limit.
+	pr, pw := io.Pipe()
+	go func() {
+		data := body.Bytes()
+		for i := 0; i < len(data); i += 500 {
+			pw.Write(data[i:min(i+500, len(data))])
+			time.Sleep(3 * limit / time.Duration(len(data)/500+1))
+		}
+		pw.Close()
+	}()
+	req, _ := http.NewRequest("POST", ts.URL+"/api/shifts/reads", pr)
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	res, err := c.http.Do(req)
+	if err != nil {
+		t.Fatalf("slow upload cut off: %v", err)
+	}
+	defer res.Body.Close()
+	var started struct{ ID string }
+	json.NewDecoder(res.Body).Decode(&started)
+	if res.StatusCode != 202 || started.ID == "" {
+		t.Fatalf("slow upload: %d %+v", res.StatusCode, started)
 	}
 }
