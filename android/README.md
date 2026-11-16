@@ -20,7 +20,7 @@ You need a JDK 21 (`JAVA_HOME`) and the Android SDK with platform 37 (`ANDROID_H
 
 It runs the unit tests, then builds and signs both files with the key.
 
-CI builds the app on every push and pull request (the `android` job in `.github/workflows/ci.yml`): the unit tests (which also draw every screen; the pictures are kept a week as the `native-screenshots` artifact), Android Lint, and a release APK without a signature (which checks R8's shrinking), kept a week as the `android-apk` artifact. A machine without the memory for Gradle can sign that one instead of building:
+CI builds the app on every push and pull request (the `android` job in `.github/workflows/ci.yml`): the unit tests (which also draw every screen; the pictures are kept a week as the `native-screenshots` artifact), Android Lint, and a release APK without a signature (which checks R8's shrinking), kept a week as the `android-apk` artifact. It also builds the `preview` build type and keeps it as the `samfran-preview-apk` artifact, and on a pull request also as a pre-release asset (`android-pr-<number>`) with a comment linking to it, which a phone can open (the link needs the browser signed in to GitHub); `android-preview-cleanup.yml` deletes it when the pull request closes: an APK that installs on a phone as **SamFran Preview**, beside the real app. It's signed with `android/preview.jks`, which is in the repo with the password `android` because it protects nothing; every build has the same key, so each installs over the last without losing the sign-in. A machine without the memory for Gradle can sign that one instead of building:
 
 ```sh
 ./android/build.sh sign app-release-unsigned.apk   # -> android/samfran.apk

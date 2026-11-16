@@ -28,6 +28,15 @@ android {
     // Signed with keystore/samfran.jks (git-ignored, see README.md); build.sh passes its
     // passwords in from keystore/keystore.properties. Without them, release builds come out unsigned.
     signingConfigs {
+        // The key for pull-request previews ("SamFran Preview", beside the real app): kept in the
+        // repo with a plain password because it protects nothing, so every CI build is signed
+        // alike and installs over the last one without losing the sign-in.
+        create("preview") {
+            storeFile = rootProject.file("preview.jks")
+            keyAlias = "preview"
+            storePassword = "android"
+            keyPassword = "android"
+        }
         create("release") {
             storeFile = rootProject.file("keystore/samfran.jks")
             keyAlias = "samfran"
@@ -51,11 +60,11 @@ android {
         }
         // What CI builds for a pull request: the release build (a debuggable Compose app is
         // several times slower), installed beside the real app as "SamFran Preview", signed
-        // with the debug key.
+        // with the preview key.
         create("preview") {
             initWith(getByName("release"))
             applicationIdSuffix = ".preview"
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("preview")
             matchingFallbacks += "release"
         }
     }
