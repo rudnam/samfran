@@ -1,6 +1,7 @@
 package shift
 
 import (
+	"sort"
 	"strings"
 	"time"
 )
@@ -8,8 +9,9 @@ import (
 // ICS writes days as an iCalendar feed (RFC 5545). Shifts are timed events
 // in UTC; days off, leave and training are all-day events. Each title is
 // just the workplace's own word for the day (早番, 遅番, 夜勤, 休み…); who
-// ("Sam") names the calendar.
-func ICS(days []Day, who string, now time.Time) string {
+// ("Sam") names the calendar. Closing days (YYYY-MM-DD, from ClosingDates)
+// are all-day 締め申請通知 events.
+func ICS(days []Day, closing []string, who string, now time.Time) string {
 	name := "シフト"
 	if who != "" {
 		name = who + "'s shifts"
@@ -48,8 +50,45 @@ func ICS(days []Day, who string, now time.Time) string {
 		}
 		line("END:VEVENT")
 	}
+	for _, c := range closing {
+		date := strings.ReplaceAll(c, "-", "")
+		next, _ := time.Parse("20060102", date)
+		line("BEGIN:VEVENT")
+		line("UID:" + date + "-closing@samfran")
+		line("DTSTAMP:" + stamp)
+		line("DTSTART;VALUE=DATE:" + date)
+		line("DTEND;VALUE=DATE:" + next.AddDate(0, 0, 1).Format("20060102"))
+		line("SUMMARY:" + ClosingTitle)
+		line("TRANSP:TRANSPARENT")
+		line("END:VEVENT")
+	}
 	line("END:VCALENDAR")
 	return b.String()
+}
+
+// ClosingTitle is a closing day's event title: the hours are sent in.
+const ClosingTitle = "締め申請通知"
+
+// ClosingDates lists the closing days (days of the month; past the month's
+// end means its last day) from the month of from to the month of to, as
+// YYYY-MM-DD, in order.
+func ClosingDates(from, to time.Time, days []int) []string {
+	var out []string
+	month := time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC)
+	for ; !month.After(end); month = month.AddDate(0, 1, 0) {
+		last := month.AddDate(0, 1, -1).Day()
+		seen := map[int]bool{}
+		for _, d := range days {
+			d = min(d, last)
+			if d >= 1 && !seen[d] {
+				seen[d] = true
+				out = append(out, month.AddDate(0, 0, d-1).Format(time.DateOnly))
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // WithLine says who else is on the shift, for a calendar event.

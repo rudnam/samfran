@@ -75,6 +75,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');
+  expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
   await page.getByRole('combobox', { name: 'Closing day 1' }).selectOption('10');

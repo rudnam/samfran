@@ -144,10 +144,6 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                 }
             }
         }
-        if (closingDays.isNotEmpty()) Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ClosingFlag()
-            Text(hoursDue, color = colors.muted, style = MaterialTheme.typography.bodySmall)
-        }
         if (picked != null && YearMonth.from(picked) == month) {
             DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp))
             if (isClosingDay(picked, closingDays)) {

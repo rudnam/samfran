@@ -76,11 +76,6 @@ export function ShiftCalendar({ month, days, closing }: { month: string; days: S
           );
         })}
       </div>
-      {closing.length > 0 && (
-        <p className="cal-key small muted" aria-hidden="true">
-          <span className="cal-flag" /> {t('Hours due (締め申請通知)')}
-        </p>
-      )}
       {picked && (
         <p className="cal-detail" role="status">
           <span className="shift-date">{dayName(picked)}</span>

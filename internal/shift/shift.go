@@ -702,7 +702,7 @@ func (h *Handler) turnOffFeed(w http.ResponseWriter, r *http.Request) error {
 }
 
 // feed is the calendar (iCalendar) that Google Calendar and others
-// subscribe to: shifts from two months back to a year ahead.
+// subscribe to: shifts and 締め申請通知 days from two months back to a year ahead.
 func (h *Handler) feed(w http.ResponseWriter, r *http.Request) error {
 	token, ok := strings.CutSuffix(r.PathValue("file"), ".ics")
 	if !ok || len(token) < 20 {
@@ -724,7 +724,8 @@ func (h *Handler) feed(w http.ResponseWriter, r *http.Request) error {
 		zone = time.UTC
 	}
 	now := h.now().In(zone)
-	codes, err := h.store.codes(r.Context(), spaceID, now.AddDate(0, -2, 0).Format(time.DateOnly), now.AddDate(1, 0, 0).Format(time.DateOnly))
+	from, to := now.AddDate(0, -2, 0), now.AddDate(1, 0, 0)
+	codes, err := h.store.codes(r.Context(), spaceID, from.Format(time.DateOnly), to.Format(time.DateOnly))
 	if err != nil {
 		return err
 	}
@@ -734,6 +735,6 @@ func (h *Handler) feed(w http.ResponseWriter, r *http.Request) error {
 	}
 	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
 	w.Header().Set("Content-Disposition", `inline; filename="shifts.ics"`)
-	_, err = io.WriteString(w, ICS(days, st.PersonName, now))
+	_, err = io.WriteString(w, ICS(days, ClosingDates(from, to, st.ClosingDays), st.PersonName, now))
 	return err
 }
