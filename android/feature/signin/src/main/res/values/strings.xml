@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sign_in">Sign in</string>
+    <string name="create_an_account">Create an account</string>
+    <string name="create_account">Create account</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="password_rule">At least 10 characters</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="or">or</string>
+    <string name="forgot_password">Forgot your password?</string>
+    <string name="new_here">New here? Create an account</string>
+    <string name="have_account">Have an account? Sign in</string>
+    <string name="just_looking">Just looking?</string>
+    <string name="try_demo">Try the demo</string>
+    <string name="setting_up_demo">Setting up your demo…</string>
+    <string name="reset_password">Reset your password</string>
+    <string name="reset_intro">Enter your account\'s email, and we\'ll send you a link to choose a new password.</string>
+    <string name="reset_sent">If an account uses this email, we\'ve sent it a link to choose a new password. The link works for an hour.</string>
+    <string name="send_link">Send link</string>
+    <string name="send_again">Send again</string>
+    <string name="back_to_sign_in">Back to sign in</string>
+    <string name="google_cancelled">Google sign-in was cancelled.</string>
+    <string name="google_expired">That sign-in attempt expired. Please try again.</string>
+    <string name="google_closed">This server isn\'t taking new accounts.</string>
+    <string name="google_unverified">Your Google account\'s email address isn\'t verified with Google.</string>
+    <string name="google_linked">An account with this email is already linked to a different Google account.</string>
+    <string name="google_busy">Too many attempts. Wait a minute and try again.</string>
+    <string name="google_failed">Couldn\'t sign in with Google. Please try again.</string>
+</resources>

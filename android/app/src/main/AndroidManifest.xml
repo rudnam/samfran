@@ -2,16 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
+        android:name=".SamFranApplication"
         android:allowBackup="false"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
         <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
-            android:label="@string/title_activity_main"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
             android:exported="true">
@@ -21,7 +23,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- <package>://auth?code=…: Google sign-in in the phone's browser coming back. See web/src/native.ts. -->
+            <!-- <package>://auth?code=… (Google sign-in coming back from the browser), <package>://bus?start=1
+                 and <package>://us (the app's own notifications). MainActivity routes them. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -29,7 +32,7 @@
                 <data android:scheme="${applicationId}" />
             </intent-filter>
 
-            <!-- Sharing a place from Google Maps (or any text) to samfran opens Add a place. See ShareTargetPlugin. -->
+            <!-- Sharing a place from Google Maps (or any text) to SamFran opens Add a place. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -59,18 +62,28 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
+        <!-- Lets the camera save a photo of the shift sheet into the app's cache (feature:shifts). -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:authorities="${applicationId}.files"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
                 android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:resource="@xml/files" />
         </provider>
-    </application>
 
-    <!-- Permissions -->
+        <!-- Keeps the language picked in the app (per-app language) on Android 12 and older;
+             Android 13+ keeps it in the system's settings. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+    </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- The bus-stop alarm: where the phone is during a trip (never sent anywhere),

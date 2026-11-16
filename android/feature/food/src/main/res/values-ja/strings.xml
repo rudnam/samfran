@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="our_spots">ふたりのお店</string>
+    <plurals name="n_places">
+        <item quantity="other">%d軒</item>
+    </plurals>
+    <string name="n_this_month">今月%d軒</string>
+    <string name="been_there">行った</string>
+    <string name="want_to_go">行きたい</string>
+    <string name="search_hint">店名・エリア・料理・メモで検索</string>
+    <string name="nothing_matches">「%s」に一致するお店はありません。</string>
+    <string name="no_places_yet">まだお店がありません</string>
+    <string name="add_first_place">ふたりで食べに行ったお店を追加しましょう。</string>
+    <string name="nothing_on_list">リストは空です</string>
+    <string name="save_places_to_try">気になるお店を保存して、次のデートの参考に。</string>
+    <string name="added_by">%sが追加</string>
+    <plurals name="n_visits">
+        <item quantity="other">%d回</item>
+    </plurals>
+    <string name="add_a_place">お店を追加</string>
+    <string name="edit_place">お店を編集</string>
+    <string name="weve_been">行った</string>
+    <string name="name">店名</string>
+    <string name="area">エリア</string>
+    <string name="area_hint">例: 駅東</string>
+    <string name="food">ごはん</string>
+    <string name="food_hint">例: ラーメン</string>
+    <string name="visited_when">日付</string>
+    <string name="your_rating">あなたの評価</string>
+    <string name="maps_link">Googleマップのリンク</string>
+    <string name="paste">貼り付け</string>
+    <string name="maps_link_hint">貼り付けると店名が自動で入ります。なくても大丈夫です。</string>
+    <string name="maps_link_hint_edit">任意です。なければ「地図で開く」で店名を検索します。</string>
+    <string name="looking_up">お店を調べています…</string>
+    <string name="share_hint">Googleマップでお店を「共有」→ SamFran で、すぐに追加できます。</string>
+    <string name="notes">メモ</string>
+    <string name="notes_hint">おすすめの料理、予約のことなど…</string>
+    <string name="cancel">キャンセル</string>
+    <string name="save">保存</string>
+    <string name="add">追加</string>
+    <string name="open_in_maps">地図で開く</string>
+    <string name="edit">編集</string>
+    <string name="ratings">評価</string>
+    <string name="you">あなた</string>
+    <string name="not_rated_yet">まだ評価していません</string>
+    <string name="visits">訪問</string>
+    <string name="not_yet">まだ</string>
+    <string name="date">日付</string>
+    <string name="visit_note">この訪問のメモ</string>
+    <string name="visit_note_hint">何を食べた？（任意）</string>
+    <string name="log_visit">記録する</string>
+    <string name="we_went">行った！</string>
+    <string name="logged_by">%sが記録</string>
+    <string name="remove">削除</string>
+    <string name="delete_this_place">このお店を削除</string>
+    <string name="visit_removed">来店を削除しました。</string>
+    <string name="undo">元に戻す</string>
+    <string name="delete_place_title">%sを削除しますか？</string>
+    <string name="delete_place_body">来店の記録と評価も一緒に削除されます。元に戻せません。</string>
+    <string name="delete">削除</string>
+    <string name="place_gone">このお店はもうありません。</string>
+</resources>

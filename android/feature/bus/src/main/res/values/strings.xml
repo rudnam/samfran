@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bus">Bus</string>
+    <string name="bus_subtitle">Buzzes your phone before your stop, so you don’t miss it.</string>
+    <string name="location_denied">SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.</string>
+    <string name="on_the_bus">On the bus</string>
+    <string name="distance_to">%1$s to %2$s</string>
+    <string name="your_stop_lower">your stop</string>
+    <string name="finding_you">Finding where you are…</string>
+    <string name="trip_hint">It buzzes from %s before the stop until you tap I’m up. You can lock the phone.</string>
+    <string name="buzzing">Buzzing</string>
+    <string name="im_up">I’m up</string>
+    <string name="stop">Stop</string>
+    <string name="on_bus">I’m on the bus</string>
+    <string name="on_bus_hint">Tap when you get on. It buzzes %1$s before %2$s and stops by itself after three hours.</string>
+    <string name="ask_when_shift_ends">Ask when a shift ends</string>
+    <string name="ask_when_shift_ends_hint">This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.</string>
+    <string name="allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
+    <string name="your_stop">Your stop</string>
+    <string name="unnamed_stop">Unnamed stop</string>
+    <string name="see_on_map">See it on the map</string>
+    <string name="change">Change</string>
+    <string name="buzzes_before">Buzzes %s before the stop.</string>
+    <string name="test_buzz">Test the buzz</string>
+    <string name="where_get_off">Where do you get off?</string>
+    <string name="stop_name">Stop name</string>
+    <string name="stop_name_hint">Type part of it, e.g. 葵西</string>
+    <string name="search_failed">The stop search isn’t answering. Paste a Google Maps link instead.</string>
+    <string name="no_stops">No stops by that name. Try fewer characters, written as on the stop’s sign.</string>
+    <string name="tap_your_stop">Tap your stop.</string>
+    <string name="osm">Stops from OpenStreetMap.</string>
+    <string name="start_typing">Start typing and choose your stop from the list.</string>
+    <string name="or_maps_link">Or use a Google Maps link</string>
+    <string name="paste_stop_link">Paste a Google Maps link to the stop</string>
+    <string name="use_link">Use link</string>
+    <string name="use_here">Or use where I am now (stand at the stop)</string>
+    <string name="found_it">Found it.</string>
+    <string name="found_by_name">Found it on OpenStreetMap, by its name.</string>
+    <string name="check_on_map">Check on the map</string>
+    <string name="buzz_how_far">Buzz this far before the stop</string>
+    <string name="buzz_how_far_hint">About one stop early is 600–800 m. On a fast road, choose more.</string>
+    <string name="no_position">Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.</string>
+    <string name="no_here">Couldn’t tell where you are. Check that location is on, and allowed for SamFran.</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rating_of">%1$s: 星%2$dつ</string>
+    <string name="your_rating">あなたの評価</string>
+    <string name="n_stars">星%1$dつ</string>
+    <string name="offline">サーバーに接続できませんでした。通信状態を確認して、もう一度お試しください。</string>
+    <string name="went_wrong">うまくいきませんでした。もう一度お試しください。</string>
+    <string name="auto">自動</string>
+    <string name="language">言語</string>
+    <string name="back">戻る</string>
+</resources>
