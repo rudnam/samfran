@@ -94,6 +94,7 @@ object ServerText {
         "this server doesn't send email" to "このサーバーはメールを送信しません",
         "type your email address to confirm" to "確認のためメールアドレスを入力してください",
         "your email is already confirmed" to "メールアドレスはすでに確認済みです",
+        "the place search isn’t answering; try again in a moment" to "お店の検索が応答しません。少し待ってからもう一度お試しください",
         "the stop search isn’t answering; try again in a moment" to "バス停の検索が応答しません。少し待ってからもう一度お試しください",
     )
 }

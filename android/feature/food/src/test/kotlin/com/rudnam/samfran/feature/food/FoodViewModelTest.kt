@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.testing.FakeBusRepository
 import com.rudnam.samfran.core.testing.FakeFoodRepository
 import com.rudnam.samfran.core.testing.FakeSpaceRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,6 +38,7 @@ class FoodViewModelTest {
     private val clock = Clock.fixed(Instant.parse("2026-11-16T03:00:00Z"), ZoneId.of("Asia/Tokyo"))
     private val food = FakeFoodRepository()
     private val space = FakeSpaceRepository()
+    private val bus = FakeBusRepository()
 
     /** Keeps a StateFlow collected, as the screen does. */
     private fun <T> TestScope.watch(flow: kotlinx.coroutines.flow.StateFlow<T>) = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect {} }
@@ -107,18 +110,18 @@ class FoodViewModelTest {
 
     @Test
     fun `a place shared from Maps fills the form, and a link alone looks up the name`() = runTest {
-        val shared = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "Hanabi Grill\nhttps://maps.app.goo.gl/AbC")), food, clock)
+        val shared = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "Hanabi Grill\nhttps://maps.app.goo.gl/AbC")), food, bus, clock)
         assertEquals("Hanabi Grill", shared.state.value.fields?.name)
         assertEquals("https://maps.app.goo.gl/AbC", shared.state.value.fields?.mapUrl)
 
         food.lookupName = "Menya Kaze"
-        val linkOnly = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "https://maps.app.goo.gl/xyz")), food, clock)
+        val linkOnly = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "https://maps.app.goo.gl/xyz")), food, bus, clock)
         assertEquals("Menya Kaze", linkOnly.state.value.fields?.name)
     }
 
     @Test
     fun `adding a place you've been to logs the visit and the rating, then opens it`() = runTest {
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
         assertFalse(vm.state.value.ready)
         vm.set(vm.state.value.fields!!.copy(name = "Gyoza Ou"))
         vm.setStars(5)
@@ -131,12 +134,31 @@ class FoodViewModelTest {
 
     @Test
     fun `want to go adds no visit`() = runTest {
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
         vm.set(vm.state.value.fields!!.copy(name = "Later Place"))
         vm.setStars(4) // ignored: no visit, no rating
         vm.save()
         val added = food.list.value!!.first { it.id == vm.state.value.savedId }
         assertEquals(0, added.visitCount)
         assertTrue(added.ratings.isEmpty())
+    }
+
+    @Test
+    fun `typing a name searches, picking fills in the area and links to that branch, and a place on the list says so`() = runTest {
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        vm.setName("すき")
+        advanceTimeBy(300)
+        assertEquals(2, vm.state.value.found?.size)
+        vm.pick(vm.state.value.found!!.first())
+        assertEquals("すき家 静岡駅南店", vm.state.value.fields?.name)
+        assertEquals("静岡市駿河区", vm.state.value.fields?.area)
+        assertEquals("", vm.state.value.query)
+        vm.save()
+        val added = food.list.value!!.first { it.id == vm.state.value.savedId }
+        assertEquals("https://www.google.com/maps/search/%E3%81%99%E3%81%8D%E5%AE%B6%20%E9%9D%99%E5%B2%A1%E9%A7%85%E5%8D%97%E5%BA%97/@34.968,138.389,17z", added.mapUrl)
+
+        val again = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        again.setName("hanabi grill ")
+        assertEquals(12L, again.state.value.duplicate?.id)
     }
 }

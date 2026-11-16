@@ -31,7 +31,7 @@
     <string name="your_rating">Your rating</string>
     <string name="maps_link">Google Maps link</string>
     <string name="paste">Paste</string>
-    <string name="maps_link_hint">Paste one and the name fills itself in. Optional.</string>
+    <string name="maps_link_hint">Optional. Paste one and the name fills itself in.</string>
     <string name="maps_link_hint_edit">Optional. Without one, “Open in Maps” searches for the name.</string>
     <string name="looking_up">Looking up the place…</string>
     <string name="share_hint">Share a place from Google Maps to SamFran to add it in one tap.</string>
@@ -61,4 +61,15 @@
     <string name="delete_place_body">Its visits and ratings go with it. This can’t be undone.</string>
     <string name="delete">Delete</string>
     <string name="place_gone">This place isn’t here any more.</string>
+    <string name="name_search_hint">Type to search, e.g. すき家</string>
+    <string name="tap_the_place">Tap the place, or keep typing your own name for it.</string>
+    <string name="places_osm">Places from OpenStreetMap.</string>
+    <string name="place_not_found">Not found? Just type its name.</string>
+    <string name="place_search_failed">The place search isn’t answering. Just type the name.</string>
+    <string name="start_typing_place">Start typing and pick it from the list, or just type its name.</string>
+    <string name="already_on_list">Already on your list</string>
+    <string name="already_on_list_colon">Already on your list:</string>
+    <string name="not_this_one">Not this one</string>
+    <string name="check_on_map">Check on the map</string>
+    <string name="maps_link_hint_picked">Optional. The place you picked is already on the map.</string>
 </resources>

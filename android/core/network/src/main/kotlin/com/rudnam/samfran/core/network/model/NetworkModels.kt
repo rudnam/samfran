@@ -171,6 +171,18 @@ data class NetworkLookupResult(
 )
 
 @Serializable
+data class NetworkFoundPlace(
+    val name: String,
+    val area: String = "",
+    val street: String = "",
+    val kind: String = "",
+    val lat: Double,
+    val lng: Double,
+)
+
+fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(name, area, street, kind, lat, lng)
+
+@Serializable
 data class NetworkShiftDay(
     val date: String,
     val code: String,

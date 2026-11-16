@@ -52,6 +52,9 @@ class FoodScreenshotTest {
         override fun setVisitedOn(date: LocalDate) {}
         override fun setStars(stars: Int) {}
         override fun takeLink(text: String) {}
+        override fun setName(name: String) {}
+        override fun pick(place: com.rudnam.samfran.core.model.FoundPlace) {}
+        override fun unpick() {}
         override fun save() {}
     }
 
@@ -98,6 +101,23 @@ class FoodScreenshotTest {
 
     @Test
     fun addPlace() = shot("add") { PlaceFormScreen(PlaceFormUiState(today = today, visitedOn = today, stars = 4), form, {}, {}) }
+
+    @Test
+    fun addBySearching() = shot("add-search") {
+        PlaceFormScreen(
+            PlaceFormUiState(fields = RestaurantFields(name = "すき"), query = "すき", found = Samples.places, saved = Samples.restaurants, today = today),
+            form, {}, {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun addPickedJapanese() = shot("add-picked-ja") {
+        PlaceFormScreen(
+            PlaceFormUiState(fields = RestaurantFields(name = "すき家 静岡駅南店", area = "静岡市駿河区"), picked = Samples.places.first(), today = today, visitedOn = today),
+            form, {}, {},
+        )
+    }
 
     @Test
     fun addFromMaps() = shot("add-shared") {

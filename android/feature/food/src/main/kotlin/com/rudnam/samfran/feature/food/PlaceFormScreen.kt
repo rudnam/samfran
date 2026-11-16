@@ -1,5 +1,6 @@
 package com.rudnam.samfran.feature.food
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -30,6 +32,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.Hint
+import com.rudnam.samfran.core.designsystem.component.LinkButton
 import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
@@ -37,9 +40,11 @@ import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import com.rudnam.samfran.core.designsystem.component.Segmented
 import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.named
 import com.rudnam.samfran.core.ui.DateField
 import com.rudnam.samfran.core.ui.StarPicker
 import com.rudnam.samfran.core.ui.SubPage
+import com.rudnam.samfran.core.ui.openWeb
 import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.feature.food.navigation.FoodNavigation
 import kotlinx.coroutines.launch
@@ -54,6 +59,7 @@ internal fun PlaceFormDestination(navigation: FoodNavigation, viewModel: PlaceFo
         state,
         viewModel,
         onBack = navigation::back,
+        onOpen = navigation::openPlace,
         onPaste = {
             scope.launch {
                 clipboard.getClipEntry()?.clipData?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()?.let(viewModel::takeLink)
@@ -64,7 +70,8 @@ internal fun PlaceFormDestination(navigation: FoodNavigation, viewModel: PlaceFo
 
 /** Adding a place (been there, or want to go) and editing one (web/src/features/restaurants/RestaurantForm.tsx). */
 @Composable
-fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: () -> Unit, onPaste: () -> Unit) {
+fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: () -> Unit, onPaste: () -> Unit, onOpen: (Long) -> Unit = {}) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val nameFocus = remember { FocusRequester() }
     SubPage(
         onBack = onBack,
@@ -89,17 +96,21 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
                     selected = if (state.been) 0 else 1,
                     onSelect = { actions.setBeen(it == 0) },
                 )
-                MapLinkField(state, actions, onPaste)
             }
             OutlinedTextField(
                 value = fields.name,
-                onValueChange = { actions.set(fields.copy(name = it.take(200))) },
+                onValueChange = actions::setName,
                 label = { Text(stringResource(R.string.name)) },
-                placeholder = if (state.lookingUp) ({ Text(stringResource(R.string.looking_up)) }) else null,
+                placeholder = when {
+                    state.lookingUp -> ({ Text(stringResource(R.string.looking_up)) })
+                    !state.editing -> ({ Text(stringResource(R.string.name_search_hint)) })
+                    else -> null
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
             )
+            if (!state.editing) PlaceSuggestions(state, actions, onOpen, onMap = { context.openWeb(it) })
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = fields.area,
@@ -127,7 +138,7 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
                     StarPicker(state.stars, actions::setStars)
                 }
             }
-            if (state.editing) MapLinkField(state, actions, onPaste)
+            MapLinkField(state, actions, onPaste)
             OutlinedTextField(
                 value = fields.notes,
                 onValueChange = { actions.set(fields.copy(notes = it.take(5000))) },
@@ -175,9 +186,63 @@ private fun MapLinkField(state: PlaceFormUiState, actions: PlaceFormActions, onP
                 when {
                     state.editing -> R.string.maps_link_hint_edit
                     state.lookingUp -> R.string.looking_up
+                    state.picked != null -> R.string.maps_link_hint_picked
                     else -> R.string.maps_link_hint
                 },
             ),
         )
+    }
+}
+
+/**
+ * Places matching the name as it's typed (OpenStreetMap, near the bus stop
+ * first), and what to do about them: pick one, or keep your own name; a place
+ * already on the list says so and opens it, so it isn't added twice.
+ */
+@Composable
+private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions, onOpen: (Long) -> Unit, onMap: (String) -> Unit) {
+    val colors = SamFranTheme.colors
+    val found = state.found
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (state.query.isNotEmpty() && !found.isNullOrEmpty()) {
+            Column {
+                found.forEachIndexed { i, p ->
+                    if (i > 0) androidx.compose.material3.HorizontalDivider(color = colors.divider)
+                    val already = state.saved.named(p.name)
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { if (already != null) onOpen(already.id) else actions.pick(p) }
+                            .padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(p.icon)
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name, style = MaterialTheme.typography.titleSmall)
+                            val line = if (already != null) stringResource(R.string.already_on_list) else p.where
+                            if (line.isNotBlank()) Hint(line)
+                        }
+                    }
+                }
+            }
+        }
+        val dup = state.duplicate
+        val picked = state.picked
+        when {
+            dup != null -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Hint(stringResource(R.string.already_on_list_colon))
+                LinkButton(dup.name, { onOpen(dup.id) })
+            }
+            picked != null && state.query.isEmpty() -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Hint("✓ " + picked.where, Modifier.weight(1f, fill = false))
+                LinkButton(stringResource(R.string.check_on_map), { onMap(picked.mapUrl) })
+                LinkButton(stringResource(R.string.not_this_one), actions::unpick, quiet = true)
+            }
+            state.query.isNotEmpty() && state.searchFailed -> Hint(stringResource(R.string.place_search_failed))
+            state.query.isNotEmpty() && found?.isEmpty() == true -> Hint(stringResource(R.string.place_not_found))
+            state.query.isNotEmpty() && !found.isNullOrEmpty() -> Hint(stringResource(R.string.tap_the_place) + " " + stringResource(R.string.places_osm))
+            state.fields?.name.isNullOrEmpty() -> Hint(stringResource(R.string.start_typing_place))
+        }
     }
 }

@@ -51,6 +51,9 @@ interface FoodRepository {
 
     /** The place's name (and, with [position], where it is) from a Google Maps link. */
     suspend fun lookup(url: String, position: Boolean = false): Outcome<MapLookup>
+
+    /** Places to eat whose names match [query] (2+ characters), from OpenStreetMap; near ones first when [near] is given. */
+    suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<com.rudnam.samfran.core.model.FoundPlace>>
 }
 
 @Singleton
@@ -103,6 +106,10 @@ internal class OfflineFirstFoodRepository @Inject constructor(
 
     override suspend fun lookup(url: String, position: Boolean) = outcome(io) {
         network.lookup(url.trim(), position).let { MapLookup(it.name, it.lat, it.lng, it.foundByName) }
+    }
+
+    override suspend fun search(query: String, near: Pair<Double, Double>?) = outcome(io) {
+        network.searchPlaces(query.trim(), near?.first, near?.second).map { it.asModel() }
     }
 
     /**

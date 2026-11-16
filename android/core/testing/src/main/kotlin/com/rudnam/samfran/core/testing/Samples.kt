@@ -59,6 +59,12 @@ object Samples {
         Restaurant(14, "Bistro Ume", "Station North", "French", addedBy = "Fran"),
     )
 
+    val places = listOf(
+        com.rudnam.samfran.core.model.FoundPlace("すき家 静岡駅南店", "静岡市駿河区", "南町", "fast_food", 34.968, 138.389),
+        com.rudnam.samfran.core.model.FoundPlace("すき家 葵区役所前店", "静岡市葵区", "追手町", "fast_food", 34.976, 138.383),
+        com.rudnam.samfran.core.model.FoundPlace("Hanabi Grill", "静岡市葵区", "紺屋町", "restaurant", 34.972, 138.387),
+    )
+
     val settings = ShiftSettings(
         personName = "Sam",
         nameOnSheet = "オトル サマンタ",

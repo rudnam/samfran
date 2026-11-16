@@ -88,6 +88,7 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
     val list = MutableStateFlow(places)
     var next: Outcome<Nothing>? = null
     var lookupName = ""
+    var places: List<com.rudnam.samfran.core.model.FoundPlace> = Samples.places
     private var nextId = 100L
 
     override val restaurants: Flow<List<Restaurant>?> = list
@@ -133,6 +134,9 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
 
     override suspend fun lookup(url: String, position: Boolean): Outcome<MapLookup> =
         next ?: Outcome.Done(MapLookup(lookupName, if (position) 34.97 else null, if (position) 138.38 else null, false))
+
+    override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<com.rudnam.samfran.core.model.FoundPlace>> =
+        next ?: Outcome.Done(places.filter { it.name.contains(query, ignoreCase = true) })
 
     private fun find(id: Long): Outcome<Restaurant> = list.value?.firstOrNull { it.id == id }?.let { Outcome.Done(it) } ?: Outcome.Refused("no such restaurant")
 

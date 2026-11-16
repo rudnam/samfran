@@ -73,6 +73,41 @@ data class Restaurant(
     }
 }
 
+/** A place to eat found by name, from OpenStreetMap (GET /api/restaurants/search). */
+data class FoundPlace(
+    val name: String,
+    /** City and district. */
+    val area: String,
+    /** Street or neighbourhood, to tell branches apart. */
+    val street: String,
+    /** OpenStreetMap's kind: restaurant, fast_food, cafe, bar, pub, bakery… */
+    val kind: String,
+    val lat: Double,
+    val lng: Double,
+) {
+    /** Where it is, as a suggestion's second line: street and area. */
+    val where: String get() = listOf(street, area).filter { it.isNotBlank() }.joinToString(" · ")
+
+    /** Google Maps searching for the name around where it is: opens on that branch, not the chain. */
+    val mapUrl: String
+        get() = "https://www.google.com/maps/search/" + URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "/@$lat,$lng,17z"
+
+    /** An emoji for the kind of place. */
+    val icon: String
+        get() = when (kind) {
+            "cafe" -> "☕"
+            "bar", "pub", "biergarten" -> "🍺"
+            "fast_food" -> "🍔"
+            "ice_cream" -> "🍦"
+            "bakery", "pastry", "confectionery" -> "🥐"
+            else -> "🍽️"
+        }
+}
+
+/** A place on the list with this name (any case, spaces around ignored), so it isn't added twice. */
+fun List<Restaurant>.named(name: String): Restaurant? =
+    name.trim().takeIf { it.isNotEmpty() }?.let { n -> firstOrNull { it.name.trim().equals(n, ignoreCase = true) } }
+
 /** web/src/features/restaurants/format.ts's four tile colours. */
 enum class TileColor { Yellow, Green, Red, Orange }
 
