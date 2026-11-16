@@ -53,8 +53,12 @@ import javax.inject.Singleton
 /** The session has ended (a 401 on a signed-in request): the app goes back to signing in. */
 class SignedOutException : java.io.IOException("Not signed in")
 
-/** The server said no; [message] is its words for the user (internal/httpx). */
-class ApiException(val status: Int, override val message: String) : Exception(message)
+/**
+ * The server said no; [message] is its words for the user (internal/httpx).
+ * [fromProxy]: the answer had no words of the server's, so it came from the
+ * CDN or proxy in front of it (a server that's down or restarting).
+ */
+class ApiException(val status: Int, override val message: String, val fromProxy: Boolean = false) : Exception(message)
 
 /** README.md's API table: what the app uses. Paths as the website calls them (web/src/api.ts). */
 internal interface SamFranApi {
@@ -202,6 +206,6 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     } catch (e: HttpException) {
         val body = e.response()?.errorBody()?.string().orEmpty()
         val message = runCatching { json.decodeFromString<NetworkError>(body).error }.getOrNull().orEmpty()
-        throw ApiException(e.code(), message.ifEmpty { e.message() })
+        throw ApiException(e.code(), message.ifEmpty { e.message() }, fromProxy = message.isEmpty())
     }
 }
