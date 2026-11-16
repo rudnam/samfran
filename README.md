@@ -1,6 +1,6 @@
 # Samfran
 
-A private app for two.
+An app for two.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
