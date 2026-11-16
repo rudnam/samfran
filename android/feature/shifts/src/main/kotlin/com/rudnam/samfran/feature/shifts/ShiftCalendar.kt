@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -28,9 +29,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.rudnam.samfran.core.designsystem.theme.Jakarta
 import com.rudnam.samfran.core.designsystem.component.CodeChip
 import com.rudnam.samfran.core.designsystem.component.Dot
 import com.rudnam.samfran.core.designsystem.theme.Pair2
@@ -93,6 +100,14 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
     val cells = List(lead) { null } + (1..month.lengthOfMonth()).map { month.atDay(it) }
     val nothing = stringResource(R.string.nothing_entered)
     val hoursDue = stringResource(R.string.hours_due)
+    // The squares are a fixed size, so their two lines are sized with the square
+    // (dp, not the phone's text size) and given tight, centred line boxes: with
+    // the theme's 24sp lines, or larger system text, they overflowed a narrow
+    // phone's squares and the kanji's bottom was cut off. The day's line
+    // underneath still follows the phone's text size.
+    val density = LocalDensity.current
+    val cellNumber = with(density) { cellText(12.dp.toSp(), FontWeight.SemiBold) }
+    val cellMark = with(density) { cellText(15.dp.toSp(), FontWeight.ExtraBold) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (w in Dates.narrowWeekdays(locale)) {
@@ -136,8 +151,8 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                         verticalArrangement = Arrangement.SpaceBetween,
                     ) {
                         val ink = square?.ink ?: colors.muted
-                        Text(date.dayOfMonth.toString(), color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text(d?.mark.orEmpty(), color = ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
+                        Text(date.dayOfMonth.toString(), color = ink, style = cellNumber)
+                        Text(d?.mark.orEmpty(), color = ink, style = cellMark, maxLines = 1)
                     }
                     if (closing) ClosingFlag(Modifier.align(Alignment.TopEnd).padding(5.dp))
                     }
@@ -156,31 +171,53 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
     }
 }
 
-/** One day: its date, the kind of shift, its times and its code (the list's row, and under the calendar). */
+/** A calendar square's line: one line box just taller than the glyphs, which sit in its middle. */
+private fun cellText(size: TextUnit, weight: FontWeight) = TextStyle(
+    fontFamily = Jakarta,
+    fontSize = size,
+    fontWeight = weight,
+    lineHeight = size * 1.25f,
+    lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+    textAlign = TextAlign.Center,
+)
+
+/**
+ * One day: its date, the kind of shift, its times and its code (the list's row,
+ * and under the calendar). On one line when it fits; on a narrow phone or with
+ * large text, the times move under the kind of shift instead of everything
+ * wrapping into its own column. The date never breaks across lines.
+ */
 @Composable
 fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
     val colors = SamFranTheme.colors
-    Column(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        DayRow(date, day, colors)
-        WithNames(day?.with.orEmpty(), Modifier.padding(start = 74.dp))
-    }
-}
-
-@Composable
-private fun DayRow(date: LocalDate, day: ShiftDay?, colors: com.rudnam.samfran.core.designsystem.theme.SamFranColors) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(Dates.day(date, currentLocale), Modifier.width(64.dp), style = MaterialTheme.typography.labelLarge, color = if (day == null || day.kind != com.rudnam.samfran.core.model.ShiftKind.Work) colors.muted else colors.text)
-        if (day == null) {
-            Text(stringResource(R.string.nothing_entered), Modifier.weight(1f), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
-            return@Row
+    val type = MaterialTheme.typography
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val dayText = Dates.day(date, currentLocale)
+    BoxWithConstraints(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}) {
+        val gap = 10.dp
+        fun width(text: String, style: TextStyle) = with(density) { measurer.measure(text, style, softWrap = false, maxLines = 1).size.width.toDp() }
+        val dateWidth = maxOf(64.dp, width(dayText, type.labelLarge))
+        val oneLine = day == null || dateWidth + gap + 10.dp + gap + width(day.workplaceLabel, type.bodyMedium) + gap +
+            width(day.times, type.bodyMedium) + gap + width(day.code, type.labelMedium.copy(fontWeight = FontWeight.Bold)) + 16.dp <= maxWidth
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
+                Text(dayText, Modifier.width(dateWidth), style = type.labelLarge, softWrap = false, color = if (day == null || day.kind != com.rudnam.samfran.core.model.ShiftKind.Work) colors.muted else colors.text)
+                if (day == null) {
+                    Text(stringResource(R.string.nothing_entered), Modifier.weight(1f), color = colors.muted, style = type.bodyMedium)
+                    return@Row
+                }
+                Dot(day.tone.dot())
+                Column(Modifier.weight(1f)) {
+                    Text(day.workplaceLabel, style = type.bodyMedium)
+                    if (!oneLine) Text(day.times, style = type.bodyMedium, color = colors.muted, softWrap = false)
+                    if (day.problem != null) Text(stringResource(R.string.unknown_length), color = colors.danger, style = type.bodySmall)
+                }
+                if (oneLine) Text(day.times, style = type.bodyMedium, color = colors.muted, softWrap = false)
+                CodeChip(day.code)
+            }
+            WithNames(day?.with.orEmpty(), Modifier.padding(start = dateWidth + gap))
         }
-        Dot(day.tone.dot())
-        Column(Modifier.weight(1f)) {
-            Text(day.workplaceLabel, style = MaterialTheme.typography.bodyMedium)
-            if (day.problem != null) Text(stringResource(R.string.unknown_length), color = colors.danger, style = MaterialTheme.typography.bodySmall)
-        }
-        Text(day.times, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-        CodeChip(day.code)
     }
 }
 

@@ -74,6 +74,11 @@ class ShiftsScreenshotTest {
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun calendarJapanese() = shot("calendar-ja") { ShiftsScreen(month, actions, {}, {}, {}, {}) }
 
+    /** Sam's phone (1080x2400, 420dpi, default text size), where the squares' kanji used to be cut off at the bottom. */
+    @Test
+    @Config(qualifiers = "w411dp-h914dp-420dpi")
+    fun calendarSamsPhone() = shot("calendar-sams-phone") { ShiftsScreen(month, actions, {}, {}, {}, {}) }
+
     @Test
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
 

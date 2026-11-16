@@ -18,6 +18,11 @@ android {
         versionCode = (System.getenv("SAMFRAN_VERSION_CODE") ?: "10").toInt()
         versionName = System.getenv("SAMFRAN_VERSION_NAME") ?: "2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The Google Maps key for the map of the bus stop (README.md, "Google Maps key"):
+        // samfran.mapsKey in ~/.gradle/gradle.properties, or SAMFRAN_MAPS_KEY. It isn't in the
+        // repository. Without it the stop's map is Google's web map instead (feature/bus StopMap).
+        manifestPlaceholders["mapsKey"] = providers.gradleProperty("samfran.mapsKey")
+            .orElse(providers.environmentVariable("SAMFRAN_MAPS_KEY")).getOrElse("")
     }
 
     androidResources {
@@ -28,6 +33,15 @@ android {
     // Signed with keystore/samfran.jks (git-ignored, see README.md); build.sh passes its
     // passwords in from keystore/keystore.properties. Without them, release builds come out unsigned.
     signingConfigs {
+        // The key for pull-request previews ("SamFran Preview", beside the real app): kept in the
+        // repo with a plain password because it protects nothing, so every CI build is signed
+        // alike and installs over the last one without losing the sign-in.
+        create("preview") {
+            storeFile = rootProject.file("preview.jks")
+            keyAlias = "preview"
+            storePassword = "android"
+            keyPassword = "android"
+        }
         create("release") {
             storeFile = rootProject.file("keystore/samfran.jks")
             keyAlias = "samfran"
@@ -51,11 +65,11 @@ android {
         }
         // What CI builds for a pull request: the release build (a debuggable Compose app is
         // several times slower), installed beside the real app as "SamFran Preview", signed
-        // with the debug key.
+        // with the preview key.
         create("preview") {
             initWith(getByName("release"))
             applicationIdSuffix = ".preview"
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("preview")
             matchingFallbacks += "release"
         }
     }
