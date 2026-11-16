@@ -1,18 +1,13 @@
-// The bus-stop alarm. Choose the stop once; on the bus, "I'm on the bus"
-// starts a trip on the phone (android/…/BusTripService.java), which buzzes
-// before the stop until "Stop". The phone does the watching; this page
-// explains it, sets it up, starts it, shows it and stops it.
+// The bus-stop alarm. Choose the stop here; the alarm itself runs in the
+// Android app, which buzzes before the stop until "Stop". This page explains
+// it, sets it up, and offers the app.
 //
 // "Try it now" is a practice run: a pretend ride of a few seconds that ends
-// the way a real one does. In the app it really buzzes (busAlarm.test); on
-// the web it vibrates where the browser can, so anyone can see what it does
-// before relying on it.
+// the way a real one does. It vibrates where the browser can, so anyone can
+// see what it does before relying on it.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage, type BusStop, type Downloads, type FoundStop } from '../../api';
 import { t, type Key } from '../../i18n';
-import { setShiftPrompts, shiftPromptsOn, syncBackground } from '../../background';
-import { busAlarm, isApp, type TripStatus } from '../../native';
-import { replaceRoute } from '../../router';
 import { StopMap } from './StopMap';
 
 const distances = [400, 600, 800, 1000, 1500, 2000];
@@ -34,12 +29,9 @@ const practiceMs = 6000;
 
 type Practice = { phase: 'riding'; startedAt: number } | { phase: 'buzzing' } | { phase: 'done' } | null;
 
-/** start: opened from "Start bus alarm?" at the end of a shift, so the trip starts by itself. */
-export function BusPage({ start }: { start?: boolean }) {
+export function BusPage() {
   const [stop, setStop] = useState<BusStop | null>(null);
-  const [trip, setTrip] = useState<TripStatus | null>(null);
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [apk, setApk] = useState<Downloads['android']>(null);
 
@@ -51,106 +43,26 @@ export function BusPage({ start }: { start?: boolean }) {
       },
       (err) => setError(errorMessage(err)),
     );
-    if (!isApp) api.downloads().then((d) => setApk(d.android), () => {});
+    api.downloads().then((d) => setApk(d.android), () => {});
   }, []);
-
-  // While a trip runs, show how far there is to go.
-  useEffect(() => {
-    if (!isApp) return;
-    let alive = true;
-    const poll = () => busAlarm.status().then((s) => alive && setTrip(s), () => {});
-    poll();
-    const id = setInterval(poll, 2000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, []);
-
-  // The question at the end of a shift (background.ts), for this phone.
-  const [prompts, setPrompts] = useState(false);
-  const [promptNote, setPromptNote] = useState('');
-  useEffect(() => {
-    shiftPromptsOn().then(setPrompts, () => {});
-  }, []);
-
-  async function togglePrompts(on: boolean) {
-    setPrompts(on);
-    setPromptNote('');
-    try {
-      const now = await setShiftPrompts(on);
-      setPrompts(now);
-      if (on && !now) setPromptNote(t('Allow notifications for SamFran in the phone’s settings, then switch this on again.'));
-    } catch (err) {
-      setPrompts(false);
-      setPromptNote(errorMessage(err));
-    }
-  }
-
-  // Opened from "Start bus alarm": start the trip once the stop is known.
-  useEffect(() => {
-    if (!start || !isApp || !stop) return;
-    replaceRoute('bus'); // coming back to this page later doesn't start another
-    if (stop.set && !trip?.running) void startTrip(stop);
-  }, [start, stop]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function run(fn: () => Promise<TripStatus>): Promise<boolean> {
-    setBusy(true);
-    setError('');
-    try {
-      setTrip(await fn());
-      return true;
-    } catch (err) {
-      const code = (err as { code?: string }).code;
-      setError(code === 'LOCATION_DENIED' ? t('SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.') : errorMessage(err));
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Where the ride started from, for the progress line: the first distance the phone knew.
-  const [from, setFrom] = useState(-1);
-  useEffect(() => {
-    if (!trip?.running) setFrom(-1);
-    else if (from < 0 && trip.distance >= 0) setFrom(trip.distance);
-  }, [trip, from]);
-
-  function startTrip(s: BusStop) {
-    setPractice(null);
-    return run(() => busAlarm.start({ lat: s.lat, lng: s.lng, radius: s.alert_meters, name: s.name }));
-  }
 
   // ---- The practice run ----
   const [practice, setPractice] = useState<Practice>(null);
   const [now, setNow] = useState(Date.now());
-  const sawBuzz = useRef(false);
 
   useEffect(() => {
     if (practice?.phase !== 'riding') return;
     const id = setInterval(() => {
       setNow(Date.now());
-      if (Date.now() - practice.startedAt >= practiceMs) void buzzForPractice();
+      if (Date.now() - practice.startedAt >= practiceMs) buzzForPractice();
     }, 100);
     return () => clearInterval(id);
   }, [practice]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function buzzForPractice() {
+  function buzzForPractice() {
     setPractice({ phase: 'buzzing' });
-    sawBuzz.current = false;
-    if (isApp) {
-      if (!(await run(() => busAlarm.test({ name: stop?.name ?? '' })))) setPractice(null);
-    } else {
-      webBuzz(true);
-    }
+    webBuzz(true);
   }
-
-  // In the app, "Stop" on the notification ends the practice too.
-  useEffect(() => {
-    if (!isApp || practice?.phase !== 'buzzing' || !trip) return;
-    if (trip.buzzing) sawBuzz.current = true;
-    else if (sawBuzz.current) setPractice({ phase: 'done' });
-  }, [trip, practice]);
 
   function endPractice() {
     webBuzz(false);
@@ -160,17 +72,13 @@ export function BusPage({ start }: { start?: boolean }) {
   // Leaving the page stops a web practice buzz.
   useEffect(() => () => webBuzz(false), []);
 
-  async function imUp() {
-    if (practice?.phase === 'buzzing') {
-      webBuzz(false);
-      setPractice({ phase: 'done' });
-    }
-    if (isApp) await run(() => busAlarm.stopBuzz());
+  function imUp() {
+    webBuzz(false);
+    setPractice({ phase: 'done' });
   }
 
   const ready = !!stop?.set;
-  const buzzing = (isApp && !!trip?.buzzing) || practice?.phase === 'buzzing';
-  const riding = isApp && !!trip?.running && !trip.buzzing;
+  const buzzing = practice?.phase === 'buzzing';
 
   return (
     <section className="stack">
@@ -189,33 +97,22 @@ export function BusPage({ start }: { start?: boolean }) {
 
       {stop && buzzing && (
         <div className="card stack buzz" role="alertdialog" aria-label={t('Your stop is next')}>
-          <span className="eyebrow">{practice ? t('Practice run') : t('Wake up')}</span>
+          <span className="eyebrow">{t('Practice run')}</span>
           <p className="buzz-big">{t('Your stop is next')}</p>
           <p className="buzz-stop">{stop.name || t('your stop')}</p>
-          <button type="button" className="big wake" disabled={busy} onClick={() => void imUp()}>
+          <button type="button" className="big wake" onClick={imUp}>
             {t('Stop')}
           </button>
-          {practice && (
-            <p className="small buzz-note">
-              {isApp
-                ? t('Feel that? On a ride it keeps going until you tap Stop, here or on the notification, even with the phone locked.')
-                : t('On the phone, it vibrates like this until you tap Stop, even with the phone locked.')}
-            </p>
-          )}
+          <p className="small buzz-note">{t('On the phone, it vibrates like this until you tap Stop, even with the phone locked.')}</p>
         </div>
       )}
 
       {stop && ready && !buzzing && !editing && (
         <RideCard
           stop={stop}
-          busy={busy}
           practice={practice}
           practiceLeft={practice?.phase === 'riding' ? Math.max(0, 1 - (now - practice.startedAt) / practiceMs) : 0}
-          trip={riding ? trip : null}
-          from={from}
           apk={apk}
-          onStart={() => void startTrip(stop)}
-          onStop={() => void run(() => busAlarm.stop())}
           onPractice={() => {
             setError('');
             setNow(Date.now());
@@ -234,7 +131,6 @@ export function BusPage({ start }: { start?: boolean }) {
           onSaved={(s) => {
             setStop(s);
             setEditing(false);
-            void syncBackground(true);
           }}
           onCancel={ready ? () => setEditing(false) : undefined}
         />
@@ -244,13 +140,7 @@ export function BusPage({ start }: { start?: boolean }) {
         <AlarmSettings
           stop={stop}
           onChange={() => setEditing(true)}
-          onSaved={(s) => {
-            setStop(s);
-            void syncBackground(true);
-          }}
-          prompts={prompts}
-          promptNote={promptNote}
-          onPrompts={(on) => void togglePrompts(on)}
+          onSaved={setStop}
         />
       )}
 
@@ -310,7 +200,7 @@ function HowItWorks() {
     <div className="card stack tight">
       <h2>{t('How it works')}</h2>
       <Steps />
-      {!isApp && <p className="muted small">{t('The alarm runs in the SamFran Android app. You can choose the stop here or there.')}</p>}
+      <p className="muted small">{t('The alarm runs in the SamFran Android app. You can choose the stop here or there.')}</p>
     </div>
   );
 }
@@ -337,15 +227,10 @@ function Route({ progress, arrived }: { progress: number; arrived?: boolean }) {
 
 function RideCard(p: {
   stop: BusStop;
-  busy: boolean;
   practice: Practice;
   /** 1 to 0, through the pretend ride. */
   practiceLeft: number;
-  trip: TripStatus | null;
-  from: number;
   apk: Downloads['android'];
-  onStart: () => void;
-  onStop: () => void;
   onPractice: () => void;
   onEndPractice: () => void;
 }) {
@@ -374,27 +259,10 @@ function RideCard(p: {
       <div className="card stack trip done" role="status">
         <p className="trip-big">{t('✓ That’s it')}</p>
         <p className="small">
-          {isApp ? t('On a real ride, tap “I’m on the bus” when you get on. That’s all.') : t('On a real ride, start it in the SamFran Android app when you get on.')}
+          {t('On a real ride, start it in the SamFran Android app when you get on.')}
         </p>
         <button type="button" className="secondary" onClick={p.onEndPractice}>
           {t('Done')}
-        </button>
-      </div>
-    );
-  }
-
-  if (p.trip) {
-    const d = p.trip.distance;
-    const progress = d < 0 || p.from <= alert ? 0 : (p.from - d) / (p.from - alert);
-    return (
-      <div className="card stack trip on" role="status">
-        <span className="eyebrow">{t('On the bus')}</span>
-        <p className="trip-big">{d >= 0 ? t('{distance} to {stop}', { distance: km(d), stop: name }) : t('Finding where you are…')}</p>
-        <Route progress={progress} />
-        {d >= 0 && <p className="small"><strong>{t('Buzzes in {distance}', { distance: km(Math.max(0, d - alert)) })}</strong></p>}
-        <p className="small">{t('You can lock the phone. It stops by itself after three hours.')}</p>
-        <button type="button" className="secondary" disabled={p.busy} onClick={p.onStop}>
-          {t('Stop alarm')}
         </button>
       </div>
     );
@@ -410,32 +278,18 @@ function RideCard(p: {
         </p>
       </div>
       <StopMap lat={stop.lat} lng={stop.lng} name={stop.name} />
-      {isApp ? (
-        <>
-          <button type="button" className="big" disabled={p.busy} onClick={p.onStart}>
-            {t('I’m on the bus')}
-          </button>
-          <button type="button" className="secondary" disabled={p.busy} onClick={p.onPractice}>
-            {t('Try it now')}
-          </button>
-          <p className="muted small center">{t('Tap “I’m on the bus” when you get on. “Try it now” is a six-second practice.')}</p>
-        </>
-      ) : (
-        <>
-          <button type="button" className="big" onClick={p.onPractice}>
-            {t('Try it now')}
-          </button>
-          <p className="muted small center">{t('A six-second practice ride, to see what happens.')}</p>
-          <div className="app-note">
-            <p className="small">{t('The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.')}</p>
-            {p.apk && (
-              <a className="button secondary" href={p.apk.url} download>
-                {t('Get the Android app')}
-              </a>
-            )}
-          </div>
-        </>
-      )}
+      <button type="button" className="big" onClick={p.onPractice}>
+        {t('Try it now')}
+      </button>
+      <p className="muted small center">{t('A six-second practice ride, to see what happens.')}</p>
+      <div className="app-note">
+        <p className="small">{t('The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.')}</p>
+        {p.apk && (
+          <a className="button secondary" href={p.apk.url} download>
+            {t('Get the Android app')}
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -460,9 +314,6 @@ function AlarmSettings(p: {
   stop: BusStop;
   onChange: () => void;
   onSaved: (s: BusStop) => void;
-  prompts: boolean;
-  promptNote: string;
-  onPrompts: (on: boolean) => void;
 }) {
   const { stop } = p;
   const [busy, setBusy] = useState(false);
@@ -501,18 +352,6 @@ function AlarmSettings(p: {
         <p role="alert" className="error">
           {error}
         </p>
-      )}
-      {isApp && (
-        <>
-          <label className="switch">
-            <span className="grow">
-              <strong className="block">{t('Ask when a shift ends')}</strong>
-              <span className="hint">{t('This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.')}</span>
-            </span>
-            <input type="checkbox" role="switch" checked={p.prompts} onChange={(e) => p.onPrompts(e.target.checked)} />
-          </label>
-          {p.promptNote && <p className="error small">{p.promptNote}</p>}
-        </>
       )}
     </div>
   );
@@ -588,20 +427,6 @@ function StopForm({ stop, first, onSaved, onCancel }: { stop: BusStop; first: bo
       }
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function fromHere() {
-    setBusy(true);
-    setError('');
-    try {
-      const h = await busAlarm.here();
-      setPos({ lat: h.lat, lng: h.lng });
-      setByName(false);
-    } catch {
-      setError(t('Couldn’t tell where you are. Check that location is on, and allowed for SamFran.'));
     } finally {
       setBusy(false);
     }
@@ -703,11 +528,6 @@ function StopForm({ stop, first, onSaved, onCancel }: { stop: BusStop; first: bo
               {t('Use link')}
             </button>
           </span>
-          {isApp && (
-            <button type="button" className="secondary" disabled={busy} onClick={fromHere}>
-              {t('Use where I am now (stand at the stop)')}
-            </button>
-          )}
         </div>
       </details>
 

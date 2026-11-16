@@ -1,9 +1,10 @@
 // Adding a place from Google Maps. Maps shares text like
 //   "Hanabi Grill\nhttps://maps.app.goo.gl/AbC123"
 // (sometimes with the address on a line of its own, sometimes only the
-// link). The Android app receives it (native.ts), an installed web app gets
-// it as ?title=&text=&url= (manifest.webmanifest's share_target), and the
-// Add form reads a pasted link the same way.
+// link). An installed web app gets it as ?title=&text=&url=
+// (manifest.webmanifest's share_target), and the Add form reads a pasted link
+// the same way. The Android app reads it with its own copy of this
+// (core/model's Shared).
 
 export interface Shared {
   name: string;

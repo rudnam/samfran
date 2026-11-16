@@ -3,7 +3,6 @@ import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { LanguagePicker } from './components/LanguagePicker';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
-import { keepBackgroundSynced } from './background';
 import { clearCache } from './cache';
 import { Overlays } from './components/Overlay';
 import { BusPage } from './features/bus/BusPage';
@@ -17,10 +16,8 @@ import { ShiftsPage } from './features/shifts/ShiftsPage';
 import { UsPage } from './features/us/UsPage';
 import { useUnseen } from './features/us/unseen';
 import { t, tn, tx, useLanguage } from './i18n';
-import { onAuthLinks, onOpenLinks, onSharedText } from './native';
-import { initialNotice, signinErrors, type Notice } from './notice';
+import { initialNotice, type Notice } from './notice';
 import { takeSharedFromUrl } from './share';
-import { useUpdate } from './updates';
 import { href, navigate, replaceRoute, useRoute, type Route } from './router';
 import { SpaceProvider } from './space';
 
@@ -52,31 +49,14 @@ export function App() {
   const route = useRoute();
   useLanguage(); // redraw everything when the language changes
 
-  // In the Android app: Google sign-in coming back from the phone's browser.
-  useEffect(
-    () =>
-      onAuthLinks((result) => {
-        if ('error' in result) {
-          setSession({ status: 'signed-out', notice: { message: t(signinErrors[result.error] ?? signinErrors.failed), ok: false } });
-          return;
-        }
-        api.appToken(result.code, result.verifier).then(
-          (me) => setSession({ status: 'signed-in', me }),
-          (err) => setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } }),
-        );
-      }),
-    [],
-  );
-
   // Signing in with Google comes back to /app/, without the Connect request.
   useEffect(() => {
     if (session.status === 'signed-in') resumeConnect();
   }, [session.status]);
 
-  // A place shared from Google Maps (the Android app, or the installed web
-  // app): open Add a place with it filled in, once signed in.
+  // A place shared from Google Maps to the installed web app: open Add a
+  // place with it filled in, once signed in.
   const [shared, setShared] = useState<string | null>(sharedAtLaunch);
-  useEffect(() => onSharedText(setShared), []);
   useEffect(() => {
     if (shared && session.status === 'signed-in') {
       navigate('add', { shared });
@@ -84,21 +64,9 @@ export function App() {
     }
   }, [shared, session.status]);
 
-  // In the Android app: its own notifications open the Bus tab ("Start bus
-  // alarm?" when a shift ends) or the Us tab (the other person's changes).
-  const [opened, setOpened] = useState<{ page: string; start: boolean } | null>(null);
-  useEffect(() => onOpenLinks((page, params) => setOpened({ page, start: params.has('start') })), []);
-  useEffect(() => {
-    if (opened && session.status === 'signed-in') {
-      navigate(opened.page, opened.start ? { start: 1 } : undefined);
-      setOpened(null);
-    }
-  }, [opened, session.status]);
-
   // What one person loaded isn't the next one's to see.
   useEffect(() => {
     clearCache();
-    if (session.status === 'signed-in') return keepBackgroundSynced();
   }, [session.status]);
 
   useEffect(() => {
@@ -197,7 +165,6 @@ export function App() {
               )}
               {me.demo && <DemoBanner onCreateAccount={leaveDemo} />}
               {me.confirm_email && <ConfirmEmail email={me.email} />}
-              <UpdateBanner />
               <Page route={route} me={me} onSignOut={signOut} />
             </div>
           </main>
@@ -275,7 +242,7 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     case 'shifts/settings':
       return <ShiftSettingsPage />;
     case 'bus':
-      return <BusPage start={route.params.has('start')} />;
+      return <BusPage />;
     case 'connect':
       return <ConnectPage route={route} email={me.email} />;
     case 'us':
@@ -325,25 +292,6 @@ function UsIcon() {
       <circle cx="17" cy="9" r="2.5" />
       <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 1.8 6 5.5" />
     </svg>
-  );
-}
-
-/** In the Android app: a newer build is out (updates.ts). */
-function UpdateBanner() {
-  const { update, install, later } = useUpdate();
-  if (!update) return null;
-  return (
-    <div className="notice row" role="status">
-      <span className="grow">
-        {update.name ? t('SamFran {version} is available.', { version: update.name }) : t('A new version of SamFran is available.')}
-      </span>
-      <button type="button" className="link quiet" onClick={later}>
-        {t('Later')}
-      </button>
-      <button type="button" onClick={install}>
-        {t('Update')}
-      </button>
-    </div>
   );
 }
 
