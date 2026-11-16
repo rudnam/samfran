@@ -241,3 +241,51 @@ func TestShiftReadingNeedsAKey(t *testing.T) {
 		t.Errorf("a text file: %d, want 400", code)
 	}
 }
+
+// misreader gets two names wrong, the way a photo does, and records what it was told.
+type misreader struct{ known []string }
+
+func (m *misreader) Read(_ context.Context, _ []byte, _, name string, hint shift.Month) (shift.Sheet, error) {
+	m.known = hint.Names
+	s := shift.Sheet{Found: true, NameAsRead: name, Year: 2026, Month: 11}
+	s.Days = []shift.SheetDay{{Day: 2, Code: "13F", With: []string{"タナカ ユエ", "スズキ ケソ", "ヤマダ タロウ"}}}
+	return s, nil
+}
+
+func TestShiftNameMemory(t *testing.T) {
+	reader := &misreader{}
+	ts := newTestServer(t, func(c *config.Config) { c.ShiftReader = reader })
+	c := newClient(t, ts)
+	c.signup("fran@example.com")
+	c.do("PUT", "/api/shifts/settings", map[string]any{"person_name": "Sam", "name_on_sheet": "オトル サマンタ"}, nil)
+
+	// Nobody is known yet, so the first read is as printed.
+	var m monthJSON
+	if code := upload(t, c, &m); code != 200 || len(m.Days) != 1 || strings.Join(m.Days[0].With, "|") != "タナカ ユエ|スズキ ケソ|ヤマダ タロウ" || len(reader.known) != 0 {
+		t.Fatalf("first read: %d %+v known %v", code, m, reader.known)
+	}
+
+	// Checking it: one name fixed by hand, one left right. Both are remembered.
+	days := []map[string]any{{"date": "2026-11-02", "code": "13F", "with": []string{"田中 結", "スズキ ケン", "ヤマダ タロウ"}}}
+	fixes := []map[string]string{{"from": "タナカ ユエ", "to": "田中 結"}, {"from": "スズキ ケソ", "to": "スズキ ケン"}, {"from": "same", "to": "same"}, {"from": "", "to": "x"}}
+	var saveErr map[string]any
+	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": days, "corrections": fixes}, &saveErr); code != 200 {
+		t.Fatalf("save: %d %v", code, saveErr)
+	}
+
+	// The next read has the right names, tells the reader who's known, and says what it changed.
+	if code := upload(t, c, &m); code != 200 || strings.Join(m.Days[0].With, "|") != "田中 結|スズキ ケン|ヤマダ タロウ" {
+		t.Fatalf("second read: %d %+v", code, m.Days)
+	}
+	if len(reader.known) != 3 || !strings.Contains(m.Notes, "タナカ ユエ → 田中 結") {
+		t.Errorf("known %v, notes %q", reader.known, m.Notes)
+	}
+
+	// Another space shares none of it.
+	o := newClient(t, ts)
+	o.signup("x@example.com")
+	o.do("PUT", "/api/shifts/settings", map[string]any{"person_name": "Al", "name_on_sheet": "オトル サマンタ"}, nil)
+	if code := upload(t, o, &m); code != 200 || m.Days[0].With[0] != "タナカ ユエ" || len(reader.known) != 0 {
+		t.Errorf("another space: %d %+v known %v", code, m.Days, reader.known)
+	}
+}
