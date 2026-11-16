@@ -481,6 +481,9 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 // readTimeout is how long Claude gets to read a sheet.
 const readTimeout = 3 * time.Minute
 
+// uploadTimeout is how long a photo of the sheet may take to arrive.
+const uploadTimeout = 3 * time.Minute
+
 // prepareRead checks a request to read a photo and takes the photo from it.
 // The read itself is the returned func: it answers with the month found, or
 // an *httpx.Error to show.
@@ -495,6 +498,13 @@ func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(cont
 	if st.NameOnSheet == "" {
 		return nil, httpx.Errorf(http.StatusBadRequest, "first set the name as it's printed on the sheet")
 	}
+	// A photo takes longer to send than the server lets a request take (30 s,
+	// cmd/server) on a phone's slow upload: a few MB over mobile data. Cut off,
+	// the app only hears that the server couldn't be reached. So this request
+	// gets uploadTimeout to arrive, and the read after it (POST /api/shifts/read) its own time.
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Now().Add(uploadTimeout))
+	_ = rc.SetWriteDeadline(time.Now().Add(uploadTimeout + readTimeout))
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhoto+1<<20)
 	file, _, err := r.FormFile("photo")
 	if err != nil {

@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"testing"
 	"testing/fstest"
+	"time"
 
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/server"
@@ -51,6 +52,23 @@ func newTestServerDB(t *testing.T, edit ...func(*config.Config)) (*httptest.Serv
 	ts := httptest.NewServer(server.New(cfg, conn, static, "test"))
 	t.Cleanup(ts.Close)
 	return ts, conn
+}
+
+// newTimedTestServer is newTestServer with cmd/server's limits on how long a
+// request may take to arrive and to answer (there 30 s), set to limit.
+func newTimedTestServer(t *testing.T, limit time.Duration, edit ...func(*config.Config)) *httptest.Server {
+	t.Helper()
+	conn := testdb.Open(t)
+	cfg := config.Config{AllowSignup: true, AuthRateLimit: 1000}
+	for _, e := range edit {
+		e(&cfg)
+	}
+	ts := httptest.NewUnstartedServer(server.New(cfg, conn, fstest.MapFS{"index.html": {Data: []byte("<!doctype html>")}}, "test"))
+	ts.Config.ReadTimeout = limit
+	ts.Config.WriteTimeout = limit
+	ts.Start()
+	t.Cleanup(ts.Close)
+	return ts
 }
 
 // client is a browser-like API client with its own cookie jar.
