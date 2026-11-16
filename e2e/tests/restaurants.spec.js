@@ -58,11 +58,11 @@ test('want to go, then went', async ({ page }) => {
   await page.getByRole('link', { name: 'Add a place' }).first().click();
   await expect(page.getByRole('radio', { name: 'Want to go' })).toBeChecked();
   await page.getByLabel('Name', { exact: true }).fill('Blue Sky Café');
-  await page.getByLabel('Map link').fill('not a link');
+  await page.getByLabel('Google Maps link').fill('not a link');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   // The browser checks the link's form before the server sees it.
   await expect(page.getByRole('heading', { name: 'Blue Sky Café' })).toHaveCount(0);
-  await page.getByLabel('Map link').fill('https://maps.app.goo.gl/example');
+  await page.getByLabel('Google Maps link').fill('https://maps.app.goo.gl/example');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
 
   await expect(page.getByRole('heading', { name: 'Blue Sky Café' })).toBeVisible();
@@ -82,7 +82,7 @@ test('a place shared from Google Maps opens Add a place, filled in', async ({ pa
   await page.goto(`/app/?text=${encodeURIComponent(text)}`);
   await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Taco Loco');
-  await expect(page.getByLabel('Map link')).toHaveValue('https://maps.app.goo.gl/AbC123');
+  await expect(page.getByLabel('Google Maps link')).toHaveValue('https://maps.app.goo.gl/AbC123');
   await expect(page).not.toHaveURL(/text=/);
   await page.getByRole('radio', { name: 'Want to go' }).click();
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -93,12 +93,12 @@ test('a place shared from Google Maps opens Add a place, filled in', async ({ pa
 test('pasting "name and link" from Maps fills in both', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/add');
-  await page.getByLabel('Map link').focus();
+  await page.getByLabel('Google Maps link').focus();
   await page.evaluate(() => {
     const data = new DataTransfer();
     data.setData('text/plain', 'Gyoza Komachi\nhttps://maps.app.goo.gl/XyZ');
     document.activeElement.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
   });
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Gyoza Komachi');
-  await expect(page.getByLabel('Map link')).toHaveValue('https://maps.app.goo.gl/XyZ');
+  await expect(page.getByLabel('Google Maps link')).toHaveValue('https://maps.app.goo.gl/XyZ');
 });

@@ -154,6 +154,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
   const [name, setName] = useState(stop.name);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop.set ? { lat: stop.lat, lng: stop.lng } : null);
   const [link, setLink] = useState('');
+  const [byName, setByName] = useState(false);
   const [meters, setMeters] = useState(stop.alert_meters || 800);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -163,12 +164,16 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
     setBusy(true);
     setError('');
     try {
-      const p = await api.lookupMap(link.trim());
+      const p = await api.lookupMap(link.trim(), true);
       if (p.lat === undefined || p.lng === undefined) {
-        setError(t('That link doesn’t say where the stop is. Open the stop in Google Maps, tap Share, and paste that link.'));
+        setError(
+          t('Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.'),
+        );
       } else {
         setPos({ lat: p.lat, lng: p.lng });
-        if (!name.trim() && p.name) setName(p.name);
+        setByName(!!p.found_by_name);
+        // Google Maps calls a stop "Name（バス）".
+        if (!name.trim() && p.name) setName(p.name.replace(/\s*[（(](バス|Bus)[）)]$/, ''));
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -183,6 +188,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
     try {
       const h = await busAlarm.here();
       setPos({ lat: h.lat, lng: h.lng });
+      setByName(false);
     } catch {
       setError(t('Couldn’t tell where you are. Check that location is on, and allowed for samfran.'));
     } finally {
@@ -232,7 +238,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
         )}
         {pos && (
           <span className="hint">
-            ✓ {t('Found it.')}{' '}
+            ✓ {byName ? t('Found it on OpenStreetMap, by its name.') : t('Found it.')}{' '}
             <a href={`https://www.google.com/maps/search/?api=1&query=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer">
               {t('Check on the map')}
             </a>

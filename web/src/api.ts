@@ -158,7 +158,9 @@ export const api = {
     request<Restaurant>('POST', `/api/restaurants/${id}/visits`, { visited_on, note }),
   deleteVisit: (id: number, visit: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/visits/${visit}`),
   /** The place's name from a Google Maps link, '' if it can't be read. */
-  lookupMap: (url: string) => request<{ name: string; map_url: string; lat?: number; lng?: number }>('POST', '/api/restaurants/lookup', { url }),
+  /** position: also find lat/lng by the place's name when the link has none (found_by_name). */
+  lookupMap: (url: string, position = false) =>
+    request<{ name: string; map_url: string; lat?: number; lng?: number; found_by_name?: boolean }>('POST', '/api/restaurants/lookup', { url, position }),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (month: string, days: { date: string; code: string }[]) =>
     request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),

@@ -258,10 +258,13 @@ type Handler struct {
 	now   func() time.Time
 	// maps follows Google Maps links one redirect at a time (maps.go).
 	maps *http.Client
+	// places finds a place's position by name when its link has none (geocode.go).
+	places *geocoder
 }
 
 func NewHandler(st *Store) *Handler {
-	return &Handler{store: st, now: time.Now, maps: &http.Client{CheckRedirect: noRedirects, Timeout: 6 * time.Second}}
+	return &Handler{store: st, now: time.Now, maps: &http.Client{CheckRedirect: noRedirects, Timeout: 6 * time.Second},
+		places: &geocoder{base: nominatim, client: &http.Client{Timeout: 5 * time.Second}, gap: time.Second}}
 }
 
 // Register adds the routes; requireSpace is space.Handler.Require.

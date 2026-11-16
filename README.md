@@ -189,7 +189,7 @@ The language follows the device until someone picks one (the picker in the top b
 | DELETE | `/api/space/invites/{email}` | user | The space, or `404` |
 | GET | `/api/restaurants` | user | `[restaurant]`: `{id, name, area, cuisine, map_url, notes, added_by, created_at, visit_count, last_visit, ratings: [{name, me, stars}]}` |
 | POST | `/api/restaurants` | user | `201` and the restaurant with its `visits`. Body `{name, area, cuisine, map_url, notes}`, plus optionally `visit: {visited_on, note}` (a first visit) and `stars` (your rating). |
-| POST | `/api/restaurants/lookup` | user | Body `{url}`, a Google Maps link. `{name, map_url, lat?, lng?}`: the place's name read from where the link leads (`""` if it can't be read). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
+| POST | `/api/restaurants/lookup` | user | Body `{url, position?}`, a Google Maps link. `{name, map_url, lat?, lng?, found_by_name?}`: the place's name read from where the link leads (`""` if it can't be read). With `position: true` and a link that has no position, `lat`/`lng` are looked up by the name on OpenStreetMap (`found_by_name`; only when every match is in one spot, `geocode.go`). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
 | GET | `/api/restaurants/{id}` | user | The restaurant, with `visits: [{id, visited_on, note, added_by}]`, newest first |
 | PATCH | `/api/restaurants/{id}` | user | Changes the fields given; others stay. The restaurant. |
 | DELETE | `/api/restaurants/{id}` | user | `204`. Its visits and ratings go with it. |

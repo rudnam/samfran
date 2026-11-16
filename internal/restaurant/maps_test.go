@@ -56,6 +56,14 @@ func TestLookupFollowsOnlyMaps(t *testing.T) {
 			w.Header().Set("Location", "https://www.google.com/maps/place/Hanabi+Grill/@35.0,137.0,17z")
 		case "/elsewhere":
 			w.Header().Set("Location", "https://evil.example/steal")
+		case "/stop":
+			// As maps.app.goo.gl/M3xa3caRE4zfzkH76 does: a place with no position in its address.
+			w.Header().Set("Location", "https://www.google.com/maps/place/%E8%91%B5%E8%A5%BF%E5%B0%8F%E5%AD%A6%E6%A0%A1%E5%85%A5%E5%8F%A3%EF%BC%88%E3%83%90%E3%82%B9%EF%BC%89/data=!4m2!3m1!1s0x601b209b09db8355:0xc0dbcebdcde7c6a0!18m1!1e1?entry=gps")
+		default:
+			if strings.HasPrefix(r.URL.Path, "/maps/place/") {
+				w.Write([]byte(`<html>`)) // Google's page: no position without its scripts
+				return
+			}
 		}
 		w.WriteHeader(http.StatusFound)
 	}))
@@ -69,10 +77,13 @@ func TestLookupFollowsOnlyMaps(t *testing.T) {
 	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/elsewhere"); err != nil || p.Name != "" {
 		t.Errorf("redirect off Maps: %+v %v", p, err)
 	}
+	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/stop"); err != nil || p.Name != "葵西小学校入口（バス）" || p.Lat != nil {
+		t.Errorf("place page: %+v %v", p, err)
+	}
 	if _, err := h.lookup(context.Background(), "https://evil.example/x"); err != errNotMaps {
 		t.Errorf("non-Maps link: %v", err)
 	}
-	if strings.Join(hits, ",") != "/short,/elsewhere" {
+	if strings.Join(hits, ",") != "/short,/elsewhere,/stop,/maps/place/葵西小学校入口（バス）/data=!4m2!3m1!1s0x601b209b09db8355:0xc0dbcebdcde7c6a0!18m1!1e1" {
 		t.Errorf("requests made: %v", hits)
 	}
 }

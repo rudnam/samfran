@@ -26,6 +26,9 @@ type Place struct {
 	// Lat and Lng, when the address gives a position (a bus stop's, say).
 	Lat *float64 `json:"lat,omitempty"`
 	Lng *float64 `json:"lng,omitempty"`
+	// Found says the position was looked up by name on OpenStreetMap,
+	// because the link had none.
+	Found bool `json:"found_by_name,omitempty"`
 }
 
 var errNotMaps = errors.New("not a Google Maps link")
@@ -154,6 +157,10 @@ func placeCoords(u *url.URL) (lat, lng *float64) {
 func (h *Handler) lookupHandler(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		URL string `json:"url"`
+		// Position asks for lat and lng even when the link has none: then
+		// they're looked up by the place's name (geocode.go). The Bus tab
+		// needs them; the restaurant form doesn't.
+		Position bool `json:"position"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -165,6 +172,10 @@ func (h *Handler) lookupHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		// Google unreachable or slow: the person can still type the name.
 		place = Place{MapURL: strings.TrimSpace(in.URL)}
+	}
+	if in.Position && place.Lat == nil && place.Name != "" && h.places != nil {
+		place.Lat, place.Lng = h.places.find(r.Context(), place.Name)
+		place.Found = place.Lat != nil
 	}
 	httpx.WriteJSON(w, http.StatusOK, place)
 	return nil

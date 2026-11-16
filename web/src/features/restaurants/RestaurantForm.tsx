@@ -21,6 +21,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
     return s ? { ...empty, name: s.name, map_url: s.url } : empty;
   });
   const [lookingUp, setLookingUp] = useState(false);
+  const [canPaste, setCanPaste] = useState(() => typeof navigator !== 'undefined' && !!navigator.clipboard?.readText);
   const [been, setBeen] = useState(!want);
   const [visitedOn, setVisitedOn] = useState(today());
   const [stars, setStars] = useState(0);
@@ -83,6 +84,57 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
     }
   }
 
+  /** Takes a link however it came (typed, pasted, the Paste button) and looks up its name. */
+  function takeLink(text: string) {
+    if (pasteLink(text)) return;
+    const url = text.trim();
+    set('map_url', url);
+    if (isMapsLink(url)) void nameFromLink(url);
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      takeLink(await navigator.clipboard.readText());
+    } catch {
+      setCanPaste(false); // not allowed here: they can paste into the field
+    }
+  }
+
+  const mapField = fields && (
+    <label className="field">
+      {t('Google Maps link')}
+      <span className="row">
+        <input
+          type="url"
+          inputMode="url"
+          placeholder="https://maps.app.goo.gl/…"
+          value={fields.map_url}
+          onChange={(e) => {
+            // A link arriving whole (pasted, autofilled) is looked up now; typed, on blur.
+            if (e.target.value.length - fields.map_url.length > 5) takeLink(e.target.value);
+            else set('map_url', e.target.value);
+          }}
+          onBlur={(e) => void nameFromLink(e.target.value.trim())}
+          onPaste={(e) => {
+            if (pasteLink(e.clipboardData.getData('text'))) e.preventDefault();
+          }}
+        />
+        {!id && canPaste && !fields.map_url && (
+          <button type="button" className="secondary" onClick={pasteFromClipboard}>
+            {t('Paste')}
+          </button>
+        )}
+      </span>
+      <span className="hint">
+        {id
+          ? t('Optional. Without one, “Open in Maps” searches for the name.')
+          : lookingUp
+            ? t('Looking up the place…')
+            : t('Paste one and the name fills itself in. Optional.')}
+      </span>
+    </label>
+  );
+
   const back = id ? href('restaurant', { id }) : href(want ? 'want' : 'home');
   return (
     <section className="stack">
@@ -91,11 +143,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
       </a>
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
       {!fields && !error && <p className="muted">{t('Loading…')}</p>}
-      {!id && fields && !shared && (
-        <p className="hint">
-          {isApp ? t('Share a place from Google Maps to samfran to add it in one tap.') : t('Paste a Google Maps link to fill in the name.')}
-        </p>
-      )}
+      {!id && fields && !shared && isApp && <p className="hint">{t('Share a place from Google Maps to samfran to add it in one tap.')}</p>}
       {fields && (
         <form className="card stack" onSubmit={submit}>
           {!id && (
@@ -108,6 +156,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               </button>
             </div>
           )}
+          {!id && mapField}
           <label className="field">
             {t('Name')}
             <input
@@ -141,21 +190,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               </div>
             </>
           )}
-          <label className="field">
-            {t('Map link')}
-            <input
-              type="url"
-              inputMode="url"
-              placeholder="https://maps.app.goo.gl/…"
-              value={fields.map_url}
-              onChange={(e) => set('map_url', e.target.value)}
-              onPaste={(e) => {
-                if (pasteLink(e.clipboardData.getData('text'))) e.preventDefault();
-              }}
-              onBlur={(e) => void nameFromLink(e.target.value.trim())}
-            />
-            <span className="hint">{t('Optional. Without one, “Open in Maps” searches for the name.')}</span>
-          </label>
+          {id && mapField}
           <label className="field">
             {t('Notes')}
             <textarea
