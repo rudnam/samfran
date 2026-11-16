@@ -77,8 +77,8 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   expect(await feed.text()).toContain('SUMMARY:夜勤');
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
-  await page.getByLabel('Closing day 1').selectOption('10');
-  await page.getByLabel('Closing day 2').selectOption('25');
+  await page.getByRole('combobox', { name: 'Closing day 1' }).selectOption('10');
+  await page.getByRole('combobox', { name: 'Closing day 2' }).selectOption('25');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
   await page.getByRole('link', { name: '‹ Shifts' }).click();
