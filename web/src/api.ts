@@ -168,6 +168,9 @@ export const api = {
   /** position: also find lat/lng by the place's name when the link has none (found_by_name). */
   lookupMap: (url: string, position = false) =>
     request<{ name: string; map_url: string; lat?: number; lng?: number; found_by_name?: boolean }>('POST', '/api/restaurants/lookup', { url, position }),
+  /** Places to eat whose names match q (2+ characters), from OpenStreetMap; near ones first when near is given. */
+  searchPlaces: (q: string, near?: { lat: number; lng: number }) =>
+    request<FoundPlace[]>('GET', `/api/restaurants/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (month: string, days: { date: string; code: string; with?: string[] }[]) =>
     request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
@@ -261,6 +264,19 @@ export interface MCPClientInfo {
   client_name: string;
   /** Where the browser goes back to after the person answers. */
   redirect_host: string;
+}
+
+/** A place to eat found by name, for the add-a-place form. */
+export interface FoundPlace {
+  name: string;
+  /** City and district. */
+  area: string;
+  /** Street or neighbourhood, to tell branches apart. */
+  street: string;
+  /** OpenStreetMap's: restaurant, fast_food, cafe, bar, pub, bakery… */
+  kind: string;
+  lat: number;
+  lng: number;
 }
 
 /** Where the signed-in person gets off the bus. */

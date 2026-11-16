@@ -154,3 +154,53 @@ test('pasting "name and link" from Maps fills in both', async ({ page }) => {
   await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Gyoza Komachi');
   await expect(page.getByLabel('Google Maps link')).toHaveValue('https://maps.app.goo.gl/XyZ');
 });
+
+test('find a place by typing its name: no Maps link needed', async ({ page }) => {
+  // The search is answered by Photon (OpenStreetMap); here, by this fake.
+  await page.route('**/api/restaurants/search?*', (route) => {
+    const q = new URL(route.request().url()).searchParams.get('q');
+    route.fulfill({
+      json: q.startsWith('すき')
+        ? [
+            { name: 'すき家 浜松駅前店', area: '浜松市 中央区', street: '砂山町', kind: 'fast_food', lat: 34.703, lng: 137.734 },
+            { name: 'すき家 葵町店', area: '浜松市 中央区', street: '', kind: 'fast_food', lat: 34.77, lng: 137.71 },
+          ]
+        : [],
+    });
+  });
+  await signUp(page);
+  await page.getByRole('link', { name: 'Add a place' }).first().click();
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('zzz');
+  await expect(page.getByText('Not found? Just type its name.')).toBeVisible();
+  await name.fill('すき');
+  const list = page.getByRole('list', { name: 'Matching places' });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await expect(page.getByRole('link', { name: 'Places from OpenStreetMap' })).toBeVisible();
+  await list.getByRole('button', { name: /すき家 浜松駅前店/ }).click();
+
+  // Picking fills in the name and area; the list goes away.
+  await expect(list).toHaveCount(0);
+  await expect(name).toHaveValue('すき家 浜松駅前店');
+  await expect(page.getByLabel('Area')).toHaveValue('浜松市 中央区');
+  await expect(page.getByRole('link', { name: 'Check on the map' })).toBeVisible();
+  await expect(page.getByLabel('Google Maps link')).toHaveValue('');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+
+  // Open in Maps goes to that branch, not the chain.
+  await expect(page.getByRole('heading', { name: 'すき家 浜松駅前店' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute(
+    'href',
+    `https://www.google.com/maps/search/${encodeURIComponent('すき家 浜松駅前店')}/@34.703,137.734,17z`,
+  );
+
+  // Adding it again: the list says it's already saved, and links to it.
+  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Add a place' }).first().click();
+  await name.fill('すき家');
+  await expect(list.getByRole('link', { name: /すき家 浜松駅前店.*Already on your list/ })).toBeVisible();
+  await expect(list.getByRole('button', { name: /すき家 葵町店/ })).toBeVisible();
+  // Typed out in full, too.
+  await name.fill('すき家 浜松駅前店');
+  await expect(page.getByText('Already on your list:')).toBeVisible();
+});
