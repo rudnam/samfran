@@ -17,6 +17,7 @@ import com.rudnam.samfran.core.network.model.NetworkLookupResult
 import com.rudnam.samfran.core.network.model.NetworkMcpToken
 import com.rudnam.samfran.core.network.model.NetworkMe
 import com.rudnam.samfran.core.network.model.NetworkName
+import com.rudnam.samfran.core.network.model.NetworkReadStarted
 import com.rudnam.samfran.core.network.model.NetworkNewVisit
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
 import com.rudnam.samfran.core.network.model.NetworkRestaurantInput
@@ -26,10 +27,12 @@ import com.rudnam.samfran.core.network.model.NetworkShiftSettings
 import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.NetworkSpace
 import com.rudnam.samfran.core.network.model.NetworkStars
+import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.ResponseBody
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -43,6 +46,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -90,8 +94,9 @@ internal interface SamFranApi {
     @DELETE("api/shifts/feed") suspend fun feedOff(): NetworkShiftSettings
 
     @Multipart
-    @POST("api/shifts/read")
-    suspend fun readPhoto(@Part photo: MultipartBody.Part): NetworkShiftMonth
+    @POST("api/shifts/reads")
+    suspend fun startRead(@Part photo: MultipartBody.Part): NetworkReadStarted
+    @GET("api/shifts/reads/{id}") suspend fun readStatus(@Path("id") id: String): Response<ResponseBody>
 
     @GET("api/bus/stop") suspend fun busStop(): NetworkBusStop
     @PUT("api/bus/stop") suspend fun saveBusStop(@Body body: NetworkBusStopInput): NetworkBusStop
@@ -146,9 +151,36 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun saveShiftSettings(body: NetworkShiftSettingsInput) = call { api.saveShiftSettings(body) }
     suspend fun feed(on: Boolean) = call { if (on) api.feedOn() else api.feedOff() }
 
-    /** Reads a photo of the sheet (a JPEG); nothing is saved until [saveShifts]. */
-    suspend fun readPhoto(jpeg: ByteArray) = call {
-        api.readPhoto(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType())))
+    /** How often a photo being read is asked after (tests make it short). */
+    internal var readPollMs = 2_000L
+
+    /**
+     * Reads a photo of the sheet (a JPEG); nothing is saved until [saveShifts].
+     * Reading takes about a minute, longer than one request may last behind
+     * the CDN, so this starts the read and asks after it until it's done.
+     */
+    suspend fun readPhoto(jpeg: ByteArray): NetworkShiftMonth = call {
+        val id = api.startRead(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType()))).id
+        // The server gives up after 3 minutes; this waits a little longer.
+        val until = System.currentTimeMillis() + 5 * 60_000
+        var failures = 0
+        while (System.currentTimeMillis() < until) {
+            delay(readPollMs)
+            val res = try {
+                api.readStatus(id)
+            } catch (e: IOException) {
+                // A phone moving between networks: try again a few times.
+                if (++failures > 3) throw e
+                continue
+            }
+            if (res.code() == 202) {
+                res.body()?.close()
+                continue
+            }
+            if (!res.isSuccessful) throw HttpException(res)
+            return@call json.decodeFromString<NetworkShiftMonth>(res.body()!!.string())
+        }
+        throw ApiException(504, "the photo couldn't be read just now; try again, or enter the shifts by hand")
     }
 
     suspend fun busStop() = call { api.busStop() }
