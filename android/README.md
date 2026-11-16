@@ -42,7 +42,7 @@ The site offers the APK at `/download/samfran.apk`, and `GET /api/downloads` tel
 ./android/build.sh && ./android/publish.sh    # by hand, signed in with aws login --profile rudnam-ec2
 ```
 
-**GitHub Actions does it for you**: `.github/workflows/android-release.yml` builds, signs and publishes a release once CI passes on `main` for a pull request labelled `android-release`, or when you run it by hand (Actions › Android release). It keeps the `.apk` and `.aab` as a GitHub release, `android-<versionCode>`. It needs, once, an **`android-release` environment** limited to the `main` branch, with:
+**GitHub Actions does it for you**: `.github/workflows/android-release.yml` builds, signs and publishes a release once CI passes on `main` for a pull request labelled `android-release` (`android-release-label.yml` adds the label to every pull request that changes the app; remove it to merge without a release), or when you run it by hand (Actions › Android release). It keeps the `.apk` and `.aab` as a GitHub release, `android-<versionCode>`. It needs, once, an **`android-release` environment** limited to the `main` branch, with:
 
 | Kind | Name | Value |
 |---|---|---|

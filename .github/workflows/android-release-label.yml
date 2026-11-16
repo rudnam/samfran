@@ -1,0 +1,44 @@
+# Labels a pull request android-release when it changes the Android app, so
+# merging it releases the app (android-release.yml) without anyone having to
+# remember the label. Changes only to tests or docs don't count.
+#
+# To merge app changes without a release, remove the label: this workflow
+# won't add it back to a pull request it was removed from.
+
+name: Android release label
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    paths:
+      - 'android/**'
+      - '!android/**/src/test/**'
+      - '!android/**/*.md'
+
+concurrency:
+  group: android-release-label-${{ github.event.pull_request.number }}
+
+jobs:
+  label:
+    # A fork's token can't add labels; its owner labels it by hand.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - run: |
+          labels=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/labels" --jq '[.[].name] | join(" ")')
+          if [[ " $labels " == *" android-release "* ]]; then
+            echo "Already labelled android-release."; exit 0
+          fi
+          removed=$(gh api --paginate "repos/$GITHUB_REPOSITORY/issues/$PR/events" \
+            --jq '[.[] | select(.event == "unlabeled" and .label.name == "android-release")] | length' | jq -s add)
+          if [[ ${removed:-0} -gt 0 ]]; then
+            echo "android-release was removed by hand: leaving it off." >> "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          gh api -X POST "repos/$GITHUB_REPOSITORY/issues/$PR/labels" -f 'labels[]=android-release' >/dev/null
+          echo "Labelled android-release: this pull request changes the Android app, so merging it releases the app." >> "$GITHUB_STEP_SUMMARY"
