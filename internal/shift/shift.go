@@ -20,6 +20,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/lib/pq"
+
 	"github.com/rudnam/samfran/internal/account"
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/space"
@@ -41,11 +43,6 @@ type Settings struct {
 
 type Store struct {
 	db *sql.DB
-	// Saved, if set, runs after a month is saved (Google Calendar sync).
-	Saved func(spaceID int64, month string)
-	// Changed, if set, runs after settings change, which can change every
-	// day's times and the calendar's name.
-	Changed func(spaceID int64)
 }
 
 func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
@@ -113,28 +110,37 @@ func (s *Store) spaceByFeed(ctx context.Context, token string) (int64, error) {
 	return id, err
 }
 
-// codes returns the codes from..to (inclusive), by date.
-func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([][2]string, error) {
+// codes returns the days from..to (inclusive), by date.
+func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]DayCode, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT to_char(day, 'YYYY-MM-DD'), code FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
+		SELECT to_char(day, 'YYYY-MM-DD'), code, coworkers FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
 		spaceID, from, to)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out [][2]string
+	var out []DayCode
 	for rows.Next() {
-		var d, c string
-		if err := rows.Scan(&d, &c); err != nil {
+		var d DayCode
+		if err := rows.Scan(&d.Date, &d.Code, (*pq.StringArray)(&d.With)); err != nil {
 			return nil, err
 		}
-		out = append(out, [2]string{d, c})
+		out = append(out, d)
 	}
 	return out, rows.Err()
 }
 
-// replaceMonth makes a month's codes exactly days (date -> code).
-func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last string, days map[string]string) error {
+// explain works out a stored day, with who's on the same shift.
+func explain(d DayCode, lengths map[string]float64, zone *time.Location) Day {
+	day := Explain(d.Date, d.Code, lengths, zone)
+	if day.Kind == Work && len(d.With) > 0 {
+		day.With = d.With
+	}
+	return day
+}
+
+// replaceMonth makes a month's days exactly days (by date).
+func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last string, days map[string]DayCode) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -143,8 +149,9 @@ func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last str
 	if _, err := tx.ExecContext(ctx, `DELETE FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3`, spaceID, first, last); err != nil {
 		return err
 	}
-	for date, code := range days {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code) VALUES ($1, $2, $3)`, spaceID, date, code); err != nil {
+	for date, d := range days {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code, coworkers) VALUES ($1, $2, $3, $4)`,
+			spaceID, date, d.Code, pq.StringArray(append([]string{}, d.With...))); err != nil { // never NULL
 			return err
 		}
 	}
@@ -272,10 +279,39 @@ func (e *InvalidError) Error() string { return e.Msg }
 
 func invalidf(format string, args ...any) error { return &InvalidError{fmt.Sprintf(format, args...)} }
 
-// DayCode is a day and its code, as typed or read.
+// DayCode is a day and its code, as typed or read, and who else is on the
+// same shift (optional).
 type DayCode struct {
-	Date string `json:"date"`
-	Code string `json:"code"`
+	Date string   `json:"date"`
+	Code string   `json:"code"`
+	With []string `json:"with,omitempty"`
+}
+
+// Limits on the coworkers kept for a day.
+const (
+	maxWith     = 30
+	maxWithName = 40
+)
+
+// cleanNames tidies names as read or typed: trimmed, no blanks or repeats.
+func cleanNames(names []string) ([]string, error) {
+	var out []string
+	seen := map[string]bool{}
+	for _, n := range names {
+		n = strings.Join(strings.Fields(n), " ")
+		if n == "" || seen[n] {
+			continue
+		}
+		if utf8.RuneCountInString(n) > maxWithName {
+			return nil, invalidf("a coworker's name must be at most %d characters", maxWithName)
+		}
+		seen[n] = true
+		out = append(out, n)
+	}
+	if len(out) > maxWith {
+		return nil, invalidf("at most %d coworkers a day", maxWith)
+	}
+	return out, nil
 }
 
 // Settings returns the space's shift settings and their time zone.
@@ -312,9 +348,6 @@ func (s *Store) SetLengths(ctx context.Context, spaceID int64, lengths map[strin
 	if err := s.saveSettings(ctx, spaceID, st.Settings); err != nil {
 		return Settings{}, err
 	}
-	if s.Changed != nil {
-		s.Changed(spaceID)
-	}
 	return st.Settings, nil
 }
 
@@ -337,7 +370,7 @@ func (s *Store) Month(ctx context.Context, spaceID int64, month string, now time
 	}
 	view := MonthView{Month: month, Settings: st, Days: []Day{}}
 	for _, c := range codes {
-		view.Days = append(view.Days, Explain(c[0], c[1], st.Lengths, zone))
+		view.Days = append(view.Days, explain(c, st.Lengths, zone))
 	}
 	return view, nil
 }
@@ -349,7 +382,7 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 	if !ok {
 		return MonthView{}, invalidf("month must be YYYY-MM")
 	}
-	codes := map[string]string{}
+	codes := map[string]DayCode{}
 	for _, d := range days {
 		date, err := time.Parse(time.DateOnly, d.Date)
 		if err != nil || date.Before(first) || date.After(last) {
@@ -359,15 +392,16 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 		if utf8.RuneCountInString(code) > maxCode {
 			return MonthView{}, invalidf("a shift code must be at most %d characters", maxCode)
 		}
+		with, err := cleanNames(d.With)
+		if err != nil {
+			return MonthView{}, err
+		}
 		if code != "" {
-			codes[d.Date] = code
+			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with}
 		}
 	}
 	if err := s.replaceMonth(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly), codes); err != nil {
 		return MonthView{}, err
-	}
-	if s.Saved != nil {
-		s.Saved(spaceID, month)
 	}
 	return s.Month(ctx, spaceID, month, time.Time{})
 }
@@ -453,12 +487,25 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 		NameAsRead string `json:"name_as_read"`
 		Notes      string `json:"notes"`
 	}{MonthView: MonthView{Month: month, Settings: st.Settings, Days: []Day{}}, NameAsRead: sheet.NameAsRead, Notes: sheet.Notes}
+	var leave []string // days whose shift was taken as leave
 	for _, d := range sheet.Days {
 		date := first.AddDate(0, 0, d.Day-1)
 		if d.Day < 1 || date.After(last) || normalize(d.Code) == "" {
 			continue
 		}
-		view.Days = append(view.Days, Explain(date.Format(time.DateOnly), d.Code, st.Lengths, zone))
+		code := CellCode(d.Code, d.Note)
+		if code != d.Code {
+			leave = append(leave, fmt.Sprintf("%d (%s)", d.Day, normalize(d.Code)))
+		}
+		day := Explain(date.Format(time.DateOnly), code, st.Lengths, zone)
+		if with, err := cleanNames(d.With); err == nil && day.Kind == Work && code == d.Code {
+			day.With = with
+		}
+		view.Days = append(view.Days, day)
+	}
+	if len(leave) > 0 {
+		line := "有休 under the code, so paid leave: " + strings.Join(leave, ", ")
+		view.Notes = strings.TrimSpace(view.Notes + "\n" + line)
 	}
 	httpx.WriteJSON(w, http.StatusOK, view)
 	return nil
@@ -523,9 +570,6 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 	if err := h.store.saveSettings(r.Context(), space.SpaceFrom(r), st); err != nil {
 		return err
 	}
-	if h.store.Changed != nil {
-		h.store.Changed(space.SpaceFrom(r))
-	}
 	if d := SettingsChanges(before, st); len(d) > 0 {
 		h.log(r, "shift_settings", d)
 	}
@@ -581,7 +625,7 @@ func (h *Handler) feed(w http.ResponseWriter, r *http.Request) error {
 	}
 	days := make([]Day, 0, len(codes))
 	for _, c := range codes {
-		days = append(days, Explain(c[0], c[1], st.Lengths, zone))
+		days = append(days, explain(c, st.Lengths, zone))
 	}
 	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
 	w.Header().Set("Content-Disposition", `inline; filename="shifts.ics"`)

@@ -35,6 +35,9 @@ func ICS(days []Day, who string, now time.Time) string {
 			line("DTSTART:" + d.Start.UTC().Format("20060102T150405Z"))
 			line("DTEND:" + d.End.UTC().Format("20060102T150405Z"))
 			line("SUMMARY:" + escape(Japanese(d.Label)))
+			if len(d.With) > 0 {
+				line("DESCRIPTION:" + escape(WithLine(d.With)))
+			}
 		default:
 			next, _ := time.Parse("20060102", date)
 			line("DTSTART;VALUE=DATE:" + date)
@@ -47,6 +50,11 @@ func ICS(days []Day, who string, now time.Time) string {
 	}
 	line("END:VCALENDAR")
 	return b.String()
+}
+
+// WithLine says who else is on the shift, for a calendar event.
+func WithLine(with []string) string {
+	return "一緒: " + strings.Join(with, "、")
 }
 
 // Japanese is a day's label as the workplace says it.

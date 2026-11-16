@@ -145,6 +145,7 @@ export const ja = {
   'From the monthly sheet. Times follow the codes.': '月の勤務表から。時間はシフト記号から計算します。',
   Settings: '設定',
   'Next shift': '次のシフト',
+  'With {names}': '一緒: {names}',
   'Previous month': '前の月',
   'Next month': '次の月',
   'No shifts for this month': 'この月のシフトはありません',
@@ -181,22 +182,9 @@ export const ja = {
   'Turn off': 'オフにする',
   'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
-  // Google Calendar
+  // The calendar link
   'In your calendar': 'カレンダーに表示',
   'Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.': 'カレンダーのリンクをオンにして、パソコンのGoogleカレンダーで「他のカレンダー › + › URLで追加」から登録してください。ほかのカレンダーアプリでも使えます。Googleがリンクを確認するのは1日1回ほどなので、変更の反映に最大1日かかります。',
-  'Or connect Google Calendar': 'またはGoogleカレンダーに接続',
-  'Optional, instead of the link: SamFran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.': 'リンクの代わりに使えます。SamFranがGoogleアカウントにシフトのカレンダーを作り、数秒で更新します。どちらか一方だけを使ってください。',
-  'Connected. The shifts are being added to your Google Calendar.': '接続しました。シフトをGoogleカレンダーに追加しています。',
-  'Google Calendar wasn’t connected.': 'Googleカレンダーは接続されませんでした。',
-  'That took too long. Try connecting again.': '時間がかかりすぎました。もう一度接続してください。',
-  'Google Calendar couldn’t be connected. Try again.': 'Googleカレンダーに接続できませんでした。もう一度お試しください。',
-  Connected: '接続済み',
-  'updated {when}': '{when}に更新',
-  'Updating…': '更新しています…',
-  'Update now': '今すぐ更新',
-  'Disconnecting stops updates; the calendar stays in your Google account until you delete it there.': '接続を解除すると更新が止まります。カレンダーはGoogleアカウントで削除するまで残ります。',
-  'Connect from samfran.rudnam.com in your phone’s browser or on a computer: Google doesn’t allow it inside the app.': 'スマホのブラウザかパソコンで samfran.rudnam.com から接続してください（アプリ内ではGoogleが許可していません）。',
-  'Connect Google Calendar': 'Googleカレンダーに接続',
 
   // The bus-stop alarm
   Bus: 'バス',
@@ -419,9 +407,6 @@ export const jaServer = {
   'choose where the stop is': 'バス停の場所を選んでください',
   "a stop's name must be at most 80 characters": 'バス停の名前は80文字以内にしてください',
   'ring between 200 m and 5 km before the stop': 'バス停の200m〜5km手前に設定してください',
-  "Google Calendar isn't set up on this server": 'このサーバーではGoogleカレンダーが設定されていません',
-  'Google no longer allows SamFran to update the calendar; connect it again.': 'GoogleがSamFranによるカレンダーの更新を許可しなくなりました。もう一度接続してください。',
-  'The last update to Google Calendar failed; it will try again with the next change.': 'Googleカレンダーへの前回の更新に失敗しました。次の変更のときにもう一度試します。',
   'not found': '見つかりません',
   'that sign-in took too long; try again': 'ログインに時間がかかりすぎました。もう一度お試しください',
   "the demo can't do this; create an account to use it": 'デモではこの操作はできません。使うにはアカウントを作成してください',

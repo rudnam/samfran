@@ -7,6 +7,7 @@ import { syncBackground } from '../../background';
 import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { clock, datesOf, dayName, explain, labelOf, monthName, normalize } from './codes';
+import { WithNames } from './WithNames';
 
 // The photo reader's answer, handed from ShiftsPage to this page.
 let pendingRead: ShiftMonth | null = null;
@@ -35,6 +36,14 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     );
   }, [month, fromPhoto]);
 
+  // Who's on the same shift, as read or saved. Only kept while the day's
+  // code is unchanged: a different code is a different shift.
+  const original = new Map(base?.days.map((d) => [d.date, d]) ?? []);
+  function withFor(date: string, code: string): string[] | undefined {
+    const d = original.get(date);
+    return d?.with?.length && normalize(d.code) === normalize(code) ? d.with : undefined;
+  }
+
   async function save() {
     setBusy(true);
     setError('');
@@ -42,7 +51,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
       await api.saveShifts(
         month,
         Object.entries(codes)
-          .map(([date, code]) => ({ date, code: normalize(code) }))
+          .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
           .filter((d) => d.code),
       );
       void syncBackground(true); // the phone asks "Start bus alarm?" at the new times
@@ -112,6 +121,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
                     {meaning.problem && <span className="error"> · {t('Unknown length: set it in Settings')}</span>}
                   </>
                 )}
+                <WithNames names={withFor(date, code)} className="with block" />
               </span>
             </li>
           );

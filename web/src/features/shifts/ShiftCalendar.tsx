@@ -5,6 +5,7 @@ import type { ShiftDay } from '../../api';
 import { t } from '../../i18n';
 import { locale } from '../../language';
 import { datesOf, dayName, labelOf, timesOf } from './codes';
+import { WithNames } from './WithNames';
 
 /** Today as YYYY-MM-DD, on this device. */
 function today(): string {
@@ -76,6 +77,7 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
               <span className="code-chip">{shown.code}</span>
+              <WithNames names={shown.with} className="with small row-note" />
             </>
           ) : (
             <span className="grow muted">{t('Nothing entered')}</span>
