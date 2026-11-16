@@ -6,7 +6,6 @@ import { api, errorMessage, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { clock, datesOf, dayName, explain, labelOf, monthName, normalize } from './codes';
-import { WithNames } from './WithNames';
 
 // The photo reader's answer, handed from ShiftsPage to this page.
 let pendingRead: ShiftMonth | null = null;
@@ -14,11 +13,18 @@ export function setPendingRead(m: ShiftMonth) {
   pendingRead = m;
 }
 
+// Names are separated by commas (a name itself has a space in it).
+function splitNames(text: string): string[] {
+  return text.split(/[,、，]/).map((n) => n.trim()).filter(Boolean);
+}
+
 const common = ['7F', '9F', '13F', '22F', '普', '法', '有休'];
 
 export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: boolean }) {
   const [base, setBase] = useState<ShiftMonth | null>(null);
   const [codes, setCodes] = useState<Record<string, string>>({});
+  // Coworkers typed by hand, per day, as one comma-separated line.
+  const [typed, setTyped] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -35,24 +41,39 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     );
   }, [month, fromPhoto]);
 
-  // Who's on the same shift, as read or saved. Only kept while the day's
-  // code is unchanged: a different code is a different shift.
+  // Who's on the same shift: what was typed, else as read or saved. The read
+  // names only stay while the day's code is unchanged (a different code is a
+  // different shift); typed names are the user's call and always stay.
   const original = new Map(base?.days.map((d) => [d.date, d]) ?? []);
   function withFor(date: string, code: string): string[] | undefined {
     const d = original.get(date);
+    if (typed[date] !== undefined) return splitNames(typed[date]);
     return d?.with?.length && normalize(d.code) === normalize(code) ? d.with : undefined;
+  }
+
+  // Names fixed while checking a scan, as read → corrected, so the next scan
+  // gets them right. Only where the same number of names went as came, so
+  // each pairs with the one it replaced.
+  function corrections(days: { date: string; with?: string[] }[]) {
+    const out = new Map<string, string>();
+    for (const d of days) {
+      const was = original.get(d.date)?.with ?? [];
+      const now = d.with ?? [];
+      const removed = was.filter((n) => !now.includes(n));
+      const added = now.filter((n) => !was.includes(n));
+      if (removed.length === added.length) removed.forEach((from, i) => out.set(from, added[i]));
+    }
+    return [...out].map(([from, to]) => ({ from, to }));
   }
 
   async function save() {
     setBusy(true);
     setError('');
     try {
-      await api.saveShifts(
-        month,
-        Object.entries(codes)
-          .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
-          .filter((d) => d.code),
-      );
+      const days = Object.entries(codes)
+        .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
+        .filter((d) => d.code);
+      await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined);
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));
@@ -119,7 +140,16 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
                     {meaning.problem && <span className="error"> · {t('Unknown length: set it in Settings')}</span>}
                   </>
                 )}
-                <WithNames names={withFor(date, code)} className="with block" />
+                {code && (
+                  <input
+                    className="with-input"
+                    value={typed[date] ?? withFor(date, code)?.join(', ') ?? ''}
+                    maxLength={400}
+                    placeholder={t('Who else is on this shift (separate with commas)')}
+                    aria-label={t('Who is with you on {day}', { day: dayName(date) })}
+                    onChange={(e) => setTyped((w) => ({ ...w, [date]: e.target.value }))}
+                  />
+                )}
               </span>
             </li>
           );

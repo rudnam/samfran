@@ -160,8 +160,11 @@ export const api = {
   searchPlaces: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundPlace[]>('GET', `/api/restaurants/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
-  saveShifts: (month: string, days: { date: string; code: string; with?: string[] }[]) =>
-    request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
+  saveShifts: (
+    month: string,
+    days: { date: string; code: string; with?: string[] }[],
+    corrections?: { from: string; to: string }[],
+  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
   saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
