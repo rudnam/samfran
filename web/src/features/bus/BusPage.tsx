@@ -51,7 +51,7 @@ export function BusPage() {
       setTrip(await fn());
     } catch (err) {
       const code = (err as { code?: string }).code;
-      setError(code === 'LOCATION_DENIED' ? t('samfran needs your location to know when you’re near the stop. Allow it in the phone’s settings.') : errorMessage(err));
+      setError(code === 'LOCATION_DENIED' ? t('SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.') : errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -114,7 +114,7 @@ export function BusPage() {
       {!isApp && (
         <div className="card stack">
           <h2>{t('On the phone')}</h2>
-          <p className="muted">{t('It runs in the samfran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
+          <p className="muted">{t('It runs in the SamFran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
           {apk && (
             <a className="button" href={apk.url} download>
               {t('Get the Android app')}
@@ -231,7 +231,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
       setPos({ lat: h.lat, lng: h.lng });
       setByName(false);
     } catch {
-      setError(t('Couldn’t tell where you are. Check that location is on, and allowed for samfran.'));
+      setError(t('Couldn’t tell where you are. Check that location is on, and allowed for SamFran.'));
     } finally {
       setBusy(false);
     }

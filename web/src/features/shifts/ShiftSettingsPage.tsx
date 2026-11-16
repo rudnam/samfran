@@ -203,7 +203,7 @@ function GoogleCalendarCard() {
         </p>
       )}
       <p className="muted">
-        {t('Optional, instead of the link: samfran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.')}
+        {t('Optional, instead of the link: SamFran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.')}
       </p>
       {st.connected ? (
         <>

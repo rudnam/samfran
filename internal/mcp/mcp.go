@@ -221,7 +221,7 @@ func writeRPC(w http.ResponseWriter, res rpcResponse) {
 	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
-const instructions = `samfran is a private app shared by two people. It keeps the restaurants they've been to (with visits and each person's 1-5 star rating) and want to go to, and one person's work shifts.
+const instructions = `SamFran is a private app shared by two people. It keeps the restaurants they've been to (with visits and each person's 1-5 star rating) and want to go to, and one person's work shifts.
 
 Shifts: when the user shares a photo of a monthly shift sheet (勤務表), call get_shift_settings first, read only the row of the person named there (name_on_sheet), then show the user the whole month as a table (day, weekday, code, and the times worked out from the code) and ask them to check it against the sheet. Only after they confirm, call save_month_shifts. Never repeat anyone else's name or shifts from the sheet.
 
@@ -241,7 +241,7 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 		return map[string]any{
 			"protocolVersion": version,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "samfran", "title": "samfran", "version": h.cfg.Version},
+			"serverInfo":      map[string]any{"name": "samfran", "title": "SamFran", "version": h.cfg.Version},
 			"instructions":    instructions,
 		}, nil
 	case "ping":
