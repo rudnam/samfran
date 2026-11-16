@@ -74,6 +74,13 @@ public class BusAlarmPlugin extends Plugin {
         start(call);
     }
 
+    /** Stops a buzz (after a test, or arriving). */
+    @PluginMethod
+    public void stopBuzz(PluginCall call) {
+        BusTripService.stopBuzz(getContext());
+        call.resolve(status());
+    }
+
     @PluginMethod
     public void stop(PluginCall call) {
         getContext().startService(new Intent(getContext(), BusTripService.class).setAction(BusTripService.ACTION_STOP));
@@ -91,6 +98,7 @@ public class BusAlarmPlugin extends Plugin {
         JSObject o = new JSObject();
         o.put("running", BusTripService.running);
         o.put("distance", BusTripService.distance);
+        o.put("buzzing", BusTripService.buzzing);
         o.put("notifications", !needsNotifications());
         return o;
     }

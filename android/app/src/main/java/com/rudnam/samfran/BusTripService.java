@@ -11,17 +11,24 @@ import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.AudioAttributes;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.VibrationAttributes;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.os.VibratorManager;
 
 import java.util.Locale;
 
 /**
  * A bus trip: while it runs, the phone watches its position (GPS, the
  * network as a fallback) and, once it's within the alert distance of the
- * stop, buzzes: a notification that vibrates, with no sound.
+ * stop, buzzes: the phone vibrates, with no sound, until "I'm up" is tapped,
+ * the notification is swiped away or samfran is opened (or for ten minutes
+ * at most). The service stays until then, so the buzzing isn't cut short.
  * It's a foreground service, so it shows a notification for as long as it
  * runs, and Android doesn't stop it while the screen is off. It stops itself
  * after ringing, or after three hours. Positions never leave the phone.
@@ -31,15 +38,18 @@ public class BusTripService extends Service implements LocationListener {
     static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_RADIUS = "radius", EXTRA_NAME = "name";
 
     static final String TRIP_CHANNEL = "trip";
-    static final String ALARM_CHANNEL = "arrival";
+    static final String ALARM_CHANNEL = "nearly";
     static final int TRIP_NOTIFICATION = 1;
     static final int ALARM_NOTIFICATION = 2;
     private static final long MAX_TRIP_MS = 3 * 60 * 60 * 1000L;
+    private static final long MAX_BUZZ_MS = 10 * 60 * 1000L;
+    private static final Handler main = new Handler(Looper.getMainLooper());
 
     /** Read by BusAlarmPlugin.status. */
     static volatile boolean running;
     static volatile float distance = -1;
     static volatile String stopName = "";
+    static volatile boolean buzzing;
 
     private double lat, lng;
     private float radius;
@@ -95,8 +105,9 @@ public class BusTripService extends Service implements LocationListener {
         Location.distanceBetween(here.getLatitude(), here.getLongitude(), lat, lng, d);
         distance = d[0];
         if (d[0] <= radius) {
+            // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
+            locations.removeUpdates(this);
             ring(this, stopName);
-            stopSelf();
             return;
         }
         notifyManager().notify(TRIP_NOTIFICATION, tripNotification(getString(R.string.trip_distance, km(d[0]))));
@@ -107,6 +118,7 @@ public class BusTripService extends Service implements LocationListener {
         running = false;
         handler.removeCallbacks(timeout);
         if (locations != null) locations.removeUpdates(this);
+        stopBuzz(this); // a trip stopped while buzzing stops the buzz too
         super.onDestroy();
     }
 
@@ -135,31 +147,67 @@ public class BusTripService extends Service implements LocationListener {
                 .build();
     }
 
-    /** The two notification channels: a quiet one for the trip, one that vibrates for arriving. */
+    /** The two notification channels: a quiet one for the trip, a heads-up one for arriving. */
     static void channels(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         nm.deleteNotificationChannel("alarm"); // version 3's loud alarm
+        nm.deleteNotificationChannel("arrival"); // version 4's, which buzzed a few times
         nm.createNotificationChannel(new NotificationChannel(TRIP_CHANNEL, c.getString(R.string.channel_trip), NotificationManager.IMPORTANCE_LOW));
-        NotificationChannel arrival = new NotificationChannel(ALARM_CHANNEL, c.getString(R.string.channel_alarm), NotificationManager.IMPORTANCE_HIGH);
-        arrival.setSound(null, null); // vibration only
-        arrival.enableVibration(true);
-        arrival.setVibrationPattern(new long[]{0, 700, 300, 700, 300, 700});
-        arrival.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        nm.createNotificationChannel(arrival);
+        NotificationChannel nearly = new NotificationChannel(ALARM_CHANNEL, c.getString(R.string.channel_alarm), NotificationManager.IMPORTANCE_HIGH);
+        nearly.setSound(null, null); // no sound
+        nearly.enableVibration(false); // ring() vibrates, until it's stopped
+        nearly.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(nearly);
     }
 
-    /** Buzzes: a notification that vibrates a few times. Tapping it opens samfran. */
+    private static Vibrator vibrator(Context c) {
+        if (Build.VERSION.SDK_INT >= 31) {
+            return ((VibratorManager) c.getSystemService(Context.VIBRATOR_MANAGER_SERVICE)).getDefaultVibrator();
+        }
+        return (Vibrator) c.getSystemService(Context.VIBRATOR_SERVICE);
+    }
+
+    private static final Runnable autoStop = () -> {};
+
+    /**
+     * Buzzes: vibrates on repeat, with a notification whose "I'm up" button
+     * (or swiping it away, or opening samfran) stops it. Ten minutes at most.
+     */
     static void ring(Context c, String name) {
-        channels(c);
-        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        Notification n = new Notification.Builder(c, ALARM_CHANNEL)
+        Context app = c.getApplicationContext();
+        channels(app);
+        VibrationEffect pattern = VibrationEffect.createWaveform(new long[]{0, 800, 600}, 0);
+        if (Build.VERSION.SDK_INT >= 33) {
+            vibrator(app).vibrate(pattern, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM));
+        } else {
+            vibrator(app).vibrate(pattern, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build());
+        }
+        buzzing = true;
+        PendingIntent stop = PendingIntent.getBroadcast(app, 3, new Intent(app, StopBuzzReceiver.class), PendingIntent.FLAG_IMMUTABLE);
+        Intent open = new Intent(app, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+        Notification n = new Notification.Builder(app, ALARM_CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_bus)
-                .setContentTitle(c.getString(R.string.alarm_title))
-                .setContentText(name.isEmpty() ? c.getString(R.string.alarm_text) : c.getString(R.string.alarm_text_named, name))
-                .setCategory(Notification.CATEGORY_REMINDER)
-                .setContentIntent(PendingIntent.getActivity(c, 2, open, PendingIntent.FLAG_IMMUTABLE))
+                .setContentTitle(app.getString(R.string.alarm_title))
+                .setContentText(name.isEmpty() ? app.getString(R.string.alarm_text) : app.getString(R.string.alarm_text_named, name))
+                .setCategory(Notification.CATEGORY_ALARM)
+                .setContentIntent(PendingIntent.getActivity(app, 2, open, PendingIntent.FLAG_IMMUTABLE)) // MainActivity stops the buzz
+                .setDeleteIntent(stop)
+                .addAction(new Notification.Action.Builder(null, app.getString(R.string.alarm_stop), stop).build())
                 .setAutoCancel(true)
                 .build();
-        ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(ALARM_NOTIFICATION, n);
+        ((NotificationManager) app.getSystemService(Context.NOTIFICATION_SERVICE)).notify(ALARM_NOTIFICATION, n);
+        main.removeCallbacksAndMessages(autoStop);
+        main.postAtTime(() -> stopBuzz(app), autoStop, android.os.SystemClock.uptimeMillis() + MAX_BUZZ_MS);
+    }
+
+    /** Stops buzzing, and the trip with it. */
+    static void stopBuzz(Context c) {
+        Context app = c.getApplicationContext();
+        main.removeCallbacksAndMessages(autoStop);
+        if (!buzzing) return;
+        buzzing = false;
+        vibrator(app).cancel();
+        ((NotificationManager) app.getSystemService(Context.NOTIFICATION_SERVICE)).cancel(ALARM_NOTIFICATION);
+        app.stopService(new Intent(app, BusTripService.class));
     }
 }

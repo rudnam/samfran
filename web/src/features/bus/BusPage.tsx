@@ -73,7 +73,16 @@ export function BusPage() {
         </p>
       )}
 
-      {isApp && ready && (
+      {isApp && trip?.buzzing && (
+        <div className="card stack trip on" role="status">
+          <p className="trip-big">{t('Buzzing')}</p>
+          <button type="button" disabled={busy} onClick={() => run(() => busAlarm.stopBuzz())}>
+            {t('I’m up')}
+          </button>
+        </div>
+      )}
+
+      {isApp && ready && !trip?.buzzing && (
         <div className={trip?.running ? 'card stack trip on' : 'card stack trip'}>
           {trip?.running ? (
             <>
@@ -81,7 +90,7 @@ export function BusPage() {
               <p className="trip-big">
                 {trip.distance >= 0 ? t('{distance} to {stop}', { distance: km(trip.distance), stop: stop.name || t('your stop') }) : t('Finding where you are…')}
               </p>
-              <p className="muted small">{t('It buzzes {distance} before the stop. You can lock the phone.', { distance: km(stop.alert_meters) })}</p>
+              <p className="muted small">{t('It buzzes from {distance} before the stop until you tap I’m up. You can lock the phone.', { distance: km(stop.alert_meters) })}</p>
               <button type="button" className="secondary" disabled={busy} onClick={() => run(() => busAlarm.stop())}>
                 {t('Stop')}
               </button>

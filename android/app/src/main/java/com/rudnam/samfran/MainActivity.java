@@ -13,4 +13,11 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(BusAlarmPlugin.class);
         super.onCreate(savedInstanceState);
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // Opening samfran means she's up: stop the bus buzz.
+        BusTripService.stopBuzz(this);
+    }
 }

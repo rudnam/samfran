@@ -101,6 +101,8 @@ export interface TripStatus {
   running: boolean;
   /** Metres to the stop, -1 until the phone knows. */
   distance: number;
+  /** Buzzing now, until stopped. */
+  buzzing: boolean;
   /** Notifications are allowed (needed for the alarm and the trip). */
   notifications: boolean;
 }
@@ -108,6 +110,7 @@ export interface TripStatus {
 export const busAlarm = registerPlugin<{
   start(o: { lat: number; lng: number; radius: number; name: string }): Promise<TripStatus>;
   stop(): Promise<TripStatus>;
+  stopBuzz(): Promise<TripStatus>;
   status(): Promise<TripStatus>;
   test(o: { name: string }): Promise<TripStatus>;
   here(): Promise<{ lat: number; lng: number; accuracy: number }>;

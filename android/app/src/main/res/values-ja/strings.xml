@@ -10,4 +10,5 @@
     <string name="alarm_title">次で降ります</string>
     <string name="alarm_text">降りる準備をしましょう。</string>
     <string name="alarm_text_named">もうすぐ%1$sです。</string>
+    <string name="alarm_stop">起きた</string>
 </resources>
