@@ -15,6 +15,10 @@ package account
 // server redirects it to <package>://auth?code=…, which Android hands to the
 // app, and the app trades the code and its secret for a session token. A
 // code another app intercepts is useless without the secret.
+//
+// The pull-request preview build installs beside the real app under
+// <package>.preview, so it sends app_variant=preview and is sent back to
+// its own scheme; otherwise the real app would get its sign-in.
 
 import (
 	"context"
@@ -61,9 +65,18 @@ func appChallenge(s string) []byte {
 	return b
 }
 
-// appRedirect is where Google sign-in sends the browser back to the app.
-func (h *Handler) appRedirect(q url.Values) string {
-	return h.cfg.AppScheme + "://auth?" + q.Encode()
+// appVariants are the builds that may ask to be sent back: "" is the real
+// app, and each other one installs as <package>.<variant>.
+var appVariants = map[string]bool{"": true, "preview": true}
+
+// appRedirect is where Google sign-in sends the browser back to the app's
+// build variant.
+func (h *Handler) appRedirect(variant string, q url.Values) string {
+	scheme := h.cfg.AppScheme
+	if variant != "" {
+		scheme += "." + variant
+	}
+	return scheme + "://auth?" + q.Encode()
 }
 
 // appToken trades a code from the Google sign-in and the secret behind its

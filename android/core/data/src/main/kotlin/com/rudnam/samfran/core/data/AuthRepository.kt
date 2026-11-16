@@ -1,5 +1,6 @@
 package com.rudnam.samfran.core.data
 
+import android.content.Context
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.datastore.SessionStore
@@ -9,6 +10,7 @@ import com.rudnam.samfran.core.network.Server
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.model.NetworkMe
 import com.rudnam.samfran.core.network.model.asModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -73,6 +75,7 @@ sealed interface GoogleResult {
 }
 
 internal class ServerAuthRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val network: SamFranNetwork,
     private val server: Server,
     private val session: SessionStore,
@@ -101,7 +104,10 @@ internal class ServerAuthRepository @Inject constructor(
         val verifier = base64url(ByteArray(32).also { SecureRandom().nextBytes(it) })
         val challenge = base64url(MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray()))
         session.keepGoogleVerifier(verifier)
-        return server.resolve("/api/auth/google?app_challenge=$challenge")
+        // The preview build installs beside the real app as <package>.preview; it asks to be sent
+        // back to its own scheme, or the real app would be the one signed in.
+        val variant = if (context.packageName.endsWith(".preview")) "&app_variant=preview" else ""
+        return server.resolve("/api/auth/google?app_challenge=$challenge$variant")
     }
 
     override suspend fun finishGoogle(back: GoogleReturn): GoogleResult {
