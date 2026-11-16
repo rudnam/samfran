@@ -12,6 +12,7 @@ import com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -52,7 +53,7 @@ class ReadPhotoFlowTest {
     }
 
     @Test
-    fun `a photo that comes back is read, once`() = runTest {
+    fun `a photo that comes back is read, once`() = runTest(UnconfinedTestDispatcher()) {
         val vm = viewModel()
         backgroundScope.launch { vm.state.collect {} } // as the page does
         photos.arrived(Uri.parse("content://media/picker/0/1"))
@@ -61,7 +62,7 @@ class ReadPhotoFlowTest {
     }
 
     @Test
-    fun `a photo that came back while the page was gone is read when it opens`() = runTest {
+    fun `a photo that came back while the page was gone is read when it opens`() = runTest(UnconfinedTestDispatcher()) {
         // Android remade the app while the camera was open: the activity has the photo before any Shifts page exists.
         photos.arrived(Uri.parse("content://com.rudnam.samfran.files/photos/sheet.jpg"))
         val vm = viewModel()
