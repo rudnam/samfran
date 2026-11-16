@@ -143,7 +143,7 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
       json: {
         month,
         settings: { ...settings, reader: true },
-        days: [{ date: `${month}-01`, code: '22F', kind: 'work', label: '夜勤' }],
+        days: [{ date: `${month}-01`, code: '22F', kind: 'work', label: '夜勤', with: ['タナカ ユエ'] }],
         name_as_read: 'オトル サマンタ',
         notes: '',
       },
@@ -162,4 +162,14 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
   await expect(days.nth(0).getByRole('combobox')).toHaveValue('22F');
   expect(started).toBe(1);
   expect(asked).toBe(3);
+
+  // A misread name is fixed by hand, and the fix is sent so the next scan gets it right.
+  const who = days.nth(0).getByRole('textbox');
+  await expect(who).toHaveValue('タナカ ユエ');
+  await who.fill('タナカ ユイ');
+  const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));
+  await page.getByRole('button', { name: /^Save / }).click();
+  const sent = (await saving).postDataJSON();
+  expect(sent.days[0].with).toEqual(['タナカ ユイ']);
+  expect(sent.corrections).toEqual([{ from: 'タナカ ユエ', to: 'タナカ ユイ' }]);
 });

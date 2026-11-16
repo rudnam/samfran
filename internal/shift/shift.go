@@ -491,7 +491,19 @@ func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(cont
 	// The month after next week: a sheet for next month is usually shared
 	// late in the month before.
 	soon := h.now().In(zone).AddDate(0, 0, 7)
-	hint := Month{soon.Year(), int(soon.Month())}
+	hint := Month{Year: soon.Year(), Month: int(soon.Month())}
+	// Names this space has had before: told to the reader, and matched to
+	// whatever it still gets a character wrong. Missing them is no reason not to read.
+	spaceID := space.SpaceFrom(r)
+	known, err := h.store.knownNames(r.Context(), spaceID)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "load known names", "err", err)
+	}
+	fixes, err := h.store.nameFixes(r.Context(), spaceID)
+	if err != nil {
+		slog.ErrorContext(r.Context(), "load name corrections", "err", err)
+	}
+	hint.Names = known
 	return func(ctx context.Context) (any, error) {
 		sheet, err := h.reader.Read(ctx, image, mediaType, st.NameOnSheet, hint)
 		if errors.Is(err, ErrRefused) {
@@ -500,6 +512,9 @@ func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(cont
 		if err != nil {
 			slog.ErrorContext(ctx, "read shift sheet", "err", err)
 			return nil, httpx.Errorf(http.StatusBadGateway, "the photo couldn't be read just now; try again, or enter the shifts by hand")
+		}
+		if changes := applyNames(&sheet, fixes, known); len(changes) > 0 {
+			sheet.Notes = strings.TrimSpace(sheet.Notes + "\nNames changed to match people you've had before: " + strings.Join(changes, ", "))
 		}
 		return sheetView(sheet, st, zone)
 	}, nil
