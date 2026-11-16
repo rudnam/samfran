@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/rudnam/samfran/internal/account"
+	"github.com/rudnam/samfran/internal/activity"
 	"github.com/rudnam/samfran/internal/bus"
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/demo"
@@ -92,9 +93,13 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		Demo:              demoFiller,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
+	activities := activity.NewStore(conn)
 	spaceHandler := space.NewHandler(spaces, accounts.RequireUser)
+	spaceHandler.Log = activities.Log
 	spaceHandler.Register(mux)
-	restaurant.NewHandler(restaurants).Register(mux, spaceHandler.Require)
+	restaurantHandler := restaurant.NewHandler(restaurants)
+	restaurantHandler.Log = activities.Log
+	restaurantHandler.Register(mux, spaceHandler.Require)
 	reader := cfg.ShiftReader
 	if reader == nil && cfg.AnthropicAPIKey != "" {
 		reader = shift.NewClaude(cfg.AnthropicAPIKey, "")
@@ -113,11 +118,16 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		}
 		shifts.Changed = func(spaceID int64) { gcal.Later(func(ctx context.Context) { syncer.All(ctx, spaceID) }) }
 	}
-	shift.NewHandler(shifts, reader).Register(mux, spaceHandler.Require)
+	shiftHandler := shift.NewHandler(shifts, reader)
+	shiftHandler.Log = activities.Log
+	shiftHandler.Register(mux, spaceHandler.Require)
+	activity.NewHandler(activities).Register(mux, spaceHandler.Require, func(r *http.Request) int64 { return account.UserFrom(r).ID })
 	bus.NewHandler(conn).Register(mux, accounts.RequireUser)
 	gcal.NewHandler(syncer, spaceHandler.Require).Register(mux)
-	mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
-		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy}).Register(mux, accounts.RequireUser)
+	mcpHandler := mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
+		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy})
+	mcpHandler.Log = activities.Log
+	mcpHandler.Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

@@ -12,6 +12,8 @@ test('invite your partner, who then sees and rates the same places', async ({ pa
   await page.getByRole('button', { name: 'Invite' }).click();
   await expect(page.getByText(partner)).toBeVisible();
   await expect(page.getByPlaceholder('Their email')).toHaveCount(0); // two is enough
+  await page.reload();
+  await expect(page.getByRole('list', { name: 'Recent changes' })).toContainText(`You invited ${partner}`);
 
   const res = await page.request.post('/api/restaurants', { data: { name: 'Gyoza Komachi', visit: { visited_on: '2026-11-01' }, stars: 4 } });
   expect(res.status()).toBe(201);

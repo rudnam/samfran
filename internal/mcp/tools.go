@@ -35,6 +35,13 @@ func (c *call) space() (int64, error) {
 	return c.spaceID, nil
 }
 
+// log records a change made through Claude.
+func (c *call) log(kind string, details map[string]any) {
+	if c.h.Log != nil && c.spaceID != 0 {
+		c.h.Log(c.r.Context(), c.spaceID, c.userID, "claude", kind, details)
+	}
+}
+
 // toolError is a problem the model should see and can fix, e.g. a bad
 // argument; other errors are logged and reported as internal.
 type toolError struct{ msg string }
@@ -146,9 +153,16 @@ var toolList = []*tool{
 			if err != nil {
 				return nil, err
 			}
+			before, _, err := c.h.shifts.Settings(c.r.Context(), sp)
+			if err != nil {
+				return nil, err
+			}
 			st, err := c.h.shifts.SetLengths(c.r.Context(), sp, in.Lengths)
 			if err != nil {
 				return nil, asToolError(err, "settings")
+			}
+			if d := shift.SettingsChanges(before, st); len(d) > 0 {
+				c.log("shift_settings", d)
 			}
 			st.FeedPath = ""
 			return st, nil
@@ -210,6 +224,7 @@ var toolList = []*tool{
 			if err != nil {
 				return nil, asToolError(err, "month")
 			}
+			c.log("shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
 			view.Settings.FeedPath = ""
 			return view, nil
 		},
@@ -301,6 +316,7 @@ var toolList = []*tool{
 					return nil, err
 				}
 			}
+			c.log("restaurant_added", map[string]any{"name": f.Name, "been": on != "", "stars": in.Stars})
 			return c.h.restaurants.Get(ctx, sp, c.userID, id)
 		},
 	},
@@ -330,7 +346,11 @@ var toolList = []*tool{
 			if err := c.h.restaurants.AddVisit(c.r.Context(), sp, c.userID, in.RestaurantID, on, note); err != nil {
 				return nil, asToolError(err, "restaurant")
 			}
-			return c.h.restaurants.Get(c.r.Context(), sp, c.userID, in.RestaurantID)
+			r, err := c.h.restaurants.Get(c.r.Context(), sp, c.userID, in.RestaurantID)
+			if err == nil {
+				c.log("visit_logged", map[string]any{"name": r.Name, "date": on})
+			}
+			return r, err
 		},
 	},
 	{
@@ -357,7 +377,11 @@ var toolList = []*tool{
 			if err := c.h.restaurants.Rate(c.r.Context(), sp, c.userID, in.RestaurantID, in.Stars); err != nil {
 				return nil, asToolError(err, "restaurant")
 			}
-			return c.h.restaurants.Get(c.r.Context(), sp, c.userID, in.RestaurantID)
+			r, err := c.h.restaurants.Get(c.r.Context(), sp, c.userID, in.RestaurantID)
+			if err == nil {
+				c.log("rated", map[string]any{"name": r.Name, "stars": in.Stars})
+			}
+			return r, err
 		},
 	},
 }

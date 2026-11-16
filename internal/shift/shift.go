@@ -20,6 +20,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/rudnam/samfran/internal/account"
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/space"
 )
@@ -67,11 +68,17 @@ func (s *Store) settings(ctx context.Context, spaceID int64) (stored, error) {
 	if err != nil {
 		return st, err
 	}
-	st.Lengths = DefaultLengths
+	// A copy: saved lengths are read on top, and must never change the defaults.
+	st.Lengths = map[string]float64{}
+	for k, v := range DefaultLengths {
+		st.Lengths[k] = v
+	}
 	if len(lengths) > 0 {
-		if err := json.Unmarshal(lengths, &st.Lengths); err != nil {
+		saved := map[string]float64{}
+		if err := json.Unmarshal(lengths, &saved); err != nil {
 			return st, err
 		}
+		st.Lengths = saved
 	}
 	st.feedToken = token.String
 	if token.Valid {
@@ -147,6 +154,8 @@ func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last str
 // ---------- HTTP ----------
 
 type Handler struct {
+	// Log, if set, records changes for the Us tab's history (internal/activity).
+	Log    func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
 	store  *Store
 	reader Reader // nil: photos can't be read on this server
 	now    func() time.Time
@@ -195,6 +204,42 @@ func (h *Handler) loadSettings(r *http.Request) (stored, *time.Location, error) 
 	}
 	st.Reader = h.reader != nil
 	return st, zone, nil
+}
+
+func (h *Handler) log(r *http.Request, kind string, details map[string]any) {
+	if h.Log != nil {
+		h.Log(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, "app", kind, details)
+	}
+}
+
+// SettingsChanges describes what changed between two settings, for the
+// history: {"person_name": [old, new], "lengths": {"F": [8, 9]}, …}.
+func SettingsChanges(before, after Settings) map[string]any {
+	d := map[string]any{}
+	if before.PersonName != after.PersonName {
+		d["person_name"] = []string{before.PersonName, after.PersonName}
+	}
+	if before.NameOnSheet != after.NameOnSheet {
+		d["name_on_sheet"] = []string{before.NameOnSheet, after.NameOnSheet}
+	}
+	if before.TimeZone != after.TimeZone {
+		d["time_zone"] = []string{before.TimeZone, after.TimeZone}
+	}
+	lengths := map[string]any{}
+	for k, v := range after.Lengths {
+		if old, ok := before.Lengths[k]; !ok || old != v {
+			lengths[k] = []any{before.Lengths[k], v}
+		}
+	}
+	for k, old := range before.Lengths {
+		if _, ok := after.Lengths[k]; !ok {
+			lengths[k] = []any{old, nil}
+		}
+	}
+	if len(lengths) > 0 {
+		d["lengths"] = lengths
+	}
+	return d
 }
 
 // MonthView is a month of shifts as the app shows it.
@@ -343,6 +388,7 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	h.log(r, "shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
 	view.Settings.Reader = h.reader != nil
 	httpx.WriteJSON(w, http.StatusOK, view)
 	return nil
@@ -444,6 +490,11 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	st := cur.Settings
+	before := st
+	before.Lengths = map[string]float64{}
+	for k, v := range cur.Lengths {
+		before.Lengths[k] = v
+	}
 	if in.PersonName != nil {
 		st.PersonName = strings.TrimSpace(*in.PersonName)
 	}
@@ -475,6 +526,9 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 	if h.store.Changed != nil {
 		h.store.Changed(space.SpaceFrom(r))
 	}
+	if d := SettingsChanges(before, st); len(d) > 0 {
+		h.log(r, "shift_settings", d)
+	}
 	return h.getSettings(w, r)
 }
 
@@ -486,6 +540,7 @@ func (h *Handler) turnOnFeed(w http.ResponseWriter, r *http.Request) error {
 	if err := h.store.setFeedToken(r.Context(), space.SpaceFrom(r), base64.RawURLEncoding.EncodeToString(raw)); err != nil {
 		return err
 	}
+	h.log(r, "calendar_link_new", nil)
 	return h.getSettings(w, r)
 }
 
@@ -493,6 +548,7 @@ func (h *Handler) turnOffFeed(w http.ResponseWriter, r *http.Request) error {
 	if err := h.store.setFeedToken(r.Context(), space.SpaceFrom(r), ""); err != nil {
 		return err
 	}
+	h.log(r, "calendar_link_off", nil)
 	return h.getSettings(w, r)
 }
 

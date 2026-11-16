@@ -217,6 +217,8 @@ func SpaceFrom(r *http.Request) int64 {
 }
 
 type Handler struct {
+	// Log, if set, records changes for the Us tab's history (internal/activity).
+	Log         func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
 	store       *Store
 	requireUser func(http.Handler) http.Handler
 }
@@ -291,6 +293,9 @@ func (h *Handler) invite(w http.ResponseWriter, r *http.Request) error {
 	case err != nil:
 		return err
 	}
+	if h.Log != nil {
+		h.Log(r.Context(), SpaceFrom(r), account.UserFrom(r).ID, "app", "invited", map[string]any{"email": email})
+	}
 	return h.get(w, r)
 }
 
@@ -300,6 +305,9 @@ func (h *Handler) uninvite(w http.ResponseWriter, r *http.Request) error {
 		return httpx.Errorf(http.StatusNotFound, "no such invitation")
 	} else if err != nil {
 		return err
+	}
+	if h.Log != nil {
+		h.Log(r.Context(), SpaceFrom(r), account.UserFrom(r).ID, "app", "invite_cancelled", map[string]any{"email": email})
 	}
 	return h.get(w, r)
 }

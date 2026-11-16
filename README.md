@@ -127,6 +127,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | Path | What it does |
 |---|---|
 | `cmd/server/` | Entry point: loads config, connects, migrates, serves, and shuts down cleanly on `SIGTERM`. |
+| `internal/activity/` | Recent changes: who changed what the two of you share (shifts and their settings, the calendar link, restaurants, invitations), from the app or via Claude. Features record through a `Log` hook; the Us tab shows the latest. |
 | `internal/bus/` | Feature: where each person gets off the bus (`/api/bus/stop`), for the Android app's wake-up alarm. The phone watches its own position during a trip; the server never stores it. |
 | `internal/config/` | Reads and validates every setting from the environment. |
 | `internal/db/` | Connection pool, migrations (`migrations/*.sql`, embedded), shared errors. |
@@ -211,6 +212,7 @@ The language follows the device until someone picks one (the picker in the top b
 | POST | `/api/calendar/sync` | user | Writes two months back to a year ahead now. `{available, connected, synced_at, error}`. |
 | DELETE | `/api/calendar` | user | Disconnects and revokes Google's token; the calendar stays in the person's account. |
 | GET | `/privacy` | – | The privacy page (Google's consent screen links to it). |
+| GET | `/api/activity` | user | The space's latest 50 changes: `[{id, at, who, me, via, kind, details}]`, newest first. `via` is `app` or `claude`; the app words each `kind` (`shifts_saved`, `shift_settings`, `rated`, …). |
 | GET, PUT | `/api/bus/stop` | user | `{set, name, lat, lng, alert_meters}`: the signed-in person's stop. PUT `{name, lat, lng, alert_meters}` (200 m to 5 km; 800 by default). |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |

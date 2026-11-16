@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Downloads, type MCPToken, type Me } from '../../api';
 import { server } from '../../native';
 import { isApp } from '../../native';
+import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { t } from '../../i18n';
 import { Avatar, useSpace } from '../../space';
@@ -142,6 +143,8 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           </a>
         </div>
       )}
+
+      <ActivityCard />
 
       {!me.demo && <ClaudeCard />}
 

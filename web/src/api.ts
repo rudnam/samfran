@@ -186,6 +186,7 @@ export const api = {
   disconnectCalendar: () => request<CalendarStatus>('DELETE', '/api/calendar'),
   busStop: () => request<BusStop>('GET', '/api/bus/stop'),
   saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number }) => request<BusStop>('PUT', '/api/bus/stop', s),
+  activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
 };
@@ -265,6 +266,18 @@ export interface BusStop {
   lng: number;
   /** Ring this many metres before the stop. */
   alert_meters: number;
+}
+
+/** A change to what you share, for Recent changes. */
+export interface ActivityEntry {
+  id: number;
+  at: string;
+  /** The member's name; '' if they've left. */
+  who: string;
+  me: boolean;
+  via: 'app' | 'claude';
+  kind: string;
+  details: Record<string, unknown>;
 }
 
 /** What the server offers to download: the Android app's APK, or null. */

@@ -12,6 +12,7 @@
 package mcp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -42,8 +43,10 @@ type Config struct {
 }
 
 type Handler struct {
-	cfg         Config
-	store       *Store
+	cfg   Config
+	store *Store
+	// Log, if set, records changes for the Us tab's history, as made via Claude.
+	Log         func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
 	spaces      *space.Store
 	restaurants *restaurant.Store
 	shifts      *shift.Store

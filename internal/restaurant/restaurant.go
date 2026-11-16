@@ -252,6 +252,8 @@ func oneRow(res sql.Result, err error) error {
 // ---------- HTTP ----------
 
 type Handler struct {
+	// Log, if set, records changes for the Us tab's history (internal/activity).
+	Log   func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
 	store *Store
 	now   func() time.Time
 	// maps follows Google Maps links one redirect at a time (maps.go).
@@ -281,6 +283,22 @@ var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant")
 func pathID(r *http.Request, name string) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
 	return id, err == nil && id > 0
+}
+
+// log records a change to restaurant id, by name.
+func (h *Handler) log(r *http.Request, kind string, id int64, details map[string]any) {
+	if h.Log == nil {
+		return
+	}
+	if details == nil {
+		details = map[string]any{}
+	}
+	if _, ok := details["name"]; !ok {
+		if cur, err := h.store.Get(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id); err == nil {
+			details["name"] = cur.Name
+		}
+	}
+	h.Log(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, "app", kind, details)
 }
 
 // respond answers with the restaurant as it now is.
@@ -404,6 +422,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
+	h.log(r, "restaurant_added", id, map[string]any{"name": f.Name, "been": in.Visit != nil, "stars": in.Stars})
 	return h.respond(w, r, http.StatusCreated, id)
 }
 
@@ -448,6 +467,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
+	h.log(r, "restaurant_edited", id, nil)
 	return h.respond(w, r, http.StatusOK, id)
 }
 
@@ -456,11 +476,16 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) error {
 	if !ok {
 		return errNoSuch
 	}
+	name := ""
+	if cur, err := h.store.Get(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id); err == nil {
+		name = cur.Name
+	}
 	if err := h.store.Delete(r.Context(), space.SpaceFrom(r), id); errors.Is(err, db.ErrNotFound) {
 		return errNoSuch
 	} else if err != nil {
 		return err
 	}
+	h.log(r, "restaurant_deleted", id, map[string]any{"name": name})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -484,6 +509,7 @@ func (h *Handler) addVisit(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
+	h.log(r, "visit_logged", id, map[string]any{"date": v.VisitedOn})
 	return h.respond(w, r, http.StatusCreated, id)
 }
 
@@ -499,6 +525,7 @@ func (h *Handler) deleteVisit(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
+	h.log(r, "visit_removed", id, nil)
 	return h.respond(w, r, http.StatusOK, id)
 }
 
@@ -522,5 +549,6 @@ func (h *Handler) rate(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
+	h.log(r, "rated", id, map[string]any{"stars": in.Stars})
 	return h.respond(w, r, http.StatusOK, id)
 }
