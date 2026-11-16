@@ -143,7 +143,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
       </a>
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
       {!fields && !error && <p className="muted">{t('Loading…')}</p>}
-      {!id && fields && !shared && isApp && <p className="hint">{t('Share a place from Google Maps to samfran to add it in one tap.')}</p>}
+      {!id && fields && !shared && isApp && <p className="hint">{t('Share a place from Google Maps to SamFran to add it in one tap.')}</p>}
       {fields && (
         <form className="card stack" onSubmit={submit}>
           {!id && (

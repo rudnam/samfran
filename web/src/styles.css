@@ -1,5 +1,6 @@
 /* Quiet Pop: calm, warm off-white, with Sam's colours as accents.
-   Fran is red, Sam orange. Dark mode follows the OS. */
+   Fran is red, Sam orange. Dark mode follows the OS unless
+   one is picked on this device (theme.ts). */
 @font-face {
   font-family: 'Plus Jakarta Sans';
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
@@ -41,8 +42,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Dark when the device is dark and Light isn't picked, or when Dark is picked
+   (Us → This device → Appearance). Keep the two blocks the same. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #161311;
     --surface: #211c19;
     --sunken: #2b2420;
@@ -64,6 +67,28 @@
     --shadow: 0 0 0 1px var(--border);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #161311;
+  --surface: #211c19;
+  --sunken: #2b2420;
+  --text: #f5efea;
+  --muted: #a99d94;
+  --border: #322a25;
+  --divider: #2c2521;
+  --accent: #ff5a3c;
+  --accent-text: #160e0b;
+  --accent-ink: #ff8a73;
+  --star-off: #463a32;
+  --danger: #ffb4a9;
+  --a-bg: #4a1d16; --a-text: #ffb4a6; --a-solid: #ff5a3c; --a-on: #160e0b;
+  --b-bg: #45290f; --b-text: #ffc58f; --b-solid: #ff9a3d; --b-on: #160e0b;
+  --tile-yellow: #3d3214; --tile-yellow-ink: #ffd877;
+  --tile-green: #183424; --tile-green-ink: #8fdcab;
+  --tile-red: #44201a; --tile-red-ink: #ffab9b;
+  --tile-orange: #45290f; --tile-orange-ink: #ffc58f;
+  --shadow: 0 0 0 1px var(--border);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }

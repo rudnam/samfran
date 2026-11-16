@@ -67,6 +67,13 @@ for (const [name, viewport] of [
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
     await shot('8-us');
 
+    // The same screens in dark, picked on Us.
+    await page.getByLabel('Appearance').selectOption('dark');
+    await shot('9-us-dark');
+    await page.getByRole('link', { name: 'Food' }).click();
+    await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+    await shot('10-food-dark');
+
     // Nothing may overflow sideways.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);

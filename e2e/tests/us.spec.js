@@ -20,7 +20,7 @@ test('invite your partner, who then sees and rates the same places', async ({ pa
   const other = await browser.newContext();
   const sam = await other.newPage();
   await sam.goto(link);
-  await expect(sam.getByRole('status')).toHaveText('Fran invited you to samfran. Create your account to join.');
+  await expect(sam.getByRole('status')).toHaveText('Fran invited you to SamFran. Create your account to join.');
   await expect(sam.getByRole('heading', { name: 'Create an account' })).toBeVisible();
   await sam.getByLabel('Email').fill(uniqueEmail());
   await sam.getByLabel('Password').fill(PASSWORD);

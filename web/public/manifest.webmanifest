@@ -1,6 +1,6 @@
 {
-  "name": "Samfran",
-  "short_name": "Samfran",
+  "name": "SamFran",
+  "short_name": "SamFran",
   "start_url": "/app/",
   "scope": "/app/",
   "display": "standalone",

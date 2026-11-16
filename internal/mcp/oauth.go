@@ -81,7 +81,7 @@ func (h *Handler) resourceMetadata(w http.ResponseWriter, r *http.Request) {
 	o := h.origin(r)
 	writePublicJSON(w, map[string]any{
 		"resource":                 o + "/mcp",
-		"resource_name":            "samfran",
+		"resource_name":            "SamFran",
 		"authorization_servers":    []string{o},
 		"bearer_methods_supported": []string{"header"},
 	})

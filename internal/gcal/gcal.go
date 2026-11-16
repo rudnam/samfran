@@ -1,6 +1,6 @@
 // Package gcal keeps a Google Calendar of the shifts in each connected
 // person's own Google account. Connecting (Shifts › Settings) signs in with
-// Google for the calendar.app.created scope: samfran may only make its own
+// Google for the calendar.app.created scope: SamFran may only make its own
 // calendars and touch events on them, never anyone's other calendars. It
 // makes one calendar ("Sam's shifts"), and every time a month of shifts is
 // saved, from the app or from Claude, writes that month's days to it as
@@ -197,7 +197,7 @@ func (s *Syncer) tokenRequest(ctx context.Context, form url.Values) (access, ref
 }
 
 // errReconnect means Google no longer accepts the person's connection
-// (they removed samfran's access): they need to connect again.
+// (they removed SamFran's access): they need to connect again.
 var errReconnect = errors.New("connect Google Calendar again")
 
 func (s *Syncer) accessToken(ctx context.Context, l link) (string, error) {
@@ -253,7 +253,7 @@ func (s *Syncer) setResult(ctx context.Context, userID int64, err error) {
 	msg := ""
 	switch {
 	case errors.Is(err, errReconnect):
-		msg = "Google no longer allows samfran to update the calendar; connect it again."
+		msg = "Google no longer allows SamFran to update the calendar; connect it again."
 	case err != nil:
 		msg = "The last update to Google Calendar failed; it will try again with the next change."
 	}
@@ -293,7 +293,7 @@ type reminders struct {
 func eventID(date string) string { return "sf" + strings.ReplaceAll(date, "-", "") }
 
 func toEvent(d shift.Day, zone string) event {
-	e := event{ID: eventID(d.Date), Summary: shift.Japanese(d.Label), Description: d.Code + " (samfran)", Status: "confirmed",
+	e := event{ID: eventID(d.Date), Summary: shift.Japanese(d.Label), Description: d.Code + " (SamFran)", Status: "confirmed",
 		Reminders: &reminders{UseDefault: false, Overrides: []any{}}}
 	if d.Start != nil && d.End != nil {
 		e.Start = eventTime{DateTime: d.Start.Format(time.RFC3339), TimeZone: zone}

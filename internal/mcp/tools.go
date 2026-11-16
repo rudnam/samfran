@@ -116,7 +116,7 @@ var toolList = []*tool{
 	{
 		Name:  "get_shift_settings",
 		Title: "Shift settings",
-		Description: "Whose shifts samfran keeps (person_name), their name as printed on the shift sheet (name_on_sheet: read only that row), " +
+		Description: "Whose shifts SamFran keeps (person_name), their name as printed on the shift sheet (name_on_sheet: read only that row), " +
 			"the hours on site for each letter of a shift code (lengths: 13F starts at 13:00 and lasts lengths.F hours), and the time zone. " +
 			"Codes: a start hour and a letter for a working day (7F, 13F, 22F; a night shift ends the next morning); 普 and 法 are days off; 有休 is paid leave; トレ and 研修 are training.",
 		InputSchema: object(map[string]any{}),
