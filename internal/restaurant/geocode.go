@@ -14,13 +14,14 @@ package restaurant
 import (
 	"context"
 	"encoding/json"
-	"math"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rudnam/samfran/internal/geo"
 )
 
 const (
@@ -108,20 +109,11 @@ func (g *geocoder) find(ctx context.Context, name string) (lat, lng *float64) {
 	}
 	var sumLat, sumLng float64
 	for _, p := range pts {
-		if meters(pts[0].lat, pts[0].lng, p.lat, p.lng) > sameSpot {
+		if geo.Meters(pts[0].lat, pts[0].lng, p.lat, p.lng) > sameSpot {
 			return nil, nil // the name is in more than one place
 		}
 		sumLat, sumLng = sumLat+p.lat, sumLng+p.lng
 	}
 	a, b := sumLat/float64(len(pts)), sumLng/float64(len(pts))
 	return &a, &b
-}
-
-// meters is the distance between two points (haversine).
-func meters(lat1, lng1, lat2, lng2 float64) float64 {
-	const r = 6371000.0
-	rad := math.Pi / 180
-	dLat, dLng := (lat2-lat1)*rad, (lng2-lng1)*rad
-	h := math.Sin(dLat/2)*math.Sin(dLat/2) + math.Cos(lat1*rad)*math.Cos(lat2*rad)*math.Sin(dLng/2)*math.Sin(dLng/2)
-	return 2 * r * math.Asin(math.Sqrt(h))
 }

@@ -22,3 +22,34 @@ test('choose the bus stop from a Google Maps link', async ({ page }) => {
   await page.reload();
   await expect(page.getByText('Kamijima Station')).toBeVisible();
 });
+
+test('find the bus stop by typing part of its name', async ({ page }) => {
+  // The search is answered by Photon (OpenStreetMap); here, by this fake.
+  await page.route('**/api/bus/search?*', (route) => {
+    const q = new URL(route.request().url()).searchParams.get('q');
+    route.fulfill({
+      json: q.startsWith('葵西')
+        ? [
+            { name: '葵西小学校入口', area: '浜松市 中央区 磐田細江線', kind: 'bus', lat: 34.76966, lng: 137.71207 },
+            { name: '葵西三丁目', area: '浜松市 中央区', kind: 'bus', lat: 34.772, lng: 137.715 },
+          ]
+        : [],
+    });
+  });
+  await signUp(page);
+  await page.getByRole('link', { name: 'Bus', exact: true }).click();
+  await page.getByLabel('Stop name').fill('あおい');
+  await expect(page.getByText('No stops by that name.')).toBeVisible();
+  await page.getByLabel('Stop name').fill('葵西小');
+  const list = page.getByRole('list', { name: 'Matching stops' });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await expect(page.getByRole('link', { name: 'Stops from OpenStreetMap' })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('bus-search.png'), fullPage: true });
+  await list.getByRole('button', { name: /葵西小学校入口/ }).click();
+
+  await expect(list).toHaveCount(0);
+  await expect(page.getByLabel('Stop name')).toHaveValue('葵西小学校入口');
+  await expect(page.getByText('Found it.')).toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('link', { name: 'See it on the map' })).toHaveAttribute('href', /query=34\.76966,137\.71207/);
+});
