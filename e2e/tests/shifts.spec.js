@@ -98,20 +98,23 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   // Editing: still there while the code is the same; a different code is a different shift.
   await page.getByRole('link', { name: 'Edit by hand' }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
-  await expect(days.nth(0)).toContainText('With タナカ ユイ, スズキ ケン');
+  const who = days.nth(0).getByRole('textbox');
+  await expect(who).toHaveValue('タナカ ユイ, スズキ ケン');
   await days.nth(0).getByRole('combobox').fill('13F');
-  await expect(days.nth(0)).not.toContainText('With');
+  await expect(who).toHaveValue('');
   await days.nth(0).getByRole('combobox').fill('22F');
-  await expect(days.nth(0)).toContainText('With タナカ ユイ');
+  await expect(who).toHaveValue('タナカ ユイ, スズキ ケン');
+  // A wrong read can be fixed by hand: change a name, add one.
+  await who.fill('タナカ ユイ, サトウ ミキ');
   await page.getByRole('button', { name: /^Save / }).click();
   await page.getByRole('radio', { name: 'List' }).click();
-  await expect(list.nth(0)).toContainText('With タナカ ユイ, スズキ ケン');
+  await expect(list.nth(0)).toContainText('With タナカ ユイ, サトウ ミキ');
 
   // The calendar feed says who too.
   await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
-  expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、スズキ ケン');
+  expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、サトウ ミキ');
 });
 
 test('read a photo of the sheet: the page waits for the read, then opens the month to check', async ({ page }) => {
