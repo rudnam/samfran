@@ -268,8 +268,9 @@ func TestShiftNameMemory(t *testing.T) {
 	// Checking it: one name fixed by hand, one left right. Both are remembered.
 	days := []map[string]any{{"date": "2026-11-02", "code": "13F", "with": []string{"田中 結", "スズキ ケン", "ヤマダ タロウ"}}}
 	fixes := []map[string]string{{"from": "タナカ ユエ", "to": "田中 結"}, {"from": "スズキ ケソ", "to": "スズキ ケン"}, {"from": "same", "to": "same"}, {"from": "", "to": "x"}}
-	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": days, "corrections": fixes}, nil); code != 200 {
-		t.Fatalf("save: %d", code)
+	var saveErr map[string]any
+	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": days, "corrections": fixes}, &saveErr); code != 200 {
+		t.Fatalf("save: %d %v", code, saveErr)
 	}
 
 	// The next read has the right names, tells the reader who's known, and says what it changed.

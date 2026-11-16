@@ -413,17 +413,27 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
 		Month string    `json:"month"`
 		Days  []DayCode `json:"days"`
+		// Corrections are names the photo reader got wrong, as fixed while
+		// checking a scan; later scans use them.
+		Corrections []NameFix `json:"corrections"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	view, err := h.store.SaveMonth(r.Context(), space.SpaceFrom(r), in.Month, in.Days)
+	fixes, err := cleanFixes(in.Corrections)
 	var inv *InvalidError
+	if errors.As(err, &inv) {
+		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
+	}
+	view, err := h.store.SaveMonth(r.Context(), space.SpaceFrom(r), in.Month, in.Days)
 	if errors.As(err, &inv) {
 		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
 	}
 	if err != nil {
 		return err
+	}
+	if err := h.store.saveNameFixes(r.Context(), space.SpaceFrom(r), fixes); err != nil {
+		slog.ErrorContext(r.Context(), "save name corrections", "err", err) // the month is saved; don't fail it
 	}
 	h.log(r, "shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
 	view.Settings.Reader = h.reader != nil
