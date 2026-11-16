@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         splash.setKeepOnScreenCondition { viewModel.uiState.value == MainUiState.Loading && SystemClock.uptimeMillis() - start < 3_000 }
         enableEdgeToEdge()
         if (savedInstanceState == null) route(intent)
+        showLastCrash()
 
         setContent {
             val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,6 +86,28 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         route(intent)
+    }
+
+    /** TEMPORARY: the last crash's stack trace, to read or copy. Remove with SamFranApplication's handler. */
+    private fun showLastCrash() {
+        val prefs = getSharedPreferences("crash", MODE_PRIVATE)
+        val trace = prefs.getString("trace", null) ?: return
+        prefs.edit().remove("trace").apply()
+        val text = android.widget.TextView(this).apply {
+            this.text = trace
+            textSize = 10f
+            setTextIsSelectable(true)
+            setPadding(32, 16, 32, 16)
+        }
+        android.app.AlertDialog.Builder(this)
+            .setTitle("SamFran crashed last time")
+            .setView(android.widget.ScrollView(this).apply { addView(text) })
+            .setPositiveButton("Copy") { _, _ ->
+                getSystemService(android.content.ClipboardManager::class.java)
+                    .setPrimaryClip(android.content.ClipData.newPlainText("crash", trace))
+            }
+            .setNegativeButton("Close", null)
+            .show()
     }
 
     private fun route(intent: Intent) {
