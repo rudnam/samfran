@@ -54,6 +54,18 @@ for (const [name, viewport] of [
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
     await shot('5-add');
+    await page.route('**/api/restaurants/search?*', (route) =>
+      route.fulfill({
+        json: [
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', lat: 34.704, lng: 137.734 },
+          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', lat: 34.703, lng: 137.73 },
+          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', lat: 34.71, lng: 137.72 },
+        ],
+      }),
+    );
+    await page.getByLabel('Name', { exact: true }).fill('Gyoza');
+    await expect(page.getByRole('list', { name: 'Matching places' }).getByRole('listitem')).toHaveCount(3);
+    await shot('5b-add-search');
 
     // Shifts, with a few days of this month.
     const d = new Date();
