@@ -85,19 +85,22 @@ class ActivityJob : JobService() {
         const val SEEN = "seen"
 
         fun schedule(c: Context, on: Boolean) {
-            val js = c.getSystemService(JobScheduler::class.java)
-            if (!on) {
-                js.cancel(JOB)
-                return
+            // The phone refusing the job (a limit, a security rule) must not crash the app: the alerts just won't arrive.
+            runCatching {
+                val js = c.getSystemService(JobScheduler::class.java)
+                if (!on) {
+                    js.cancel(JOB)
+                    return
+                }
+                if (js.getPendingJob(JOB) != null) return // setting it again would start the half hour over
+                js.schedule(
+                    JobInfo.Builder(JOB, ComponentName(c, ActivityJob::class.java))
+                        .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                        .setPeriodic(EVERY_MS)
+                        .setPersisted(true) // across restarts of the phone
+                        .build(),
+                )
             }
-            if (js.getPendingJob(JOB) != null) return // setting it again would start the half hour over
-            js.schedule(
-                JobInfo.Builder(JOB, ComponentName(c, ActivityJob::class.java))
-                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                    .setPeriodic(EVERY_MS)
-                    .setPersisted(true) // across restarts of the phone
-                    .build(),
-            )
         }
 
         /** Takes the notification away: SamFran was opened. */
