@@ -166,6 +166,7 @@ type Handler struct {
 	store  *Store
 	reader Reader // nil: photos can't be read on this server
 	now    func() time.Time
+	reads  reads
 }
 
 func NewHandler(st *Store, reader Reader) *Handler {
@@ -179,6 +180,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("GET /api/shifts", h.month)
 	route("PUT /api/shifts/month", h.saveMonth)
 	route("POST /api/shifts/read", h.read)
+	route("POST /api/shifts/reads", h.startRead)
+	route("GET /api/shifts/reads/{id}", h.readStatus)
 	route("GET /api/shifts/settings", h.getSettings)
 	route("PUT /api/shifts/settings", h.putSettings)
 	route("POST /api/shifts/feed", h.turnOnFeed)
@@ -434,53 +437,83 @@ const maxPhoto = 8 << 20
 
 // read reads a photo of the sheet and answers with the month it found, for
 // the person to check before saving it (saveMonth). Nothing is stored.
+// Reading usually takes longer than a request may run behind CloudFront, so
+// the apps start a read and ask after it instead (reads.go); this stays for
+// app versions already installed.
 func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
-	if h.reader == nil {
-		return httpx.Errorf(http.StatusServiceUnavailable, "reading photos isn't set up on this server; enter the shifts by hand")
-	}
-	st, zone, err := h.loadSettings(r)
+	run, err := h.prepareRead(w, r)
 	if err != nil {
 		return err
 	}
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
+	defer cancel()
+	view, err := run(ctx)
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, view)
+	return nil
+}
+
+// readTimeout is how long Claude gets to read a sheet.
+const readTimeout = 3 * time.Minute
+
+// prepareRead checks a request to read a photo and takes the photo from it.
+// The read itself is the returned func: it answers with the month found, or
+// an *httpx.Error to show.
+func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(context.Context) (any, error), error) {
+	if h.reader == nil {
+		return nil, httpx.Errorf(http.StatusServiceUnavailable, "reading photos isn't set up on this server; enter the shifts by hand")
+	}
+	st, zone, err := h.loadSettings(r)
+	if err != nil {
+		return nil, err
+	}
 	if st.NameOnSheet == "" {
-		return httpx.Errorf(http.StatusBadRequest, "first set the name as it's printed on the sheet")
+		return nil, httpx.Errorf(http.StatusBadRequest, "first set the name as it's printed on the sheet")
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxPhoto+1<<20)
 	file, _, err := r.FormFile("photo")
 	if err != nil {
-		return httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
+		return nil, httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
 	}
 	defer file.Close()
 	image, err := io.ReadAll(io.LimitReader(file, maxPhoto+1))
 	if err != nil || len(image) > maxPhoto {
-		return httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
+		return nil, httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
 	}
 	mediaType := http.DetectContentType(image)
 	switch mediaType {
 	case "image/jpeg", "image/png", "image/webp":
 	default:
-		return httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
+		return nil, httpx.Errorf(http.StatusBadRequest, "send a photo of the sheet (JPEG, PNG or WebP, up to 8 MB)")
 	}
 	// The month after next week: a sheet for next month is usually shared
 	// late in the month before.
 	soon := h.now().In(zone).AddDate(0, 0, 7)
-	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Minute)
-	defer cancel()
-	sheet, err := h.reader.Read(ctx, image, mediaType, st.NameOnSheet, Month{soon.Year(), int(soon.Month())})
-	if errors.Is(err, ErrRefused) {
-		return httpx.Errorf(http.StatusUnprocessableEntity, "the photo couldn't be read; try a clearer one, or enter the shifts by hand")
-	}
-	if err != nil {
-		slog.ErrorContext(r.Context(), "read shift sheet", "err", err)
-		return httpx.Errorf(http.StatusBadGateway, "the photo couldn't be read just now; try again, or enter the shifts by hand")
-	}
+	hint := Month{soon.Year(), int(soon.Month())}
+	return func(ctx context.Context) (any, error) {
+		sheet, err := h.reader.Read(ctx, image, mediaType, st.NameOnSheet, hint)
+		if errors.Is(err, ErrRefused) {
+			return nil, httpx.Errorf(http.StatusUnprocessableEntity, "the photo couldn't be read; try a clearer one, or enter the shifts by hand")
+		}
+		if err != nil {
+			slog.ErrorContext(ctx, "read shift sheet", "err", err)
+			return nil, httpx.Errorf(http.StatusBadGateway, "the photo couldn't be read just now; try again, or enter the shifts by hand")
+		}
+		return sheetView(sheet, st, zone)
+	}, nil
+}
+
+// sheetView is the month read from a sheet, as the person will check it.
+func sheetView(sheet Sheet, st stored, zone *time.Location) (any, error) {
 	if !sheet.Found {
-		return httpx.Errorf(http.StatusUnprocessableEntity, "couldn't find %s on the sheet; check the name in settings", st.NameOnSheet)
+		return nil, httpx.Errorf(http.StatusUnprocessableEntity, "couldn't find %s on the sheet; check the name in settings", st.NameOnSheet)
 	}
 	month := fmt.Sprintf("%04d-%02d", sheet.Year, sheet.Month)
 	first, last, ok := monthRange(month)
 	if !ok {
-		return httpx.Errorf(http.StatusUnprocessableEntity, "couldn't tell which month the sheet is for")
+		return nil, httpx.Errorf(http.StatusUnprocessableEntity, "couldn't tell which month the sheet is for")
 	}
 	view := struct {
 		MonthView
@@ -507,8 +540,7 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 		line := "有休 under the code, so paid leave: " + strings.Join(leave, ", ")
 		view.Notes = strings.TrimSpace(view.Notes + "\n" + line)
 	}
-	httpx.WriteJSON(w, http.StatusOK, view)
-	return nil
+	return view, nil
 }
 
 func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) error {

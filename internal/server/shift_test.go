@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/shift"
@@ -46,15 +47,21 @@ type monthJSON struct {
 	Notes      string
 }
 
-// upload posts a fake JPEG as the photo.
+// upload posts a fake JPEG as the photo to the reading that answers at once.
 func upload(t *testing.T, c *client, out any) int {
+	t.Helper()
+	return uploadTo(t, c, "/api/shifts/read", out)
+}
+
+// uploadTo posts a fake JPEG as the photo to path.
+func uploadTo(t *testing.T, c *client, path string, out any) int {
 	t.Helper()
 	var body bytes.Buffer
 	mw := multipart.NewWriter(&body)
 	fw, _ := mw.CreateFormFile("photo", "sheet.jpg")
 	fw.Write([]byte("\xff\xd8\xff\xe0 not really a jpeg"))
 	mw.Close()
-	return c.send("/api/shifts/read", mw.FormDataContentType(), body.Bytes(), nil, out)
+	return c.send(path, mw.FormDataContentType(), body.Bytes(), nil, out)
 }
 
 func TestShifts(t *testing.T) {
@@ -135,6 +142,79 @@ func TestShifts(t *testing.T) {
 	var theirs monthJSON
 	if other.do("GET", "/api/shifts?month=2026-11", nil, &theirs); len(theirs.Days) != 0 {
 		t.Errorf("another space sees shifts: %+v", theirs.Days)
+	}
+}
+
+// slowReader is fakeReader that waits to be let go, like Claude taking a minute.
+type slowReader struct {
+	fakeReader
+	letGo chan struct{}
+}
+
+func (s *slowReader) Read(ctx context.Context, image []byte, mediaType, name string, m shift.Month) (shift.Sheet, error) {
+	<-s.letGo
+	return s.fakeReader.Read(ctx, image, mediaType, name, m)
+}
+
+// A read is started, then asked after until it's done, so no request has to
+// last as long as Claude takes.
+func TestShiftReadInBackground(t *testing.T) {
+	reader := &slowReader{letGo: make(chan struct{})}
+	ts := newTestServer(t, func(c *config.Config) { c.ShiftReader = reader })
+	c := newClient(t, ts)
+	c.signup("fran@example.com")
+
+	// Checked before it starts: the name on the sheet comes first.
+	if code := uploadTo(t, c, "/api/shifts/reads", nil); code != 400 {
+		t.Errorf("start without a name: %d, want 400", code)
+	}
+	c.do("PUT", "/api/shifts/settings", map[string]any{"name_on_sheet": "オトル サマンタ"}, nil)
+
+	var started struct{ ID string }
+	if code := uploadTo(t, c, "/api/shifts/reads", &started); code != 202 || started.ID == "" {
+		t.Fatalf("start: %d %+v", code, started)
+	}
+	var status struct{ Status string }
+	if code := c.do("GET", "/api/shifts/reads/"+started.ID, nil, &status); code != 202 || status.Status != "reading" {
+		t.Fatalf("while reading: %d %+v", code, status)
+	}
+	// Another space can't see it.
+	other := newClient(t, ts)
+	other.signup("x@example.com")
+	if code := other.do("GET", "/api/shifts/reads/"+started.ID, nil, nil); code != 404 {
+		t.Errorf("another space asks after the read: %d, want 404", code)
+	}
+
+	close(reader.letGo)
+	var m monthJSON
+	code := 0
+	for range 100 {
+		m = monthJSON{}
+		if code = c.do("GET", "/api/shifts/reads/"+started.ID, nil, &m); code != 202 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if code != 200 || m.Month != "2026-11" || len(m.Days) != 5 || m.NameAsRead != "オトル サマンタ" {
+		t.Fatalf("done: %d %+v", code, m)
+	}
+	if code := c.do("GET", "/api/shifts/reads/nope", nil, nil); code != 404 {
+		t.Errorf("an unknown read: %d, want 404", code)
+	}
+
+	// A read that fails answers with the error the old endpoint gives.
+	c.do("PUT", "/api/shifts/settings", map[string]any{"name_on_sheet": "誰か"}, nil)
+	uploadTo(t, c, "/api/shifts/reads", &started)
+	var errBody struct{ Error string }
+	for range 100 {
+		errBody.Error = ""
+		if code = c.do("GET", "/api/shifts/reads/"+started.ID, nil, &errBody); code != 202 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if code != 422 || !strings.Contains(errBody.Error, "couldn't find 誰か") {
+		t.Errorf("not on the sheet: %d %q", code, errBody.Error)
 	}
 }
 

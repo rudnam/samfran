@@ -72,8 +72,9 @@ internal object NetworkModule {
     @Singleton
     fun okHttp(session: SessionStore): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        // Reading a photo of the sheet takes up to a minute.
-        .readTimeout(90, TimeUnit.SECONDS)
+        // Reading a photo of the sheet takes about a minute, but in the
+        // background (SamFranNetwork.readPhoto): no request waits for it.
+        .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor(
             AuthInterceptor(session) {
                 // The app's own language (Android's per-app language), else the phone's.
