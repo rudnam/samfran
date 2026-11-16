@@ -11,4 +11,19 @@
     <string name="alarm_text">降りる準備をしましょう。</string>
     <string name="alarm_text_named">もうすぐ%1$sです。</string>
     <string name="alarm_stop">起きた</string>
+    <string name="channel_shift_end">シフトが終わったとき</string>
+    <string name="shift_end_title">バスアラームを開始しますか？</string>
+    <string name="shift_end_text">シフトが終わりました。降りるバス停の手前で振動します。</string>
+    <string name="shift_end_text_named">シフトが終わりました。%1$sの手前で振動します。</string>
+    <string name="shift_end_start">バスアラームを開始</string>
+    <string name="channel_changes">相手による変更</string>
+    <string name="change_someone">誰か</string>
+    <string name="change_added_been">%1$sさんが%2$sを追加しました</string>
+    <string name="change_added_want">%1$sさんが%2$sに行きたいそうです</string>
+    <string name="change_visit">%1$sさんが%2$sへの来店を記録しました</string>
+    <string name="change_rated">%1$sさんが%2$sを★%3$dと評価しました</string>
+    <string name="change_shifts">%1$sさんがシフトを保存しました</string>
+    <plurals name="change_more">
+        <item quantity="other">ほか%d件の変更</item>
+    </plurals>
 </resources>

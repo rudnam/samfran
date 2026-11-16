@@ -2,9 +2,11 @@
 // the calendar link, restaurants, invitations), from the app or via Claude.
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type ActivityEntry } from '../../api';
+import { useCached } from '../../cache';
 import { t } from '../../i18n';
 import { locale } from '../../language';
 import { monthName } from '../shifts/codes';
+import { markSeen, seenUpTo } from './unseen';
 
 const setting: Record<string, () => string> = {
   person_name: () => t('whose shifts'),
@@ -64,13 +66,14 @@ function describe(e: ActivityEntry): string {
 }
 
 export function ActivityCard() {
-  const [list, setList] = useState<ActivityEntry[] | null>(null);
-  const [error, setError] = useState('');
+  const { data: list, error } = useCached('activity', api.activity, errorMessage);
   const [all, setAll] = useState(false);
+  // What was new when this opened stays marked while it's on screen.
+  const [seen] = useState(seenUpTo);
 
   useEffect(() => {
-    api.activity().then(setList, (err) => setError(errorMessage(err)));
-  }, []);
+    if (list) markSeen(list);
+  }, [list]);
 
   const shown = (list ?? []).map((e) => ({ e, text: describe(e) })).filter((x) => x.text);
   return (
@@ -87,6 +90,7 @@ export function ActivityCard() {
           {(all ? shown : shown.slice(0, 8)).map(({ e, text }) => (
             <li key={e.id}>
               <span className="grow">
+                {seen !== null && !e.me && e.id > seen && <span className="new-mark">{t('New')}</span>}
                 <strong>{e.me ? t('You') : e.who || t('Someone')}</strong> {text}
                 {e.via === 'claude' && <span className="via"> · {t('via Claude')}</span>}
               </span>

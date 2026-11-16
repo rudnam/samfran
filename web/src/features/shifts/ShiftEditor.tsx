@@ -3,6 +3,7 @@
 // and shows what the code means as it's typed.
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type ShiftMonth } from '../../api';
+import { syncBackground } from '../../background';
 import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { clock, datesOf, dayName, explain, labelOf, monthName, normalize } from './codes';
@@ -44,6 +45,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
           .map(([date, code]) => ({ date, code: normalize(code) }))
           .filter((d) => d.code),
       );
+      void syncBackground(true); // the phone asks "Start bus alarm?" at the new times
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));

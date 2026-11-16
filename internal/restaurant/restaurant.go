@@ -47,6 +47,12 @@ type Visit struct {
 	AddedBy   string `json:"added_by"`
 }
 
+// VisitNote is a visit's date and what was written about it.
+type VisitNote struct {
+	VisitedOn string `json:"visited_on"` // YYYY-MM-DD
+	Note      string `json:"note"`
+}
+
 type Restaurant struct {
 	ID         int64     `json:"id"`
 	Name       string    `json:"name"`
@@ -59,6 +65,9 @@ type Restaurant struct {
 	VisitCount int       `json:"visit_count"`
 	LastVisit  *string   `json:"last_visit"` // YYYY-MM-DD, or null if you haven't been
 	Ratings    []Rating  `json:"ratings"`
+	// What was written about visits (those with a note), newest first, so a
+	// search can find "where did we have that?".
+	VisitNotes []VisitNote `json:"visit_notes,omitempty"`
 	// Visits, newest first, only when one restaurant is asked for.
 	Visits []Visit `json:"visits,omitempty"`
 }
@@ -139,7 +148,27 @@ func (s *Store) query(ctx context.Context, me int64, where string, args ...any) 
 		rt.Name, rt.Me = space.DisplayName(name, email), uid == me
 		out[byID[rid]].Ratings = append(out[byID[rid]].Ratings, rt)
 	}
-	return out, ratings.Err()
+	if err := ratings.Err(); err != nil {
+		return nil, err
+	}
+	notes, err := s.db.QueryContext(ctx, `
+		SELECT v.restaurant_id, to_char(v.visited_on, 'YYYY-MM-DD'), v.note
+		FROM restaurant_visits v
+		WHERE v.restaurant_id = ANY($1) AND v.note <> ''
+		ORDER BY v.visited_on DESC, v.id DESC`, pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer notes.Close()
+	for notes.Next() {
+		var rid int64
+		var n VisitNote
+		if err := notes.Scan(&rid, &n.VisitedOn, &n.Note); err != nil {
+			return nil, err
+		}
+		out[byID[rid]].VisitNotes = append(out[byID[rid]].VisitNotes, n)
+	}
+	return out, notes.Err()
 }
 
 // List returns all the space's restaurants. me is the person asking, whose

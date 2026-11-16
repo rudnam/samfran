@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com), the same way as RudWallet's: the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: receiving a place shared from Google Maps (`ShareTargetPlugin.java`), and later the bus-stop alarm.
+The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com), the same way as RudWallet's: the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: receiving a place shared from Google Maps (`ShareTargetPlugin.java`), the bus-stop alarm, and notifications while the app is closed.
 
 - Package `com.rudnam.samfran` (permanent once published), talking to https://samfran.rudnam.com (`web/.env.android`).
 - Web app changes reach phones only with a new app build. Server changes reach them at once, so keep the API compatible with the last release (add fields; don't rename or remove them).
@@ -60,6 +60,20 @@ Export isn't offered in the app (the download needs the browser's sign-in); use 
 The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance the phone **vibrates on repeat, with no sound**, until "I'm up" on the notification is tapped, the notification is swiped away, or samfran is opened (ten minutes at most; `StopBuzzReceiver.java`, `MainActivity.onResume`). A trip ends when the buzz stops, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
 
 Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), and a location foreground service.
+
+## "Start bus alarm?" when a shift ends
+
+Off until switched on, on the **Bus** tab ("Ask when a shift ends"), on the phone of whoever's shifts they are. The web app gives the phone the times the coming shifts end (`web/src/background.ts` → `RemindersPlugin.java`), again each time the app opens and whenever shifts or the stop are saved. `ShiftPrompt.java` sets an alarm for the next one; when it goes off it shows a notification, **Start bus alarm?**, whose button opens `com.rudnam.samfran://bus?start=1`: the Bus tab, which starts the trip as "I'm on the bus" does. A tap elsewhere on it opens the Bus tab without starting.
+
+- The alarm is inexact (`setAndAllowWhileIdle`), so Android may show it a few minutes late; in return it needs no exact-alarm permission. A shift that ended more than 45 minutes ago (the phone was off) isn't asked about.
+- The phone knows the shifts as of the last time the app was open on it. If the sheet changes on the other phone, this one catches up when samfran is next opened.
+- Alarms don't survive a restart of the phone, so the same receiver sets them again on `BOOT_COMPLETED`.
+
+## Notifications about the other person's changes
+
+Off until switched on, on the **Us** tab ("Tell me about changes"). About every half hour, while the phone is online, `ActivityJob.java` (a `JobService`) asks the server for the recent changes (`GET /api/activity`, with the app's own session token) and shows a notification for the other person's new places, visits, ratings and saved shifts. Android runs the job when it suits the battery, so it can be later than that. The phone asks rather than being pushed to, which needs no Firebase project or Google services; real push would be faster and would need both.
+
+Both need notification permission (asked when one is switched on), and `RECEIVE_BOOT_COMPLETED` to carry on after a restart. Opening samfran clears their notifications.
 
 ## Adding a place from Google Maps
 

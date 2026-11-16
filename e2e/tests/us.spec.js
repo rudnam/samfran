@@ -36,6 +36,10 @@ test('invite your partner, who then sees and rates the same places', async ({ pa
   await page.getByRole('link', { name: 'Food' }).click();
   await expect(page.getByRole('list', { name: 'Been there' })).toContainText('F ★4');
   await page.reload();
+  // What Sam did since Fran last looked: a dot on the Us tab, and "New" beside it there.
+  await expect(page.getByRole('img', { name: /new change/ })).toBeVisible();
   await page.getByRole('link', { name: 'Us', exact: true }).click();
+  await expect(page.getByRole('list', { name: 'Recent changes' }).getByRole('listitem').first()).toContainText('New');
+  await expect(page.getByRole('img', { name: /new change/ })).toHaveCount(0);
   await expect(page.getByRole('list', { name: 'Members' }).getByRole('listitem')).toHaveCount(2);
 });

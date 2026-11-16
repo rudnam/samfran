@@ -42,6 +42,14 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: /Hanabi Grill/ }).click();
     await expect(page.getByRole('heading', { name: 'Hanabi Grill' })).toBeVisible();
     await shot('4-restaurant');
+    await page.getByRole('button', { name: 'Delete this place' }).click();
+    await expect(page.getByRole('dialog', { name: 'Delete Hanabi Grill?' })).toBeVisible();
+    await shot('4b-delete-dialog');
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: /^Delete the visit on/ }).click();
+    await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+    await shot('4c-undo');
+    await page.getByRole('button', { name: 'Undo' }).click();
 
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
@@ -51,14 +59,23 @@ for (const [name, viewport] of [
     const d = new Date();
     const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
+    // The whole month, so the calendar is full and there's a next shift whatever today is.
     const codes = ['7F', '9F', '13F', '22F', '普', '13F', '法', '有休', '13F', '22F'];
+    const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
     const res = await page.request.put('/api/shifts/month', {
-      data: { month, days: codes.map((code, i) => ({ date: `${month}-${String(i + 1).padStart(2, '0')}`, code })) },
+      data: {
+        month,
+        days: Array.from({ length: last }, (_, i) => ({ date: `${month}-${String(i + 1).padStart(2, '0')}`, code: codes[i % codes.length] })),
+      },
     });
     expect(res.status()).toBe(200);
     await page.getByRole('link', { name: 'Shifts', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Calendar' })).toBeVisible();
     await shot('6-shifts');
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.getByRole('list', { name: 'Shifts' })).toBeVisible();
+    await shot('6b-shifts-list');
     await page.getByRole('link', { name: 'Edit by hand' }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');

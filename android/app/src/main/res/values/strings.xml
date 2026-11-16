@@ -15,4 +15,20 @@
     <string name="alarm_text">Time to get ready to get off.</string>
     <string name="alarm_text_named">%1$s is coming up.</string>
     <string name="alarm_stop">I\'m up</string>
+    <string name="channel_shift_end">When a shift ends</string>
+    <string name="shift_end_title">Start bus alarm?</string>
+    <string name="shift_end_text">The shift is over. It buzzes before your stop.</string>
+    <string name="shift_end_text_named">The shift is over. It buzzes before %1$s.</string>
+    <string name="shift_end_start">Start bus alarm</string>
+    <string name="channel_changes">Changes by the other one of you</string>
+    <string name="change_someone">Someone</string>
+    <string name="change_added_been">%1$s added %2$s</string>
+    <string name="change_added_want">%1$s wants to go to %2$s</string>
+    <string name="change_visit">%1$s logged a visit to %2$s</string>
+    <string name="change_rated">%1$s rated %2$s ★%3$d</string>
+    <string name="change_shifts">%1$s saved the shifts</string>
+    <plurals name="change_more">
+        <item quantity="one">and %d more change</item>
+        <item quantity="other">and %d more changes</item>
+    </plurals>
 </resources>

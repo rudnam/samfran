@@ -307,3 +307,73 @@ select { width: 100%; }
 .activity li:first-child { border-top: 0; padding-top: 0; }
 .activity time { white-space: nowrap; }
 .activity .via { color: var(--muted); }
+
+/* ---------- The month as a calendar ---------- */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-head { text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--muted); padding: 2px 0; }
+.cal-day {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  aspect-ratio: 1; min-height: 44px; padding: 2px; border-radius: 12px;
+  background: var(--sunken); color: var(--text); font-weight: 600;
+}
+.cal-num { font-size: 0.72rem; font-variant-numeric: tabular-nums; opacity: 0.75; }
+.cal-mark { font-size: 0.95rem; font-weight: 800; line-height: 1.1; min-height: 1.1em; max-width: 100%; overflow: hidden; white-space: nowrap; }
+.cal-day.early { background: #ffe9a8; color: #5c4300; }
+.cal-day.middle { background: #c9efd6; color: #0f4d2a; }
+.cal-day.late { background: #ffd6ad; color: #6b3100; }
+.cal-day.night { background: #dcd6ff; color: #2f2480; }
+.cal-day.training { background: #dfe4ea; color: #37404c; }
+.cal-day.off, .cal-day.leave, .cal-day.other { color: var(--muted); }
+.cal-day.none { background: none; box-shadow: inset 0 0 0 1px var(--divider); color: var(--muted); }
+.cal-day.today { box-shadow: inset 0 0 0 2.5px var(--accent); }
+.cal-day[aria-pressed='true'] { outline: 2.5px solid var(--text); outline-offset: 1px; }
+.cal-detail { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--divider); margin-top: 6px; font-size: 0.94rem; }
+@media (prefers-color-scheme: dark) {
+  .cal-day.early { background: #57440a; color: #ffe08a; }
+  .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
+  .cal-day.late { background: #5c3410; color: #ffc993; }
+  .cal-day.night { background: #37307a; color: #d3ccff; }
+  .cal-day.training { background: #3a424d; color: #d5dbe3; }
+}
+
+/* ---------- Dialogs, undo, and loading ---------- */
+dialog.ask {
+  border: 0; border-radius: var(--radius-lg); padding: 20px; width: min(22rem, calc(100vw - 32px));
+  background: var(--surface); color: var(--text); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+dialog.ask::backdrop { background: rgba(20, 16, 13, 0.45); }
+button.danger:not(.link) { background: var(--danger); color: var(--surface); }
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); z-index: 20;
+  bottom: calc(96px + env(safe-area-inset-bottom)); width: min(26rem, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 14px;
+  background: var(--text); color: var(--bg); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.toast button.link { color: inherit; font-weight: 800; padding: 8px 12px; }
+@media (min-width: 720px) { .toast { bottom: 24px; } }
+.skeleton { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+.skeleton span { height: 44px; border-radius: 12px; background: var(--sunken); animation: pulse 1.2s ease-in-out infinite alternate; }
+@keyframes pulse { from { opacity: 0.45; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
+
+/* A visit's note that matched the search. */
+.spot-note { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Changes the other person made since this device last looked. */
+.tabbar a { position: relative; }
+.tab-dot { position: absolute; top: 4px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+@media (max-width: 719px) { .tab-dot { top: 0; right: calc(50% - 18px); } }
+.new-mark { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent-ink); margin-right: 6px; }
+
+/* A setting that's on or off. */
+.switch { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+.switch input {
+  appearance: none; flex: none; width: 46px; height: 28px; padding: 0; border: 0; border-radius: 999px;
+  background: var(--star-off); position: relative; cursor: pointer; transition: background 0.15s;
+}
+.switch input::after {
+  content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.switch input:checked { background: var(--accent); }
+.switch input:checked::after { transform: translateX(18px); }

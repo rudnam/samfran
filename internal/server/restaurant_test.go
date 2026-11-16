@@ -25,6 +25,10 @@ type restaurantJSON struct {
 		VisitedOn string `json:"visited_on"`
 		Note      string `json:"note"`
 	} `json:"visits"`
+	VisitNotes []struct {
+		VisitedOn string `json:"visited_on"`
+		Note      string `json:"note"`
+	} `json:"visit_notes"`
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
@@ -55,7 +59,7 @@ func TestRestaurants(t *testing.T) {
 	}
 
 	// Another visit, newest first.
-	if code := alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-02"}, &r); code != 201 ||
+	if code := alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-02", "note": "tantanmen"}, &r); code != 201 ||
 		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" {
 		t.Fatalf("add visit: %d %+v", code, r)
 	}
@@ -81,6 +85,10 @@ func TestRestaurants(t *testing.T) {
 	var list []restaurantJSON
 	if code := alice.do("GET", "/api/restaurants", nil, &list); code != 200 || len(list) != 2 {
 		t.Fatalf("list: %d %+v", code, list)
+	}
+	// The list carries what was written about visits, for searching; a place without notes has none.
+	if n := list[0].VisitNotes; len(n) != 1 || n[0].Note != "tantanmen" || n[0].VisitedOn != "2026-11-02" || len(list[1].VisitNotes) != 0 {
+		t.Errorf("visit notes in the list: %+v", list)
 	}
 
 	// Bob's space can't see or touch any of it.

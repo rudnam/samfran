@@ -1,6 +1,8 @@
 // The list: places you've been (latest visit first) and places you want to go.
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
+import { useCached } from '../../cache';
+import { Skeleton } from '../../components/Overlay';
 import { t, tn } from '../../i18n';
 import { href } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
@@ -9,14 +11,9 @@ import { shortDate, tileColor, today } from './format';
 export type Tab = 'been' | 'want';
 
 export function RestaurantsPage({ tab }: { tab: Tab }) {
-  const [list, setList] = useState<Restaurant[] | null>(null);
-  const [error, setError] = useState('');
+  const { data: list, error } = useCached('restaurants', api.restaurants, errorMessage);
   const [query, setQuery] = useState('');
   const { space } = useSpace();
-
-  useEffect(() => {
-    api.restaurants().then(setList, (err) => setError(errorMessage(err)));
-  }, []);
 
   const been = useMemo(
     () =>
@@ -70,7 +67,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
             type="search"
             className="search"
             aria-label={t('Search')}
-            placeholder={t('Search by name, area or food')}
+            placeholder={t('Search by name, area, food or notes')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -82,7 +79,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
           {error}
         </p>
       )}
-      {list === null && !error && <p className="muted">{t('Loading…')}</p>}
+      {list === null && !error && <Skeleton rows={4} />}
       {list !== null && shown.length === 0 && (
         <div className="empty">
           {query ? (
@@ -125,6 +122,11 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                       <span className="spot-meta">· {t('Added by {name}', { name: r.added_by })}</span>
                     )}
                   </span>
+                  {noteMatch(r, query) && (
+                    <span className="spot-note">
+                      {shortDate(noteMatch(r, query)!.visited_on)} · {noteMatch(r, query)!.note}
+                    </span>
+                  )}
                 </span>
                 {r.last_visit && (
                   <span className="spot-when">
@@ -150,5 +152,12 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
 function matches(r: Restaurant, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q));
+  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q)) || !!noteMatch(r, query);
+}
+
+/** The newest visit whose note has the search in it: "where did we have that?". */
+function noteMatch(r: Restaurant, query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return undefined;
+  return r.visit_notes?.find((v) => v.note.toLowerCase().includes(q));
 }

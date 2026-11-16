@@ -96,6 +96,31 @@ export function onAuthLinks(onAuth: (result: { code: string; verifier: string } 
   };
 }
 
+let openLaunchHandled = false;
+
+/**
+ * <package>://bus?start=1 and <package>://us, which the app's own
+ * notifications open (android/…/ShiftPrompt.java, ActivityJob.java): calls
+ * onOpen with the page and its parameters.
+ */
+export function onOpenLinks(onOpen: (page: string, params: URLSearchParams) => void): () => void {
+  if (!isApp) return () => {};
+  const handle = (raw: string) => {
+    const { host, params } = parseLink(raw);
+    if (host === 'bus' || host === 'us') onOpen(host, params);
+  };
+  const listener = CapApp.addListener('appUrlOpen', (e) => handle(e.url));
+  if (!openLaunchHandled) {
+    openLaunchHandled = true;
+    CapApp.getLaunchUrl().then((l) => {
+      if (l?.url) handle(l.url);
+    });
+  }
+  return () => {
+    listener.then((l) => l.remove());
+  };
+}
+
 // The bus-stop alarm (android/…/BusAlarmPlugin.java and BusTripService.java).
 export interface TripStatus {
   running: boolean;
