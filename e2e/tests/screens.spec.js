@@ -80,6 +80,15 @@ for (const [name, viewport] of [
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
 
+    // The bus alarm: first time, then with a stop chosen.
+    await page.getByRole('link', { name: 'Bus', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
+    await shot('7b-bus-setup');
+    expect((await page.request.put('/api/bus/stop', { data: { name: '葵西小学校入口', lat: 34.76966, lng: 137.71207, alert_meters: 800 } })).status()).toBe(200);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
+    await shot('7c-bus');
+
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
     await shot('8-us');
@@ -90,6 +99,9 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Food' }).click();
     await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
     await shot('10-food-dark');
+    await page.getByRole('link', { name: 'Bus', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
+    await shot('11-bus-dark');
 
     // Nothing may overflow sideways.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
