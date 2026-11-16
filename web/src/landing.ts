@@ -12,18 +12,21 @@ else {
     setLanguage(language() === 'ja' ? 'en' : 'ja');
     translate();
   });
-  revealOnScroll();
-  offerDemo();
+  offerDownload();
 }
 
-// "Try the demo" shows only when the server offers demos (DEMO).
-function offerDemo() {
-  fetch('/api/auth/options')
+// "Download for Android" shows while the server offers the APK (ANDROID_APK).
+function offerDownload() {
+  fetch('/api/downloads')
     .then((r) => (r.ok ? r.json() : null))
-    .then((o: { demo?: boolean } | null) => {
-      if (o?.demo) document.querySelectorAll<HTMLElement>('[data-demo-hidden]').forEach((el) => (el.hidden = false));
+    .then((d: { android?: { url: string } | null } | null) => {
+      if (!d?.android) return;
+      document.querySelectorAll<HTMLAnchorElement>('[data-download]').forEach((a) => {
+        a.href = d.android!.url;
+        a.hidden = false;
+      });
     })
-    .catch(() => {}); // without it, the page simply has no demo button
+    .catch(() => {}); // without it, the page simply has no download button
 }
 
 // The page is written in English; each text's Japanese is in its data-ja
@@ -42,22 +45,4 @@ function translate() {
   // The switch names the other language, in that language.
   const toggle = document.querySelector<HTMLElement>('#language-toggle');
   if (toggle) toggle.lang = ja ? 'en' : 'ja';
-}
-
-// Sections fade up as they come into view, once each. With reduced motion
-// (or no IntersectionObserver) nothing is hidden in the first place.
-function revealOnScroll() {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
-  document.documentElement.classList.add('motion');
-  const seen = new IntersectionObserver(
-    (entries) => {
-      for (const e of entries) {
-        if (!e.isIntersecting) continue;
-        e.target.classList.add('in');
-        seen.unobserve(e.target);
-      }
-    },
-    { rootMargin: '0px 0px -12% 0px' },
-  );
-  document.querySelectorAll('.reveal').forEach((el) => seen.observe(el));
 }

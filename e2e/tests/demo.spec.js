@@ -2,9 +2,8 @@
 // Japanese, without an account (DEMO, on by default when sign-up is).
 const { test, expect } = require('./fixtures');
 
-test('the introduction page opens a demo with sample data', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'Try the demo' }).first().click();
+test('/app/?demo opens a demo with sample data', async ({ page }) => {
+  await page.goto('/app/?demo');
   await expect(page.getByRole('note')).toContainText('This is a demo with sample data.');
   await expect(page.getByText('Hanabi Grill')).toBeVisible();
   await expect(page).toHaveURL(/\/app\/$/); // ?demo is gone, so a reload doesn't start another

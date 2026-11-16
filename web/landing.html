@@ -3,69 +3,31 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title data-ja="samfran: ふたりのアプリ">samfran: an app for two</title>
-<meta name="description" content="A private app for two: the places we've eaten, the ones we want to try, and both our ratings." data-ja-content="ふたりだけのアプリ。行ったお店、行きたいお店、ふたりの評価。">
-<meta name="theme-color" content="#e23d28">
+<title>samfran</title>
+<meta name="description" content="A private app for two: restaurants, shifts and a bus-stop alarm." data-ja-content="ふたりだけのアプリ。お店、シフト、バス停アラーム。">
+<meta name="theme-color" content="#faf8f4">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
-<!-- The site's introduction, served at /. The app itself is at /app/
-     (index.html). It's a private app, so this just says what it is and
-     where to sign in. landing.ts shows it in Japanese (data-ja). -->
+<!-- The introduction, served at /. The app is at /app/ (index.html).
+     landing.ts shows it in Japanese (data-ja) and offers the Android app
+     while the server has one. -->
 <script type="module" src="/src/landing.ts"></script>
 </head>
 <body class="landing">
-<header class="landing-bar">
-  <a class="landing-brand" href="/">
-    <img class="logo" src="/icon.svg" alt="">
-    samfran
-  </a>
-  <div class="landing-bar-end">
-    <!-- Names the other language, in that language. -->
-    <button type="button" class="link" id="language-toggle" lang="ja" data-ja="English">日本語</button>
+<main class="intro">
+  <img class="intro-logo" src="/icon.svg" alt="" width="56" height="56">
+  <h1>samfran</h1>
+  <p class="intro-line" data-ja="ふたりだけのアプリ。行ったお店、シフト、バス停アラーム。">A private app for two: the places we eat, Sam’s shifts, and a bus-stop alarm.</p>
+  <div class="intro-actions">
+    <a class="button" href="/app/" data-ja="ログイン">Sign in</a>
+    <a class="button secondary" href="/download/samfran.apk" data-download hidden download data-ja="Android版をダウンロード">Download for Android</a>
   </div>
-</header>
-
-<main>
-  <section class="landing-hero">
-    <div class="landing-pitch">
-      <h1 class="display" data-ja="行ったお店も、<br>行きたいお店も。">Where we ate, and where we’re going next.</h1>
-      <p class="landing-lead" data-ja="ふたりだけの小さなアプリ。行ったお店と行きたいお店を、それぞれの評価と一緒に残します。">A small, private app for the two of us: the places we’ve been and the ones we want to try, with both our ratings.</p>
-      <div class="landing-actions">
-        <a class="button" href="/app/" data-ja="ログイン">Sign in</a>
-        <a class="button secondary" href="/app/?demo" data-demo-hidden hidden data-ja="デモを試す">Try the demo</a>
-      </div>
-    </div>
-
-    <!-- A still of the app, drawn with the app's own styles. -->
-    <ul class="cards landing-still" aria-hidden="true">
-      <li><span class="spot">
-        <span class="tile yellow">B</span>
-        <span class="spot-body">
-          <span class="spot-name">Blue Sky Café</span>
-          <span class="spot-line"><span class="chip a">F ★5</span><span class="chip b">S ★4</span><span class="spot-meta" data-ja="カフェ">Café</span></span>
-        </span>
-        <span class="spot-when"><strong data-ja="11月12日">Nov 12</strong><span data-ja="2回">2 visits</span></span>
-      </span></li>
-      <li><span class="spot">
-        <span class="tile green">T</span>
-        <span class="spot-body">
-          <span class="spot-name">Taco Loco</span>
-          <span class="spot-line"><span class="chip a">F ★4</span><span class="chip b">S ★5</span><span class="spot-meta" data-ja="メキシコ料理">Mexican</span></span>
-        </span>
-        <span class="spot-when"><strong data-ja="11月3日">Nov 3</strong><span data-ja="1回">1 visit</span></span>
-      </span></li>
-      <li><span class="spot">
-        <span class="tile red">R</span>
-        <span class="spot-body">
-          <span class="spot-name">Ramen Tsubaki</span>
-          <span class="spot-line"><span class="chip a">F ★4</span><span class="chip b">S ★3</span><span class="spot-meta" data-ja="ラーメン">Ramen</span></span>
-        </span>
-        <span class="spot-when"><strong data-ja="10月26日">Oct 26</strong><span data-ja="1回">1 visit</span></span>
-      </span></li>
-    </ul>
-  </section>
+  <p class="intro-foot">
+    <button type="button" class="link quiet" id="language-toggle" lang="ja" data-ja="English">日本語</button>
+    <span aria-hidden="true">·</span>
+    <a href="/privacy" data-ja="プライバシー">Privacy</a>
+  </p>
 </main>
-<footer class="landing-foot"><a href="/privacy" data-ja="プライバシー">Privacy</a></footer>
 </body>
 </html>
