@@ -20,7 +20,7 @@ You need a JDK 21 (`JAVA_HOME`) and the Android SDK with platform 37 (`ANDROID_H
 
 It runs the unit tests, then builds and signs both files with the key.
 
-CI builds the app on every push and pull request (the `android` job in `.github/workflows/ci.yml`): the unit tests (which also draw every screen; the pictures are kept a week as the `native-screenshots` artifact), Android Lint, and a release APK without a signature (which checks R8's shrinking), kept a week as the `android-apk` artifact. A machine without the memory for Gradle can sign that one instead of building:
+CI builds the app on every push and pull request (the `android` job in `.github/workflows/ci.yml`): the unit tests (which also draw every screen; the pictures are kept a week as the `native-screenshots` artifact), Android Lint, and a release APK without a signature (which checks R8's shrinking), kept a week as the `android-apk` artifact. It also builds the `preview` build type and keeps it as the `samfran-preview-apk` artifact, and on a pull request also as a pre-release asset (`android-pr-<number>`) with a comment linking to it, which a phone can open (the link needs the browser signed in to GitHub); `android-preview-cleanup.yml` deletes it when the pull request closes: an APK that installs on a phone as **SamFran Preview**, beside the real app. It's signed with `android/preview.jks`, which is in the repo with the password `android` because it protects nothing; every build has the same key, so each installs over the last without losing the sign-in. A machine without the memory for Gradle can sign that one instead of building:
 
 ```sh
 ./android/build.sh sign app-release-unsigned.apk   # -> android/samfran.apk
@@ -48,6 +48,7 @@ The site offers the APK at `/download/samfran.apk`, and `GET /api/downloads` tel
 |---|---|---|
 | Secret | `ANDROID_KEYSTORE_BASE64` | `base64 -w0 android/keystore/samfran.jks` |
 | Secret | `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_PASSWORD` | `storePassword` and `keyPassword` from `keystore/keystore.properties` |
+| Secret | `ANDROID_MAPS_KEY` | The Google Maps key ("Google Maps key" below). Optional |
 | Variable | `ANDROID_UPLOAD_CERT_SHA256` | The key's certificate, 64 hex digits without colons: `keytool -list -v -keystore android/keystore/samfran.jks -alias samfran` (the SHA256 line) |
 
 The release checks the APK is signed with that certificate before publishing it.
@@ -96,6 +97,12 @@ Some things stay on the website, because they need its sign-in in the browser: t
 ## The bus-stop alarm
 
 The **Bus** tab's "I'm on the bus" starts a trip (`BusTripService`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance the phone **vibrates on repeat, with no sound**, until **Stop** is tapped (in the app or on the notification), the notification is swiped away, or SamFran is opened (ten minutes at most; `StopBuzzReceiver`, `MainActivity.onResume`). A trip ends when the buzz stops, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`). "Try it now" rides for six seconds and then really buzzes, the same way.
+
+The stop's map (`StopMap`) is Google's native map (Maps SDK for Android through maps-compose) in lite mode: a still map with a pin, as Google suggests for a small map in a scrolling page; tapping it opens Google Maps. That needs a Google Maps key, below. A build without one shows Google's keyless web map instead, in a WebView, inside an iframe as the website does (Google refuses to draw it as a whole page).
+
+### Google Maps key
+
+The key isn't in the repository (it's public). Make it once in a Google Cloud project with billing turned on: enable **Maps SDK for Android**, create an API key, and restrict it to Android apps, adding `com.rudnam.samfran` with the release key's SHA-1 (`keytool -list -v -keystore android/keystore/samfran.jks -alias samfran`) and, for debug builds, `com.rudnam.samfran.preview` with `~/.android/debug.keystore`'s SHA-1 (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`). Maps on Android cost nothing. Then put it in `~/.gradle/gradle.properties` as `samfran.mapsKey=…` (or `SAMFRAN_MAPS_KEY` in the environment) and in the `android-release` environment's `ANDROID_MAPS_KEY` secret. Pull-request builds don't get it, so their screenshots and preview APKs show the web map.
 
 Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), and a location foreground service.
 

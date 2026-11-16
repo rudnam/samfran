@@ -4,26 +4,36 @@ Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScr
 
 ## Verify your work before calling it done
 
+**Verify on GitHub CI by default**, not on this machine. CI's `verify` job runs `./verify.sh` (go vet, all Go tests, browser tests) on every pull request, and the `android` job runs the Android tests:
+
+1. Commit, push your branch (never `main`), and open a **draft** pull request if the branch doesn't have one yet; the verify job runs on pull requests, not on plain branch pushes.
+2. Follow it with `gh pr checks <number> --watch`.
+3. Download the run's artifacts with `gh run download` (`e2e-results`: the browser tests' screenshots and failures; `native-screenshots`: the Android screens). When a browser test fails, read its `test-failed-1.png` before guessing.
+4. Report what CI actually printed. If a job was skipped or couldn't run, say so.
+
+Run `./verify.sh` locally only when the user asks for it, or when you can't push (no remote access, or the user doesn't want a PR yet). Then:
+
 ```sh
 ./verify.sh                 # everything: go vet, all Go tests, browser tests
 ./verify.sh go              # Go only
 ./verify.sh e2e -g place    # browser tests only; extra args go to `playwright test`
 ```
 
-- It needs only Docker. It builds the working tree, runs it against a throwaway database, and tears everything down. It ends with `VERIFY PASSED` or `VERIFY FAILED`. CI runs the same script on every push and pull request.
-- Plain `go test ./...` on the host **skips** the integration tests (they need `TEST_DATABASE_URL`). `./verify.sh go` runs them.
-- The Docker build type-checks the frontend, so a TypeScript error fails `./verify.sh`. Quick check on the host: `cd web && npm run build`.
-- When a browser test fails, its screenshot is at `e2e/test-results/<test>/test-failed-1.png`. Read it before guessing.
-- Report what the run actually printed. If something was skipped or couldn't run, say so.
-- `verify.sh` doesn't cover the native Android app (`android/`, android/README.md). For that: `cd android && ./gradlew testDebugUnitTest -Proborazzi.test.record=true` (JDK 21 and the Android SDK), which also draws every screen into each module's `build/outputs/roborazzi/`; CI's `android` job runs the same and keeps them as `native-screenshots`.
-- **One local verify at a time.** Before running `./verify.sh`, check `docker compose ls`: if another folder's `<folder>-verify` project is running (another session verifying a different diff), don't start a second one on this machine. Verify on GitHub CI instead: commit, push your branch (never `main`), and open a **draft** pull request, since CI's verify job runs on pull requests and not on plain branch pushes. Then follow it with `gh pr checks <number> --watch`. When it fails, download the run's artifacts (`gh run download`) and read the failing test's screenshot. Tell the user you used CI because a local verify was already running.
+- It needs only Docker. It builds the working tree, runs it against a throwaway database, and tears everything down. It ends with `VERIFY PASSED` or `VERIFY FAILED`. Screenshots land in `e2e/test-results/`.
+- **One local verify at a time.** Check `docker compose ls` first: if another folder's `<folder>-verify` project is running (another session verifying a different diff), don't start a second one; use CI.
+
+Quick checks while you work are fine on the host and don't replace verify:
+
+- Plain `go test ./...` **skips** the integration tests (they need `TEST_DATABASE_URL`); only verify runs them.
+- The Docker build type-checks the frontend, so a TypeScript error fails verify. Quick check: `cd web && npm run build`.
+- `verify.sh` doesn't cover the native Android app (`android/`, android/README.md). Locally: `cd android && ./gradlew testDebugUnitTest -Proborazzi.test.record=true` (JDK 21 and the Android SDK), which draws every screen into each module's `build/outputs/roborazzi/`; CI's `android` job runs the same and keeps them as `native-screenshots`.
 
 ## Show the user what changed
 
 The user reviews changes by looking at them, not by deploying them. When you change anything visible:
 
 1. Extend a browser test in `e2e/tests/` (one file per feature; import `{ test, expect }` from `./fixtures`, which fails on any console error or CSP violation). For new screens, add a step to `e2e/tests/screens.spec.js`, which saves phone and desktop screenshots.
-2. Run `./verify.sh`, then **Read the screenshots** in `e2e/test-results/` and check the change looks right at both widths.
+2. Verify (on CI, as above), then **Read the screenshots** from the `e2e-results` artifact (or `e2e/test-results/` after a local run) and check the change looks right at both widths.
 3. On the user's machine, run `./preview.sh` and tell the user: "Preview at http://localhost:8081, sign in as preview@example.com / preview-password", plus what to click to see the change. In a cloud session the user can't open that address, so send them the screenshots instead. You don't need to stop it: it stops by itself after two hours (`PREVIEW_MINUTES`), when the PR from its branch is merged, and when this session ends (`.claude/hooks/session-end.sh`, which also clears anything a killed `verify.sh` left).
 
 ## Rules

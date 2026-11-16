@@ -7,11 +7,11 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import android.widget.Toast
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -21,9 +21,9 @@ import androidx.core.content.FileProvider
 import androidx.core.os.BundleCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.data.GoogleReturn
 import com.rudnam.samfran.core.data.GoogleReturns
 import com.rudnam.samfran.core.datastore.Appearance
@@ -80,7 +80,6 @@ class MainActivity : AppCompatActivity() {
         enableEdgeToEdge()
         if (savedInstanceState == null) route(intent)
         cameraUri = savedInstanceState?.let { BundleCompat.getParcelable(it, CAMERA_URI, Uri::class.java) }
-        showLastCrash()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 sheetPhotos.requests.collect(::openPhotos)
@@ -145,28 +144,6 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         route(intent)
-    }
-
-    /** TEMPORARY: the last crash's stack trace, to read or copy. Remove with SamFranApplication's handler. */
-    private fun showLastCrash() {
-        val prefs = getSharedPreferences("crash", MODE_PRIVATE)
-        val trace = prefs.getString("trace", null) ?: return
-        prefs.edit().remove("trace").apply()
-        val text = android.widget.TextView(this).apply {
-            this.text = trace
-            textSize = 10f
-            setTextIsSelectable(true)
-            setPadding(32, 16, 32, 16)
-        }
-        android.app.AlertDialog.Builder(this)
-            .setTitle("SamFran crashed last time")
-            .setView(android.widget.ScrollView(this).apply { addView(text) })
-            .setPositiveButton("Copy") { _, _ ->
-                getSystemService(android.content.ClipboardManager::class.java)
-                    .setPrimaryClip(android.content.ClipData.newPlainText("crash", trace))
-            }
-            .setNegativeButton("Close", null)
-            .show()
     }
 
     private companion object {
