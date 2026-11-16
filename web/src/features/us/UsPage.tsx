@@ -1,6 +1,7 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Downloads, type MCPToken, type Me } from '../../api';
+import { activityAlertsOn, setActivityAlerts } from '../../background';
 import { isApp, server } from '../../native';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
@@ -20,6 +21,26 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   useEffect(() => {
     if (!isApp) api.downloads().then((d) => setApk(d.android), () => {});
   }, []);
+
+  // Notifications about the other person's changes (background.ts), for this phone.
+  const [alerts, setAlerts] = useState(false);
+  const [alertNote, setAlertNote] = useState('');
+  useEffect(() => {
+    activityAlertsOn().then(setAlerts, () => {});
+  }, []);
+
+  async function toggleAlerts(on: boolean) {
+    setAlerts(on);
+    setAlertNote('');
+    try {
+      const now = await setActivityAlerts(on);
+      setAlerts(now);
+      if (on && !now) setAlertNote(t('Allow notifications for SamFran in the phone’s settings, then switch this on again.'));
+    } catch (err) {
+      setAlerts(false);
+      setAlertNote(errorMessage(err));
+    }
+  }
 
   useEffect(() => {
     if (self) setName(self.name);
@@ -129,6 +150,18 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
 
       <div className="card stack">
         <h2>{t('This device')}</h2>
+        {isApp && !me.demo && (
+          <>
+            <label className="switch">
+              <span className="grow">
+                <span className="block">{t('Tell me about changes')}</span>
+                <span className="hint">{t('A notification when the other one of you adds a place, logs a visit, rates one or saves the shifts. It can take half an hour.')}</span>
+              </span>
+              <input type="checkbox" role="switch" checked={alerts} onChange={(e) => void toggleAlerts(e.target.checked)} />
+            </label>
+            {alertNote && <p className="error small">{alertNote}</p>}
+          </>
+        )}
         <div className="row spread">
           <span>{t('Language')}</span>
           <LanguagePicker />

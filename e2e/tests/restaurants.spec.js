@@ -44,11 +44,63 @@ test('add a place, rate it, log visits, edit and delete it', async ({ page }) =>
 
   // Remove a visit, then the place.
   await card.getByRole('link').click();
+  // A removed visit can be brought back for a few seconds.
   await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
   await expect(visits).toHaveCount(1);
-  page.once('dialog', (d) => d.accept());
+  await expect(page.getByText('1 visit', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(visits).toHaveCount(2);
+  await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
+  await expect(visits).toHaveCount(1);
+  // Deleting the place asks first, in the app's own dialog.
   await page.getByRole('button', { name: 'Delete this place' }).click();
+  const ask = page.getByRole('dialog', { name: 'Delete Taco Loco?' });
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(ask).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Taco Loco' })).toBeVisible();
+  await page.getByRole('button', { name: 'Delete this place' }).click();
+  await ask.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page.getByText('No places yet')).toBeVisible();
+});
+
+test('a removed visit is gone for good once Undo is no longer offered', async ({ page }) => {
+  await signUp(page);
+  const res = await page.request.post('/api/restaurants', { data: { name: 'Taco Loco', visit: { visited_on: '2026-10-01' } } });
+  const { id } = await res.json();
+  expect((await page.request.post(`/api/restaurants/${id}/visits`, { data: { visited_on: '2026-11-02' } })).status()).toBe(201);
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  const visits = page.getByRole('list', { name: 'Visits' }).getByRole('listitem');
+  await expect(visits).toHaveCount(2);
+  await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeHidden({ timeout: 10_000 });
+  await page.reload();
+  await expect(visits).toHaveCount(1);
+  await expect(visits).toContainText('Oct');
+});
+
+test('search finds a place by what was written about a visit', async ({ page }) => {
+  await signUp(page);
+  for (const [name, note] of [
+    ['Hanabi Grill', ''],
+    ['Gyoza Komachi', ''],
+    ['Ramen Tsubaki', 'The tantanmen, extra spicy'],
+    ['Blue Sky Café', ''],
+    ['Taco Loco', 'Green salsa'],
+  ]) {
+    const res = await page.request.post('/api/restaurants', { data: { name, visit: { visited_on: '2026-10-01', note } } });
+    expect(res.status()).toBe(201);
+  }
+  await page.reload();
+  const cards = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
+  await expect(cards).toHaveCount(5);
+  await page.getByRole('searchbox', { name: 'Search' }).fill('tantan');
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toContainText('Ramen Tsubaki');
+  await expect(cards).toContainText('The tantanmen, extra spicy');
+  await page.getByRole('searchbox', { name: 'Search' }).fill('gyoza');
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toContainText('Gyoza Komachi');
 });
 
 test('want to go, then went', async ({ page }) => {

@@ -1,6 +1,8 @@
 // One place: both ratings, notes, every visit, and logging another.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
+import { useCached } from '../../cache';
+import { confirmDialog, dropToast, showToast, Skeleton } from '../../components/Overlay';
 import { StarPicker } from '../../components/Stars';
 import { t, tn } from '../../i18n';
 import { href, replaceRoute } from '../../router';
@@ -8,16 +10,15 @@ import { Avatar, personTone, useSpace } from '../../space';
 import { mapLink, shortDate, today } from './format';
 
 export function RestaurantDetail({ id }: { id: number }) {
-  const [r, setR] = useState<Restaurant | null>(null);
-  const [error, setError] = useState('');
+  const { data: r, error: loadError, set: setR } = useCached(`restaurant:${id}`, () => api.restaurant(id), errorMessage);
+  const [changeError, setError] = useState('');
+  const error = changeError || loadError;
   const [busy, setBusy] = useState(false);
+  // A visit just removed: hidden, and deleted for real once Undo's time is up.
+  const [removing, setRemoving] = useState(0);
   const [visitOn, setVisitOn] = useState(today());
   const [visitNote, setVisitNote] = useState('');
   const { space } = useSpace();
-
-  useEffect(() => {
-    api.restaurant(id).then(setR, (err) => setError(errorMessage(err)));
-  }, [id]);
 
   /** Runs a change that answers with the restaurant as it now is. */
   async function change(fn: () => Promise<Restaurant>) {
@@ -42,8 +43,38 @@ export function RestaurantDetail({ id }: { id: number }) {
     }
   }
 
+  /** Hides the visit and offers Undo; without it, the visit is deleted when the offer ends. */
+  function removeVisit(visit: number) {
+    showToast({
+      message: t('Visit removed.'),
+      action: t('Undo'),
+      onAction: () => setRemoving(0),
+      onClose: () => {
+        api.deleteVisit(id, visit).then(
+          (fresh) => {
+            setR(fresh);
+            setRemoving(0);
+          },
+          (err) => {
+            setError(errorMessage(err));
+            setRemoving(0);
+          },
+        );
+      },
+    });
+    setRemoving(visit); // after showToast, which finishes an earlier removal first
+  }
+
   async function remove() {
-    if (!r || !confirm(t('Delete {name} and all its visits? This can’t be undone.', { name: r.name }))) return;
+    if (!r) return;
+    const yes = await confirmDialog({
+      title: t('Delete {name}?', { name: r.name }),
+      body: t('Its visits and ratings go with it. This can’t be undone.'),
+      confirm: t('Delete'),
+      danger: true,
+    });
+    if (!yes) return;
+    dropToast(); // a visit waiting to be removed goes with the place
     setBusy(true);
     try {
       await api.deleteRestaurant(id);
@@ -65,7 +96,7 @@ export function RestaurantDetail({ id }: { id: number }) {
             {error}
           </p>
         ) : (
-          <p className="muted">{t('Loading…')}</p>
+          <Skeleton rows={5} />
         )}
       </section>
     );
@@ -74,6 +105,8 @@ export function RestaurantDetail({ id }: { id: number }) {
   const mine = r.ratings.find((x) => x.me)?.stars ?? 0;
   const partner = space?.members.find((m) => !m.me);
   const theirs = r.ratings.find((x) => !x.me);
+  const visits = (r.visits ?? []).filter((v) => v.id !== removing);
+  const visitCount = r.visit_count - (removing ? 1 : 0);
   return (
     <section className="stack">
       <a className="back" href={href(r.visit_count > 0 ? 'home' : 'want')}>
@@ -132,7 +165,7 @@ export function RestaurantDetail({ id }: { id: number }) {
       <div className="card stack">
         <div className="row spread">
           <h2>{t('Visits')}</h2>
-          <span className="muted">{r.visit_count > 0 ? tn(r.visit_count, '{n} visit', '{n} visits') : t('Not yet')}</span>
+          <span className="muted">{visitCount > 0 ? tn(visitCount, '{n} visit', '{n} visits') : t('Not yet')}</span>
         </div>
         <form className="visit-form" onSubmit={logVisit}>
           <input type="date" aria-label={t('Date')} required max={today()} value={visitOn} onChange={(e) => setVisitOn(e.target.value)} />
@@ -144,12 +177,12 @@ export function RestaurantDetail({ id }: { id: number }) {
             onChange={(e) => setVisitNote(e.target.value)}
           />
           <button type="submit" disabled={busy}>
-            {r.visit_count > 0 ? t('Log visit') : t('We went!')}
+            {visitCount > 0 ? t('Log visit') : t('We went!')}
           </button>
         </form>
-        {r.visits && r.visits.length > 0 && (
+        {visits.length > 0 && (
           <ul className="visits" aria-label={t('Visits')}>
-            {r.visits.map((v) => (
+            {visits.map((v) => (
               <li key={v.id}>
                 <span className="visit-date">{shortDate(v.visited_on)}</span>
                 <span className="grow">
@@ -160,7 +193,7 @@ export function RestaurantDetail({ id }: { id: number }) {
                   className="link quiet"
                   disabled={busy}
                   aria-label={t('Delete the visit on {date}', { date: shortDate(v.visited_on) })}
-                  onClick={() => change(() => api.deleteVisit(id, v.id))}
+                  onClick={() => removeVisit(v.id)}
                 >
                   {t('Remove')}
                 </button>

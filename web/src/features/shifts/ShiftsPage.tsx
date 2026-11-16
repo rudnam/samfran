@@ -5,20 +5,40 @@ import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage, type ShiftDay, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
 import { href, navigate } from '../../router';
+import { useCached } from '../../cache';
+import { Skeleton } from '../../components/Overlay';
 import { addMonths, dayName, labelOf, monthName, shrinkPhoto, timesOf } from './codes';
+import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
 
+// Calendar or list: remembered on this device.
+type View = 'calendar' | 'list';
+const viewKey = 'shifts-view';
+function savedView(): View {
+  try {
+    return localStorage.getItem(viewKey) === 'list' ? 'list' : 'calendar';
+  } catch {
+    return 'calendar';
+  }
+}
+
 export function ShiftsPage({ month }: { month?: string }) {
-  const [data, setData] = useState<ShiftMonth | null>(null);
+  const { data, error: loadError } = useCached(`shifts:${month ?? ''}`, () => api.shifts(month), errorMessage);
   const [next, setNext] = useState<ShiftDay | null>(null);
-  const [error, setError] = useState('');
+  const [readError, setError] = useState('');
+  const error = readError || loadError;
   const [reading, setReading] = useState(false);
+  const [view, setView] = useState<View>(savedView);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setData(null);
-    api.shifts(month).then(setData, (err) => setError(errorMessage(err)));
-  }, [month]);
+  function show(v: View) {
+    setView(v);
+    try {
+      localStorage.setItem(viewKey, v);
+    } catch {
+      // Private browsing: it lasts until the page is left.
+    }
+  }
 
   // The next shift, looking into next month if this one has none left.
   useEffect(() => {
@@ -65,7 +85,7 @@ export function ShiftsPage({ month }: { month?: string }) {
 
       {next && (
         <div className="next-shift" role="status">
-          <span className={`shift-dot ${next.label.toLowerCase()}`} aria-hidden="true" />
+          <span className={`shift-dot ${tone(next)}`} aria-hidden="true" />
           <span className="grow">
             <span className="eyebrow">{t('Next shift')}</span>
             <strong className="block">
@@ -92,19 +112,28 @@ export function ShiftsPage({ month }: { month?: string }) {
             ›
           </a>
         </div>
-        {!data && !error && <p className="muted">{t('Loading…')}</p>}
+        <div className="segmented" role="radiogroup" aria-label={t('View')}>
+          <button type="button" role="radio" aria-checked={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => show('calendar')}>
+            {t('Calendar')}
+          </button>
+          <button type="button" role="radio" aria-checked={view === 'list'} className={view === 'list' ? 'on' : ''} onClick={() => show('list')}>
+            {t('List')}
+          </button>
+        </div>
+        {!data && !error && <Skeleton rows={6} />}
         {data && data.days.length === 0 && (
           <div className="empty flat">
             <p className="empty-title">{t('No shifts for this month')}</p>
             <p className="muted">{t('Read a photo of the sheet, or enter the days by hand.')}</p>
           </div>
         )}
-        {data && data.days.length > 0 && (
+        {data && data.days.length > 0 && view === 'calendar' && <ShiftCalendar key={data.month} month={data.month} days={data.days} />}
+        {data && data.days.length > 0 && view === 'list' && (
           <ul className="shift-list" aria-label={t('Shifts')}>
             {data.days.map((d) => (
               <li key={d.date} className={d.kind === 'work' ? '' : 'quiet'}>
                 <span className="shift-date">{dayName(d.date)}</span>
-                <span className={`shift-dot ${d.kind === 'work' ? d.label.toLowerCase() : d.kind}`} aria-hidden="true" />
+                <span className={`shift-dot ${tone(d)}`} aria-hidden="true" />
                 <span className="grow">
                   {labelOf(d.label)}
                   {d.problem && <span className="error small block">{t('Unknown length: set it in Settings')}</span>}

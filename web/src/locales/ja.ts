@@ -68,7 +68,6 @@ export const ja = {
   'Been there': '行った',
   'Want to go': '行きたい',
   Search: '検索',
-  'Search by name, area or food': '店名・エリア・料理で検索',
   'Nothing matches “{query}”.': '「{query}」に一致するお店はありません。',
   'No places yet': 'まだお店がありません',
   'Add the first place you ate together.': 'ふたりで食べに行ったお店を追加しましょう。',
@@ -102,7 +101,6 @@ export const ja = {
   Save: '保存',
   Add: '追加',
   '{n} stars': '星{n}つ',
-  'Delete {name} and all its visits? This can’t be undone.': '{name}と訪問の記録をすべて削除しますか？元に戻せません。',
   'Open in Maps': '地図で開く',
   Edit: '編集',
   Ratings: '評価',
@@ -301,6 +299,30 @@ export const ja = {
   'Saved.': '保存しました。',
   'Shown next to your ratings.': '評価の横に表示されます。',
   'This device': 'この端末',
+  // Searching, undo and dialogs
+  'Search by name, area, food or notes': '店名・エリア・料理・メモで検索',
+  'Visit removed.': '来店を削除しました。',
+  Undo: '元に戻す',
+  'Delete {name}?': '{name}を削除しますか？',
+  'Its visits and ratings go with it. This can’t be undone.': '来店の記録と評価も一緒に削除されます。元に戻せません。',
+  Delete: '削除',
+  // The shift calendar
+  View: '表示',
+  Calendar: 'カレンダー',
+  List: 'リスト',
+  'Nothing entered': '未入力',
+  // New changes, and what the phone does while the app is closed
+  New: '新着',
+  '{n} new change': '新しい変更が{n}件',
+  '{n} new changes': '新しい変更が{n}件',
+  'Ask when a shift ends': 'シフトが終わったら聞く',
+  'This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.':
+    'シフトタブのシフトが終わると、このスマホが「バスアラームを開始しますか？」と聞きます。タップひとつで始まります。',
+  'Allow notifications for SamFran in the phone’s settings, then switch this on again.':
+    'スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。',
+  'Tell me about changes': '変更を知らせる',
+  'A notification when the other one of you adds a place, logs a visit, rates one or saves the shifts. It can take half an hour.':
+    '相手がお店を追加したり、来店を記録したり、評価したり、シフトを保存したりすると通知が届きます。30分ほどかかることがあります。',
   'Type part of it, e.g. 葵西': '名前の一部を入力（例: 葵西）',
   'Matching stops': '見つかったバス停',
   'The stop search isn’t answering. Paste a Google Maps link instead.': 'バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。',

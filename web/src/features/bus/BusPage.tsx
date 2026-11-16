@@ -4,7 +4,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage, type BusStop, type Downloads, type FoundStop } from '../../api';
 import { t } from '../../i18n';
+import { setShiftPrompts, shiftPromptsOn, syncBackground } from '../../background';
 import { busAlarm, isApp, type TripStatus } from '../../native';
+import { replaceRoute } from '../../router';
 
 const distances = [400, 600, 800, 1000, 1500, 2000];
 
@@ -12,7 +14,8 @@ function km(m: number): string {
   return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-export function BusPage() {
+/** start: opened from "Start bus alarm?" at the end of a shift, so the trip starts by itself. */
+export function BusPage({ start }: { start?: boolean }) {
   const [stop, setStop] = useState<BusStop | null>(null);
   const [trip, setTrip] = useState<TripStatus | null>(null);
   const [error, setError] = useState('');
@@ -43,6 +46,35 @@ export function BusPage() {
       clearInterval(id);
     };
   }, []);
+
+  // The question at the end of a shift (background.ts), for this phone.
+  const [prompts, setPrompts] = useState(false);
+  const [promptNote, setPromptNote] = useState('');
+  useEffect(() => {
+    shiftPromptsOn().then(setPrompts, () => {});
+  }, []);
+
+  async function togglePrompts(on: boolean) {
+    setPrompts(on);
+    setPromptNote('');
+    try {
+      const now = await setShiftPrompts(on);
+      setPrompts(now);
+      if (on && !now) setPromptNote(t('Allow notifications for SamFran in the phone’s settings, then switch this on again.'));
+    } catch (err) {
+      setPrompts(false);
+      setPromptNote(errorMessage(err));
+    }
+  }
+
+  // Opened from "Start bus alarm": start the trip once the stop is known.
+  useEffect(() => {
+    if (!start || !isApp || !stop) return;
+    replaceRoute('bus'); // coming back to this page later doesn't start another
+    if (stop.set && !trip?.running) {
+      void run(() => busAlarm.start({ lat: stop.lat, lng: stop.lng, radius: stop.alert_meters, name: stop.name }));
+    }
+  }, [start, stop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function run(fn: () => Promise<TripStatus>) {
     setBusy(true);
@@ -111,6 +143,19 @@ export function BusPage() {
         </div>
       )}
 
+      {isApp && ready && (
+        <div className="card stack tight">
+          <label className="switch">
+            <span className="grow">
+              <strong className="block">{t('Ask when a shift ends')}</strong>
+              <span className="hint">{t('This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.')}</span>
+            </span>
+            <input type="checkbox" role="switch" checked={prompts} onChange={(e) => void togglePrompts(e.target.checked)} />
+          </label>
+          {promptNote && <p className="error small">{promptNote}</p>}
+        </div>
+      )}
+
       {!isApp && (
         <div className="card stack">
           <h2>{t('On the phone')}</h2>
@@ -123,7 +168,7 @@ export function BusPage() {
         </div>
       )}
 
-      {stop && (editing ? <StopForm stop={stop} onSaved={(s) => (setStop(s), setEditing(false))} onCancel={stop.set ? () => setEditing(false) : undefined} /> : (
+      {stop && (editing ? <StopForm stop={stop} onSaved={(s) => (setStop(s), setEditing(false), void syncBackground(true))} onCancel={stop.set ? () => setEditing(false) : undefined} /> : (
         <div className="card stack tight">
           <div className="row spread">
             <div>

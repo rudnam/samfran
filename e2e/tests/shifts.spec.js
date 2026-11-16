@@ -32,6 +32,20 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(days.nth(2)).toContainText('遅番 · 13:00–22:00');
   await page.getByRole('button', { name: /^Save / }).click();
 
+  // The month as a calendar: a square for every day, and a day's times when it's tapped.
+  const cal = page.getByRole('group', { name: 'Calendar' });
+  const [y, m] = month.split('-').map(Number);
+  await expect(cal.getByRole('button')).toHaveCount(new Date(y, m, 0).getDate());
+  await expect(cal.locator('[aria-current="date"]')).toHaveCount(1); // today
+  await cal.getByRole('button', { name: /^1 \S+: 夜勤 22:00–7:00$/ }).click();
+  await expect(page.locator('.cal-detail')).toContainText('22F');
+  await cal.getByRole('button', { name: /^2 \S+: 休み$/ }).click();
+  await expect(page.locator('.cal-detail')).toContainText('普');
+  await cal.getByRole('button', { name: /^9 \S+: Nothing entered$/ }).click();
+  await expect(page.locator('.cal-detail')).toContainText('Nothing entered');
+
+  // Or as a list, which this device then remembers.
+  await page.getByRole('radio', { name: 'List' }).click();
   const list = page.getByRole('list', { name: 'Shifts' }).getByRole('listitem');
   await expect(list).toHaveCount(3);
   await expect(list.nth(0)).toContainText('夜勤');
@@ -39,6 +53,9 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(list.nth(1)).toContainText('休み');
   await expect(list.nth(2)).toContainText('13F');
   await expect(page).toHaveURL(new RegExp(`month=${month}`));
+  await page.reload();
+  await expect(page.getByRole('radio', { name: 'List' })).toBeChecked();
+  await expect(list).toHaveCount(3);
 
   // The calendar link.
   await page.getByRole('link', { name: 'Settings' }).click();

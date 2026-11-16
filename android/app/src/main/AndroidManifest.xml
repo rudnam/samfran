@@ -46,6 +46,19 @@
 
         <receiver android:name=".StopBuzzReceiver" android:exported="false" />
 
+        <!-- "Start bus alarm?" when a shift ends: its alarm, set again after the phone restarts. -->
+        <receiver android:name=".ShiftPrompt" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Looks for the other person's changes about every half hour, to notify about them. -->
+        <service
+            android:name=".ActivityJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -68,4 +81,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Setting the shift-end alarm and the changes check again after the phone restarts. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>

@@ -3,6 +3,9 @@ import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { LanguagePicker } from './components/LanguagePicker';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
+import { keepBackgroundSynced } from './background';
+import { clearCache } from './cache';
+import { Overlays } from './components/Overlay';
 import { BusPage } from './features/bus/BusPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/connect/ConnectPage';
 import { RestaurantDetail } from './features/restaurants/RestaurantDetail';
@@ -12,8 +15,9 @@ import { ShiftEditor } from './features/shifts/ShiftEditor';
 import { ShiftSettingsPage } from './features/shifts/ShiftSettingsPage';
 import { ShiftsPage } from './features/shifts/ShiftsPage';
 import { UsPage } from './features/us/UsPage';
-import { t, tx, useLanguage } from './i18n';
-import { onAuthLinks, onSharedText } from './native';
+import { useUnseen } from './features/us/unseen';
+import { t, tn, tx, useLanguage } from './i18n';
+import { onAuthLinks, onOpenLinks, onSharedText } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { takeSharedFromUrl } from './share';
 import { useUpdate } from './updates';
@@ -80,6 +84,23 @@ export function App() {
     }
   }, [shared, session.status]);
 
+  // In the Android app: its own notifications open the Bus tab ("Start bus
+  // alarm?" when a shift ends) or the Us tab (the other person's changes).
+  const [opened, setOpened] = useState<{ page: string; start: boolean } | null>(null);
+  useEffect(() => onOpenLinks((page, params) => setOpened({ page, start: params.has('start') })), []);
+  useEffect(() => {
+    if (opened && session.status === 'signed-in') {
+      navigate(opened.page, opened.start ? { start: 1 } : undefined);
+      setOpened(null);
+    }
+  }, [opened, session.status]);
+
+  // What one person loaded isn't the next one's to see.
+  useEffect(() => {
+    clearCache();
+    if (session.status === 'signed-in') return keepBackgroundSynced();
+  }, [session.status]);
+
   useEffect(() => {
     api
       .me()
@@ -140,6 +161,7 @@ export function App() {
     const tab = route.page === 'us' ? 'us' : route.page === 'bus' ? 'bus' : route.page.startsWith('shifts') ? 'shifts' : 'food';
     return (
       <SpaceProvider>
+        <Overlays />
         <div className="app">
           <header className="appbar">
             <a className="brand" href={href('home')}>
@@ -158,9 +180,11 @@ export function App() {
                 <BusIcon />
                 {t('Bus')}
               </a>
-              <a href={href('us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
+              {/* Named by hand, so the dot's own label isn't read as part of the tab's name. */}
+              <a href={href('us')} aria-label={t('Us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
                 <UsIcon />
                 {t('Us')}
+                <UnseenDot />
               </a>
             </nav>
           </header>
@@ -251,7 +275,7 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     case 'shifts/settings':
       return <ShiftSettingsPage />;
     case 'bus':
-      return <BusPage />;
+      return <BusPage start={route.params.has('start')} />;
     case 'connect':
       return <ConnectPage route={route} email={me.email} />;
     case 'us':
@@ -259,6 +283,13 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     default:
       return <RestaurantsPage tab="been" />;
   }
+}
+
+/** On the Us tab: the other person changed something since this device last looked. */
+function UnseenDot() {
+  const n = useUnseen();
+  if (n === 0) return null;
+  return <span className="tab-dot" role="img" aria-label={tn(n, '{n} new change', '{n} new changes')} />;
 }
 
 function FoodIcon() {

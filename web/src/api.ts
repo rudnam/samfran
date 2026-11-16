@@ -1,4 +1,5 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
+import { clearCache } from './cache';
 import { serverText } from './i18n';
 import { language } from './language';
 import { appHeaders, saveSession, server } from './native';
@@ -73,6 +74,8 @@ export interface Restaurant {
   ratings: Rating[];
   /** Newest first; only from restaurant(id). */
   visits?: Visit[];
+  /** The visits with a note, newest first, for searching. */
+  visit_notes?: { visited_on: string; note: string }[];
 }
 
 /** What a person types in about a restaurant. */
@@ -95,6 +98,8 @@ export class ApiError extends Error {
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  // A change makes what pages remember stale, whoever's signed in afterwards.
+  if (method !== 'GET') clearCache();
   const res = await fetch(server + path, {
     method,
     // The server words emails (and anything else it writes) in the language
@@ -106,6 +111,8 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  // Again, in case a page loaded the old state while the change was on its way.
+  if (method !== 'GET') clearCache();
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);

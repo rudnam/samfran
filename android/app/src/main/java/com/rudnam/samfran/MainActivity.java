@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(UpdatesPlugin.class);
         registerPlugin(ShareTargetPlugin.class);
         registerPlugin(BusAlarmPlugin.class);
+        registerPlugin(RemindersPlugin.class);
         super.onCreate(savedInstanceState);
     }
 
@@ -19,5 +20,8 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         // Opening samfran means she's up: stop the bus buzz.
         BusTripService.stopBuzz(this);
+        // And what its notifications were asking or telling has been seen.
+        ShiftPrompt.clear(this);
+        ActivityJob.clear(this);
     }
 }

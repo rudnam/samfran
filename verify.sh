@@ -49,8 +49,12 @@ trap 'down; rm -f "$golog" "$buildlog"' EXIT
 
 # Pull the browser image while the app builds, not after: it's large, and a
 # fresh machine (CI) or a new Playwright version has to download it.
+# Not in a Claude Code cloud session, though: there the local image has been
+# made to trust the sandbox's TLS proxy (.claude/hooks/session-start.sh, which
+# labels it), and a pull would put the stock image back in its place.
 pullpid=''
-if [[ $mode == all || $mode == e2e ]]; then
+patched=$(docker image inspect -f '{{index .Config.Labels "ccr.proxy-ca"}}' "mcr.microsoft.com/playwright:v${PW_VERSION}-noble" 2>/dev/null || true)
+if [[ ($mode == all || $mode == e2e) && -z $patched ]]; then
   dc --profile e2e pull -q e2e >/dev/null 2>&1 & pullpid=$!
 fi
 
@@ -73,7 +77,7 @@ else
     # app builds and the browser tests run. Their output is shown when they finish.
     dc --profile go run --rm gotest >"$golog" 2>&1 & gopid=$!
   fi
-  wait "$pullpid" || true   # if the pull failed, the up below pulls again
+  [[ -z $pullpid ]] || wait "$pullpid" || true   # if the pull failed, the up below pulls again
   # Reinstall only when node_modules is missing or out of date.
   if ! dc --profile e2e up -d --no-deps e2e >/dev/null 2>&1 ||
      ! dc --profile e2e exec -T e2e sh -c \
