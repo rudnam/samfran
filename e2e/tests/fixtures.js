@@ -2,6 +2,11 @@
 // @playwright/test so every test gets them.
 const base = require('@playwright/test');
 
+// The bus stop's map, from a fake: tests don't reach the internet.
+const fakeMap =
+  '<!doctype html><body style="margin:0;background:#e8eaed;font:14px sans-serif;display:grid;place-items:center;height:100vh">' +
+  '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ea4335"></div></body>';
+
 const test = base.test.extend({
   // Fails the test if the page throws or logs a console error (which includes
   // Content-Security-Policy violations).
@@ -15,6 +20,7 @@ const test = base.test.extend({
       // shown in the form. Tests assert on what the user sees.
       if (m.type() === 'error' && !/status of 40[0139] /.test(m.text())) errors.push('console: ' + m.text());
     });
+    await page.route('https://www.google.com/maps?*', (route) => route.fulfill({ contentType: 'text/html', body: fakeMap }));
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);
   },

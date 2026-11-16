@@ -16,7 +16,7 @@
         <item name="android:background">@null</item>
     </style>
 
-    <!-- While the app starts: the page on the paper colour (Android 12's splash screen, back-ported). -->
+    <!-- While the app starts: the launcher icon on the paper colour (Android 12's splash screen, back-ported). -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/paper</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>

@@ -57,7 +57,7 @@ Export isn't offered in the app (the download needs the browser's sign-in); use 
 
 ## The bus-stop alarm
 
-The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance the phone **vibrates on repeat, with no sound**, until "I'm up" on the notification is tapped, the notification is swiped away, or samfran is opened (ten minutes at most; `StopBuzzReceiver.java`, `MainActivity.onResume`). A trip ends when the buzz stops, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
+The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance the phone **vibrates on repeat, with no sound**, until "Stop" on the notification is tapped, the notification is swiped away, or samfran is opened (ten minutes at most; `StopBuzzReceiver.java`, `MainActivity.onResume`). A trip ends when the buzz stops, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
 
 Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), and a location foreground service.
 
@@ -81,4 +81,4 @@ In Google Maps, open a place, tap **Share**, and pick **samfran**. Android hands
 
 ## Icons
 
-The launcher icon is adaptive (Android 8+, the app's minimum): the page from the web app's logo (`web/src/components/Icon.tsx`) as a vector (`res/drawable/ic_launcher_foreground.xml`, plus a one-colour `ic_launcher_monochrome.xml` for themed icons) on the ink-blue accent. The splash screen shows the same page on the paper colour (`res/values/styles.xml`).
+The launcher icon is adaptive (Android 8+, the app's minimum): the penguin and the bear from `web/public/icon.svg` as a picture with a transparent background (`res/drawable-xxxhdpi/ic_launcher_foreground.png`, 432 px, drawn inside the adaptive icon's safe zone) on cream (`res/values/ic_launcher_background.xml`), plus a one-colour vector for themed icons (`res/drawable/ic_launcher_monochrome.xml`). The foreground is a picture rather than a vector because its soft shadows and plush edges need SVG filters, which Android vectors don't have; to change it, edit the SVG and render it again in a browser. The splash screen shows the same pair (`res/values/styles.xml`).

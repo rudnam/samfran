@@ -93,7 +93,11 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { margin: 0; background: var(--bg); color: var(--text); }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  /* The Android app draws edge to edge: keep content out from under the status bar and any camera cutout. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
 h1 { font-size: 1.5rem; margin: 0; }
 h2 { font-size: 1.05rem; margin: 0; font-weight: 700; }
 p { margin: 0; }
@@ -331,6 +335,64 @@ select.language { width: auto; padding: 6px 10px; }
 .trip.on .eyebrow { color: inherit; opacity: 0.8; }
 .trip-big { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); margin: 0; font-variant-numeric: tabular-nums; }
 button.big { padding: 18px; font-size: 1.15rem; border-radius: 16px; }
+.trip.done { background: var(--tile-green); color: var(--tile-green-ink); box-shadow: none; }
+.trip-stop { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.02em; margin: 2px 0; overflow-wrap: anywhere; }
+.center { text-align: center; }
+.app-note { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; border-top: 1px solid var(--divider); }
+
+/* The ride as a line: the bus moving towards the stop, and where it buzzes. */
+.route { position: relative; height: 36px; margin: 4px 14px; }
+.route-line, .route-done, .route-zone { position: absolute; top: 50%; height: 6px; margin-top: -3px; border-radius: 3px; }
+.route-line { left: 0; right: 0; background: var(--sunken); }
+.trip.on .route-line { background: rgba(255, 255, 255, 0.55); }
+.route-done { left: 0; background: currentColor; opacity: 0.35; transition: width 0.3s linear; }
+.route-zone { right: 0; background: repeating-linear-gradient(-45deg, var(--accent) 0 5px, transparent 5px 9px); opacity: 0.7; }
+.route-bus {
+  position: absolute; top: 50%; width: 32px; height: 32px; margin: -16px 0 0 -16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 3px var(--surface); transition: left 0.3s linear;
+}
+.route-stop {
+  position: absolute; right: -7px; top: 50%; width: 14px; height: 14px; margin-top: -7px; border-radius: 50%;
+  background: var(--surface); box-shadow: inset 0 0 0 4px var(--text);
+}
+
+/* Buzzing: hard to miss, with one big button. */
+.buzz { background: var(--accent); color: var(--accent-text); box-shadow: none; text-align: center; align-items: stretch; animation: buzz-pulse 1.4s ease-in-out infinite; }
+.buzz .eyebrow { color: inherit; opacity: 0.85; }
+.buzz-big { font-family: var(--display); font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; }
+.buzz-stop { font-size: 1.1rem; font-weight: 600; opacity: 0.9; overflow-wrap: anywhere; }
+.buzz-note { opacity: 0.9; }
+button.wake { background: var(--surface); color: var(--text); padding: 22px; font-size: 1.4rem; border-radius: 18px; }
+@keyframes buzz-pulse { 0%, 100% { box-shadow: 0 0 0 0 var(--a-bg); } 50% { box-shadow: 0 0 0 10px var(--a-bg); } }
+@media (prefers-reduced-motion: reduce) {
+  .buzz { animation: none; }
+  .route-bus, .route-done { transition: none; }
+}
+
+/* Buzz distance: one tap each. */
+.chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+@media (min-width: 520px) { .chips { grid-template-columns: repeat(6, 1fr); } }
+.chips button { background: var(--sunken); color: var(--text); font-weight: 600; padding: 10px 4px; font-variant-numeric: tabular-nums; }
+.chips button.on { background: var(--accent); color: var(--accent-text); font-weight: 700; }
+
+/* How it works: three numbered steps. */
+.how { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.how li { display: flex; align-items: flex-start; gap: 12px; }
+.how-num {
+  width: 28px; height: 28px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--tile-red); color: var(--tile-red-ink); font-weight: 800; font-size: 0.9rem;
+}
+.how-fold summary, .other-ways summary { cursor: pointer; font-weight: 700; }
+.how-fold[open] summary { margin-bottom: 12px; }
+.other-ways summary { color: var(--accent-ink); font-weight: 600; font-size: 0.95rem; }
+.other-ways[open] summary { margin-bottom: 10px; }
+/* The stop's map: Google Maps, embedded. */
+.stop-map { height: 300px; border-radius: var(--radius); overflow: hidden; background: var(--sunken); margin: 0 calc(var(--space) * -0.25); }
+@media (min-width: 720px) { .stop-map { height: 360px; } }
+.stop-map iframe { display: block; width: 100%; height: 100%; border: 0; }
+.found { font-size: 0.85rem; color: var(--tile-green-ink); font-weight: 600; }
+.found a { font-weight: 500; }
 select { width: 100%; }
 
 /* Recent changes */

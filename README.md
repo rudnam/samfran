@@ -1,8 +1,6 @@
 # Samfran
 
-**SamFran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
-
-Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab with an invite link (single use, seven days). Whoever signs up through it, with Google or a password and any email, joins the owner's space.
+A private app for two.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
@@ -117,6 +115,12 @@ A Google sign-in uses the account with the same email if there is one. If that a
 With the `SMTP_*` settings, new accounts get an email with a link, and the app shows a reminder until it's opened. People can keep using the app meanwhile. Signing in with Google counts as confirmed. Any SMTP provider works (Resend, Amazon SES, Postmark, or a Gmail account with an app password). The email is in Japanese for someone using the app in Japanese.
 
 The same settings turn on **Forgot your password?** on the sign-in page: it emails a link that works once, for an hour, to choose a new password, which signs out every other session.
+
+## What it does
+
+Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
+
+Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab with an invite link (single use, seven days). Whoever signs up through it, with Google or a password and any email, joins the owner's space.
 
 ## How the code is organized
 
