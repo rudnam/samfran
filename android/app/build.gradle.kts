@@ -18,6 +18,11 @@ android {
         versionCode = (System.getenv("SAMFRAN_VERSION_CODE") ?: "10").toInt()
         versionName = System.getenv("SAMFRAN_VERSION_NAME") ?: "2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The Google Maps key for the map of the bus stop (README.md, "Google Maps key"):
+        // samfran.mapsKey in ~/.gradle/gradle.properties, or SAMFRAN_MAPS_KEY. It isn't in the
+        // repository. Without it the stop's map is Google's web map instead (feature/bus StopMap).
+        manifestPlaceholders["mapsKey"] = providers.gradleProperty("samfran.mapsKey")
+            .orElse(providers.environmentVariable("SAMFRAN_MAPS_KEY")).getOrElse("")
     }
 
     androidResources {

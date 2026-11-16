@@ -10,6 +10,9 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
+        <!-- Google Maps, for the map of the bus stop; empty without a key (app/build.gradle.kts). -->
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="${mapsKey}" />
+
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|screenLayout|uiMode|navigation|density"
