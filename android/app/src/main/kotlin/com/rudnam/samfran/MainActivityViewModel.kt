@@ -71,6 +71,7 @@ class MainActivityViewModel @Inject constructor(
 
     private val update = MutableStateFlow<AppUpdate?>(null)
     private val confirmSent = MutableStateFlow(false)
+    private var lastCheck: Long? = null
 
     override val shell: StateFlow<ShellState> = combine(user.me, update, activity.unseen, confirmSent) { me, u, unseen, sent ->
         ShellState(me = me, update = u, unseen = unseen, confirmSent = sent)
@@ -86,9 +87,12 @@ class MainActivityViewModel @Inject constructor(
                 user.signOut()
             }
         }
-        // Signed in: who it is, the two of you, the changes, and the phone's reminders.
+        // Signed in: who it is, the two of you, the changes, the phone's reminders, and a newer build.
+        // The first onResume comes before the stored session has been read, so
+        // resumed() can't check for an update on its own at launch; this does.
         viewModelScope.launch {
             signedIn.filter { it }.collect {
+                launch { checkForUpdate() }
                 user.refreshMe()
                 spaces.refresh()
                 activity.refresh()
@@ -97,8 +101,6 @@ class MainActivityViewModel @Inject constructor(
         }
     }
 
-    private var lastCheck = 0L
-
     /** The app came into view. */
     fun resumed() {
         reminders.clearNotifications()
@@ -106,12 +108,15 @@ class MainActivityViewModel @Inject constructor(
         viewModelScope.launch {
             reminders.sync()
             activity.refresh()
-            // A newer build: when the app starts, and at most hourly when it comes back.
-            if (clock.millis() - lastCheck > 60 * 60 * 1000) {
-                lastCheck = clock.millis()
-                update.value = updates.check()
-            }
+            checkForUpdate()
         }
+    }
+
+    /** A newer build: when someone is signed in at launch, and at most hourly when the app comes back. */
+    private suspend fun checkForUpdate() {
+        lastCheck?.let { if (clock.millis() - it <= 60 * 60 * 1000) return }
+        lastCheck = clock.millis()
+        update.value = updates.check()
     }
 
     override fun updateLater() {

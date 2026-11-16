@@ -78,7 +78,9 @@ class FakeUserRepository(me: Me? = Me("fran@example.com")) : UserRepository {
 }
 
 class FakeUpdateRepository(var update: AppUpdate? = null) : UpdateRepository {
-    override suspend fun check() = update
+    var checks = 0
+
+    override suspend fun check() = update.also { checks++ }
     override suspend fun later(update: AppUpdate) {
         this.update = null
     }
