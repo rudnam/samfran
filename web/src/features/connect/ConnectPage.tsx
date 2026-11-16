@@ -1,4 +1,4 @@
-// Connect: Claude (a connector) asks to reach samfran, and the signed-in
+// Connect: Claude (a connector) asks to reach SamFran, and the signed-in
 // person allows or denies it. The server sends the browser here from
 // /oauth/authorize (internal/mcp/oauth.go) and, once they answer, back to
 // Claude. As in RudWallet.
@@ -65,7 +65,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
         <>
           <h1 className="display">{t('Connect {app}', { app: client.client_name })}</h1>
           <p>
-            {tx('{app} is asking to reach samfran, signed in as {email}. It will be able to:', {
+            {tx('{app} is asking to reach SamFran, signed in as {email}. It will be able to:', {
               app: <strong>{client.client_name}</strong>,
               email: <strong>{email}</strong>,
             })}
@@ -93,7 +93,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
           <p role="alert" className="error">
             {error}
           </p>
-          <a href={href('home')}>{t('Go to samfran')}</a>
+          <a href={href('home')}>{t('Go to SamFran')}</a>
         </>
       )}
     </section>

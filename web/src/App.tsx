@@ -125,7 +125,7 @@ export function App() {
         }
         setSession({
           status: 'signed-out',
-          notice: initialNotice ?? (connecting ? { message: t('Sign in to connect Claude to samfran.'), ok: true } : null),
+          notice: initialNotice ?? (connecting ? { message: t('Sign in to connect Claude to SamFran.'), ok: true } : null),
         });
       });
   }, []);
@@ -165,7 +165,7 @@ export function App() {
         <div className="app">
           <header className="appbar">
             <a className="brand" href={href('home')}>
-              samfran
+              SamFran
             </a>
             <nav className="tabbar" aria-label={t('Sections')}>
               <a href={href('home')} className={tab === 'food' ? 'active' : ''} aria-current={tab === 'food' ? 'page' : undefined}>
@@ -210,7 +210,7 @@ export function App() {
     <>
       <header className="topbar">
         <a className="brand" href="/">
-          samfran
+          SamFran
         </a>
         <LanguagePicker />
       </header>
@@ -335,7 +335,7 @@ function UpdateBanner() {
   return (
     <div className="notice row" role="status">
       <span className="grow">
-        {update.name ? t('samfran {version} is available.', { version: update.name }) : t('A new version of samfran is available.')}
+        {update.name ? t('SamFran {version} is available.', { version: update.name }) : t('A new version of SamFran is available.')}
       </span>
       <button type="button" className="link quiet" onClick={later}>
         {t('Later')}
@@ -356,7 +356,7 @@ function joinNotice(): Notice | null {
   if (p.has('invalid')) return { message: t('That invite link has expired or was already used. Ask for a new one.'), ok: false };
   const from = p.get('from');
   return {
-    message: from ? t('{name} invited you to samfran. Create your account to join.', { name: from }) : t('You’re invited to samfran. Create your account to join.'),
+    message: from ? t('{name} invited you to SamFran. Create your account to join.', { name: from }) : t('You’re invited to SamFran. Create your account to join.'),
     ok: true,
   };
 }

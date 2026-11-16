@@ -5,6 +5,7 @@ import { activityAlertsOn, setActivityAlerts } from '../../background';
 import { isApp, server } from '../../native';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
+import { ThemePicker } from '../../components/ThemePicker';
 import { t } from '../../i18n';
 import { Avatar, useSpace } from '../../space';
 
@@ -34,7 +35,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
     try {
       const now = await setActivityAlerts(on);
       setAlerts(now);
-      if (on && !now) setAlertNote(t('Allow notifications for samfran in the phone’s settings, then switch this on again.'));
+      if (on && !now) setAlertNote(t('Allow notifications for SamFran in the phone’s settings, then switch this on again.'));
     } catch (err) {
       setAlerts(false);
       setAlertNote(errorMessage(err));
@@ -135,7 +136,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         <div className="card row spread">
           <span className="grow">
             <strong className="block">{t('Get the Android app')}</strong>
-            <span className="hint">{t('Share a place from Google Maps to samfran to add it in one tap.')}</span>
+            <span className="hint">{t('Share a place from Google Maps to SamFran to add it in one tap.')}</span>
           </span>
           <a className="button" href={apk.url} download>
             {t('Download')}
@@ -164,6 +165,10 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         <div className="row spread">
           <span>{t('Language')}</span>
           <LanguagePicker />
+        </div>
+        <div className="row spread">
+          <span>{t('Appearance')}</span>
+          <ThemePicker />
         </div>
         <div className="row spread">
           <span className="muted small">{me.demo ? t('Demo') : me.email}</span>
@@ -200,11 +205,11 @@ function ClaudeCard() {
     <div className="card stack">
       <h2>{t('Claude')}</h2>
       <p className="muted">
-        {t('Connect Claude to samfran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.')}
+        {t('Connect Claude to SamFran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.')}
       </p>
       <ol className="steps small">
         <li>{t('In Claude (claude.ai), open Settings › Connectors › Add custom connector.')}</li>
-        <li>{t('Name it samfran and paste this address:')}</li>
+        <li>{t('Name it SamFran and paste this address:')}</li>
       </ol>
       <div className="row">
         <input readOnly aria-label={t('Connector address')} value={url} onFocus={(e) => e.target.select()} />
@@ -275,7 +280,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
 
   async function share() {
     if (navigator.share) {
-      await navigator.share({ title: 'samfran', text: t('Join me on samfran'), url }).catch(() => {});
+      await navigator.share({ title: 'SamFran', text: t('Join me on SamFran'), url }).catch(() => {});
     } else {
       await navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
     }

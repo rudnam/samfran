@@ -1,5 +1,6 @@
 /* Quiet Pop: calm, warm off-white, with Sam's colours as accents.
-   Fran is red, Sam orange. Dark mode follows the OS. */
+   Fran is red, Sam orange. Dark mode follows the OS unless
+   one is picked on this device (theme.ts). */
 @font-face {
   font-family: 'Plus Jakarta Sans';
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
@@ -41,8 +42,10 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Dark when the device is dark and Light isn't picked, or when Dark is picked
+   (Us → This device → Appearance). Keep the two blocks the same. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #161311;
     --surface: #211c19;
     --sunken: #2b2420;
@@ -64,6 +67,28 @@
     --shadow: 0 0 0 1px var(--border);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #161311;
+  --surface: #211c19;
+  --sunken: #2b2420;
+  --text: #f5efea;
+  --muted: #a99d94;
+  --border: #322a25;
+  --divider: #2c2521;
+  --accent: #ff5a3c;
+  --accent-text: #160e0b;
+  --accent-ink: #ff8a73;
+  --star-off: #463a32;
+  --danger: #ffb4a9;
+  --a-bg: #4a1d16; --a-text: #ffb4a6; --a-solid: #ff5a3c; --a-on: #160e0b;
+  --b-bg: #45290f; --b-text: #ffc58f; --b-solid: #ff9a3d; --b-on: #160e0b;
+  --tile-yellow: #3d3214; --tile-yellow-ink: #ffd877;
+  --tile-green: #183424; --tile-green-ink: #8fdcab;
+  --tile-red: #44201a; --tile-red-ink: #ffab9b;
+  --tile-orange: #45290f; --tile-orange-ink: #ffc58f;
+  --shadow: 0 0 0 1px var(--border);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -328,13 +353,19 @@ select { width: 100%; }
 .cal-day.today { box-shadow: inset 0 0 0 2.5px var(--accent); }
 .cal-day[aria-pressed='true'] { outline: 2.5px solid var(--text); outline-offset: 1px; }
 .cal-detail { display: flex; align-items: center; gap: 10px; padding: 10px 0 2px; border-top: 1px solid var(--divider); margin-top: 6px; font-size: 0.94rem; }
+/* Dark: the device's setting unless light is picked on Us, or dark picked there. */
 @media (prefers-color-scheme: dark) {
-  .cal-day.early { background: #57440a; color: #ffe08a; }
-  .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
-  .cal-day.late { background: #5c3410; color: #ffc993; }
-  .cal-day.night { background: #37307a; color: #d3ccff; }
-  .cal-day.training { background: #3a424d; color: #d5dbe3; }
+  :root:not([data-theme="light"]) .cal-day.early { background: #57440a; color: #ffe08a; }
+  :root:not([data-theme="light"]) .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
+  :root:not([data-theme="light"]) .cal-day.late { background: #5c3410; color: #ffc993; }
+  :root:not([data-theme="light"]) .cal-day.night { background: #37307a; color: #d3ccff; }
+  :root:not([data-theme="light"]) .cal-day.training { background: #3a424d; color: #d5dbe3; }
 }
+:root[data-theme="dark"] .cal-day.early { background: #57440a; color: #ffe08a; }
+:root[data-theme="dark"] .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
+:root[data-theme="dark"] .cal-day.late { background: #5c3410; color: #ffc993; }
+:root[data-theme="dark"] .cal-day.night { background: #37307a; color: #d3ccff; }
+:root[data-theme="dark"] .cal-day.training { background: #3a424d; color: #d5dbe3; }
 
 /* ---------- Dialogs, undo, and loading ---------- */
 dialog.ask {
@@ -377,3 +408,13 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 }
 .switch input:checked { background: var(--accent); }
 .switch input:checked::after { transform: translateX(18px); }
+/* ---------- Stop search ---------- */
+.suggest { list-style: none; margin: 0; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.suggest button {
+  width: 100%; justify-content: flex-start; text-align: left; gap: 12px;
+  background: none; color: var(--text); font-weight: 400; padding: 10px 10px; border-radius: 8px;
+}
+.suggest button:hover { background: var(--bg); }
+.suggest-icon { font-size: 1.15rem; flex: none; }
+.suggest-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.suggest-text strong { font-weight: 600; }

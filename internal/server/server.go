@@ -28,7 +28,7 @@ import (
 )
 
 // appName is what emails call the app.
-const appName = "Samfran"
+const appName = "SamFran"
 
 func init() {
 	// The runtime image has no /etc/mime.types, and Go doesn't know this one.

@@ -2,7 +2,8 @@
 // app's wake-up alarm (android/…/BusTripService.java): during a trip the
 // phone watches its own position and rings when it gets within
 // alert_meters of the stop. The server only stores the stop; positions
-// never leave the phone.
+// never leave the phone. Choosing the stop can search for it by name
+// (search.go).
 package bus
 
 import (
@@ -25,13 +26,18 @@ type Stop struct {
 	AlertMeters int     `json:"alert_meters"`
 }
 
-type Handler struct{ db *sql.DB }
+type Handler struct {
+	db *sql.DB
+	// Stops finds stops by name (search.go).
+	Stops *Searcher
+}
 
-func NewHandler(conn *sql.DB) *Handler { return &Handler{db: conn} }
+func NewHandler(conn *sql.DB) *Handler { return &Handler{db: conn, Stops: NewSearcher()} }
 
 func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/bus/stop", requireUser(httpx.HandlerFunc(h.get)))
 	mux.Handle("PUT /api/bus/stop", requireUser(httpx.HandlerFunc(h.put)))
+	mux.Handle("GET /api/bus/search", requireUser(httpx.HandlerFunc(h.search)))
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {

@@ -9,6 +9,9 @@ export const ja = {
   Language: '言語',
   // The language picker's choice to follow the device's language.
   Auto: '自動',
+  Appearance: '表示モード',
+  Light: 'ライト',
+  Dark: 'ダーク',
   'Sign in': 'ログイン',
   'Create an account': 'アカウントを作成',
   Email: 'メールアドレス',
@@ -116,13 +119,13 @@ export const ja = {
   'Delete this place': 'このお店を削除',
 
   // The Android app
-  'samfran {version} is available.': 'samfran {version} が公開されました。',
-  'A new version of samfran is available.': 'samfran の新しいバージョンが公開されました。',
+  'SamFran {version} is available.': 'SamFran {version} が公開されました。',
+  'A new version of SamFran is available.': 'SamFran の新しいバージョンが公開されました。',
   Later: 'あとで',
   Update: 'アップデート',
   'Get the Android app': 'Androidアプリを入手',
   Download: 'ダウンロード',
-  'Share a place from Google Maps to samfran to add it in one tap.': 'Googleマップでお店を「共有」→ samfran で、すぐに追加できます。',
+  'Share a place from Google Maps to SamFran to add it in one tap.': 'Googleマップでお店を「共有」→ SamFran で、すぐに追加できます。',
   'Looking up the place…': 'お店を調べています…',
 
   // Shifts
@@ -171,7 +174,7 @@ export const ja = {
   'In your calendar': 'カレンダーに表示',
   'Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.': 'カレンダーのリンクをオンにして、パソコンのGoogleカレンダーで「他のカレンダー › + › URLで追加」から登録してください。ほかのカレンダーアプリでも使えます。Googleがリンクを確認するのは1日1回ほどなので、変更の反映に最大1日かかります。',
   'Or connect Google Calendar': 'またはGoogleカレンダーに接続',
-  'Optional, instead of the link: samfran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.': 'リンクの代わりに使えます。samfranがGoogleアカウントにシフトのカレンダーを作り、数秒で更新します。どちらか一方だけを使ってください。',
+  'Optional, instead of the link: SamFran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.': 'リンクの代わりに使えます。SamFranがGoogleアカウントにシフトのカレンダーを作り、数秒で更新します。どちらか一方だけを使ってください。',
   'Connected. The shifts are being added to your Google Calendar.': '接続しました。シフトをGoogleカレンダーに追加しています。',
   'Google Calendar wasn’t connected.': 'Googleカレンダーは接続されませんでした。',
   'That took too long. Try connecting again.': '時間がかかりすぎました。もう一度接続してください。',
@@ -187,7 +190,7 @@ export const ja = {
   // The bus-stop alarm
   Bus: 'バス',
   'Buzzes your phone before your stop, so you don’t miss it.': '降りるバス停の手前でスマホを振動させます。乗り過ごし防止に。',
-  'samfran needs your location to know when you’re near the stop. Allow it in the phone’s settings.': 'バス停に近づいたことを知るために位置情報が必要です。スマホの設定で許可してください。',
+  'SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.': 'バス停に近づいたことを知るために位置情報が必要です。スマホの設定で許可してください。',
   'On the bus': 'バスに乗車中',
   '{distance} to {stop}': '{stop}まであと{distance}',
   'your stop': '降りるバス停',
@@ -199,7 +202,7 @@ export const ja = {
   'I’m on the bus': 'バスに乗った',
   'Tap when you get on. It buzzes {distance} before {stop} and stops by itself after three hours.': '乗ったらタップ。{stop}の{distance}手前で振動し、3時間たつと自動で止まります。',
   'On the phone': 'スマホで',
-  'It runs in the samfran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.': 'samfranのAndroidアプリで動きます。乗車中だけスマホの位置情報を使います。バス停はここでもアプリでも設定できます。',
+  'It runs in the SamFran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.': 'SamFranのAndroidアプリで動きます。乗車中だけスマホの位置情報を使います。バス停はここでもアプリでも設定できます。',
   'Your stop': '降りるバス停',
   'Unnamed stop': '名前のないバス停',
   'See it on the map': '地図で見る',
@@ -207,11 +210,9 @@ export const ja = {
   'Buzzes {distance} before the stop.': 'バス停の{distance}手前で振動します。',
   'Test the buzz': '振動を試す',
   'Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.': 'バス停の場所が見つかりませんでした。Googleマップでバス停を長押ししてピンを立て、そのピンのリンクを共有してください。',
-  'Couldn’t tell where you are. Check that location is on, and allowed for samfran.': '現在地が分かりませんでした。位置情報がオンで、samfranに許可されているか確認してください。',
+  'Couldn’t tell where you are. Check that location is on, and allowed for SamFran.': '現在地が分かりませんでした。位置情報がオンで、SamFranに許可されているか確認してください。',
   'Where do you get off?': 'どこで降りますか？',
   'Stop name': 'バス停の名前',
-  'e.g. Kamijima Station': '例: 上島駅',
-  'Where it is': '場所',
   'Google Maps link to the stop': 'バス停のGoogleマップのリンク',
   'Paste a Google Maps link to the stop': 'バス停のGoogleマップのリンクを貼り付け',
   'Use link': 'リンクを使う',
@@ -223,7 +224,7 @@ export const ja = {
   'About one stop early is 600–800 m. On a fast road, choose more.': '1つ手前ならおよそ600〜800m。速い道路なら長めに。',
 
   // Invite links
-  'Join me on samfran': 'samfranで一緒に使おう',
+  'Join me on SamFran': 'SamFranで一緒に使おう',
   'Invite link': '招待リンク',
   Share: '共有',
   'Cancel link': 'リンクを取り消す',
@@ -232,8 +233,8 @@ export const ja = {
   'Create invite link': '招待リンクを作成',
   'Send them the link; they tap it and sign up, and see everything here.': 'リンクを送ると、相手はタップして登録し、ここにあるものをすべて見られます。',
   'That invite link has expired or was already used. Ask for a new one.': 'この招待リンクは期限切れか、すでに使われています。新しいリンクを頼んでください。',
-  '{name} invited you to samfran. Create your account to join.': '{name}からsamfranに招待されました。アカウントを作成して参加しましょう。',
-  'You’re invited to samfran. Create your account to join.': 'samfranに招待されました。アカウントを作成して参加しましょう。',
+  '{name} invited you to SamFran. Create your account to join.': '{name}からSamFranに招待されました。アカウントを作成して参加しましょう。',
+  'You’re invited to SamFran. Create your account to join.': 'SamFranに招待されました。アカウントを作成して参加しましょう。',
   'made an invite link': '招待リンクを作成',
 
   // Recent changes
@@ -264,20 +265,20 @@ export const ja = {
   'Show more': 'もっと見る',
 
   // Claude (the connector)
-  'Sign in to connect Claude to samfran.': 'Claudeをsamfranにつなぐには、ログインしてください。',
+  'Sign in to connect Claude to SamFran.': 'ClaudeをSamFranにつなぐには、ログインしてください。',
   'Connect {app}': '{app}を接続',
-  '{app} is asking to reach samfran, signed in as {email}. It will be able to:': '{app}が、{email}としてsamfranへのアクセスを求めています。できること:',
+  '{app} is asking to reach SamFran, signed in as {email}. It will be able to:': '{app}が、{email}としてSamFranへのアクセスを求めています。できること:',
   'see and save the shifts, e.g. from a photo of the sheet you share with it': 'シフトを見て保存する（共有した勤務表の写真からなど）',
   'see restaurants, add them, log visits, and set your rating': 'お店を見る・追加する・訪問を記録する・あなたの評価をつける',
   'It can’t delete anything or see your password. You can disconnect it at any time in Us → Claude.': '削除やパスワードの閲覧はできません。「ふたり → Claude」からいつでも接続を解除できます。',
   'You’ll go back to {host}.': '{host}に戻ります。',
   Deny: '拒否',
   Allow: '許可',
-  'Go to samfran': 'samfranへ',
+  'Go to SamFran': 'SamFranへ',
   Claude: 'Claude',
-  'Connect Claude to samfran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.': 'Claudeをsamfranにつなぐと、あなたのClaudeプランで勤務表の写真を読み、確認後に月のシフトを保存したり、お店を追加・評価したりできます。',
+  'Connect Claude to SamFran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.': 'ClaudeをSamFranにつなぐと、あなたのClaudeプランで勤務表の写真を読み、確認後に月のシフトを保存したり、お店を追加・評価したりできます。',
   'In Claude (claude.ai), open Settings › Connectors › Add custom connector.': 'Claude（claude.ai）で「設定 › コネクタ › カスタムコネクタを追加」を開きます。',
-  'Name it samfran and paste this address:': '名前を samfran にして、このアドレスを貼り付けます:',
+  'Name it SamFran and paste this address:': '名前を SamFran にして、このアドレスを貼り付けます:',
   'Connector address': 'コネクタのアドレス',
   'Claude then asks you to sign in here and allow it. After that, share a photo of the sheet in a chat and ask it to add the shifts.': 'Claudeがここでのログインと許可を求めます。その後、チャットで勤務表の写真を共有して、シフトの追加を頼んでください。',
   Connections: '接続',
@@ -317,11 +318,19 @@ export const ja = {
   'Ask when a shift ends': 'シフトが終わったら聞く',
   'This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.':
     'シフトタブのシフトが終わると、このスマホが「バスアラームを開始しますか？」と聞きます。タップひとつで始まります。',
-  'Allow notifications for samfran in the phone’s settings, then switch this on again.':
-    'スマホの設定でsamfranの通知を許可してから、もう一度オンにしてください。',
+  'Allow notifications for SamFran in the phone’s settings, then switch this on again.':
+    'スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。',
   'Tell me about changes': '変更を知らせる',
   'A notification when the other one of you adds a place, logs a visit, rates one or saves the shifts. It can take half an hour.':
     '相手がお店を追加したり、来店を記録したり、評価したり、シフトを保存したりすると通知が届きます。30分ほどかかることがあります。',
+  'Type part of it, e.g. 葵西': '名前の一部を入力（例: 葵西）',
+  'Matching stops': '見つかったバス停',
+  'The stop search isn’t answering. Paste a Google Maps link instead.': 'バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。',
+  'No stops by that name. Try fewer characters, written as on the stop’s sign.': 'その名前のバス停はありません。文字を減らすか、バス停の表示どおり（漢字）に入力してください。',
+  'Tap your stop.': '降りるバス停をタップしてください。',
+  'Stops from OpenStreetMap': 'バス停データ: OpenStreetMap',
+  'Start typing and choose your stop from the list.': '入力して、一覧からバス停を選んでください。',
+  'Or use a Google Maps link': 'またはGoogleマップのリンクで',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -368,7 +377,7 @@ export const jaServer = {
   "a stop's name must be at most 80 characters": 'バス停の名前は80文字以内にしてください',
   'ring between 200 m and 5 km before the stop': 'バス停の200m〜5km手前に設定してください',
   "Google Calendar isn't set up on this server": 'このサーバーではGoogleカレンダーが設定されていません',
-  'Google no longer allows samfran to update the calendar; connect it again.': 'Googleがsamfranによるカレンダーの更新を許可しなくなりました。もう一度接続してください。',
+  'Google no longer allows SamFran to update the calendar; connect it again.': 'GoogleがSamFranによるカレンダーの更新を許可しなくなりました。もう一度接続してください。',
   'The last update to Google Calendar failed; it will try again with the next change.': 'Googleカレンダーへの前回の更新に失敗しました。次の変更のときにもう一度試します。',
   'not found': '見つかりません',
   'that sign-in took too long; try again': 'ログインに時間がかかりすぎました。もう一度お試しください',
@@ -379,4 +388,5 @@ export const jaServer = {
   "this server doesn't send email": 'このサーバーはメールを送信しません',
   'type your email address to confirm': '確認のためメールアドレスを入力してください',
   'your email is already confirmed': 'メールアドレスはすでに確認済みです',
+  'the stop search isn’t answering; try again in a moment': 'バス停の検索が応答しません。少し待ってからもう一度お試しください',
 } as const;

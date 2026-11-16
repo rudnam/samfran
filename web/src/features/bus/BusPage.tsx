@@ -1,8 +1,8 @@
 // The bus-stop alarm: choose the stop once, then "I'm on the bus" starts a
 // trip on the phone (android/…/BusTripService.java), which rings before the
 // stop. The phone does the watching; this page starts, shows and stops it.
-import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type BusStop, type Downloads } from '../../api';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { api, errorMessage, type BusStop, type Downloads, type FoundStop } from '../../api';
 import { t } from '../../i18n';
 import { setShiftPrompts, shiftPromptsOn, syncBackground } from '../../background';
 import { busAlarm, isApp, type TripStatus } from '../../native';
@@ -60,7 +60,7 @@ export function BusPage({ start }: { start?: boolean }) {
     try {
       const now = await setShiftPrompts(on);
       setPrompts(now);
-      if (on && !now) setPromptNote(t('Allow notifications for samfran in the phone’s settings, then switch this on again.'));
+      if (on && !now) setPromptNote(t('Allow notifications for SamFran in the phone’s settings, then switch this on again.'));
     } catch (err) {
       setPrompts(false);
       setPromptNote(errorMessage(err));
@@ -83,7 +83,7 @@ export function BusPage({ start }: { start?: boolean }) {
       setTrip(await fn());
     } catch (err) {
       const code = (err as { code?: string }).code;
-      setError(code === 'LOCATION_DENIED' ? t('samfran needs your location to know when you’re near the stop. Allow it in the phone’s settings.') : errorMessage(err));
+      setError(code === 'LOCATION_DENIED' ? t('SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.') : errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -159,7 +159,7 @@ export function BusPage({ start }: { start?: boolean }) {
       {!isApp && (
         <div className="card stack">
           <h2>{t('On the phone')}</h2>
-          <p className="muted">{t('It runs in the samfran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
+          <p className="muted">{t('It runs in the SamFran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
           {apk && (
             <a className="button" href={apk.url} download>
               {t('Get the Android app')}
@@ -194,12 +194,53 @@ export function BusPage({ start }: { start?: boolean }) {
   );
 }
 
-/** Choosing the stop: a Google Maps link to it, or where the phone is now. */
+/**
+ * Stops matching what's typed in the name field, as it's typed: a quarter
+ * second after the last key, two characters or more. null until searched.
+ */
+function useStopSearch(query: string, near: { lat: number; lng: number } | null) {
+  const [found, setFound] = useState<FoundStop[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const latest = useRef(0);
+  useEffect(() => {
+    const q = query.trim();
+    if ([...q].length < 2) {
+      setFound(null);
+      return;
+    }
+    const n = ++latest.current;
+    const timer = setTimeout(() => {
+      api.searchStops(q, near ?? undefined).then(
+        (f) => {
+          if (n !== latest.current) return; // a newer search is on its way
+          setFound(f);
+          setFailed(false);
+        },
+        () => n === latest.current && setFailed(true),
+      );
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
+  return { found, failed };
+}
+
+/** Choosing the stop: search by name, a Google Maps link to it, or where the phone is now. */
 function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: BusStop) => void; onCancel?: () => void }) {
   const [name, setName] = useState(stop.name);
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop.set ? { lat: stop.lat, lng: stop.lng } : null);
   const [link, setLink] = useState('');
   const [byName, setByName] = useState(false);
+  // What's being searched for: the name as typed, until a stop is picked.
+  const [query, setQuery] = useState('');
+  const search = useStopSearch(query, pos);
+
+  function pick(f: FoundStop) {
+    setName(f.name);
+    setPos({ lat: f.lat, lng: f.lng });
+    setByName(false);
+    setQuery('');
+    setError('');
+  }
   const [meters, setMeters] = useState(stop.alert_meters || 800);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -235,7 +276,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
       setPos({ lat: h.lat, lng: h.lng });
       setByName(false);
     } catch {
-      setError(t('Couldn’t tell where you are. Check that location is on, and allowed for samfran.'));
+      setError(t('Couldn’t tell where you are. Check that location is on, and allowed for SamFran.'));
     } finally {
       setBusy(false);
     }
@@ -243,6 +284,11 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    // Enter while choosing from the list takes the first match.
+    if (query && search.found?.length) {
+      pick(search.found[0]);
+      return;
+    }
     if (!pos) return;
     setBusy(true);
     setError('');
@@ -257,12 +303,56 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
   return (
     <form className="card stack" onSubmit={save}>
       <h2>{t('Where do you get off?')}</h2>
-      <label className="field">
-        {t('Stop name')}
-        <input maxLength={80} placeholder={t('e.g. Kamijima Station')} value={name} onChange={(e) => setName(e.target.value)} />
-      </label>
       <div className="field">
-        <span>{t('Where it is')}</span>
+        <label htmlFor="stop-name">{t('Stop name')}</label>
+        <input
+          id="stop-name"
+          maxLength={80}
+          autoComplete="off"
+          placeholder={t('Type part of it, e.g. 葵西')}
+          value={name}
+          aria-describedby="stop-search-hint"
+          onChange={(e) => {
+            setName(e.target.value);
+            setQuery(e.target.value);
+          }}
+        />
+        {query && search.found && search.found.length > 0 && (
+          <ul className="suggest" aria-label={t('Matching stops')}>
+            {search.found.map((f) => (
+              <li key={`${f.name}${f.lat}${f.lng}`}>
+                <button type="button" onClick={() => pick(f)}>
+                  <span className="suggest-icon" aria-hidden="true">
+                    {f.kind === 'train' ? '🚉' : '🚏'}
+                  </span>
+                  <span className="suggest-text">
+                    <strong>{f.name}</strong>
+                    {f.area && <span className="hint">{f.area}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <span className="hint" id="stop-search-hint">
+          {query && search.failed
+            ? t('The stop search isn’t answering. Paste a Google Maps link instead.')
+            : query && search.found?.length === 0
+              ? t('No stops by that name. Try fewer characters, written as on the stop’s sign.')
+              : query && search.found?.length
+                ? (
+                    <>
+                      {t('Tap your stop.')}{' '}
+                      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                        {t('Stops from OpenStreetMap')}
+                      </a>
+                    </>
+                  )
+                : !pos && t('Start typing and choose your stop from the list.')}
+        </span>
+      </div>
+      <div className="field">
+        <span>{t('Or use a Google Maps link')}</span>
         <span className="row">
           <input
             type="url"

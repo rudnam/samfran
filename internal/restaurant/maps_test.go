@@ -77,13 +77,13 @@ func TestLookupFollowsOnlyMaps(t *testing.T) {
 	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/elsewhere"); err != nil || p.Name != "" {
 		t.Errorf("redirect off Maps: %+v %v", p, err)
 	}
-	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/stop"); err != nil || p.Name != "葵西小学校入口（バス）" || p.Lat != nil {
+	if p, err := h.lookup(context.Background(), "https://maps.app.goo.gl/stop"); err != nil || p.Name != "葵西小学校入口（バス）" || p.Lat == nil || *p.Lat < 34.7697 || *p.Lat > 34.7698 {
 		t.Errorf("place page: %+v %v", p, err)
 	}
 	if _, err := h.lookup(context.Background(), "https://evil.example/x"); err != errNotMaps {
 		t.Errorf("non-Maps link: %v", err)
 	}
-	if strings.Join(hits, ",") != "/short,/elsewhere,/stop,/maps/place/葵西小学校入口（バス）/data=!4m2!3m1!1s0x601b209b09db8355:0xc0dbcebdcde7c6a0!18m1!1e1" {
+	if strings.Join(hits, ",") != "/short,/elsewhere,/stop" {
 		t.Errorf("requests made: %v", hits)
 	}
 }

@@ -1,6 +1,6 @@
 # Samfran
 
-**samfran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
+**SamFran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
 
 Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab with an invite link (single use, seven days). Whoever signs up through it, with Google or a password and any email, joins the owner's space.
 
@@ -128,7 +128,8 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 |---|---|
 | `cmd/server/` | Entry point: loads config, connects, migrates, serves, and shuts down cleanly on `SIGTERM`. |
 | `internal/activity/` | Recent changes: who changed what the two of you share (shifts and their settings, the calendar link, restaurants, invitations), from the app or via Claude. Features record through a `Log` hook; the Us tab shows the latest. |
-| `internal/bus/` | Feature: where each person gets off the bus (`/api/bus/stop`), for the Android app's wake-up alarm. The phone watches its own position during a trip; the server never stores it. |
+| `internal/bus/` | Feature: where each person gets off the bus (`/api/bus/stop`), for the Android app's wake-up alarm. The phone watches its own position during a trip; the server never stores it. Finding the stop by name (`search.go`) asks Photon, an OpenStreetMap search. |
+| `internal/geo/` | Distances between positions on the map. |
 | `internal/config/` | Reads and validates every setting from the environment. |
 | `internal/db/` | Connection pool, migrations (`migrations/*.sql`, embedded), shared errors. |
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
@@ -137,12 +138,12 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/demo/` | Fills a demo account with sample restaurants, in English and Japanese. |
 | `internal/space/` | The space the two of you share: members, display names, invitations, and `Require`, the middleware that gives every other feature the space to scope its queries by. A new account joins its space at sign-up (`account.Config.Created`). |
 | `internal/shift/` | Feature: one person's shifts. `codes.go` turns a sheet's codes (`13F`, `普`, `有休`) into times with an editable table of shift lengths, `reader.go` reads a person's row from a photo with Claude (the photo is never stored), `ics.go` writes the calendar feed. |
-| `internal/gcal/` | Feature: Google Calendar sync. Each person can connect their own Google account; samfran makes a "Sam's shifts" calendar there and writes each day as an event (早番, 遅番, 夜勤…) whenever shifts are saved, from the app or from Claude. It may only touch calendars it created. |
+| `internal/gcal/` | Feature: Google Calendar sync. Each person can connect their own Google account; SamFran makes a "Sam's shifts" calendar there and writes each day as an event (早番, 遅番, 夜勤…) whenever shifts are saved, from the app or from Claude. It may only touch calendars it created. |
 | `internal/mcp/` | Feature: Claude as a connector, as in RudWallet: the MCP server at `/mcp` and its OAuth 2.1 sign-in (`oauth.go`). Its tools (`tools.go`) let Claude read a shift-sheet photo on the person's own Claude plan and save the month after they confirm, and list, add, visit and rate restaurants. |
 | `internal/restaurant/` | Feature: restaurants, their visits, and each member's rating. A restaurant with no visits is on the want-to-go list. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
-| `web/src/` | The React app: `api.ts` (typed API client), `App.tsx` (sign-in gate), `components/`, and `features/<name>/` pages. `i18n.tsx`, `language.ts` and `locales/ja.ts` translate it (below). |
+| `web/src/` | The React app: `api.ts` (typed API client), `App.tsx` (sign-in gate), `components/`, and `features/<name>/` pages. `i18n.tsx`, `language.ts` and `locales/ja.ts` translate it (below); `theme.ts` keeps the light or dark pick (Us → This device → Appearance). |
 | `web/landing.html`, `web/src/landing.*` | The introduction page at `/`. Its Japanese is in each element's `data-ja`. |
 | `e2e/` | Playwright browser tests, the throwaway stack that `verify.sh` and `preview.sh` use, and `seed/`, the preview's sample data. |
 | `.claude/` | Claude Code hooks: make Docker work in cloud sessions, and stop this folder's preview when a session ends. |
@@ -189,7 +190,7 @@ The language follows the device until someone picks one (the picker in the top b
 | DELETE | `/api/space/invites/{email}` | user | The space, or `404` |
 | GET | `/api/restaurants` | user | `[restaurant]`: `{id, name, area, cuisine, map_url, notes, added_by, created_at, visit_count, last_visit, ratings: [{name, me, stars}], visit_notes: [{visited_on, note}]}`. `visit_notes` are the visits with a note, newest first (left out when there are none), so the list can be searched by them. |
 | POST | `/api/restaurants` | user | `201` and the restaurant with its `visits`. Body `{name, area, cuisine, map_url, notes}`, plus optionally `visit: {visited_on, note}` (a first visit) and `stars` (your rating). |
-| POST | `/api/restaurants/lookup` | user | Body `{url, position?}`, a Google Maps link. `{name, map_url, lat?, lng?, found_by_name?}`: the place's name read from where the link leads (`""` if it can't be read). With `position: true` and a link that has no position, `lat`/`lng` are looked up by the name on OpenStreetMap (`found_by_name`; only when every match is in one spot, `geocode.go`). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
+| POST | `/api/restaurants/lookup` | user | Body `{url, position?}`, a Google Maps link. `{name, map_url, lat?, lng?, found_by_name?}`: the place's name read from where the link leads (`""` if it can't be read). `lat`/`lng` come from the address (a pin, coordinates, or the place ID, `s2.go`); with `position: true` and none of those, they are looked up by the name on OpenStreetMap (`found_by_name`; only when every match is in one spot, `geocode.go`). `400` for anything but a Google Maps address; it follows only Maps redirects (`internal/restaurant/maps.go`). |
 | GET | `/api/restaurants/{id}` | user | The restaurant, with `visits: [{id, visited_on, note, added_by}]`, newest first |
 | PATCH | `/api/restaurants/{id}` | user | Changes the fields given; others stay. The restaurant. |
 | DELETE | `/api/restaurants/{id}` | user | `204`. Its visits and ratings go with it. |
@@ -216,6 +217,7 @@ The language follows the device until someone picks one (the picker in the top b
 | GET | `/privacy` | – | The privacy page (Google's consent screen links to it). |
 | GET | `/api/activity` | user | The space's latest 50 changes: `[{id, at, who, me, via, kind, details}]`, newest first. `via` is `app` or `claude`; the app words each `kind` (`shifts_saved`, `shift_settings`, `rated`, …). |
 | GET, PUT | `/api/bus/stop` | user | `{set, name, lat, lng, alert_meters}`: the signed-in person's stop. PUT `{name, lat, lng, alert_meters}` (200 m to 5 km; 800 by default). |
+| GET | `/api/bus/search?q=&lat=&lng=` | user | Bus stops and stations whose names match `q` (2 to 80 characters; fewer gives `[]`), up to 8: `[{name, area, kind: "bus"\|"train", lat, lng}]`, near `lat`/`lng` first when given. From Photon (photon.komoot.io, OpenStreetMap data); a stop's two sides of the road come back as one. `502` when Photon doesn't answer. |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
