@@ -85,6 +85,8 @@ jobs:
       AWS_REGION: ap-southeast-2
       # The upload key's certificate (android/README.md); the build must be signed with it.
       UPLOAD_CERT_SHA256: ${{ vars.ANDROID_UPLOAD_CERT_SHA256 }}
+      # Google Maps, for the bus stop's map (android/README.md). Without it the map is the web one.
+      SAMFRAN_MAPS_KEY: ${{ secrets.ANDROID_MAPS_KEY }}
       GH_TOKEN: ${{ github.token }}
       SHA: ${{ needs.decide.outputs.sha }}
     steps:

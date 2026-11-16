@@ -33,20 +33,7 @@ import javax.inject.Inject
 
 /** The app. */
 @HiltAndroidApp
-class SamFranApplication : Application() {
-    // TEMPORARY: keeps a crash's stack trace, and MainActivity shows it on the next start. Remove once the notification-toggle crash is found.
-    override fun onCreate() {
-        super.onCreate()
-        val previous = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, e ->
-            runCatching {
-                getSharedPreferences("crash", MODE_PRIVATE).edit()
-                    .putString("trace", "${thread.name}\n" + android.util.Log.getStackTraceString(e)).commit()
-            }
-            previous?.uncaughtException(thread, e)
-        }
-    }
-}
+class SamFranApplication : Application()
 
 /**
  * What the app as a whole shows: who's signed in, how it looks, the Us
