@@ -51,12 +51,12 @@ export function labelOf(label: string): string {
   return labels[label] ?? label;
 }
 
-/** "13:00", or "6:00 (+1)" for the next morning. */
+/** "13:00"; a shift that ends the next morning just shows "7:00". */
 export function clock(hour: number): string {
   const h = hour % 24;
   const whole = Math.floor(h);
   const min = Math.round((h - whole) * 60);
-  return `${whole}:${String(min).padStart(2, '0')}${hour >= 24 ? ' (+1)' : ''}`;
+  return `${whole}:${String(min).padStart(2, '0')}`;
 }
 
 /** A saved shift's times, e.g. "22:00–6:00", in the time zone of the shift. */
@@ -112,3 +112,4 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t('Could not open that photo.')))), 'image/jpeg', 0.85),
   );
 }
+

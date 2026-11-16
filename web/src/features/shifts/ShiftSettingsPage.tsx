@@ -1,10 +1,10 @@
 // Whose shifts, how to find their row on the sheet, how long each letter's
-// shift is, and the calendar feed to subscribe to in Google Calendar.
+// shift is, and the calendar link to subscribe to in a calendar app.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type CalendarStatus, type ShiftSettings } from '../../api';
-import { serverText, t } from '../../i18n';
-import { isApp, server } from '../../native';
-import { href, useRoute } from '../../router';
+import { api, errorMessage, type ShiftSettings } from '../../api';
+import { t } from '../../i18n';
+import { server } from '../../native';
+import { href } from '../../router';
 
 export function ShiftSettingsPage() {
   const [s, setS] = useState<ShiftSettings | null>(null);
@@ -155,89 +155,9 @@ export function ShiftSettingsPage() {
               </button>
             )}
           </div>
-          <GoogleCalendarCard />
         </>
       )}
     </section>
   );
 }
 
-const results: Record<string, { ok: boolean; text: () => string }> = {
-  connected: { ok: true, text: () => t('Connected. The shifts are being added to your Google Calendar.') },
-  cancelled: { ok: false, text: () => t('Google Calendar wasn’t connected.') },
-  expired: { ok: false, text: () => t('That took too long. Try connecting again.') },
-  failed: { ok: false, text: () => t('Google Calendar couldn’t be connected. Try again.') },
-};
-
-/** Syncing to a "Sam's shifts" calendar in the person's own Google account. */
-function GoogleCalendarCard() {
-  const route = useRoute();
-  const result = results[route.params.get('calendar') ?? ''];
-  const [st, setSt] = useState<CalendarStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    api.calendar().then(setSt, (err) => setError(errorMessage(err)));
-  }, []);
-
-  async function run(fn: () => Promise<CalendarStatus>) {
-    setBusy(true);
-    setError('');
-    try {
-      setSt(await fn());
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (!st?.available) return null;
-  return (
-    <div className="card stack">
-      <h2>{t('Or connect Google Calendar')}</h2>
-      {result && (
-        <p role="status" className={result.ok ? 'notice' : 'notice error'}>
-          {result.text()}
-        </p>
-      )}
-      <p className="muted">
-        {t('Optional, instead of the link: SamFran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.')}
-      </p>
-      {st.connected ? (
-        <>
-          <p>
-            <strong>{t('Connected')}</strong>
-            {st.synced_at && <span className="muted"> · {t('updated {when}', { when: new Date(st.synced_at).toLocaleString() })}</span>}
-          </p>
-          {st.error && (
-            <p role="alert" className="error">
-              {serverText(st.error)}
-            </p>
-          )}
-          <div className="row wrap">
-            <button type="button" className="secondary" disabled={busy} onClick={() => run(api.syncCalendar)}>
-              {busy ? t('Updating…') : t('Update now')}
-            </button>
-            <button type="button" className="link quiet" disabled={busy} onClick={() => run(api.disconnectCalendar)}>
-              {t('Disconnect')}
-            </button>
-          </div>
-          <span className="hint">{t('Disconnecting stops updates; the calendar stays in your Google account until you delete it there.')}</span>
-        </>
-      ) : isApp ? (
-        <p className="hint">{t('Connect from samfran.rudnam.com in your phone’s browser or on a computer: Google doesn’t allow it inside the app.')}</p>
-      ) : (
-        <a className="button" href={`${server}/api/calendar/google/start`}>
-          {t('Connect Google Calendar')}
-        </a>
-      )}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}

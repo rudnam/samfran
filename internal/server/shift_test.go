@@ -20,11 +20,12 @@ func (f *fakeReader) Read(_ context.Context, image []byte, mediaType, name strin
 	f.gotName = name
 	s := shift.Sheet{Found: name == "オトル サマンタ", NameAsRead: name, Year: 2026, Month: 11}
 	for i, code := range []string{"普", "13F", "法", "22F"} {
-		s.Days = append(s.Days, struct {
-			Day  int    `json:"day"`
-			Code string `json:"code"`
-		}{i + 1, code})
+		s.Days = append(s.Days, shift.SheetDay{Day: i + 1, Code: code})
 	}
+	s.Days[1].With = []string{" タナカ  ユイ ", "スズキ ケン", "スズキ ケン", ""} // tidied: one space, no repeats or blanks
+	s.Days[2].With = []string{"サトウ ミホ"}                            // a day off: nobody kept
+	// A shift with a small 有休 under it: taken as leave, so nobody's with her.
+	s.Days = append(s.Days, shift.SheetDay{Day: 5, Code: "9D", Note: "有休", With: []string{"サトウ ミホ"}})
 	return s, nil
 }
 
@@ -39,8 +40,10 @@ type monthJSON struct {
 	Days []struct {
 		Date, Code, Kind, Label, Problem string
 		Start, End                       string
+		With                             []string
 	}
 	NameAsRead string `json:"name_as_read"`
+	Notes      string
 }
 
 // upload posts a fake JPEG as the photo.
@@ -70,11 +73,17 @@ func TestShifts(t *testing.T) {
 	}
 
 	// Reading a photo saves nothing: it answers for the person to check.
-	if code := upload(t, c, &m); code != 200 || m.Month != "2026-11" || len(m.Days) != 4 || reader.gotName != "オトル サマンタ" {
+	if code := upload(t, c, &m); code != 200 || m.Month != "2026-11" || len(m.Days) != 5 || reader.gotName != "オトル サマンタ" {
 		t.Fatalf("read: %d %+v", code, m)
 	}
 	if m.Days[3].Label != "Night" || !strings.HasPrefix(m.Days[3].Start, "2026-11-04T22:00:00+09:00") || !strings.HasPrefix(m.Days[3].End, "2026-11-05T07:00:00+09:00") {
 		t.Errorf("night shift: %+v", m.Days[3])
+	}
+	if w := m.Days[1].With; len(w) != 2 || w[0] != "タナカ ユイ" || w[1] != "スズキ ケン" || m.Days[2].With != nil {
+		t.Errorf("who's on the same shift: %+v", m.Days)
+	}
+	if d := m.Days[4]; d.Code != "有休" || d.Kind != "leave" || d.Start != "" || d.With != nil || !strings.Contains(m.Notes, "5 (9D)") {
+		t.Errorf("9D with 有休 under it: %+v, notes %q", d, m.Notes)
 	}
 	var saved monthJSON
 	if c.do("GET", "/api/shifts?month=2026-11", nil, &saved); len(saved.Days) != 0 {
@@ -82,9 +91,16 @@ func TestShifts(t *testing.T) {
 	}
 
 	// Saving, with a fix, replaces the month.
-	days := []map[string]string{{"date": "2026-11-02", "code": "13F"}, {"date": "2026-11-04", "code": "22f"}, {"date": "2026-11-05", "code": ""}}
-	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": days}, &saved); code != 200 || len(saved.Days) != 2 || saved.Days[1].Code != "22F" {
+	// "with" is optional; a day off keeps nobody.
+	days := []map[string]any{{"date": "2026-11-02", "code": "13F"}, {"date": "2026-11-04", "code": "22f", "with": []string{"タナカ ユイ"}},
+		{"date": "2026-11-05", "code": ""}, {"date": "2026-11-06", "code": "普", "with": []string{"スズキ ケン"}}}
+	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": days}, &saved); code != 200 || len(saved.Days) != 3 || saved.Days[1].Code != "22F" ||
+		len(saved.Days[1].With) != 1 || saved.Days[0].With != nil || saved.Days[2].With != nil {
 		t.Fatalf("save: %d %+v", code, saved)
+	}
+	long := []string{strings.Repeat("名", 41)}
+	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-04", "code": "22F", "with": long}}}, nil); code != 400 {
+		t.Errorf("a 41-character name: %d, want 400", code)
 	}
 	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]string{{"date": "2026-12-01", "code": "7F"}}}, nil); code != 400 {
 		t.Errorf("a day outside the month: %d, want 400", code)
@@ -104,7 +120,7 @@ func TestShifts(t *testing.T) {
 	c.do("POST", "/api/shifts/feed", nil, &saved.Settings)
 	resp, body := get(t, ts.URL+saved.Settings.FeedPath)
 	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/calendar") ||
-		!strings.Contains(body, "SUMMARY:夜勤") {
+		!strings.Contains(body, "SUMMARY:夜勤") || !strings.Contains(body, "DESCRIPTION:一緒: タナカ ユイ") {
 		t.Fatalf("feed: %d %s %s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 	old := saved.Settings.FeedPath

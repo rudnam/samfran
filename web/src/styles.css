@@ -283,12 +283,19 @@ select.language { width: auto; padding: 6px 10px; }
 }
 .next-shift .eyebrow { color: inherit; opacity: 0.8; }
 .next-shift strong { color: var(--text); }
+.next-shift .with { color: var(--text); opacity: 0.85; margin-top: 2px; }
+.with { color: var(--muted); font-weight: 500; line-height: 1.35; }
+.nowrap { white-space: nowrap; }
+/* Names get their own line under a day, lined up with its label. */
+.shift-list li, .cal-detail { flex-wrap: wrap; }
+.row-note { flex-basis: 100%; margin-top: -6px; padding-left: calc(4.2rem + 20px); }
 .shift-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--star-off); }
 .shift-dot.early { background: #f5b301; }
 .shift-dot.middle { background: #2e9e5b; }
 .shift-dot.late { background: #ff8a1f; }
 .shift-dot.night { background: #5b4bc4; }
-.shift-dot.off, .shift-dot.leave { background: #b9e6c8; }
+.shift-dot.off { background: #b9e6c8; }
+.shift-dot.leave { background: #f28bb3; }
 .shift-dot.training { background: #9aa4b2; }
 .code-chip {
   font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; white-space: nowrap;
@@ -348,7 +355,8 @@ select { width: 100%; }
 .cal-day.late { background: #ffd6ad; color: #6b3100; }
 .cal-day.night { background: #dcd6ff; color: #2f2480; }
 .cal-day.training { background: #dfe4ea; color: #37404c; }
-.cal-day.off, .cal-day.leave, .cal-day.other { color: var(--muted); }
+.cal-day.leave { background: #ffd9e6; color: #7a1d45; }
+.cal-day.off, .cal-day.other { color: var(--muted); }
 .cal-day.none { background: none; box-shadow: inset 0 0 0 1px var(--divider); color: var(--muted); }
 .cal-day.today { box-shadow: inset 0 0 0 2.5px var(--accent); }
 .cal-day[aria-pressed='true'] { outline: 2.5px solid var(--text); outline-offset: 1px; }
@@ -360,12 +368,14 @@ select { width: 100%; }
   :root:not([data-theme="light"]) .cal-day.late { background: #5c3410; color: #ffc993; }
   :root:not([data-theme="light"]) .cal-day.night { background: #37307a; color: #d3ccff; }
   :root:not([data-theme="light"]) .cal-day.training { background: #3a424d; color: #d5dbe3; }
+  :root:not([data-theme="light"]) .cal-day.leave { background: #5c1f3a; color: #ffc2d9; }
 }
 :root[data-theme="dark"] .cal-day.early { background: #57440a; color: #ffe08a; }
 :root[data-theme="dark"] .cal-day.middle { background: #1c4a30; color: #a6e8bf; }
 :root[data-theme="dark"] .cal-day.late { background: #5c3410; color: #ffc993; }
 :root[data-theme="dark"] .cal-day.night { background: #37307a; color: #d3ccff; }
 :root[data-theme="dark"] .cal-day.training { background: #3a424d; color: #d5dbe3; }
+:root[data-theme="dark"] .cal-day.leave { background: #5c1f3a; color: #ffc2d9; }
 
 /* ---------- Dialogs, undo, and loading ---------- */
 dialog.ask {

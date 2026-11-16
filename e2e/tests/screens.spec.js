@@ -65,7 +65,12 @@ for (const [name, viewport] of [
     const res = await page.request.put('/api/shifts/month', {
       data: {
         month,
-        days: Array.from({ length: last }, (_, i) => ({ date: `${month}-${String(i + 1).padStart(2, '0')}`, code: codes[i % codes.length] })),
+        days: Array.from({ length: last }, (_, i) => {
+          const code = codes[i % codes.length];
+          // Who's on the same shift, on working days.
+          const together = /^\d/.test(code) ? [['タナカ ユイ', 'スズキ ケン'], ['サトウ ミホ']][i % 2] : undefined;
+          return { date: `${month}-${String(i + 1).padStart(2, '0')}`, code, with: together };
+        }),
       },
     });
     expect(res.status()).toBe(200);

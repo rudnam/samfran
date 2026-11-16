@@ -169,7 +169,7 @@ export const api = {
   lookupMap: (url: string, position = false) =>
     request<{ name: string; map_url: string; lat?: number; lng?: number; found_by_name?: boolean }>('POST', '/api/restaurants/lookup', { url, position }),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
-  saveShifts: (month: string, days: { date: string; code: string }[]) =>
+  saveShifts: (month: string, days: { date: string; code: string; with?: string[] }[]) =>
     request<ShiftMonth>('PUT', '/api/shifts/month', { month, days }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
   saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone'>>) =>
@@ -195,9 +195,6 @@ export const api = {
   /** Allows or denies a connection; answers where to send the browser. */
   mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
     request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
-  calendar: () => request<CalendarStatus>('GET', '/api/calendar'),
-  syncCalendar: () => request<CalendarStatus>('POST', '/api/calendar/sync'),
-  disconnectCalendar: () => request<CalendarStatus>('DELETE', '/api/calendar'),
   busStop: () => request<BusStop>('GET', '/api/bus/stop'),
   /** Stops and stations whose names match q (2+ characters); near ones first when near is given. */
   searchStops: (q: string, near?: { lat: number; lng: number }) =>
@@ -223,6 +220,8 @@ export interface ShiftDay {
   end?: string;
   /** Why a working day has no times, e.g. "unknown length for Z". */
   problem?: string;
+  /** Others on the same shift (same code that day), names as on the sheet. */
+  with?: string[];
 }
 
 export interface ShiftSettings {
@@ -262,16 +261,6 @@ export interface MCPClientInfo {
   client_name: string;
   /** Where the browser goes back to after the person answers. */
   redirect_host: string;
-}
-
-/** Google Calendar sync, for the signed-in person. */
-export interface CalendarStatus {
-  /** The server can sync with Google Calendar. */
-  available: boolean;
-  connected: boolean;
-  synced_at: string | null;
-  /** Why the last update failed; '' when it worked. */
-  error: string;
 }
 
 /** Where the signed-in person gets off the bus. */
