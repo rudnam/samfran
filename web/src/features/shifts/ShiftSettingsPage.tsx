@@ -3,7 +3,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
-import { server } from '../../native';
 import { href } from '../../router';
 
 export function ShiftSettingsPage() {
@@ -52,7 +51,7 @@ export function ShiftSettingsPage() {
     void run(() => api.saveShiftSettings({ person_name: person, name_on_sheet: onSheet, lengths: table }), t('Saved.'));
   }
 
-  const feedUrl = s?.feed_path ? `${server || location.origin}${s.feed_path}` : '';
+  const feedUrl = s?.feed_path ? `${location.origin}${s.feed_path}` : '';
   return (
     <section className="stack">
       <a className="back" href={href('shifts')}>

@@ -2,7 +2,6 @@
 import { clearCache } from './cache';
 import { serverText } from './i18n';
 import { language } from './language';
-import { appHeaders, saveSession, server } from './native';
 
 export interface Me {
   email: string;
@@ -12,8 +11,6 @@ export interface Me {
   confirm_email: boolean;
   /** A throwaway demo account full of sample data, deleted within a day. */
   demo?: boolean;
-  /** A new session's token, given to the Android app only (see native.ts). */
-  token?: string;
 }
 
 /** The ways this server offers to sign in. */
@@ -100,14 +97,13 @@ export class ApiError extends Error {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   // A change makes what pages remember stale, whoever's signed in afterwards.
   if (method !== 'GET') clearCache();
-  const res = await fetch(server + path, {
+  const res = await fetch(path, {
     method,
     // The server words emails (and anything else it writes) in the language
     // the app shows.
     headers: {
       'Accept-Language': language(),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...appHeaders(),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -119,31 +115,19 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
-/** In the Android app, keeps the token a sign-in returned. */
-async function signedIn(p: Promise<Me>): Promise<Me> {
-  const m = await p;
-  if (m.token) await saveSession(m.token);
-  return m;
-}
-
 export const api = {
   me: () => request<Me>('GET', '/api/me'),
-  signUp: (email: string, password: string) => signedIn(request<Me>('POST', '/api/signup', { email, password })),
-  signIn: (email: string, password: string) => signedIn(request<Me>('POST', '/api/login', { email, password })),
-  /** In the Android app: trades the code from Google sign-in in the browser, and its secret, for a session. */
-  appToken: (code: string, verifier: string) => signedIn(request<Me>('POST', '/api/auth/app-token', { code, verifier })),
-  signOut: async () => {
-    await request<void>('POST', '/api/logout');
-    await saveSession('');
-  },
+  signUp: (email: string, password: string) => request<Me>('POST', '/api/signup', { email, password }),
+  signIn: (email: string, password: string) => request<Me>('POST', '/api/login', { email, password }),
+  signOut: () => request<void>('POST', '/api/logout'),
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
   /** Signs in to a new demo account with sample data, in the app's language and this time zone. */
-  startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
+  startDemo: () => request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Emails a link to choose a new password, if an account uses this address. */
   forgotPassword: (email: string) => request<void>('POST', '/api/password/forgot', { email }),
   /** Sets a new password with the emailed link's token, and signs in. */
-  resetPassword: (token: string, password: string) => signedIn(request<Me>('POST', '/api/password/reset', { token, password })),
+  resetPassword: (token: string, password: string) => request<Me>('POST', '/api/password/reset', { token, password }),
   downloads: () => request<Downloads>('GET', '/api/downloads'),
 
   space: () => request<Space>('GET', '/api/space'),
@@ -182,9 +166,9 @@ export const api = {
   readShiftPhoto: async (photo: Blob) => {
     const form = new FormData();
     form.append('photo', photo, 'sheet.jpg');
-    const res = await fetch(server + '/api/shifts/read', {
+    const res = await fetch('/api/shifts/read', {
       method: 'POST',
-      headers: { 'Accept-Language': language(), ...appHeaders() },
+      headers: { 'Accept-Language': language() },
       body: form,
     });
     const data = await res.json().catch(() => null);
