@@ -1,7 +1,7 @@
 /* The icon's colours: cream and peach behind the two plushies, the
    penguin's ink for the main action, the bear's caramel for links, and the
-   heart eyes' red for alerts. Fran is heart red, Sam bear tan. Dark mode
-   follows the OS unless one is picked on this device (theme.ts). */
+   heart eyes' red for alerts. Fran is red and Sam orange. Dark mode follows
+   the OS unless one is picked on this device (theme.ts). */
 @font-face {
   font-family: 'Plus Jakarta Sans';
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
@@ -26,9 +26,9 @@
   --star: #f2a31b;
   --star-off: #ecdec8;
   --danger: #b3261e;
-  /* The two people: the first to join (Fran) is heart red, the second (Sam) bear tan. */
+  /* The two people: the first to join (Fran) is red, the second (Sam) orange. */
   --a-bg: #ffe1dc; --a-text: #a8291a; --a-solid: #e0402f; --a-on: #ffffff;
-  --b-bg: #fbe6cc; --b-text: #85490f; --b-solid: #e6ab66; --b-on: #241f1c;
+  --b-bg: #ffe7d1; --b-text: #964400; --b-solid: #ff8a1f; --b-on: #241f1c;
   /* Letter tiles: soft pastels with a darker letter. */
   --tile-yellow: #fff0c7; --tile-yellow-ink: #835500;
   --tile-green: #e0f2e2; --tile-green-ink: #23653a;
@@ -72,7 +72,7 @@
     --star-off: #463a30;
     --danger: #ffb4a9;
     --a-bg: #4a1d16; --a-text: #ffb4a6; --a-solid: #ff6b57; --a-on: #1c1714;
-    --b-bg: #3e2a14; --b-text: #f0c48e; --b-solid: #e9b170; --b-on: #1c1714;
+    --b-bg: #45290f; --b-text: #ffc58f; --b-solid: #ff9a3d; --b-on: #1c1714;
     --tile-yellow: #3d3214; --tile-yellow-ink: #ffd877;
     --tile-green: #183424; --tile-green-ink: #8fdcab;
     --tile-red: #44201a; --tile-red-ink: #ffab9b;
@@ -99,7 +99,7 @@
   --star-off: #463a30;
   --danger: #ffb4a9;
   --a-bg: #4a1d16; --a-text: #ffb4a6; --a-solid: #ff6b57; --a-on: #1c1714;
-  --b-bg: #3e2a14; --b-text: #f0c48e; --b-solid: #e9b170; --b-on: #1c1714;
+  --b-bg: #45290f; --b-text: #ffc58f; --b-solid: #ff9a3d; --b-on: #1c1714;
   --tile-yellow: #3d3214; --tile-yellow-ink: #ffd877;
   --tile-green: #183424; --tile-green-ink: #8fdcab;
   --tile-red: #44201a; --tile-red-ink: #ffab9b;

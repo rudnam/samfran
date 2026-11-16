@@ -8,7 +8,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -120,7 +119,6 @@ fun ShiftsScreen(
                     PageTitle(
                         if (who.isNotBlank()) stringResource(R.string.whose_shifts, who) else stringResource(R.string.shifts),
                         Modifier.weight(1f),
-                        subtitle = if (data != null) stringResource(R.string.shifts_subtitle) else null,
                     )
                     IconButton(onClick = onSettings) { LineIcon(SamFranIcons.settings, stringResource(R.string.settings)) }
                 }
@@ -176,13 +174,15 @@ fun ShiftsScreen(
             }
             item(key = "actions") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // The two ways to fill in a month, one above the other at full width.
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (state.canRead) {
                             var menu by remember { mutableStateOf(false) }
-                            Box {
+                            Box(Modifier.fillMaxWidth()) {
                                 PrimaryButton(
                                     stringResource(if (state.reading) R.string.reading_sheet else R.string.read_photo),
                                     { menu = true },
+                                    Modifier.fillMaxWidth(),
                                     enabled = !state.reading && !state.needsName,
                                 )
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
@@ -205,11 +205,11 @@ fun ShiftsScreen(
                                 }
                             }
                         }
-                        SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, enabled = state.shown != null, icon = SamFranIcons.edit)
+                        SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
                     }
                     if (state.reading) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.accent)
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.accentInk)
                             Hint(stringResource(R.string.reading_hint))
                         }
                     }

@@ -1,6 +1,9 @@
 package com.rudnam.samfran.core.designsystem.component
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -9,6 +12,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,10 +39,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -122,7 +129,7 @@ fun Notice(
     Surface(
         modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         shape = MaterialTheme.shapes.medium,
-        color = if (error) colors.a.bg else colors.b.bg,
+        color = if (error) colors.a.bg else colors.highlight,
         contentColor = if (error) colors.a.text else colors.text,
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -132,13 +139,23 @@ fun Notice(
     }
 }
 
-/** The main action: tomato, full width unless placed in a row. */
+/** Shrinks a little while pressed and springs back, like the website's button:active. */
+@Composable
+fun Modifier.pressScale(interaction: MutableInteractionSource, pressed: Float = 0.97f): Modifier {
+    val down by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (down) pressed else 1f, spring(dampingRatio = 0.6f, stiffness = 900f), label = "press")
+    return graphicsLayer { scaleX = scale; scaleY = scale }
+}
+
+/** The main action: ink, full width unless placed in a row. */
 @Composable
 fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, big: Boolean = false) {
     val colors = SamFranTheme.colors
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
-        modifier = modifier.height(if (big) 64.dp else 48.dp),
+        modifier = modifier.pressScale(interaction).height(if (big) 64.dp else 48.dp),
+        interactionSource = interaction,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentText),
@@ -152,9 +169,11 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, icon: String? = null) {
     val colors = SamFranTheme.colors
+    val interaction = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
-        modifier = modifier.height(44.dp),
+        modifier = modifier.pressScale(interaction).height(44.dp),
+        interactionSource = interaction,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
         colors = ButtonDefaults.buttonColors(containerColor = colors.sunken, contentColor = colors.text),
@@ -216,18 +235,22 @@ fun Segmented(
     ) {
         options.forEachIndexed { i, label ->
             val on = i == selected
+            // The picked one fades in rather than jumping.
+            val fill by animateColorAsState(if (on) colors.surface else colors.surface.copy(alpha = 0f), label = "segment")
+            val edge by animateColorAsState(if (on) colors.border else colors.border.copy(alpha = 0f), label = "segment-edge")
+            val ink by animateColorAsState(if (on) colors.text else colors.muted, label = "segment-text")
             Row(
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(if (on) colors.surface else Color.Transparent)
-                    .then(if (on) Modifier.border(1.dp, colors.border, RoundedCornerShape(10.dp)) else Modifier)
+                    .background(fill)
+                    .border(1.dp, edge, RoundedCornerShape(10.dp))
                     .selectable(selected = on, role = Role.Tab, onClick = { onSelect(i) })
                     .padding(vertical = 10.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) colors.text else colors.muted)
+                Text(label, style = MaterialTheme.typography.labelLarge, color = ink)
                 counts?.getOrNull(i)?.takeIf { it.isNotEmpty() }?.let {
                     Spacer(Modifier.width(6.dp))
                     Text(it, style = MaterialTheme.typography.labelMedium, color = colors.muted)

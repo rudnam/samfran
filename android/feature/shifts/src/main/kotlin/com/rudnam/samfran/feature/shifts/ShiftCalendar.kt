@@ -106,7 +106,7 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                             .clip(shape)
                             .background(square?.bg ?: Color.Transparent)
                             .then(if (d == null) Modifier.border(1.dp, colors.divider, shape) else Modifier)
-                            .then(if (date == today) Modifier.border(2.5.dp, colors.accent, shape) else Modifier)
+                            .then(if (date == today) Modifier.border(2.5.dp, colors.heart, shape) else Modifier)
                             .then(if (date == picked) Modifier.border(2.5.dp, colors.text, shape) else Modifier)
                             .clickable(role = Role.Button) { onPick(date) }
                             .clearAndSetSemantics {

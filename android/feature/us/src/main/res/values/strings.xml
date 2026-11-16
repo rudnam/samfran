@@ -16,7 +16,7 @@
     <string name="invite_open_hint">An invite link is open until %s. Make a new one to see its address again (the old one stops working).</string>
     <string name="make_new_link">Make a new link</string>
     <string name="create_invite_link">Create invite link</string>
-    <string name="invite_hint">Send them the link; they tap it and sign up, and see everything here.</string>
+    <string name="invite_hint">They open it, sign up, and see everything here.</string>
     <string name="join_me">Join me on SamFran</string>
     <string name="your_name">Your name</string>
     <string name="save">Save</string>
@@ -30,11 +30,11 @@
     <string name="via_claude">via Claude</string>
     <string name="show_more">Show more</string>
     <string name="claude">Claude</string>
-    <string name="claude_intro">Connect Claude to SamFran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.</string>
+    <string name="claude_intro">Claude can read a photo of the shift sheet, and add or rate places for you.</string>
     <string name="claude_step1">In Claude (claude.ai), open Settings › Connectors › Add custom connector.</string>
     <string name="claude_step2">Name it SamFran and paste this address:</string>
     <string name="connector_address">Connector address</string>
-    <string name="claude_then">Claude then asks you to sign in here and allow it. After that, share a photo of the sheet in a chat and ask it to add the shifts.</string>
+    <string name="claude_then">Claude then asks you to sign in here. After that, send it a photo of the sheet.</string>
     <string name="last_used">Last used %s</string>
     <string name="not_used">Not used yet</string>
     <string name="disconnect">Disconnect</string>

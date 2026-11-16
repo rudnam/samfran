@@ -242,7 +242,6 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
             state.query.isNotEmpty() && state.searchFailed -> Hint(stringResource(R.string.place_search_failed))
             state.query.isNotEmpty() && found?.isEmpty() == true -> Hint(stringResource(R.string.place_not_found))
             state.query.isNotEmpty() && !found.isNullOrEmpty() -> Hint(stringResource(R.string.tap_the_place) + " " + stringResource(R.string.places_osm))
-            state.fields?.name.isNullOrEmpty() -> Hint(stringResource(R.string.start_typing_place))
         }
     }
 }

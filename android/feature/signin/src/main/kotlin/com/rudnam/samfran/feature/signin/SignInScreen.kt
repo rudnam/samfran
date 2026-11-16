@@ -93,7 +93,7 @@ fun SignInScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(Modifier.fillMaxWidth().widthIn(max = 440.dp).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("SamFran", Modifier.weight(1f), color = colors.accent, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
+            Text("SamFran", Modifier.weight(1f), color = colors.text, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.ExtraBold))
             languagePicker()
         }
         Image(painterResource(R.drawable.signin_pair), null, Modifier.padding(top = 8.dp, bottom = 16.dp).size(120.dp))

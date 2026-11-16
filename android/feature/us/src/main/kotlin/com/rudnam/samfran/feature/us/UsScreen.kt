@@ -238,7 +238,7 @@ fun UsScreen(
                             Text(stringResource(R.string.tell_me), style = MaterialTheme.typography.bodyLarge)
                             Hint(stringResource(R.string.tell_me_hint))
                         }
-                        Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accent))
+                        Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
                     }
                     if (state.alertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
                 }
