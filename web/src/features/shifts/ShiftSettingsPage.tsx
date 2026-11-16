@@ -3,13 +3,22 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
+import { language } from '../../language';
 import { href } from '../../router';
+
+const suffix: Record<string, string> = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
+
+/** A day of the month as the picker says it: 15th, 15日. */
+function dayOfMonth(n: number): string {
+  return language() === 'ja' ? t('{n}th', { n }) : `${n}${suffix[new Intl.PluralRules('en', { type: 'ordinal' }).select(n)]}`;
+}
 
 export function ShiftSettingsPage() {
   const [s, setS] = useState<ShiftSettings | null>(null);
   const [person, setPerson] = useState('');
   const [onSheet, setOnSheet] = useState('');
   const [lengths, setLengths] = useState<[string, string][]>([]);
+  const [closing, setClosing] = useState<number[]>([]);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,6 +28,7 @@ export function ShiftSettingsPage() {
     setS(next);
     setPerson(next.person_name);
     setOnSheet(next.name_on_sheet);
+    setClosing(next.closing_days ?? [15, 31]);
     setLengths(
       Object.entries(next.lengths)
         .sort(([a], [b]) => a.localeCompare(b))
@@ -48,7 +58,7 @@ export function ShiftSettingsPage() {
     e.preventDefault();
     const table: Record<string, number> = {};
     for (const [k, v] of lengths) if (k.trim()) table[k.trim().toUpperCase()] = Number(v);
-    void run(() => api.saveShiftSettings({ person_name: person, name_on_sheet: onSheet, lengths: table }), t('Saved.'));
+    void run(() => api.saveShiftSettings({ person_name: person, name_on_sheet: onSheet, lengths: table, closing_days: closing }), t('Saved.'));
   }
 
   const feedUrl = s?.feed_path ? `${location.origin}${s.feed_path}` : '';
@@ -109,6 +119,35 @@ export function ShiftSettingsPage() {
                 <button type="button" className="secondary" onClick={() => setLengths((l) => [...l, ['', '8']])}>
                   + {t('Letter')}
                 </button>
+              </div>
+            </div>
+            <div className="field">
+              <span>{t('Hours due (締め申請通知)')}</span>
+              <span className="hint">{t('The days of the month the hours are sent in. The calendar marks them with a red dot.')}</span>
+              <div className="lengths">
+                {closing.map((d, i) => (
+                  <span key={i} className="length">
+                    <select
+                      aria-label={t('Closing day {n}', { n: i + 1 })}
+                      value={d}
+                      onChange={(e) => setClosing((c) => c.map((x, j) => (j === i ? Number(e.target.value) : x)))}
+                    >
+                      {Array.from({ length: 31 }, (_, k) => k + 1).map((n) => (
+                        <option key={n} value={n}>
+                          {n === 31 ? t('Last day') : dayOfMonth(n)}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" className="link quiet" aria-label={t('Remove closing day {n}', { n: i + 1 })} onClick={() => setClosing((c) => c.filter((_, j) => j !== i))}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {closing.length < 10 && (
+                  <button type="button" className="secondary" onClick={() => setClosing((c) => [...c, 15])}>
+                    + {t('Day')}
+                  </button>
+                )}
               </div>
             </div>
             <div className="row end">

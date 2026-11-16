@@ -205,11 +205,13 @@ data class NetworkShiftSettings(
     @SerialName("name_on_sheet") val nameOnSheet: String = "",
     val lengths: Map<String, Double> = emptyMap(),
     @SerialName("time_zone") val timeZone: String = "",
+    /** Older servers leave it out: the 15th and the last day. */
+    @SerialName("closing_days") val closingDays: List<Int> = listOf(15, 31),
     @SerialName("feed_path") val feedPath: String = "",
     val reader: Boolean = false,
 )
 
-fun NetworkShiftSettings.asModel() = ShiftSettings(personName, nameOnSheet, lengths, timeZone, feedPath, reader)
+fun NetworkShiftSettings.asModel() = ShiftSettings(personName, nameOnSheet, lengths, timeZone, closingDays, feedPath, reader)
 
 @Serializable
 data class NetworkShiftMonth(
@@ -256,6 +258,7 @@ data class NetworkShiftSettingsInput(
     @SerialName("person_name") val personName: String? = null,
     @SerialName("name_on_sheet") val nameOnSheet: String? = null,
     val lengths: Map<String, Double>? = null,
+    @SerialName("closing_days") val closingDays: List<Int>? = null,
 )
 
 @Serializable
@@ -318,7 +321,7 @@ private fun JsonObject.asDetails(): ActivityDetails {
         val pair = v as? JsonArray
         pair?.getOrNull(0).number() to pair?.getOrNull(1).number()
     }
-    val settings = listOf("person_name", "name_on_sheet", "time_zone").mapNotNull { key ->
+    val settings = listOf("person_name", "name_on_sheet", "time_zone", "closing_days").mapNotNull { key ->
         val pair = this[key] as? JsonArray ?: return@mapNotNull null
         key to (pair.getOrNull(0).string() to pair.getOrNull(1).string())
     }.toMap()

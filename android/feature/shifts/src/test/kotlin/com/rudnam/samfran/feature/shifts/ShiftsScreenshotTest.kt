@@ -50,6 +50,9 @@ class ShiftsScreenshotTest {
         override fun setLength(index: Int, letter: String, hours: String) {}
         override fun addLetter() {}
         override fun removeLetter(index: Int) {}
+        override fun setClosing(index: Int, day: Int) {}
+        override fun addClosing() {}
+        override fun removeClosing(index: Int) {}
         override fun save() {}
         override fun feed(on: Boolean) {}
     }
@@ -107,6 +110,7 @@ class ShiftsScreenshotTest {
         person = "Sam",
         onSheet = "オトル サマンタ",
         lengths = listOf("D" to "8", "F" to "9"),
+        closing = listOf(15, 31),
         feedUrl = "https://samfran.rudnam.com/calendar/abc123.ics",
     )
 
