@@ -51,16 +51,29 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     return d?.with?.length && normalize(d.code) === normalize(code) ? d.with : undefined;
   }
 
+  // Names fixed while checking a scan, as read → corrected, so the next scan
+  // gets them right. Only where the same number of names went as came, so
+  // each pairs with the one it replaced.
+  function corrections(days: { date: string; with?: string[] }[]) {
+    const out = new Map<string, string>();
+    for (const d of days) {
+      const was = original.get(d.date)?.with ?? [];
+      const now = d.with ?? [];
+      const removed = was.filter((n) => !now.includes(n));
+      const added = now.filter((n) => !was.includes(n));
+      if (removed.length === added.length) removed.forEach((from, i) => out.set(from, added[i]));
+    }
+    return [...out].map(([from, to]) => ({ from, to }));
+  }
+
   async function save() {
     setBusy(true);
     setError('');
     try {
-      await api.saveShifts(
-        month,
-        Object.entries(codes)
-          .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
-          .filter((d) => d.code),
-      );
+      const days = Object.entries(codes)
+        .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
+        .filter((d) => d.code);
+      await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined);
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));
