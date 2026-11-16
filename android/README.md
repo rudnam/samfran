@@ -11,7 +11,7 @@ It also does what the website can't: the bus-stop alarm, asking "Start bus alarm
 
 ## Build
 
-You need a JDK 21 (`JAVA_HOME`) and the Android SDK with platform 37 (`ANDROID_HOME`; `build.sh` uses `~/Android/Sdk` if it's unset). WSL has no KVM, so the emulator can't run on this machine: install on a phone over USB (USB debugging on), or use the emulator on Windows.
+You need a JDK 21 (`JAVA_HOME`) and the Android SDK with platform 37 (`ANDROID_HOME`; `build.sh` uses `~/Android/Sdk` if it's unset). Install on a phone over USB (USB debugging on), or run the emulator (**Emulator** below).
 
 ```sh
 ./android/build.sh            # android/samfran.aab (Play Store) and android/samfran.apk
@@ -31,6 +31,26 @@ On this machine (WSL, about 8 GB), `~/.gradle/gradle.properties` gives Gradle le
 While working on the app, open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key. It installs beside the real app as **SamFran Preview** (`com.rudnam.samfran.preview`, named in `app/src/debug`) and talks to the same server; Google sign-in returns to the real app (the server names its package), so sign in to the preview with email and password. `./gradlew installPreview` is the same as a release build (R8, not debuggable), which runs as fast as the real app; a debuggable Compose app is several times slower.
 
 Every release needs a higher `versionCode`, because the app offers a build with a higher one as an update. `build.sh` takes it from `version.sh`: one above the APK that samfran.rudnam.com offers, and never below the floor in `app/build.gradle.kts` (`SAMFRAN_VERSION_CODE` and `SAMFRAN_VERSION_NAME` override both). The name is `versionName` there plus the code, e.g. `2.0.10`.
+
+### Emulator
+
+To reproduce a phone bug without the phone. WSL's KVM works for anyone in the `kvm` group (`sudo usermod -aG kvm $USER`, then restart WSL, or until then wrap commands in `sg kvm -c "…"`). The emulator takes about 2 GB of memory, so run only one Gradle build beside it (`--max-workers=4`).
+
+```sh
+sdkmanager emulator "system-images;android-36;google_apis;x86_64"
+avdmanager create avd -n samfran-test -k "system-images;android-36;google_apis;x86_64" -d pixel_7
+emulator -avd samfran-test -no-window -no-audio -no-boot-anim -memory 2048 -gpu swiftshader_indirect &
+adb shell getprop sys.boot_completed   # 1 once it has booted (several minutes)
+```
+
+To use it against `./preview.sh` instead of the real server:
+
+- **Build:** `./gradlew installDebug -Psamfran.server=http://10.0.2.2:8081` (10.0.2.2 is this machine as the emulator sees it).
+- **Allow plain HTTP:** for that build only, add a debug network security config that lets it reach 10.0.2.2 (`app/src/debug`, don't commit it).
+- **Sign in:** as the preview user.
+- **Reading a photo of the sheet:** the button shows only if the server has a reader, so give the preview's server any `ANTHROPIC_API_KEY`. With a fake key the read fails, but you see it start.
+
+Drive the app with `adb shell uiautomator dump` (what's on screen, with bounds), `adb shell input tap X Y` and `adb shell input text …`. Take screenshots with `adb exec-out screencap -p > shot.png`. To add a photo, `adb push` it to `/sdcard/Pictures`.
 
 ## Releases and updates
 
