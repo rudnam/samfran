@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   plugins: [
     react(),
     {
@@ -11,7 +11,6 @@ export default defineConfig(({ mode }) => ({
       // (for `go vet` and the Go tests). A committed dist/.gitkeep guarantees
       // that; put it back after Vite empties the folder.
       name: 'keep-dist-placeholder',
-      apply: (_, env) => env.mode !== 'android', // that build goes to dist-android/
       closeBundle() {
         writeFileSync('dist/.gitkeep', '');
       },
@@ -25,12 +24,11 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         app: resolve(import.meta.dirname, 'index.html'),
-        // The Android app has no use for the introduction page.
-        ...(mode === 'android' ? {} : { landing: resolve(import.meta.dirname, 'landing.html') }),
+        landing: resolve(import.meta.dirname, 'landing.html'),
       },
     },
   },
   // `npm run dev` serves the UI with hot reload and forwards /api to the Go
   // server (e.g. the local Docker stack on :8080).
   server: { proxy: { '/api': 'http://localhost:8080' } },
-}));
+});

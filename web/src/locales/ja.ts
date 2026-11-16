@@ -130,10 +130,6 @@ export const ja = {
   'Delete this place': 'このお店を削除',
 
   // The Android app
-  'SamFran {version} is available.': 'SamFran {version} が公開されました。',
-  'A new version of SamFran is available.': 'SamFran の新しいバージョンが公開されました。',
-  Later: 'あとで',
-  Update: 'アップデート',
   'Get the Android app': 'Androidアプリを入手',
   Download: 'ダウンロード',
   'Share a place from Google Maps to SamFran to add it in one tap.': 'Googleマップでお店を「共有」→ SamFran で、すぐに追加できます。',
@@ -189,11 +185,8 @@ export const ja = {
   // The bus-stop alarm
   Bus: 'バス',
   'Buzzes your phone before your stop, so you don’t miss it.': '降りるバス停の手前でスマホを振動させます。乗り過ごし防止に。',
-  'SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.': 'バス停に近づいたことを知るために位置情報が必要です。スマホの設定で許可してください。',
-  'On the bus': 'バスに乗車中',
   '{distance} to {stop}': '{stop}まであと{distance}',
   'your stop': '降りるバス停',
-  'Finding where you are…': '現在地を確認しています…',
   Stop: '止める',
   'I’m on the bus': 'バスに乗った',
   'Your stop': '降りるバス停',
@@ -202,7 +195,6 @@ export const ja = {
   Change: '変更',
   'Buzzes {distance} before the stop.': 'バス停の{distance}手前で振動します。',
   'Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.': 'バス停の場所が見つかりませんでした。Googleマップでバス停を長押ししてピンを立て、そのピンのリンクを共有してください。',
-  'Couldn’t tell where you are. Check that location is on, and allowed for SamFran.': '現在地が分かりませんでした。位置情報がオンで、SamFranに許可されているか確認してください。',
   'Where do you get off?': 'どこで降りますか？',
   'Stop name': 'バス停の名前',
   'Google Maps link to the stop': 'バス停のGoogleマップのリンク',
@@ -305,14 +297,6 @@ export const ja = {
   New: '新着',
   '{n} new change': '新しい変更が{n}件',
   '{n} new changes': '新しい変更が{n}件',
-  'Ask when a shift ends': 'シフトが終わったら聞く',
-  'This phone asks “Start bus alarm?” when a shift on the Shifts tab ends. One tap starts it.':
-    'シフトタブのシフトが終わると、このスマホが「バスアラームを開始しますか？」と聞きます。タップひとつで始まります。',
-  'Allow notifications for SamFran in the phone’s settings, then switch this on again.':
-    'スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。',
-  'Tell me about changes': '変更を知らせる',
-  'A notification when the other one of you adds a place, logs a visit, rates one or saves the shifts. It can take half an hour.':
-    '相手がお店を追加したり、来店を記録したり、評価したり、シフトを保存したりすると通知が届きます。30分ほどかかることがあります。',
   'Type part of it, e.g. 葵西': '名前の一部を入力（例: 葵西）',
   'Matching stops': '見つかったバス停',
   'The stop search isn’t answering. Paste a Google Maps link instead.': 'バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。',
@@ -329,9 +313,6 @@ export const ja = {
   'On a fast road, choose more.': '速い道路なら長めに。',
   'Your stop is next': 'もうすぐ降りるバス停です',
   'Practice run': '練習',
-  'Wake up': '起きて',
-  'Feel that? On a ride it keeps going until you tap Stop, here or on the notification, even with the phone locked.':
-    'これが振動です。乗車中は、スマホがロックされていても、ここか通知の「止める」をタップするまで続きます。',
   'On the phone, it vibrates like this until you tap Stop, even with the phone locked.':
     'スマホでは、ロック中でも「止める」をタップするまでこのように振動します。',
   'How it works': '使い方',
@@ -345,14 +326,9 @@ export const ja = {
   'Pretend you’ve dozed off… it buzzes {distance} before the stop.': 'うとうとしているつもりで…バス停の{distance}手前で振動します。',
   'End practice': '練習をやめる',
   '✓ That’s it': '✓ これだけです',
-  'On a real ride, tap “I’m on the bus” when you get on. That’s all.': '本番では、乗ったときに「バスに乗った」をタップするだけです。',
   'On a real ride, start it in the SamFran Android app when you get on.': '本番では、乗ったときにSamFranのAndroidアプリで開始してください。',
   Done: '完了',
-  'Buzzes in {distance}': 'あと{distance}で振動',
-  'You can lock the phone. It stops by itself after three hours.': 'スマホはロックして大丈夫です。3時間たつと自動で止まります。',
-  'Stop alarm': 'アラームを止める',
   'Try it now': '今すぐ試す',
-  'Tap “I’m on the bus” when you get on. “Try it now” is a six-second practice.': '乗ったら「バスに乗った」をタップ。「今すぐ試す」は6秒の練習です。',
   'A six-second practice ride, to see what happens.': 'どうなるかを見る、6秒の練習乗車です。',
   'The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.':
     '本物のアラームはSamFranのAndroidアプリで動きます。使うのは乗車中のスマホの位置情報だけです。',
@@ -361,7 +337,6 @@ export const ja = {
   'Step 2 of 2': 'ステップ 2/2',
   'Can’t find it? Other ways': '見つからない場合は別の方法で',
   '{stop} on the map': '地図で{stop}を見る',
-  'Use where I am now (stand at the stop)': '今いる場所を使う（バス停に立って）',
 } as const;
 
 // The server's messages, which are written in English (internal/, the

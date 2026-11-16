@@ -31,9 +31,6 @@ android/keystore/
 android/*.apk
 android/*.aab
 
-# The Android app's build of the web app (npm run build:android)
-web/dist-android/
-
 # The APK the server offers for download (ANDROID_APK). The folder itself is
 # kept, so Docker doesn't create it as root when it mounts it.
 /downloads/*
