@@ -51,8 +51,13 @@ type Reader interface {
 	Read(ctx context.Context, image []byte, mediaType, name string, hint Month) (Sheet, error)
 }
 
-// Month is a year and month, the one the sheet probably shows.
-type Month struct{ Year, Month int }
+// Month is what's known before reading: the year and month the sheet
+// probably shows, and the names of coworkers already saved, so the reader can
+// pick them over a close lookalike.
+type Month struct {
+	Year, Month int
+	Names       []string
+}
 
 // ErrRefused is a request the model declined to answer.
 var ErrRefused = errors.New("the photo couldn't be read")
@@ -111,6 +116,10 @@ var sheetSchema = map[string]any{
 
 func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string, hint Month) (Sheet, error) {
 	prompt := fmt.Sprintf("Read the row for %q. The sheet is probably for %d-%02d (check its title, e.g. \"2026年 11月度\").", name, hint.Year, hint.Month)
+	if len(hint.Names) > 0 {
+		prompt += "\n\nPeople on earlier sheets (spelling already checked): " + strings.Join(hint.Names, "、") +
+			". When a name in with is almost one of these, use this spelling; if it's clearly someone else, write it as printed."
+	}
 	resp, err := c.client.Beta.Messages.New(ctx, anthropic.BetaMessageNewParams{
 		Model:     c.model,
 		MaxTokens: 16000,
