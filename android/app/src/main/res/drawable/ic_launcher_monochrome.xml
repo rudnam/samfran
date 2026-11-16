@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 13's themed icon: the egg's outline and yolk in one colour. -->
+<!-- Android 13's themed icon: the penguin and the bear from web/public/icon.svg in one colour.
+     Each face is one even-odd path, so its features are holes in the head. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="512" android:viewportHeight="512">
-    <group android:scaleX="0.62" android:scaleY="0.62" android:pivotX="256" android:pivotY="256">
-        <path android:pathData="M256,104c70,0 118,34 140,82 26,56 6,120 -34,160 -42,42 -112,66 -172,46 -58,-20 -96,-74 -92,-136 4,-80 76,-152 158,-152z" android:strokeColor="#FFFFFFFF" android:strokeWidth="22" android:fillColor="#00000000" />
-        <path android:pathData="M262,262m-70,0a70,70 0,1 1,140 0a70,70 0,1 1,-140 0" android:fillColor="#FFFFFFFF" />
+    <group android:scaleX="0.64" android:scaleY="0.64" android:pivotX="256" android:pivotY="256">
+        <group android:translateX="150" android:translateY="212" android:rotation="-6" android:scaleX="0.8" android:scaleY="0.8">
+            <path android:fillType="evenOdd" android:fillColor="#FFFFFFFF"
+                android:pathData="M-170,0C-170,-75 -100,-132 0,-132C100,-132 170,-75 170,0C170,76 110,122 0,122C-110,122 -170,76 -170,0ZM-26,20C-20,6 -20,-8 -21,-22C-23,-52 -40,-74 -68,-74C-102,-74 -122,-42 -122,-4C-122,44 -84,90 0,90C84,90 122,44 122,-4C122,-42 102,-74 68,-74C40,-74 23,-52 21,-22C20,-8 20,6 26,20Z" />
+            <path android:fillColor="#FFFFFFFF" android:pathData="M-33,24a33,22 0,1 0,66 0a33,22 0,1 0,-66 0z" />
+            <group android:translateX="-68" android:translateY="-4" android:scaleX="0.88" android:scaleY="0.88">
+                <path android:fillColor="#FFFFFFFF" android:pathData="M0,26C-14,14 -34,2 -34,-14C-34,-27 -24,-34 -14,-34C-7,-34 -2,-30 0,-25C2,-30 7,-34 14,-34C24,-34 34,-27 34,-14C34,2 14,14 0,26Z" />
+            </group>
+            <group android:translateX="68" android:translateY="-4" android:scaleX="0.88" android:scaleY="0.88">
+                <path android:fillColor="#FFFFFFFF" android:pathData="M0,26C-14,14 -34,2 -34,-14C-34,-27 -24,-34 -14,-34C-7,-34 -2,-30 0,-25C2,-30 7,-34 14,-34C24,-34 34,-27 34,-14C34,2 14,14 0,26Z" />
+            </group>
+        </group>
+        <group android:translateX="354" android:translateY="342" android:rotation="8" android:scaleX="0.9" android:scaleY="0.9">
+            <path android:fillColor="#FFFFFFFF" android:pathData="M-125,-97a32,32 0,1 0,64 0a32,32 0,1 0,-64 0zM61,-97a32,32 0,1 0,64 0a32,32 0,1 0,-64 0z" />
+            <path android:fillType="evenOdd" android:fillColor="#FFFFFFFF"
+                android:pathData="M-138,10a138,122 0,1 0,276 0a138,122 0,1 0,-276 0zM-68,0a13,13 0,1 0,26 0a13,13 0,1 0,-26 0zM45,0a13,13 0,1 0,26 0a13,13 0,1 0,-26 0zM-46,37a49,39 0,1 0,98 0a49,39 0,1 0,-98 0zM-3,-100h8v96h-8z" />
+            <path android:fillColor="#FFFFFFFF" android:pathData="M-17,14a20,15 0,1 0,40 0a20,15 0,1 0,-40 0z" />
+        </group>
     </group>
 </vector>
