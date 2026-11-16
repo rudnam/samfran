@@ -2,7 +2,7 @@
 
 **samfran** is a private app for two people. Everything in it is shared between you: the restaurants you've been to (with dated visits and each person's own 1–5 star rating) and the ones you want to try, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that rings before your bus stop, so you don't sleep past it.
 
-Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab. Whoever is invited joins the owner's space when they first sign in, with Google or a password.
+Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab with an invite link (single use, seven days). Whoever signs up through it, with Google or a password and any email, joins the owner's space.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
@@ -183,6 +183,8 @@ The language follows the device until someone picks one (the picker in the top b
 | POST | `/api/auth/app-token` | – | For an Android app: trades the one-time code from Google sign-in in the phone's browser for a session token (`internal/account/app.go`). |
 | GET | `/api/space` | user | `{members: [{name, email, me}], invites: [{email, created_at}]}` |
 | PUT | `/api/space/me` | user | Body `{name}` (empty: the part of the email before the @). The space, as above. |
+| POST, DELETE | `/api/space/invite-link` | user | POST makes an invite link, replacing an unused one: `201 {path, expires_at}` (`/join/<secret>`, shown once; single use, 7 days). DELETE cancels it. `/api/space` shows `invite_link: {expires_at}` while one is open. |
+| GET | `/join/{secret}` | – | Where an invite link points: keeps the secret in a cookie for sign-up (which it then allows, with any email, even with sign-up closed), and opens `/app/#/join`. |
 | POST | `/api/space/invites` | user | Body `{email}`. The space. `409` if the address has an account or is invited elsewhere. Not in a demo. |
 | DELETE | `/api/space/invites/{email}` | user | The space, or `404` |
 | GET | `/api/restaurants` | user | `[restaurant]`: `{id, name, area, cuisine, map_url, notes, added_by, created_at, visit_count, last_visit, ratings: [{name, me, stars}]}` |

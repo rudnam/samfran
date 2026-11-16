@@ -37,6 +37,8 @@ export interface Space {
   members: Member[];
   /** Addresses invited to join, who haven't yet. */
   invites: { email: string; created_at: string }[];
+  /** The open invite link, if any (its address is shown only when made). */
+  invite_link: { expires_at: string } | null;
 }
 
 export interface Rating {
@@ -140,6 +142,9 @@ export const api = {
   space: () => request<Space>('GET', '/api/space'),
   setMyName: (name: string) => request<Space>('PUT', '/api/space/me', { name }),
   invite: (email: string) => request<Space>('POST', '/api/space/invites', { email }),
+  /** Makes an invite link (replacing an unused one): its path, e.g. /join/…, shown once. */
+  createInviteLink: () => request<{ path: string; expires_at: string }>('POST', '/api/space/invite-link'),
+  cancelInviteLink: () => request<Space>('DELETE', '/api/space/invite-link'),
   uninvite: (email: string) => request<Space>('DELETE', `/api/space/invites/${encodeURIComponent(email)}`),
 
   restaurants: () => request<Restaurant[]>('GET', '/api/restaurants'),

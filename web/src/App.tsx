@@ -97,6 +97,11 @@ export function App() {
           startDemo();
           return;
         }
+        const join = joinNotice();
+        if (join) {
+          setSession({ status: 'signed-out', mode: join.ok ? 'sign-up' : undefined, notice: join });
+          return;
+        }
         setSession({
           status: 'signed-out',
           notice: initialNotice ?? (connecting ? { message: t('Sign in to connect Claude to samfran.'), ok: true } : null),
@@ -309,6 +314,20 @@ function UpdateBanner() {
       </button>
     </div>
   );
+}
+
+/** On the page an invite link opens (#/join): who invited them, or why the link didn't work. */
+function joinNotice(): Notice | null {
+  const m = location.hash.match(/^#\/join\??(.*)$/);
+  if (!m) return null;
+  const p = new URLSearchParams(m[1]);
+  history.replaceState(null, '', location.pathname); // off the join page once read
+  if (p.has('invalid')) return { message: t('That invite link has expired or was already used. Ask for a new one.'), ok: false };
+  const from = p.get('from');
+  return {
+    message: from ? t('{name} invited you to samfran. Create your account to join.', { name: from }) : t('You’re invited to samfran. Create your account to join.'),
+    ok: true,
+  };
 }
 
 /** In a demo: what this is, and the way to an account of one's own. */

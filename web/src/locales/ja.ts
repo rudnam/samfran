@@ -222,6 +222,20 @@ export const ja = {
   'Buzz this far before the stop': 'バス停のどれくらい手前で振動させるか',
   'About one stop early is 600–800 m. On a fast road, choose more.': '1つ手前ならおよそ600〜800m。速い道路なら長めに。',
 
+  // Invite links
+  'Join me on samfran': 'samfranで一緒に使おう',
+  'Invite link': '招待リンク',
+  Share: '共有',
+  'Cancel link': 'リンクを取り消す',
+  'Send it to them only: it works once, until {date}. They tap it and sign up with Google or an email and password.': '相手だけに送ってください。{date}まで、1回だけ使えます。タップしてGoogleかメールとパスワードで登録できます。',
+  'An invite link is open until {date}. Make a new one to see its address again (the old one stops working).': '{date}まで有効な招待リンクがあります。アドレスをもう一度見るには新しく作ってください（古いリンクは使えなくなります）。',
+  'Create invite link': '招待リンクを作成',
+  'Send them the link; they tap it and sign up, and see everything here.': 'リンクを送ると、相手はタップして登録し、ここにあるものをすべて見られます。',
+  'That invite link has expired or was already used. Ask for a new one.': 'この招待リンクは期限切れか、すでに使われています。新しいリンクを頼んでください。',
+  '{name} invited you to samfran. Create your account to join.': '{name}からsamfranに招待されました。アカウントを作成して参加しましょう。',
+  'You’re invited to samfran. Create your account to join.': 'samfranに招待されました。アカウントを作成して参加しましょう。',
+  'made an invite link': '招待リンクを作成',
+
   // Recent changes
   'whose shifts': '誰のシフト',
   'the name on the sheet': '勤務表上の名前',

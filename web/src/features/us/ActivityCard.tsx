@@ -55,6 +55,8 @@ function describe(e: ActivityEntry): string {
       return Number(d.stars) > 0 ? t('rated {name} ★{stars}', { name, stars: Number(d.stars) }) : t('cleared their rating of {name}', { name });
     case 'invited':
       return t('invited {email}', { email: String(d.email) });
+    case 'invite_link':
+      return t('made an invite link');
     case 'invite_cancelled':
       return t('cancelled the invitation for {email}', { email: String(d.email) });
   }

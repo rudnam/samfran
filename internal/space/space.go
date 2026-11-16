@@ -40,6 +40,9 @@ type Invite struct {
 type Info struct {
 	Members []Member `json:"members"`
 	Invites []Invite `json:"invites"`
+	// InviteLink is the open invite link, if there is one (its secret is
+	// shown only when it's made).
+	InviteLink *Link `json:"invite_link"`
 }
 
 // ---------- Store ----------
@@ -218,9 +221,11 @@ func SpaceFrom(r *http.Request) int64 {
 
 type Handler struct {
 	// Log, if set, records changes for the Us tab's history (internal/activity).
-	Log         func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
-	store       *Store
-	requireUser func(http.Handler) http.Handler
+	Log func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
+	// SecureCookies sets Secure on the invite link's cookie.
+	SecureCookies bool
+	store         *Store
+	requireUser   func(http.Handler) http.Handler
 }
 
 func NewHandler(st *Store, requireUser func(http.Handler) http.Handler) *Handler {
@@ -232,6 +237,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("PUT /api/space/me", h.Require(httpx.HandlerFunc(h.setName)))
 	mux.Handle("POST /api/space/invites", h.Require(httpx.HandlerFunc(h.invite)))
 	mux.Handle("DELETE /api/space/invites/{email}", h.Require(httpx.HandlerFunc(h.uninvite)))
+	mux.Handle("POST /api/space/invite-link", h.Require(httpx.HandlerFunc(h.createLink)))
+	mux.Handle("DELETE /api/space/invite-link", h.Require(httpx.HandlerFunc(h.cancelLink)))
+	mux.HandleFunc("GET /join/{code}", h.join)
 }
 
 func (h *Handler) info(r *http.Request) (Info, error) {
@@ -240,7 +248,10 @@ func (h *Handler) info(r *http.Request) (Info, error) {
 	if in.Members, err = h.store.Members(r.Context(), SpaceFrom(r), account.UserFrom(r).ID); err != nil {
 		return in, err
 	}
-	in.Invites, err = h.store.Invites(r.Context(), SpaceFrom(r))
+	if in.Invites, err = h.store.Invites(r.Context(), SpaceFrom(r)); err != nil {
+		return in, err
+	}
+	in.InviteLink, err = h.store.openLink(r.Context(), SpaceFrom(r))
 	return in, err
 }
 

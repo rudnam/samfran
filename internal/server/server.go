@@ -70,7 +70,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	}
 	// With sign-up closed, the listed emails and anyone invited may still join.
 	signupAllowed := func(ctx context.Context, email string) (bool, error) {
-		if slices.Contains(cfg.SignupEmails, email) {
+		if slices.Contains(cfg.SignupEmails, email) || spaces.SignupAllowedByLink(ctx) {
 			return true, nil
 		}
 		return spaces.Invited(ctx, email)
@@ -82,7 +82,12 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		AllowSignup:   cfg.AllowSignup,
 		SignupAllowed: signupAllowed,
 		Created: func(ctx context.Context, userID int64) error {
-			_, err := spaces.Of(ctx, userID) // joins the space it was invited to
+			// Joins the space of the invite link the request carries, else
+			// the one its email was invited to, else a new one.
+			if joined, err := spaces.JoinByLink(ctx, userID); joined || err != nil {
+				return err
+			}
+			_, err := spaces.Of(ctx, userID)
 			return err
 		},
 		AttemptsPerMinute: cfg.AuthRateLimit,
@@ -96,6 +101,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	activities := activity.NewStore(conn)
 	spaceHandler := space.NewHandler(spaces, accounts.RequireUser)
 	spaceHandler.Log = activities.Log
+	spaceHandler.SecureCookies = cfg.SecureCookies
 	spaceHandler.Register(mux)
 	restaurantHandler := restaurant.NewHandler(restaurants)
 	restaurantHandler.Log = activities.Log
@@ -135,7 +141,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	}))
 	mux.Handle("/", webApp(static))
 
-	return httpx.Chain(mux,
+	return httpx.Chain(space.WithInvite(mux),
 		httpx.LogRequests,
 		httpx.Recover,
 		httpx.SecurityHeaders,

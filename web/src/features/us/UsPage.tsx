@@ -1,8 +1,7 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Downloads, type MCPToken, type Me } from '../../api';
-import { server } from '../../native';
-import { isApp } from '../../native';
+import { isApp, server } from '../../native';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { t } from '../../i18n';
@@ -12,7 +11,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
   const self = space?.members.find((m) => m.me);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -46,13 +44,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
     });
   }
 
-  function invite(e: FormEvent) {
-    e.preventDefault();
-    run(async () => {
-      setSpace(await api.invite(email));
-      setEmail('');
-    });
-  }
 
   const room = space ? space.members.length + space.invites.length < 2 : false;
   return (
@@ -95,20 +86,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
             ))}
           </ul>
         )}
-        {room && !me.demo && (
-          <form className="stack tight" onSubmit={invite}>
-            <label className="field">
-              {t('Invite your partner')}
-              <span className="row">
-                <input type="email" required placeholder={t('Their email')} value={email} onChange={(e) => setEmail(e.target.value)} />
-                <button type="submit" disabled={busy || !email.trim()}>
-                  {t('Invite')}
-                </button>
-              </span>
-            </label>
-            <span className="hint">{t('They sign in with Google or make a password with that email, and see everything here.')}</span>
-          </form>
-        )}
+        {room && !me.demo && space && <InviteLink open={space.invite_link} onChange={() => api.space().then(setSpace, () => {})} />}
       </div>
 
       <form className="card stack" onSubmit={saveName}>
@@ -223,6 +201,100 @@ function ClaudeCard() {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/** Inviting your partner: a link to send them, which works once, for seven days. */
+function InviteLink({ open, onChange }: { open: { expires_at: string } | null; onChange: () => void }) {
+  const [url, setUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const until = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+  async function make() {
+    setBusy(true);
+    setError('');
+    try {
+      const l = await api.createInviteLink();
+      setUrl(`${server || location.origin}${l.path}`);
+      setCopied(false);
+      onChange();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancel() {
+    setBusy(true);
+    try {
+      await api.cancelInviteLink();
+      setUrl('');
+      onChange();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function share() {
+    if (navigator.share) {
+      await navigator.share({ title: 'samfran', text: t('Join me on samfran'), url }).catch(() => {});
+    } else {
+      await navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
+    }
+  }
+
+  return (
+    <div className="stack tight">
+      <span className="field">{t('Invite your partner')}</span>
+      {url ? (
+        <>
+          <div className="row">
+            <input readOnly aria-label={t('Invite link')} value={url} onFocus={(e) => e.target.select()} />
+            <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {})}>
+              {copied ? t('Copied') : t('Copy')}
+            </button>
+          </div>
+          <div className="row wrap">
+            {'share' in navigator && (
+              <button type="button" onClick={share}>
+                {t('Share')}
+              </button>
+            )}
+            <button type="button" className="link quiet" disabled={busy} onClick={cancel}>
+              {t('Cancel link')}
+            </button>
+          </div>
+          <span className="hint">{t('Send it to them only: it works once, until {date}. They tap it and sign up with Google or an email and password.', { date: until(open?.expires_at ?? new Date(Date.now() + 7 * 864e5).toISOString()) })}</span>
+        </>
+      ) : open ? (
+        <>
+          <span className="hint">{t('An invite link is open until {date}. Make a new one to see its address again (the old one stops working).', { date: until(open.expires_at) })}</span>
+          <div className="row wrap">
+            <button type="button" disabled={busy} onClick={make}>
+              {t('Make a new link')}
+            </button>
+            <button type="button" className="link quiet" disabled={busy} onClick={cancel}>
+              {t('Cancel link')}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <button type="button" disabled={busy} onClick={make}>
+            {t('Create invite link')}
+          </button>
+          <span className="hint">{t('Send them the link; they tap it and sign up, and see everything here.')}</span>
+        </>
+      )}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
       )}
     </div>
   );
