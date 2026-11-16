@@ -12,6 +12,7 @@
     <string name="no_shifts">この月のシフトはありません</string>
     <string name="no_shifts_hint">勤務表の写真を読み込むか、手で入力してください。</string>
     <string name="unknown_length">長さが不明です。設定で決めてください</string>
+    <string name="hours_due">締め申請通知</string>
     <string name="nothing_entered">未入力</string>
     <string name="read_photo">勤務表の写真を読み込む</string>
     <string name="reading_sheet">勤務表を読んでいます…</string>

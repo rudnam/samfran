@@ -295,6 +295,7 @@ export const ja = {
   Calendar: 'カレンダー',
   List: 'リスト',
   'Nothing entered': '未入力',
+  'Hours due (締め申請通知)': '締め申請通知',
   // New changes, and what the phone does while the app is closed
   New: '新着',
   '{n} new change': '新しい変更が{n}件',

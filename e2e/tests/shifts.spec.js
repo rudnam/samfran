@@ -44,6 +44,15 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(page.locator('.cal-detail')).toContainText('普');
   await cal.getByRole('button', { name: /^9 \S+: Nothing entered$/ }).click();
   await expect(page.locator('.cal-detail')).toContainText('Nothing entered');
+  await expect(page.locator('.cal-detail')).not.toContainText('締め申請通知');
+
+  // 締め申請通知: the 15th and the last day are marked, and say so when tapped.
+  const last = new Date(y, m, 0).getDate();
+  await expect(cal.locator('.cal-flag')).toHaveCount(2);
+  await expect(cal.getByRole('button', { name: /^14 \S+: Nothing entered$/ })).toBeVisible();
+  await cal.getByRole('button', { name: /^15 \S+: Nothing entered, Hours due \(締め申請通知\)$/ }).click();
+  await expect(page.locator('.cal-detail')).toContainText('締め申請通知');
+  await expect(cal.getByRole('button', { name: new RegExp(`^${last} \\S+: .*締め申請通知\\)$`) })).toBeVisible();
 
   // Or as a list, which this device then remembers.
   await page.getByRole('radio', { name: 'List' }).click();

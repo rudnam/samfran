@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,6 +70,15 @@ private fun ShiftTone.square(): Pair2? {
     }
 }
 
+/** 締め申請通知: hours are sent in on the 15th and on the last day of the month. */
+fun isClosingDay(date: LocalDate): Boolean = date.dayOfMonth == 15 || date.dayOfMonth == date.lengthOfMonth()
+
+/** The red dot that marks a 締め申請通知 day (.cal-flag). */
+@Composable
+private fun ClosingFlag(modifier: Modifier = Modifier) {
+    Box(modifier.size(7.dp).clip(CircleShape).background(SamFranTheme.colors.danger))
+}
+
 /**
  * The month as a calendar (web/src/features/shifts/ShiftCalendar.tsx): one
  * square per day, coloured by the kind of shift, today ringed. Tapping a day
@@ -81,6 +92,7 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
     val lead = month.atDay(1).dayOfWeek.value % 7 // squares before the 1st; weeks start on Sunday
     val cells = List(lead) { null } + (1..month.lengthOfMonth()).map { month.atDay(it) }
     val nothing = stringResource(R.string.nothing_entered)
+    val hoursDue = stringResource(R.string.hours_due)
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (w in Dates.narrowWeekdays(locale)) {
@@ -98,10 +110,15 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                     val d = byDate[date]
                     val square = d?.tone?.square()
                     val shape = RoundedCornerShape(10.dp)
-                    val what = d?.let { listOf(it.workplaceLabel, it.times).filter(String::isNotEmpty).joinToString(" ") } ?: nothing
+                    val closing = isClosingDay(date)
+                    val what = listOfNotNull(
+                        d?.let { listOf(it.workplaceLabel, it.times).filter(String::isNotEmpty).joinToString(" ") } ?: nothing,
+                        hoursDue.takeIf { closing },
+                    ).joinToString(", ")
+                    Box(Modifier.weight(1f)) {
                     Column(
                         Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .aspectRatio(0.86f)
                             .clip(shape)
                             .background(square?.bg ?: Color.Transparent)
@@ -122,10 +139,24 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
                         Text(date.dayOfMonth.toString(), color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         Text(d?.mark.orEmpty(), color = ink, fontSize = 15.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1)
                     }
+                    if (closing) ClosingFlag(Modifier.align(Alignment.TopEnd).padding(5.dp))
+                    }
                 }
             }
         }
-        if (picked != null && YearMonth.from(picked) == month) DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp))
+        Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            ClosingFlag()
+            Text(hoursDue, color = colors.muted, style = MaterialTheme.typography.bodySmall)
+        }
+        if (picked != null && YearMonth.from(picked) == month) {
+            DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp))
+            if (isClosingDay(picked)) {
+                Row(Modifier.padding(start = 74.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    ClosingFlag()
+                    Text(hoursDue, color = colors.danger, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
     }
 }
 

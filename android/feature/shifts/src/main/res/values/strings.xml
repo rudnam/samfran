@@ -12,6 +12,7 @@
     <string name="no_shifts">No shifts for this month</string>
     <string name="no_shifts_hint">Read a photo of the sheet, or enter the days by hand.</string>
     <string name="unknown_length">Unknown length: set it in Settings</string>
+    <string name="hours_due">Hours due (締め申請通知)</string>
     <string name="nothing_entered">Nothing entered</string>
     <string name="read_photo">Read a photo of the sheet</string>
     <string name="reading_sheet">Reading the sheet…</string>

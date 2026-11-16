@@ -24,6 +24,12 @@ export function tone(d: ShiftDay): string {
   return d.kind === 'work' ? d.label.toLowerCase() : d.kind;
 }
 
+/** 締め申請通知: hours are sent in on the 15th and on the last day of the month. */
+export function isClosingDay(date: string): boolean {
+  const [y, m, d] = date.split('-').map(Number);
+  return d === 15 || d === new Date(y, m, 0).getDate();
+}
+
 export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[] }) {
   const now = today();
   const [picked, setPicked] = useState(now.startsWith(month) ? now : '');
@@ -48,7 +54,10 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
         ))}
         {dates.map((date) => {
           const d = byDate.get(date);
-          const what = d ? [labelOf(d.label), timesOf(d)].filter(Boolean).join(' ') : t('Nothing entered');
+          const closing = isClosingDay(date);
+          const what = [d ? [labelOf(d.label), timesOf(d)].filter(Boolean).join(' ') : t('Nothing entered'), closing ? t('Hours due (締め申請通知)') : '']
+            .filter(Boolean)
+            .join(', ');
           return (
             <button
               key={date}
@@ -61,10 +70,14 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
             >
               <span className="cal-num">{Number(date.slice(8))}</span>
               <span className="cal-mark">{d ? mark(d) : ''}</span>
+              {closing && <span className="cal-flag" aria-hidden="true" />}
             </button>
           );
         })}
       </div>
+      <p className="cal-key small muted" aria-hidden="true">
+        <span className="cal-flag" /> {t('Hours due (締め申請通知)')}
+      </p>
       {picked && (
         <p className="cal-detail" role="status">
           <span className="shift-date">{dayName(picked)}</span>
@@ -81,6 +94,11 @@ export function ShiftCalendar({ month, days }: { month: string; days: ShiftDay[]
             </>
           ) : (
             <span className="grow muted">{t('Nothing entered')}</span>
+          )}
+          {isClosingDay(picked) && (
+            <span className="cal-closing small row-note">
+              <span className="cal-flag" aria-hidden="true" /> {t('Hours due (締め申請通知)')}
+            </span>
           )}
         </p>
       )}
