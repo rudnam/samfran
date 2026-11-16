@@ -188,22 +188,22 @@ private fun BuzzCard(stop: BusStop, practice: Boolean, onStop: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.large)
-            .background(colors.accent)
+            .background(colors.heart)
             .padding(20.dp)
             .semantics { liveRegion = LiveRegionMode.Assertive },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Eyebrow(stringResource(if (practice) R.string.practice_run else R.string.wake_up), color = colors.accentText)
-        Text(stringResource(R.string.your_stop_is_next), style = MaterialTheme.typography.headlineMedium, color = colors.accentText, textAlign = TextAlign.Center)
-        Text(stop.name.ifBlank { stringResource(R.string.your_stop_lower) }, style = MaterialTheme.typography.titleMedium, color = colors.accentText, textAlign = TextAlign.Center)
+        Eyebrow(stringResource(if (practice) R.string.practice_run else R.string.wake_up), color = colors.heartText)
+        Text(stringResource(R.string.your_stop_is_next), style = MaterialTheme.typography.headlineMedium, color = colors.heartText, textAlign = TextAlign.Center)
+        Text(stop.name.ifBlank { stringResource(R.string.your_stop_lower) }, style = MaterialTheme.typography.titleMedium, color = colors.heartText, textAlign = TextAlign.Center)
         androidx.compose.material3.Button(
             onClick = onStop,
             modifier = Modifier.fillMaxWidth().padding(top = 6.dp).height(72.dp),
             shape = MaterialTheme.shapes.medium,
-            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.surface, contentColor = colors.accentInk),
+            colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = colors.surface, contentColor = colors.a.text),
         ) { Text(stringResource(R.string.stop), style = MaterialTheme.typography.headlineSmall) }
-        if (practice) Text(stringResource(R.string.practice_feel), style = MaterialTheme.typography.bodySmall, color = colors.accentText, textAlign = TextAlign.Center)
+        if (practice) Text(stringResource(R.string.practice_feel), style = MaterialTheme.typography.bodySmall, color = colors.heartText, textAlign = TextAlign.Center)
     }
 }
 
@@ -275,8 +275,8 @@ private fun RouteLine(progress: Float) {
         val w = maxWidth
         Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(6.dp).clip(CircleShape).background(colors.sunken))
         Box(Modifier.align(Alignment.CenterStart).size(width = w * at, height = 6.dp).clip(CircleShape).background(colors.accentInk.copy(alpha = 0.35f)))
-        Box(Modifier.align(Alignment.CenterEnd).size(width = w * zone, height = 6.dp).clip(CircleShape).background(colors.accent.copy(alpha = 0.7f)))
-        Box(Modifier.align(Alignment.CenterEnd).size(14.dp).clip(CircleShape).background(colors.accent))
+        Box(Modifier.align(Alignment.CenterEnd).size(width = w * zone, height = 6.dp).clip(CircleShape).background(colors.heart.copy(alpha = 0.7f)))
+        Box(Modifier.align(Alignment.CenterEnd).size(14.dp).clip(CircleShape).background(colors.heart))
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = (w * at - 14.dp).coerceAtLeast(0.dp)).size(28.dp).clip(CircleShape).background(colors.surface),
             contentAlignment = Alignment.Center,
@@ -369,7 +369,7 @@ private fun AlarmSettings(state: BusUiState, stop: BusStop, actions: BusActions,
                 Text(stringResource(R.string.ask_when_shift_ends), style = MaterialTheme.typography.titleSmall)
                 Hint(stringResource(R.string.ask_when_shift_ends_hint))
             }
-            Switch(state.prompts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accent))
+            Switch(state.prompts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
         }
         if (state.promptsBlocked) ErrorText(stringResource(R.string.allow_notifications))
     }
@@ -419,7 +419,6 @@ private fun StopFormCard(state: BusUiState, actions: BusActions, onHere: () -> U
                 f.query.isNotEmpty() && f.searchFailed -> stringResource(R.string.search_failed)
                 f.query.isNotEmpty() && found?.isEmpty() == true -> stringResource(R.string.no_stops)
                 f.query.isNotEmpty() && !found.isNullOrEmpty() -> stringResource(R.string.tap_your_stop) + " " + stringResource(R.string.osm)
-                f.position == null -> stringResource(R.string.start_typing)
                 else -> ""
             }
             if (hint.isNotEmpty()) Hint(hint)

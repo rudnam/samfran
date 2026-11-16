@@ -32,8 +32,8 @@ data class Pair2(val bg: Color, val ink: Color)
 data class PersonColors(val bg: Color, val text: Color, val solid: Color, val on: Color)
 
 /**
- * "Quiet Pop": calm, warm off-white, with the two people's colours as
- * accents. The tokens at the top of web/src/styles.css, light and dark, so
+ * Burnt orange: a warm cream page, deep orange for the main action and
+ * links, and the icon's heart red for alerts. The tokens at the top of web/src/styles.css, light and dark, so
  * the app and the website look the same. Material 3's roles are filled from
  * these, so its components look like the app.
  */
@@ -43,15 +43,20 @@ data class SamFranColors(
     val bg: Color,
     val surface: Color,
     val sunken: Color,
+    /** What's picked: the tab, a notice. */
+    val highlight: Color,
     val text: Color,
     val muted: Color,
     val border: Color,
     val divider: Color,
-    /** Tomato: the main action. */
+    /** Burnt orange: the main action. */
     val accent: Color,
     val accentText: Color,
-    /** Tomato as text. */
+    /** Burnt orange as text and links. */
     val accentInk: Color,
+    /** Heart red: alerts, today, and what's new. */
+    val heart: Color,
+    val heartText: Color,
     val star: Color,
     val starOff: Color,
     val danger: Color,
@@ -76,7 +81,7 @@ data class SamFranColors(
 object ShiftDotColors {
     val early = Color(0xFFF5B301)
     val middle = Color(0xFF2E9E5B)
-    val late = Color(0xFFFF8A1F)
+    val late = Color(0xFFF08A24)
     val night = Color(0xFF5B4BC4)
     val off = Color(0xFFB9E6C8)
     val leave = Color(0xFF9FD8D0)
@@ -85,25 +90,28 @@ object ShiftDotColors {
 
 val LightSamFranColors = SamFranColors(
     isDark = false,
-    bg = Color(0xFFFAF8F4),
-    surface = Color(0xFFFFFFFF),
-    sunken = Color(0xFFF0ECE5),
-    text = Color(0xFF1E1915),
-    muted = Color(0xFF77706A),
-    border = Color(0xFFEFEBE4),
-    divider = Color(0xFFF1EDE7),
-    accent = Color(0xFFE23D28),
+    bg = Color(0xFFFDF6EE),
+    surface = Color(0xFFFFFDFA),
+    sunken = Color(0xFFF5E8D8),
+    highlight = Color(0xFFFBE0C6),
+    text = Color(0xFF241F1C),
+    muted = Color(0xFF7A6C5F),
+    border = Color(0xFFF0E1CF),
+    divider = Color(0xFFF4E8DA),
+    accent = Color(0xFFB9520C),
     accentText = Color(0xFFFFFFFF),
-    accentInk = Color(0xFFC42E1B),
-    star = Color(0xFFF59E0B),
-    starOff = Color(0xFFE6DFD4),
+    accentInk = Color(0xFFA3480B),
+    heart = Color(0xFFE0402F),
+    heartText = Color(0xFFFFFFFF),
+    star = Color(0xFFF2A31B),
+    starOff = Color(0xFFEDDCC6),
     danger = Color(0xFFB3261E),
-    a = PersonColors(Color(0xFFFFE4DE), Color(0xFFB42A18), Color(0xFFE23D28), Color(0xFFFFFFFF)),
-    b = PersonColors(Color(0xFFFFE9D4), Color(0xFF9A4600), Color(0xFFFF8A1F), Color(0xFF1E1915)),
-    tileYellow = Pair2(Color(0xFFFFF1C9), Color(0xFF8A5A00)),
-    tileGreen = Pair2(Color(0xFFDDF4E5), Color(0xFF1C6B3C)),
-    tileRed = Pair2(Color(0xFFFFE4DE), Color(0xFFB42A18)),
-    tileOrange = Pair2(Color(0xFFFFE9D4), Color(0xFF9A4600)),
+    a = PersonColors(Color(0xFFFFE1DC), Color(0xFFA8291A), Color(0xFFE0402F), Color(0xFFFFFFFF)),
+    b = PersonColors(Color(0xFFFFE7D1), Color(0xFF964400), Color(0xFFFF8A1F), Color(0xFF241F1C)),
+    tileYellow = Pair2(Color(0xFFFFF0C7), Color(0xFF835500)),
+    tileGreen = Pair2(Color(0xFFE0F2E2), Color(0xFF23653A)),
+    tileRed = Pair2(Color(0xFFFFE1DC), Color(0xFFA8291A)),
+    tileOrange = Pair2(Color(0xFFFFE7D1), Color(0xFF964400)),
     calEarly = Pair2(Color(0xFFFFE9A8), Color(0xFF5C4300)),
     calMiddle = Pair2(Color(0xFFC9EFD6), Color(0xFF0F4D2A)),
     calLate = Pair2(Color(0xFFFFD6AD), Color(0xFF6B3100)),
@@ -114,21 +122,24 @@ val LightSamFranColors = SamFranColors(
 
 val DarkSamFranColors = SamFranColors(
     isDark = true,
-    bg = Color(0xFF161311),
-    surface = Color(0xFF211C19),
-    sunken = Color(0xFF2B2420),
-    text = Color(0xFFF5EFEA),
-    muted = Color(0xFFA99D94),
-    border = Color(0xFF322A25),
-    divider = Color(0xFF2C2521),
-    accent = Color(0xFFFF5A3C),
-    accentText = Color(0xFF160E0B),
-    accentInk = Color(0xFFFF8A73),
-    star = Color(0xFFF59E0B),
-    starOff = Color(0xFF463A32),
+    bg = Color(0xFF17120E),
+    surface = Color(0xFF221B15),
+    sunken = Color(0xFF2D241C),
+    highlight = Color(0xFF45291A),
+    text = Color(0xFFF7EFE4),
+    muted = Color(0xFFAE9F8F),
+    border = Color(0xFF382C22),
+    divider = Color(0xFF2E251D),
+    accent = Color(0xFFFF9A4D),
+    accentText = Color(0xFF1C1714),
+    accentInk = Color(0xFFFFB27A),
+    heart = Color(0xFFFF6B57),
+    heartText = Color(0xFF1C1714),
+    star = Color(0xFFF2A31B),
+    starOff = Color(0xFF463A30),
     danger = Color(0xFFFFB4A9),
-    a = PersonColors(Color(0xFF4A1D16), Color(0xFFFFB4A6), Color(0xFFFF5A3C), Color(0xFF160E0B)),
-    b = PersonColors(Color(0xFF45290F), Color(0xFFFFC58F), Color(0xFFFF9A3D), Color(0xFF160E0B)),
+    a = PersonColors(Color(0xFF4A1D16), Color(0xFFFFB4A6), Color(0xFFFF6B57), Color(0xFF1C1714)),
+    b = PersonColors(Color(0xFF45290F), Color(0xFFFFC58F), Color(0xFFFF9A3D), Color(0xFF1C1714)),
     tileYellow = Pair2(Color(0xFF3D3214), Color(0xFFFFD877)),
     tileGreen = Pair2(Color(0xFF183424), Color(0xFF8FDCAB)),
     tileRed = Pair2(Color(0xFF44201A), Color(0xFFFFAB9B)),
@@ -148,8 +159,8 @@ private fun SamFranColors.asColorScheme(): ColorScheme {
     return base.copy(
         primary = accent,
         onPrimary = accentText,
-        primaryContainer = a.bg,
-        onPrimaryContainer = a.text,
+        primaryContainer = highlight,
+        onPrimaryContainer = text,
         secondary = muted,
         onSecondary = surface,
         secondaryContainer = sunken,
@@ -175,11 +186,12 @@ private fun SamFranColors.asColorScheme(): ColorScheme {
         inverseSurface = text,
         inverseOnSurface = bg,
         inversePrimary = accentInk,
-        outline = muted,
+        // Field borders: a soft warm line, not the grey of muted text, so outlined fields sit as quietly as the website's.
+        outline = if (isDark) Color(0xFF4C3B2D) else Color(0xFFE0C8AE),
         outlineVariant = border,
         error = danger,
         onError = surface,
-        scrim = Color.Black.copy(alpha = 0.45f),
+        scrim = Color(0xFF1C140C).copy(alpha = 0.42f),
     )
 }
 

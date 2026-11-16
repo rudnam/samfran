@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bus_alarm">Bus alarm</string>
-    <string name="bus_subtitle">Buzzes your phone before your stop, so you don’t miss it.</string>
+    <string name="bus_subtitle">Buzzes before your stop, so you don’t miss it.</string>
     <string name="location_denied">SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.</string>
     <string name="your_stop_is_next">Your stop is next</string>
     <string name="practice_run">Practice run</string>
@@ -54,7 +54,6 @@
     <string name="no_stops">No stops by that name. Try fewer characters, written as on the stop’s sign.</string>
     <string name="tap_your_stop">Tap your stop.</string>
     <string name="osm">Stops from OpenStreetMap.</string>
-    <string name="start_typing">Start typing and choose your stop from the list.</string>
     <string name="found_it">Found it.</string>
     <string name="found_by_name">Found it on OpenStreetMap, by its name.</string>
     <string name="check_on_map">Check on the map</string>

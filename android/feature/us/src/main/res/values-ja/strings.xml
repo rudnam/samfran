@@ -16,7 +16,7 @@
     <string name="invite_open_hint">%sまで有効な招待リンクがあります。アドレスをもう一度見るには新しく作ってください（古いリンクは使えなくなります）。</string>
     <string name="make_new_link">新しいリンクを作る</string>
     <string name="create_invite_link">招待リンクを作成</string>
-    <string name="invite_hint">リンクを送ると、相手はタップして登録し、ここにあるものをすべて見られます。</string>
+    <string name="invite_hint">相手はリンクを開いて登録すると、ここにあるものをすべて見られます。</string>
     <string name="join_me">SamFranで一緒に使おう</string>
     <string name="your_name">あなたの名前</string>
     <string name="save">保存</string>
@@ -30,11 +30,11 @@
     <string name="via_claude">Claude経由</string>
     <string name="show_more">もっと見る</string>
     <string name="claude">Claude</string>
-    <string name="claude_intro">ClaudeをSamFranにつなぐと、あなたのClaudeプランで勤務表の写真を読み、確認後に月のシフトを保存したり、お店を追加・評価したりできます。</string>
+    <string name="claude_intro">Claudeが勤務表の写真を読んだり、お店を追加・評価したりできます。</string>
     <string name="claude_step1">Claude（claude.ai）で「設定 › コネクタ › カスタムコネクタを追加」を開きます。</string>
     <string name="claude_step2">名前を SamFran にして、このアドレスを貼り付けます:</string>
     <string name="connector_address">コネクタのアドレス</string>
-    <string name="claude_then">Claudeがここでのログインと許可を求めます。その後、チャットで勤務表の写真を共有して、シフトの追加を頼んでください。</string>
+    <string name="claude_then">Claudeがここでのログインを求めます。その後、勤務表の写真を送ってください。</string>
     <string name="last_used">最終利用 %s</string>
     <string name="not_used">まだ使われていません</string>
     <string name="disconnect">接続を解除</string>

@@ -2,7 +2,6 @@
 <resources>
     <string name="shifts">シフト</string>
     <string name="whose_shifts">%sのシフト</string>
-    <string name="shifts_subtitle">月の勤務表から。時間はシフト記号から計算します。</string>
     <string name="settings">設定</string>
     <string name="next_shift">次のシフト</string>
     <string name="previous_month">前の月</string>
@@ -37,7 +36,7 @@
     <string name="name_on_sheet">勤務表上の名前</string>
     <string name="name_on_sheet_hint">正しい行を読めるよう、勤務表の表記どおりに入力してください。</string>
     <string name="shift_lengths">シフトの長さ</string>
-    <string name="shift_lengths_hint">記号の英字ごとの拘束時間（休憩込み）。13F は13:00開始で、Fの長さだけ続きます。勤務表下の凡例と照らし合わせてください。</string>
+    <string name="shift_lengths_hint">英字ごとの拘束時間（休憩込み）。13F は13:00開始で、Fの長さだけ続きます。</string>
     <string name="letter">英字</string>
     <string name="hours_for">%sの時間</string>
     <string name="h">時間</string>

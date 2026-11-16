@@ -4,6 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +43,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import com.rudnam.samfran.R
 import com.rudnam.samfran.core.designsystem.component.LinkButton
@@ -133,6 +139,17 @@ fun SamFranApp(
             appState.navController,
             startDestination = start,
             modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
+            // Tabs cross-fade; a page opened from one slides in a little from the right, and back out to it.
+            enterTransition = {
+                val fade = fadeIn(tween(220, delayMillis = 60))
+                if (targetState.destination.isTab()) fade else fade + slideInHorizontally(tween(320, easing = EaseOut)) { it / 12 }
+            },
+            exitTransition = { fadeOut(tween(120)) },
+            popEnterTransition = { fadeIn(tween(220, delayMillis = 60)) },
+            popExitTransition = {
+                val fade = fadeOut(tween(160))
+                if (initialState.destination.isTab()) fade else fade + slideOutHorizontally(tween(260, easing = EaseOut)) { it / 12 }
+            },
         ) {
             signInScreen()
             foodScreens(
@@ -177,6 +194,8 @@ fun SamFranApp(
         }
     }
 }
+
+private fun NavDestination.isTab() = TopLevelDestination.entries.any { hasRoute(it.route::class) }
 
 /** The notices above every tab: a newer build, the demo, confirming the email. */
 @Composable
@@ -226,7 +245,7 @@ private fun TabBar(current: TopLevelDestination, unseen: Int, onSelect: (TopLeve
                 icon = {
                     if (tab == TopLevelDestination.Us && unseen > 0) {
                         val badge = pluralStringResource(R.plurals.new_changes, unseen, unseen)
-                        BadgedBox(badge = { Badge(Modifier.semantics { contentDescription = badge }, containerColor = colors.accent) }) {
+                        BadgedBox(badge = { Badge(Modifier.semantics { contentDescription = badge }, containerColor = colors.heart) }) {
                             LineIcon(tab.icon, null)
                         }
                     } else {
@@ -235,9 +254,9 @@ private fun TabBar(current: TopLevelDestination, unseen: Int, onSelect: (TopLeve
                 },
                 label = { Text(stringResource(tab.label), style = MaterialTheme.typography.labelMedium) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = colors.accent,
-                    selectedTextColor = colors.accent,
-                    indicatorColor = colors.a.bg,
+                    selectedIconColor = colors.accentInk,
+                    selectedTextColor = colors.accentInk,
+                    indicatorColor = colors.highlight,
                     unselectedIconColor = colors.muted,
                     unselectedTextColor = colors.muted,
                 ),

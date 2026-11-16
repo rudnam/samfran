@@ -171,7 +171,7 @@ function ClaudeCard() {
     <div className="card stack">
       <h2>{t('Claude')}</h2>
       <p className="muted">
-        {t('Connect Claude to SamFran and it can read a photo of the shift sheet on your own Claude plan, save the month after you check it, and add or rate restaurants.')}
+        {t('Claude can read a photo of the shift sheet, and add or rate places for you.')}
       </p>
       <ol className="steps small">
         <li>{t('In Claude (claude.ai), open Settings › Connectors › Add custom connector.')}</li>
@@ -183,7 +183,7 @@ function ClaudeCard() {
           {copied ? t('Copied') : t('Copy')}
         </button>
       </div>
-      <span className="hint">{t('Claude then asks you to sign in here and allow it. After that, share a photo of the sheet in a chat and ask it to add the shifts.')}</span>
+      <span className="hint">{t('Claude then asks you to sign in here. After that, send it a photo of the sheet.')}</span>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -292,7 +292,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
           <button type="button" disabled={busy} onClick={make}>
             {t('Create invite link')}
           </button>
-          <span className="hint">{t('Send them the link; they tap it and sign up, and see everything here.')}</span>
+          <span className="hint">{t('They open it, sign up, and see everything here.')}</span>
         </>
       )}
       {error && (

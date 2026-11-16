@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bus_alarm">バスアラーム</string>
-    <string name="bus_subtitle">降りるバス停の手前でスマホを振動させます。乗り過ごし防止に。</string>
+    <string name="bus_subtitle">降りるバス停の手前で知らせます。乗り過ごし防止に。</string>
     <string name="location_denied">バス停に近づいたことを知るために位置情報が必要です。スマホの設定で許可してください。</string>
     <string name="your_stop_is_next">もうすぐ降りるバス停です</string>
     <string name="practice_run">練習</string>
@@ -54,7 +54,6 @@
     <string name="no_stops">その名前のバス停はありません。文字を減らすか、バス停の表示どおり（漢字）に入力してください。</string>
     <string name="tap_your_stop">降りるバス停をタップしてください。</string>
     <string name="osm">バス停データ: OpenStreetMap</string>
-    <string name="start_typing">入力して、一覧からバス停を選んでください。</string>
     <string name="found_it">見つかりました。</string>
     <string name="found_by_name">名前からOpenStreetMapで見つけました。</string>
     <string name="check_on_map">地図で確認</string>

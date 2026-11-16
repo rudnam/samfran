@@ -1,4 +1,5 @@
 // Adding a place (been there, or want to go) and editing one.
+import { BackLink } from '../../components/BackLink';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage, type FoundPlace, type Restaurant, type RestaurantFields } from '../../api';
 import { StarPicker } from '../../components/Stars';
@@ -216,9 +217,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const back = id ? href('restaurant', { id }) : href(want ? 'want' : 'home');
   return (
     <section className="stack">
-      <a className="back" href={back}>
-        ‹ {t('Back')}
-      </a>
+      <BackLink href={back} label={id ? 'Back' : 'Our spots'} />
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
       {!fields && !error && <p className="muted">{t('Loading…')}</p>}
       {fields && (
@@ -317,7 +316,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                       </>
                     );
                   }
-                  return !fields.name && t('Start typing and pick it from the list, or just type its name.');
+                  return null;
                 })()}
               </span>
             )}

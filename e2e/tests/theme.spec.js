@@ -2,8 +2,8 @@
 // Us → This device, and the pick is kept in this browser.
 const { test, expect, signUp } = require('./fixtures');
 
-const LIGHT_BG = 'rgb(250, 248, 244)';
-const DARK_BG = 'rgb(22, 19, 17)';
+const LIGHT_BG = 'rgb(253, 246, 238)';
+const DARK_BG = 'rgb(23, 18, 14)';
 const background = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 
 test('Dark can be picked on a light device, and stays picked', async ({ page }) => {

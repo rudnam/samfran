@@ -16,7 +16,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.getByLabel('Name on the sheet').fill('オトル サマンタ');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
-  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
 
   // By hand: the meaning shows as a code is typed.
@@ -82,7 +82,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.getByRole('combobox', { name: 'Closing day 2' }).selectOption('25');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
-  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await page.locator('a.back').click();
   await page.getByRole('radio', { name: 'Calendar' }).click();
   await expect(cal.locator('.cal-flag')).toHaveCount(2);
   await expect(cal.getByRole('button', { name: /^10 \S+: Nothing entered, Hours due/ })).toBeVisible();
@@ -95,7 +95,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.getByRole('button', { name: 'Remove closing day 1' }).click();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
-  await page.getByRole('link', { name: '‹ Shifts' }).click();
+  await page.locator('a.back').click();
   await expect(cal.locator('.cal-flag')).toHaveCount(0);
 });
 

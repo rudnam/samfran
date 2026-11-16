@@ -1,6 +1,7 @@
 // Checking a month before it's saved: what the photo reader found, or the
 // saved month to fix by hand. Every day of the month has a box for its code,
 // and shows what the code means as it's typed.
+import { BackLink } from '../../components/BackLink';
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
@@ -84,9 +85,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
   if (!base) {
     return (
       <section className="stack">
-        <a className="back" href={href('shifts', { month })}>
-          ‹ {t('Shifts')}
-        </a>
+        <BackLink href={href('shifts', { month })} label="Shifts" />
         {error ? <p role="alert" className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}
       </section>
     );
@@ -94,9 +93,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
   const read = fromPhoto && base.name_as_read !== undefined;
   return (
     <section className="stack">
-      <a className="back" href={href('shifts', { month })}>
-        ‹ {t('Shifts')}
-      </a>
+      <BackLink href={href('shifts', { month })} label="Shifts" />
       <h1 className="display">{read ? t('Check the shifts') : monthName(month)}</h1>
       {read && (
         <div className="notice stack tight" role="status">

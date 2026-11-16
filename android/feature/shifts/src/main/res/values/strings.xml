@@ -2,7 +2,6 @@
 <resources>
     <string name="shifts">Shifts</string>
     <string name="whose_shifts">%s’s shifts</string>
-    <string name="shifts_subtitle">From the monthly sheet. Times follow the codes.</string>
     <string name="settings">Settings</string>
     <string name="next_shift">Next shift</string>
     <string name="previous_month">Previous month</string>
@@ -37,7 +36,7 @@
     <string name="name_on_sheet">Name on the sheet</string>
     <string name="name_on_sheet_hint">Exactly as printed on the sheet, so the right row is read.</string>
     <string name="shift_lengths">Shift lengths</string>
-    <string name="shift_lengths_hint">Hours on site, break included, for the letter in a code: 13F starts at 13:00 and lasts as long as F. Check these against the key at the bottom of the sheet.</string>
+    <string name="shift_lengths_hint">Hours per letter, break included: 13F starts at 13:00 and lasts as long as F.</string>
     <string name="letter">Letter</string>
     <string name="hours_for">Hours for %s</string>
     <string name="h">h</string>

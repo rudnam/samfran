@@ -1,5 +1,6 @@
 // Whose shifts, how to find their row on the sheet, how long each letter's
 // shift is, and the calendar link to subscribe to in a calendar app.
+import { BackLink } from '../../components/BackLink';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
@@ -64,9 +65,7 @@ export function ShiftSettingsPage() {
   const feedUrl = s?.feed_path ? `${location.origin}${s.feed_path}` : '';
   return (
     <section className="stack">
-      <a className="back" href={href('shifts')}>
-        ‹ {t('Shifts')}
-      </a>
+      <BackLink href={href('shifts')} label="Shifts" />
       <h1 className="display">{t('Shift settings')}</h1>
       {!s && !error && <p className="muted">{t('Loading…')}</p>}
       {error && (
@@ -92,7 +91,7 @@ export function ShiftSettingsPage() {
             <div className="field">
               <span>{t('Shift lengths')}</span>
               <span className="hint">
-                {t('Hours on site, break included, for the letter in a code: 13F starts at 13:00 and lasts as long as F. Check these against the key at the bottom of the sheet.')}
+                {t('Hours per letter, break included: 13F starts at 13:00 and lasts as long as F.')}
               </span>
               <div className="lengths">
                 {lengths.map(([k, v], i) => (
