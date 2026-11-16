@@ -9,7 +9,9 @@ for (const [name, viewport] of [
 ]) {
   test(`screens at ${name} width`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    const shot = (label) => page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true });
+    // animations: 'disabled' jumps entrances to their end, so each picture shows the settled screen.
+    const shot = (label) =>
+      page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true, animations: 'disabled' });
 
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
