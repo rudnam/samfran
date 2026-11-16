@@ -105,13 +105,13 @@ class ActivityJob : JobService() {
 
         /** One change in words, or null for a kind that isn't worth a notification. */
         fun describe(c: Context, e: ActivityEntry): String? {
-            val who = e.who.ifEmpty { c.getString(R.string.change_someone) }
+            val who = e.who.ifEmpty { c.getString(R.string.notify_change_someone) }
             val name = e.details.name
             return when (e.kind) {
-                "restaurant_added" -> c.getString(if (e.details.been) R.string.change_added_been else R.string.change_added_want, who, name)
-                "visit_logged" -> c.getString(R.string.change_visit, who, name)
-                "rated" -> if (e.details.stars > 0) c.getString(R.string.change_rated, who, name, e.details.stars) else null
-                "shifts_saved" -> c.getString(R.string.change_shifts, who)
+                "restaurant_added" -> c.getString(if (e.details.been) R.string.notify_change_added_been else R.string.notify_change_added_want, who, name)
+                "visit_logged" -> c.getString(R.string.notify_change_visit, who, name)
+                "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
+                "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
                 else -> null
             }
         }
@@ -125,7 +125,7 @@ class ActivityJob : JobService() {
                 .setContentIntent(ShiftPrompt.open(c, 13, "us"))
                 .setAutoCancel(true)
             if (lines.size > 1) {
-                b.setContentText(c.resources.getQuantityString(R.plurals.change_more, lines.size - 1, lines.size - 1))
+                b.setContentText(c.resources.getQuantityString(R.plurals.notify_change_more, lines.size - 1, lines.size - 1))
                 b.setStyle(Notification.InboxStyle().also { style -> lines.forEach(style::addLine) })
             }
             nm.notify(NOTIFICATION, b.build())

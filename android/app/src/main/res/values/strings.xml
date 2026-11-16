@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">SamFran</string>
+    <string name="app_name" translatable="false">SamFran</string>
     <string name="trip_title">Watching for your stop</string>
     <string name="trip_title_named">Watching for %1$s</string>
     <string name="trip_starting">Finding where you are…</string>
@@ -18,13 +18,13 @@
     <string name="shift_end_text_named">The shift is over. It buzzes before %1$s.</string>
     <string name="shift_end_start">Start bus alarm</string>
     <string name="channel_changes">Changes by the other one of you</string>
-    <string name="change_someone">Someone</string>
-    <string name="change_added_been">%1$s added %2$s</string>
-    <string name="change_added_want">%1$s wants to go to %2$s</string>
-    <string name="change_visit">%1$s logged a visit to %2$s</string>
-    <string name="change_rated">%1$s rated %2$s ★%3$d</string>
-    <string name="change_shifts">%1$s saved the shifts</string>
-    <plurals name="change_more">
+    <string name="notify_change_someone">Someone</string>
+    <string name="notify_change_added_been">%1$s added %2$s</string>
+    <string name="notify_change_added_want">%1$s wants to go to %2$s</string>
+    <string name="notify_change_visit">%1$s logged a visit to %2$s</string>
+    <string name="notify_change_rated">%1$s rated %2$s ★%3$d</string>
+    <string name="notify_change_shifts">%1$s saved the shifts</string>
+    <plurals name="notify_change_more">
         <item quantity="one">and %d more change</item>
         <item quantity="other">and %d more changes</item>
     </plurals>
