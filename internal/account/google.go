@@ -62,18 +62,23 @@ func (h *Handler) options(w http.ResponseWriter, r *http.Request) error {
 
 // googleStart sends the browser to Google, remembering in a short-lived
 // cookie what the callback needs to check that the answer is for us. With
-// app_challenge, the Android app started it (see app.go).
+// app_challenge, the Android app started it, and app_variant says which
+// build (see app.go).
 func (h *Handler) googleStart(w http.ResponseWriter, r *http.Request) {
 	g := h.cfg.Google
 	state, nonce, verifier := randomString(), randomString(), randomString()
-	app := r.URL.Query().Get("app_challenge")
-	if app != "" && (h.cfg.AppScheme == "" || appChallenge(app) == nil) {
+	app, variant := r.URL.Query().Get("app_challenge"), r.URL.Query().Get("app_variant")
+	if app != "" && (h.cfg.AppScheme == "" || appChallenge(app) == nil || !appVariants[variant]) {
 		httpx.WriteError(w, http.StatusBadRequest, "this server can't sign in the app with Google")
 		return
 	}
+	value := state + "." + nonce + "." + verifier + "." + app
+	if app != "" && variant != "" {
+		value += "." + variant
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     googleCookie,
-		Value:    state + "." + nonce + "." + verifier + "." + app,
+		Value:    value,
 		Path:     "/api/auth/google",
 		MaxAge:   600,
 		HttpOnly: true,
@@ -103,12 +108,12 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.ErrorContext(r.Context(), "google sign-in", "err", err)
 	}
-	if app {
+	if app != nil {
 		q := url.Values{"code": {appCode}}
 		if reason != "" {
 			q = url.Values{"signin_error": {reason}}
 		}
-		http.Redirect(w, r, h.appRedirect(q), http.StatusFound)
+		http.Redirect(w, r, h.appRedirect(*app, q), http.StatusFound)
 		return
 	}
 	target := "/app/"
@@ -120,9 +125,9 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 
 // googleSignIn returns a reason code for the page when sign-in fails, and
 // an error too when the failure is ours and worth logging. When the Android
-// app started it (app is true), it returns a one-time code for the app
-// instead of starting a session here.
-func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, appCode string, app bool, err error) {
+// app started it (app is its build's variant, "" for the real app), it
+// returns a one-time code for the app instead of starting a session here.
+func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, appCode string, app *string, err error) {
 	q := r.URL.Query()
 	c, cookieErr := r.Cookie(googleCookie)
 	http.SetCookie(w, &http.Cookie{
@@ -134,8 +139,12 @@ func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, 
 		parts = strings.Split(c.Value, ".")
 	}
 	var challenge []byte
-	if len(parts) == 4 && parts[3] != "" {
-		challenge, app = appChallenge(parts[3]), true
+	if (len(parts) == 4 || len(parts) == 5) && parts[3] != "" {
+		variant := ""
+		if len(parts) == 5 && appVariants[parts[4]] {
+			variant = parts[4]
+		}
+		challenge, app = appChallenge(parts[3]), &variant
 	}
 	if !h.limit.Allow(httpx.ClientIP(r, h.cfg.TrustProxy), h.now()) {
 		return "busy", "", app, nil
@@ -143,8 +152,8 @@ func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, 
 	if q.Get("error") == "access_denied" {
 		return "cancelled", "", app, nil
 	}
-	if len(parts) != 4 || subtle.ConstantTimeCompare([]byte(parts[0]), []byte(q.Get("state"))) != 1 || q.Get("code") == "" ||
-		(app && challenge == nil) {
+	if len(parts) < 4 || subtle.ConstantTimeCompare([]byte(parts[0]), []byte(q.Get("state"))) != 1 || q.Get("code") == "" ||
+		(app != nil && challenge == nil) {
 		return "expired", "", app, nil // stale tab, a second click, or someone else's link
 	}
 	nonce, verifier := parts[1], parts[2]
@@ -174,7 +183,7 @@ func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, 
 	if err != nil {
 		return "failed", "", app, err
 	}
-	if app {
+	if app != nil {
 		appCode, err = h.store.createAppCode(r.Context(), id, challenge, h.now().Add(appCodeTTL))
 		if err != nil {
 			return "failed", "", app, err

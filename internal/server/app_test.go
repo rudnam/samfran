@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -113,14 +114,14 @@ func withAndroid(c *config.Config) {
 
 // appGoogleSignIn runs Google sign-in as the app does, in the phone's
 // browser, and returns where the browser is sent at the end.
-func appGoogleSignIn(t *testing.T, ts string, g *fakeGoogle, verifier string) *url.URL {
+func appGoogleSignIn(t *testing.T, ts string, g *fakeGoogle, verifier string, start ...string) *url.URL {
 	t.Helper()
 	browser := appClient(t, ts)
 	browser.headers = map[string]string{}
 	jar, _ := cookiejar.New(nil)
 	browser.http.Jar = jar
 	browser.http.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	resp, err := browser.http.Get(ts + "/api/auth/google?app_challenge=" + challengeFor(verifier))
+	resp, err := browser.http.Get(ts + "/api/auth/google?app_challenge=" + challengeFor(verifier) + strings.Join(start, ""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,6 +180,25 @@ func TestAppGoogleSignIn(t *testing.T) {
 	resp.Body.Close()
 	if loc := resp.Header.Get("Location"); loc != "com.example.app://auth?signin_error=cancelled" {
 		t.Errorf("cancelled sign-in sent the browser to %q", loc)
+	}
+
+	// The preview build, installed beside the app as <package>.preview, is
+	// sent back to itself, refusals included; an unknown build is refused.
+	back = appGoogleSignIn(t, ts.URL, g, "the preview's secret", "&app_variant=preview")
+	if back.Scheme != "com.example.app.preview" || back.Host != "auth" || back.Query().Get("code") == "" {
+		t.Errorf("preview's sign-in sent the browser to %s", back)
+	}
+	resp, _ = browser.http.Get(ts.URL + "/api/auth/google?app_variant=preview&app_challenge=" + challengeFor("x"))
+	resp.Body.Close()
+	resp, _ = browser.http.Get(ts.URL + "/api/auth/google/callback?error=access_denied&state=whatever")
+	resp.Body.Close()
+	if loc := resp.Header.Get("Location"); loc != "com.example.app.preview://auth?signin_error=cancelled" {
+		t.Errorf("preview's cancelled sign-in sent the browser to %q", loc)
+	}
+	resp, _ = browser.http.Get(ts.URL + "/api/auth/google?app_variant=evil&app_challenge=" + challengeFor("x"))
+	resp.Body.Close()
+	if resp.StatusCode != 400 {
+		t.Errorf("unknown app variant: %d", resp.StatusCode)
 	}
 
 	// Without ANDROID_PACKAGE there is no app to send it back to.
