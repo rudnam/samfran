@@ -289,11 +289,14 @@ type Handler struct {
 	maps *http.Client
 	// places finds a place's position by name when its link has none (geocode.go).
 	places *geocoder
+	// search finds places to eat by name as it's typed (search.go).
+	search *placeSearch
 }
 
 func NewHandler(st *Store) *Handler {
 	return &Handler{store: st, now: time.Now, maps: &http.Client{CheckRedirect: noRedirects, Timeout: 6 * time.Second},
-		places: &geocoder{base: nominatim, client: &http.Client{Timeout: 5 * time.Second}, gap: time.Second}}
+		places: &geocoder{base: nominatim, client: &http.Client{Timeout: 5 * time.Second}, gap: time.Second},
+		search: &placeSearch{base: photon, client: &http.Client{Timeout: 5 * time.Second}}}
 }
 
 // Register adds the routes; requireSpace is space.Handler.Require.
@@ -302,6 +305,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("GET /api/restaurants", h.list)
 	route("POST /api/restaurants", h.create)
 	route("POST /api/restaurants/lookup", h.lookupHandler)
+	route("GET /api/restaurants/search", h.searchHandler)
 	route("GET /api/restaurants/{id}", h.get)
 	route("PATCH /api/restaurants/{id}", h.update)
 	route("DELETE /api/restaurants/{id}", h.delete)

@@ -20,6 +20,9 @@ const test = base.test.extend({
       // shown in the form. Tests assert on what the user sees.
       if (m.type() === 'error' && !/status of 40[0139] /.test(m.text())) errors.push('console: ' + m.text());
     });
+    // Typing a place's name searches OpenStreetMap through the server; tests
+    // never reach it. A test that wants matches routes the search itself.
+    await page.route('**/api/restaurants/search?*', (route) => route.fulfill({ json: [] }));
     await page.route('https://www.google.com/maps?*', (route) => route.fulfill({ contentType: 'text/html', body: fakeMap }));
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);
