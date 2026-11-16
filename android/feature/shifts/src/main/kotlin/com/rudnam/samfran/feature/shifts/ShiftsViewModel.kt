@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -78,6 +79,7 @@ class ShiftsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(SamFranDispatchers.IO) private val io: CoroutineDispatcher,
     private val clock: Clock,
+    private val photos: SheetPhotos,
 ) : ViewModel(), ShiftsActions {
     private val today = LocalDate.now(clock)
     private val local = MutableStateFlow(
@@ -97,7 +99,12 @@ class ShiftsViewModel @Inject constructor(
     init {
         refresh()
         viewModelScope.launch { local.update { it.copy(next = shifts.nextShift(clock.instant())) } }
+        // A photo from the camera or the picker (through the activity), even one that came back while this page was gone.
+        viewModelScope.launch { photos.photo.filterNotNull().collect { photos.take()?.let(::readPhoto) } }
     }
+
+    /** Opens the camera or the photo picker; the photo comes back through [SheetPhotos]. */
+    fun askPhoto(source: SheetPhotos.Source) = photos.ask(source)
 
     override fun refresh() {
         val asked = local.value.asked

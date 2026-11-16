@@ -1,10 +1,5 @@
 package com.rudnam.samfran.feature.shifts
 
-import android.content.Context
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,14 +21,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.data.Outcome
@@ -61,7 +53,6 @@ import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.feature.shifts.navigation.ShiftEditRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftSettingsRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
-import java.io.File
 
 @Composable
 internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsViewModel = hiltViewModel()) {
@@ -73,28 +64,14 @@ internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsVi
             navigation.navigate(ShiftEditRoute(it.toString(), fromPhoto = true))
         }
     }
-    val context = LocalContext.current
-    var photoUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { taken -> if (taken) photoUri?.let(viewModel::readPhoto) }
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri -> uri?.let(viewModel::readPhoto) }
     ShiftsScreen(
         state,
         viewModel,
         onSettings = { navigation.navigate(ShiftSettingsRoute) },
         onEdit = { state.shown?.let { navigation.navigate(ShiftEditRoute(it.toString())) } },
-        onTakePhoto = {
-            val uri = photoFile(context)
-            photoUri = uri
-            camera.launch(uri)
-        },
-        onChoosePhoto = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        onTakePhoto = { viewModel.askPhoto(SheetPhotos.Source.Camera) },
+        onChoosePhoto = { viewModel.askPhoto(SheetPhotos.Source.Picker) },
     )
-}
-
-/** Where the camera puts a photo of the sheet: the app's cache, shared with the camera through the app's FileProvider. */
-private fun photoFile(context: Context): Uri {
-    val file = File(context.cacheDir, "photos/sheet.jpg").apply { parentFile?.mkdirs() }
-    return FileProvider.getUriForFile(context, context.packageName + ".files", file)
 }
 
 /** Sam's shifts (web/src/features/shifts/ShiftsPage.tsx): the month, the next shift, reading a photo of the sheet, and fixing days by hand. */

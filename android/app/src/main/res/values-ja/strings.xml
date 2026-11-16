@@ -43,4 +43,5 @@
     <string name="confirm_email">メールアドレスの確認: %1$s にお送りしたリンクを開いてください。</string>
     <string name="confirm_sent">送信しました。%1$s の受信箱をご確認ください。</string>
     <string name="confirm_again">再送する</string>
+    <string name="no_camera">カメラアプリが見つかりません。写真を選んでください。</string>
 </resources>

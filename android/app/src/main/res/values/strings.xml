@@ -46,4 +46,6 @@
     <string name="confirm_email">Confirm your email: open the link we sent to %1$s.</string>
     <string name="confirm_sent">Sent. Check your inbox at %1$s.</string>
     <string name="confirm_again">Send again</string>
+    <!-- No camera app to take a photo of the shift sheet. -->
+    <string name="no_camera">No camera app was found. Choose a photo instead.</string>
 </resources>

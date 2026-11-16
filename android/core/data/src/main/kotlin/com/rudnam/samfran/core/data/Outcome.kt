@@ -35,7 +35,8 @@ internal suspend fun <T> outcome(io: CoroutineDispatcher, block: suspend () -> T
         Outcome.Offline
     } catch (e: ApiException) {
         // A server that's down or restarting answers from the proxy: to the user, it can't be reached.
-        if (e.status in 502..504) Outcome.Offline else Outcome.Refused(e.message)
+        // The server's own 502 (say, the photo reader failed) keeps its words.
+        if (e.status in 502..504 && e.fromProxy) Outcome.Offline else Outcome.Refused(e.message)
     } catch (e: kotlinx.serialization.SerializationException) {
         Outcome.Refused("")
     } catch (e: IllegalArgumentException) {

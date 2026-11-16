@@ -61,4 +61,25 @@ class ReadPhotoTest {
         assertEquals(422, e.status)
         assertEquals("couldn't find X on the sheet; check the name in settings", e.message)
     }
+
+    @Test
+    fun theReadersOwn502KeepsItsWords() = runTest {
+        answer(202, """{"id":"r1"}""")
+        answer(502, """{"error":"the photo couldn't be read just now; try again, or enter the shifts by hand"}""")
+
+        val e = assertThrows(ApiException::class.java) { kotlinx.coroutines.runBlocking { network.readPhoto(byteArrayOf(1)) } }
+
+        assertEquals(502, e.status)
+        assertEquals(false, e.fromProxy) // the server's words, not "couldn't reach the server"
+    }
+
+    @Test
+    fun aProxys502IsTheServerNotAnswering() = runTest {
+        answer(202, """{"id":"r1"}""")
+        answer(502, "<html>502 Bad Gateway</html>")
+
+        val e = assertThrows(ApiException::class.java) { kotlinx.coroutines.runBlocking { network.readPhoto(byteArrayOf(1)) } }
+
+        assertEquals(true, e.fromProxy)
+    }
 }
