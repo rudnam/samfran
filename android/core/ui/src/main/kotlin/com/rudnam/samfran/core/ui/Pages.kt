@@ -1,5 +1,6 @@
 package com.rudnam.samfran.core.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,9 +28,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -38,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
+import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 
 /** How wide a page's content grows on a big screen (the website's 640px). */
 val MaxContentWidth = 640.dp
@@ -56,7 +60,9 @@ fun TabPage(
 ) {
     val insets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).asPaddingValues()
     val dir = LocalLayoutDirection.current
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    // The page paints its own ground and text colour, so it looks right however it's shown.
+    Box(modifier.fillMaxSize().background(SamFranTheme.colors.bg), contentAlignment = Alignment.TopCenter) {
+        CompositionLocalProvider(LocalContentColor provides SamFranTheme.colors.text) {
         LazyColumn(
             Modifier.fillMaxSize().widthIn(max = MaxContentWidth),
             state = state,
@@ -69,6 +75,7 @@ fun TabPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             content = content,
         )
+        }
     }
 }
 
@@ -85,9 +92,11 @@ fun SubPage(
     bottomBar: (@Composable () -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    CompositionLocalProvider(LocalContentColor provides SamFranTheme.colors.text) {
     Column(
         modifier
             .fillMaxSize()
+            .background(SamFranTheme.colors.bg)
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
             .imePadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -113,4 +122,5 @@ fun SubPage(
             Box(Modifier.fillMaxWidth().widthIn(max = MaxContentWidth).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))) { bottomBar() }
         }
     }
+}
 }

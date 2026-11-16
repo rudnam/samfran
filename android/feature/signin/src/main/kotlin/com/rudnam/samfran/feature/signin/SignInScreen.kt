@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.signin
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,9 +81,11 @@ fun SignInScreen(
     languagePicker: @Composable () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides colors.text) {
     Column(
         Modifier
             .fillMaxSize()
+            .background(colors.bg)
             .windowInsetsPadding(WindowInsets.safeDrawing)
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -115,6 +118,7 @@ fun SignInScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
+    }
     }
 }
 
