@@ -24,11 +24,11 @@ const (
 	Other    Kind = "other"    // anything else, kept as written
 )
 
-// DefaultLengths are the hours on site (work plus break) for each letter, as
-// read from the key at the bottom of the November 2026 sheet. Check them
-// against a real shift: they're a setting.
+// DefaultLengths are the hours on site (work plus break) for each letter.
+// F is confirmed (13F ends at 22:00, 7F at 16:00); the others were read
+// from the key at the bottom of the November 2026 sheet. They're a setting.
 var DefaultLengths = map[string]float64{
-	"A": 4, "B": 5, "W": 5.5, "D": 6, "E": 8, "F": 8, "G": 9,
+	"A": 4, "B": 5, "W": 5.5, "D": 6, "E": 8, "F": 9, "G": 9,
 	"H": 10, "I": 10, "J": 11, "K": 12, "L": 12,
 }
 

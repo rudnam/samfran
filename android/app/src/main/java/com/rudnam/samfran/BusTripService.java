@@ -11,9 +11,6 @@ import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.AudioAttributes;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -24,7 +21,7 @@ import java.util.Locale;
 /**
  * A bus trip: while it runs, the phone watches its position (GPS, the
  * network as a fallback) and, once it's within the alert distance of the
- * stop, rings an alarm that keeps going until it's dismissed (AlarmActivity).
+ * stop, buzzes: a notification that vibrates, with no sound.
  * It's a foreground service, so it shows a notification for as long as it
  * runs, and Android doesn't stop it while the screen is off. It stops itself
  * after ringing, or after three hours. Positions never leave the phone.
@@ -34,7 +31,7 @@ public class BusTripService extends Service implements LocationListener {
     static final String EXTRA_LAT = "lat", EXTRA_LNG = "lng", EXTRA_RADIUS = "radius", EXTRA_NAME = "name";
 
     static final String TRIP_CHANNEL = "trip";
-    static final String ALARM_CHANNEL = "alarm";
+    static final String ALARM_CHANNEL = "arrival";
     static final int TRIP_NOTIFICATION = 1;
     static final int ALARM_NOTIFICATION = 2;
     private static final long MAX_TRIP_MS = 3 * 60 * 60 * 1000L;
@@ -138,42 +135,31 @@ public class BusTripService extends Service implements LocationListener {
                 .build();
     }
 
-    /** The two notification channels: a quiet one for the trip, a loud one for the alarm. */
+    /** The two notification channels: a quiet one for the trip, one that vibrates for arriving. */
     static void channels(Context c) {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+        nm.deleteNotificationChannel("alarm"); // version 3's loud alarm
         nm.createNotificationChannel(new NotificationChannel(TRIP_CHANNEL, c.getString(R.string.channel_trip), NotificationManager.IMPORTANCE_LOW));
-        NotificationChannel alarm = new NotificationChannel(ALARM_CHANNEL, c.getString(R.string.channel_alarm), NotificationManager.IMPORTANCE_HIGH);
-        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-        alarm.setSound(sound, new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
-        alarm.enableVibration(true);
-        alarm.setVibrationPattern(new long[]{0, 800, 400, 800, 400, 800});
-        alarm.setBypassDnd(true);
-        alarm.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        nm.createNotificationChannel(alarm);
+        NotificationChannel arrival = new NotificationChannel(ALARM_CHANNEL, c.getString(R.string.channel_alarm), NotificationManager.IMPORTANCE_HIGH);
+        arrival.setSound(null, null); // vibration only
+        arrival.enableVibration(true);
+        arrival.setVibrationPattern(new long[]{0, 700, 300, 700, 300, 700});
+        arrival.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(arrival);
     }
 
-    /**
-     * Rings: a full-screen alarm over the lock screen (AlarmActivity), and an
-     * insistent notification that repeats its sound until it's dismissed, in
-     * case the phone doesn't allow full-screen alarms.
-     */
+    /** Buzzes: a notification that vibrates a few times. Tapping it opens samfran. */
     static void ring(Context c, String name) {
         channels(c);
-        Intent show = new Intent(c, AlarmActivity.class)
-                .putExtra(EXTRA_NAME, name)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_USER_ACTION);
-        PendingIntent full = PendingIntent.getActivity(c, 2, show, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        Intent open = new Intent(c, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         Notification n = new Notification.Builder(c, ALARM_CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_bus)
                 .setContentTitle(c.getString(R.string.alarm_title))
                 .setContentText(name.isEmpty() ? c.getString(R.string.alarm_text) : c.getString(R.string.alarm_text_named, name))
-                .setCategory(Notification.CATEGORY_ALARM)
-                .setFullScreenIntent(full, true)
-                .setContentIntent(full)
+                .setCategory(Notification.CATEGORY_REMINDER)
+                .setContentIntent(PendingIntent.getActivity(c, 2, open, PendingIntent.FLAG_IMMUTABLE))
                 .setAutoCancel(true)
                 .build();
-        n.flags |= Notification.FLAG_INSISTENT;
         ((NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE)).notify(ALARM_NOTIFICATION, n);
     }
 }

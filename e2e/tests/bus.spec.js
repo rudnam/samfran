@@ -11,11 +11,11 @@ test('choose the bus stop from a Google Maps link', async ({ page }) => {
   await page.getByRole('button', { name: 'Use link' }).click();
   await expect(page.getByText('Found it.')).toBeVisible();
   await expect(page.getByLabel('Stop name')).toHaveValue('Kamijima Station');
-  await page.getByLabel('Ring this far before the stop').selectOption('1000');
+  await page.getByLabel('Buzz this far before the stop').selectOption('1000');
   await page.getByRole('button', { name: 'Save' }).click();
 
   await expect(page.getByText('Kamijima Station')).toBeVisible();
-  await expect(page.getByText('Rings 1.0 km before the stop.')).toBeVisible();
+  await expect(page.getByText('Buzzes 1.0 km before the stop.')).toBeVisible();
   await expect(page.getByRole('link', { name: 'See it on the map' })).toHaveAttribute('href', /query=34\.7111,137\.7265/);
   await page.screenshot({ path: test.info().outputPath('bus.png'), fullPage: true });
 

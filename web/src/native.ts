@@ -101,8 +101,6 @@ export interface TripStatus {
   running: boolean;
   /** Metres to the stop, -1 until the phone knows. */
   distance: number;
-  /** Alarms can show over the lock screen (Android 14+ lets people turn this off). */
-  fullScreen: boolean;
   /** Notifications are allowed (needed for the alarm and the trip). */
   notifications: boolean;
 }
@@ -112,7 +110,6 @@ export const busAlarm = registerPlugin<{
   stop(): Promise<TripStatus>;
   status(): Promise<TripStatus>;
   test(o: { name: string }): Promise<TripStatus>;
-  openFullScreenSettings(): Promise<void>;
   here(): Promise<{ lat: number; lng: number; accuracy: number }>;
 }>('BusAlarm');
 

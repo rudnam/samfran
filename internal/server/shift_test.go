@@ -73,7 +73,7 @@ func TestShifts(t *testing.T) {
 	if code := upload(t, c, &m); code != 200 || m.Month != "2026-11" || len(m.Days) != 4 || reader.gotName != "オトル サマンタ" {
 		t.Fatalf("read: %d %+v", code, m)
 	}
-	if m.Days[3].Label != "Night" || !strings.HasPrefix(m.Days[3].Start, "2026-11-04T22:00:00+09:00") || !strings.HasPrefix(m.Days[3].End, "2026-11-05T06:00:00+09:00") {
+	if m.Days[3].Label != "Night" || !strings.HasPrefix(m.Days[3].Start, "2026-11-04T22:00:00+09:00") || !strings.HasPrefix(m.Days[3].End, "2026-11-05T07:00:00+09:00") {
 		t.Errorf("night shift: %+v", m.Days[3])
 	}
 	var saved monthJSON
@@ -91,10 +91,10 @@ func TestShifts(t *testing.T) {
 	}
 
 	// A letter's length is a setting, and applies to saved days at once.
-	c.do("PUT", "/api/shifts/settings", map[string]any{"lengths": map[string]float64{"F": 9}}, nil)
+	c.do("PUT", "/api/shifts/settings", map[string]any{"lengths": map[string]float64{"F": 10}}, nil)
 	c.do("GET", "/api/shifts?month=2026-11", nil, &saved)
-	if !strings.HasPrefix(saved.Days[0].End, "2026-11-02T22:00:00+09:00") {
-		t.Errorf("13F with F = 9 hours: %+v", saved.Days[0])
+	if !strings.HasPrefix(saved.Days[0].End, "2026-11-02T23:00:00+09:00") {
+		t.Errorf("13F with F = 10 hours: %+v", saved.Days[0])
 	}
 
 	// The calendar feed: off until turned on, then readable without a session.

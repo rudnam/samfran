@@ -1,15 +1,12 @@
 package com.rudnam.samfran;
 
 import android.Manifest;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.location.LocationManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.CancellationSignal;
-import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -22,7 +19,7 @@ import com.getcapacitor.annotation.PermissionCallback;
 
 /**
  * The bus-stop alarm for the web app (web/src/native.ts): start and stop a
- * trip (BusTripService), ring a test alarm, and read where the phone is now,
+ * trip (BusTripService), buzz to test it, and read where the phone is now,
  * for choosing the stop while standing at it. Asks for location and, on
  * Android 13+, notification permission the first time it needs them.
  */
@@ -84,7 +81,7 @@ public class BusAlarmPlugin extends Plugin {
         call.resolve(status());
     }
 
-    /** {running, distance (m, -1 until known), fullScreen (alarms can show over the lock screen)}. */
+    /** {running, distance (m, -1 until known), notifications (allowed)}. */
     @PluginMethod
     public void status(PluginCall call) {
         call.resolve(status());
@@ -94,16 +91,11 @@ public class BusAlarmPlugin extends Plugin {
         JSObject o = new JSObject();
         o.put("running", BusTripService.running);
         o.put("distance", BusTripService.distance);
-        boolean full = true;
-        if (Build.VERSION.SDK_INT >= 34) {
-            full = ((NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE)).canUseFullScreenIntent();
-        }
-        o.put("fullScreen", full);
         o.put("notifications", !needsNotifications());
         return o;
     }
 
-    /** Rings the alarm now, to hear it and check it shows over the lock screen. */
+    /** Buzzes now, to feel what it's like. */
     @PluginMethod
     public void test(PluginCall call) {
         if (needsNotifications()) {
@@ -118,16 +110,6 @@ public class BusAlarmPlugin extends Plugin {
     private void testAfterPermission(PluginCall call) {
         BusTripService.ring(getContext(), call.getString("name", ""));
         call.resolve(status());
-    }
-
-    /** Opens the setting that lets alarms show over the lock screen (Android 14+). */
-    @PluginMethod
-    public void openFullScreenSettings(PluginCall call) {
-        Intent i = Build.VERSION.SDK_INT >= 34
-                ? new Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:" + getContext().getPackageName()))
-                : new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
-        getActivity().startActivity(i);
-        call.resolve();
     }
 
     /** Where the phone is now: {lat, lng, accuracy (m)}. */

@@ -11,10 +11,10 @@ func TestExplain(t *testing.T) {
 	for _, c := range []struct {
 		code, kind, label, start, end, problem string
 	}{
-		{"13F", "work", "Late", "2026-11-04T13:00:00+09:00", "2026-11-04T21:00:00+09:00", ""},
-		{"７Ｆ", "work", "Early", "2026-11-04T07:00:00+09:00", "2026-11-04T15:00:00+09:00", ""}, // full-width
+		{"13F", "work", "Late", "2026-11-04T13:00:00+09:00", "2026-11-04T22:00:00+09:00", ""},
+		{"７Ｆ", "work", "Early", "2026-11-04T07:00:00+09:00", "2026-11-04T16:00:00+09:00", ""}, // full-width
 		{"9d", "work", "Middle", "2026-11-04T09:00:00+09:00", "2026-11-04T15:00:00+09:00", ""},
-		{"22F", "work", "Night", "2026-11-04T22:00:00+09:00", "2026-11-05T06:00:00+09:00", ""}, // ends next morning
+		{"22F", "work", "Night", "2026-11-04T22:00:00+09:00", "2026-11-05T07:00:00+09:00", ""}, // ends next morning
 		{"13Z", "work", "Late", "", "", "unknown length for Z"},
 		{"25F", "work", "Night", "", "", "no such start hour"},
 		{"普", "off", "Day off", "", "", ""},
@@ -44,7 +44,7 @@ func TestICS(t *testing.T) {
 	for _, want := range []string{
 		"BEGIN:VCALENDAR\r\n",
 		"DTSTART:20261106T130000Z\r\n", // 22:00 in Tokyo
-		"DTEND:20261106T210000Z\r\n",
+		"DTEND:20261106T220000Z\r\n",
 		"SUMMARY:夜勤\r\n",
 		"SUMMARY:休み\r\n",
 		`X-WR-CALNAME:Sam\, the best's shifts` + "\r\n",

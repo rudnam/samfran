@@ -78,19 +78,26 @@ func TestMCPTools(t *testing.T) {
 		t.Errorf("instructions: %v", init)
 	}
 	_, list := mcpCall(t, ts.URL, token, "tools/list", nil)
-	if n := len(list["result"].(map[string]any)["tools"].([]any)); n != 7 {
+	if n := len(list["result"].(map[string]any)["tools"].([]any)); n != 8 {
 		t.Errorf("%d tools", n)
 	}
 
 	// Shifts: settings, then a month read from a photo, saved.
 	st, _ := tool(t, ts.URL, token, "get_shift_settings", map[string]any{})
-	if st["name_on_sheet"] != "オトル サマンタ" || st["lengths"].(map[string]any)["F"] != 8.0 || st["feed_path"] != "" {
+	if st["name_on_sheet"] != "オトル サマンタ" || st["lengths"].(map[string]any)["F"] != 9.0 || st["feed_path"] != "" {
 		t.Fatalf("settings: %v", st)
+	}
+	st, _ = tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"G": 10}})
+	if l := st["lengths"].(map[string]any); l["G"] != 10.0 || l["F"] != 9.0 {
+		t.Errorf("set lengths: %v", st)
+	}
+	if _, msg := tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"ab": 3}}); msg == "" {
+		t.Error("a bad letter was accepted")
 	}
 	saved, _ := tool(t, ts.URL, token, "save_month_shifts", map[string]any{"month": "2026-11", "days": []map[string]string{
 		{"date": "2026-11-01", "code": "普"}, {"date": "2026-11-02", "code": "13F"}, {"date": "2026-11-06", "code": "22F"}}})
 	days := saved["days"].([]any)
-	if len(days) != 3 || days[2].(map[string]any)["end"] != "2026-11-07T06:00:00+09:00" {
+	if len(days) != 3 || days[2].(map[string]any)["end"] != "2026-11-07T07:00:00+09:00" {
 		t.Fatalf("saved: %v", saved)
 	}
 	if _, msg := tool(t, ts.URL, token, "save_month_shifts", map[string]any{"month": "2026-11", "days": []map[string]string{{"date": "2026-12-01", "code": "7F"}}}); msg == "" {

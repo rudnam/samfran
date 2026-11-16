@@ -24,18 +24,18 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   const month = thisMonth();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await days.nth(0).getByRole('combobox').fill('22F'); // the 1st
-  await expect(days.nth(0)).toContainText('夜勤 · 22:00–6:00 (+1)');
+  await expect(days.nth(0)).toContainText('夜勤 · 22:00–7:00 (+1)');
   await days.nth(1).getByRole('combobox').fill('普');
   await days.nth(2).getByRole('combobox').fill('13z');
   await expect(days.nth(2)).toContainText('Unknown length');
   await days.nth(2).getByRole('combobox').fill('１３Ｆ'); // full-width works too
-  await expect(days.nth(2)).toContainText('遅番 · 13:00–21:00');
+  await expect(days.nth(2)).toContainText('遅番 · 13:00–22:00');
   await page.getByRole('button', { name: /^Save / }).click();
 
   const list = page.getByRole('list', { name: 'Shifts' }).getByRole('listitem');
   await expect(list).toHaveCount(3);
   await expect(list.nth(0)).toContainText('夜勤');
-  await expect(list.nth(0)).toContainText('22:00–6:00');
+  await expect(list.nth(0)).toContainText('22:00–7:00');
   await expect(list.nth(1)).toContainText('休み');
   await expect(list.nth(2)).toContainText('13F');
   await expect(page).toHaveURL(new RegExp(`month=${month}`));

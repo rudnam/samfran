@@ -63,7 +63,7 @@ export function BusPage() {
       <header className="page-head">
         <div>
           <h1 className="display">{t('Bus')}</h1>
-          <p className="subtitle">{t('Wakes you up before your stop, so you don’t sleep past it.')}</p>
+          <p className="subtitle">{t('Buzzes your phone before your stop, so you don’t miss it.')}</p>
         </div>
       </header>
 
@@ -81,7 +81,7 @@ export function BusPage() {
               <p className="trip-big">
                 {trip.distance >= 0 ? t('{distance} to {stop}', { distance: km(trip.distance), stop: stop.name || t('your stop') }) : t('Finding where you are…')}
               </p>
-              <p className="muted small">{t('The alarm rings {distance} before the stop. You can lock the phone.', { distance: km(stop.alert_meters) })}</p>
+              <p className="muted small">{t('It buzzes {distance} before the stop. You can lock the phone.', { distance: km(stop.alert_meters) })}</p>
               <button type="button" className="secondary" disabled={busy} onClick={() => run(() => busAlarm.stop())}>
                 {t('Stop')}
               </button>
@@ -96,16 +96,8 @@ export function BusPage() {
               >
                 {t('I’m on the bus')}
               </button>
-              <p className="muted small">{t('Tap when you get on. It rings {distance} before {stop} and stops by itself after three hours.', { distance: km(stop.alert_meters), stop: stop.name || t('your stop') })}</p>
+              <p className="muted small">{t('Tap when you get on. It buzzes {distance} before {stop} and stops by itself after three hours.', { distance: km(stop.alert_meters), stop: stop.name || t('your stop') })}</p>
             </>
-          )}
-          {trip && !trip.fullScreen && (
-            <p className="notice row">
-              <span className="grow">{t('Alarms can’t show over the lock screen yet, so it may only ring as a notification.')}</span>
-              <button type="button" className="link" onClick={() => busAlarm.openFullScreenSettings()}>
-                {t('Allow')}
-              </button>
-            </p>
           )}
         </div>
       )}
@@ -113,7 +105,7 @@ export function BusPage() {
       {!isApp && (
         <div className="card stack">
           <h2>{t('On the phone')}</h2>
-          <p className="muted">{t('The alarm runs in the samfran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
+          <p className="muted">{t('It runs in the samfran Android app: it uses the phone’s location during the ride, and nothing else. You can choose the stop here or in the app.')}</p>
           {apk && (
             <a className="button" href={apk.url} download>
               {t('Get the Android app')}
@@ -136,10 +128,10 @@ export function BusPage() {
               {t('Change')}
             </button>
           </div>
-          <p className="muted small">{t('Rings {distance} before the stop.', { distance: km(stop.alert_meters) })}</p>
+          <p className="muted small">{t('Buzzes {distance} before the stop.', { distance: km(stop.alert_meters) })}</p>
           {isApp && (
             <button type="button" className="link quiet" disabled={busy} onClick={() => run(() => busAlarm.test({ name: stop.name }))}>
-              {t('Test the alarm')}
+              {t('Test the buzz')}
             </button>
           )}
         </div>
@@ -239,7 +231,7 @@ function StopForm({ stop, onSaved, onCancel }: { stop: BusStop; onSaved: (s: Bus
         )}
       </div>
       <label className="field">
-        {t('Ring this far before the stop')}
+        {t('Buzz this far before the stop')}
         <select value={meters} onChange={(e) => setMeters(Number(e.target.value))}>
           {distances.map((d) => (
             <option key={d} value={d}>

@@ -128,6 +128,33 @@ var toolList = []*tool{
 		},
 	},
 	{
+		Name:  "set_shift_lengths",
+		Title: "Set shift lengths",
+		Description: "Changes how many hours on site (break included) a shift letter means, e.g. {\"F\": 9} when 13F ends at 22:00. " +
+			"Only the letters given change. Every saved day's times follow at once.",
+		InputSchema: object(map[string]any{
+			"lengths": map[string]any{"type": "object", "description": "Letter to hours, e.g. {\"F\": 9}.",
+				"additionalProperties": map[string]any{"type": "number", "exclusiveMinimum": 0, "maximum": 24}},
+		}, "lengths"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
+		run: func(c *call, args json.RawMessage) (any, error) {
+			var in struct{ Lengths map[string]float64 }
+			if err := decode(args, &in); err != nil {
+				return nil, err
+			}
+			sp, err := c.space()
+			if err != nil {
+				return nil, err
+			}
+			st, err := c.h.shifts.SetLengths(c.r.Context(), sp, in.Lengths)
+			if err != nil {
+				return nil, asToolError(err, "settings")
+			}
+			st.FeedPath = ""
+			return st, nil
+		},
+	},
+	{
 		Name:        "get_shifts",
 		Title:       "Shifts for a month",
 		Description: "The saved shifts for a month: each day's code as on the sheet, its kind and label, and start and end times (RFC 3339) for working days.",

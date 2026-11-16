@@ -246,6 +246,33 @@ func (s *Store) Settings(ctx context.Context, spaceID int64) (Settings, *time.Lo
 	return st.Settings, zone, nil
 }
 
+// SetLengths changes the hours for the letters given; others stay.
+func (s *Store) SetLengths(ctx context.Context, spaceID int64, lengths map[string]float64) (Settings, error) {
+	st, err := s.settings(ctx, spaceID)
+	if err != nil {
+		return Settings{}, err
+	}
+	next := map[string]float64{}
+	for k, v := range st.Lengths {
+		next[k] = v
+	}
+	for k, v := range lengths {
+		k = normalize(k)
+		if !letter.MatchString(k) || v <= 0 || v > 24 {
+			return Settings{}, invalidf("each shift letter needs a length of more than 0 and at most 24 hours")
+		}
+		next[k] = v
+	}
+	st.Lengths = next
+	if err := s.saveSettings(ctx, spaceID, st.Settings); err != nil {
+		return Settings{}, err
+	}
+	if s.Changed != nil {
+		s.Changed(spaceID)
+	}
+	return st.Settings, nil
+}
+
 // Month returns a month of shifts ("YYYY-MM"; "" is the month it is now).
 func (s *Store) Month(ctx context.Context, spaceID int64, month string, now time.Time) (MonthView, error) {
 	st, zone, err := s.Settings(ctx, spaceID)

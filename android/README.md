@@ -57,9 +57,9 @@ Export isn't offered in the app (the download needs the browser's sign-in); use 
 
 ## The bus-stop alarm
 
-The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance it rings `AlarmActivity.java`: full screen over the lock screen, the alarm sound and vibration on repeat, until "I'm awake". An insistent notification rings too, in case the phone doesn't allow full-screen alarms (Android 14+ lets people turn that off: the Bus tab offers the setting). A trip stops after ringing, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
+The **Bus** tab's "I'm on the bus" starts a trip (`BusAlarmPlugin.java` → `BusTripService.java`): a foreground service, with its notification showing how far there is to go, that watches the phone's position (GPS, the network as a fallback) every few seconds. Within the stop's alert distance it posts a notification that **vibrates a few times, with no sound** (channel "Nearly at your stop"); tapping it opens samfran. A trip stops after buzzing, or after three hours. Positions never leave the phone; the server only stores the stop (`/api/bus/stop`).
 
-Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), a location foreground service, and full-screen alarms.
+Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), and a location foreground service.
 
 ## Adding a place from Google Maps
 
