@@ -31,15 +31,16 @@ class ShiftCodesTest {
     fun `days off, leave and training`() {
         assertEquals(ShiftKind.Off, ShiftCodes.explain("普", lengths).kind)
         assertEquals(ShiftKind.Leave, ShiftCodes.explain("有給", lengths).kind)
+        assertEquals(ShiftTone.Leave, ShiftDay(LocalDate.of(2026, 11, 13), "有休", ShiftKind.Leave, "Paid leave").tone)
         assertEquals(ShiftKind.Training, ShiftCodes.explain("研修", lengths).kind)
         assertEquals(ShiftCodes.Meaning(ShiftKind.Other, "X"), ShiftCodes.explain("x", lengths))
     }
 
     @Test
-    fun `clock writes the next morning with +1`() {
+    fun `clock writes the next morning as it is`() {
         assertEquals("13:00", ShiftCodes.clock(13.0))
         assertEquals("17:30", ShiftCodes.clock(17.5))
-        assertEquals("7:00 (+1)", ShiftCodes.clock(31.0))
+        assertEquals("7:00", ShiftCodes.clock(31.0))
     }
 
     @Test
@@ -115,6 +116,12 @@ class BusTest {
         assertEquals("1.5 km", Distances.format(1500f))
         assertEquals("葵西", stopNameFromMaps("葵西（バス）"))
         assertEquals("Aoi Nishi", stopNameFromMaps("Aoi Nishi (Bus)"))
+        assertEquals(Early.RightBefore, Distances.early(400))
+        assertEquals(Early.OneStop, Distances.early(800))
+        assertEquals(Early.TwoStops, Distances.early(1500))
+        assertEquals(Early.Plenty, Distances.early(2000))
+        assertEquals(0.5f, Distances.progress(from = 2800f, now = 1800f, alert = 800))
+        assertEquals(0f, Distances.progress(from = 2800f, now = -1f, alert = 800))
     }
 
     @Test

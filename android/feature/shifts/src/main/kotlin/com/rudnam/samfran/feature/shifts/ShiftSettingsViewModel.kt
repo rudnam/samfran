@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.ShiftsRepository
-import com.rudnam.samfran.core.model.CalendarStatus
 import com.rudnam.samfran.core.model.ShiftSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,9 +26,6 @@ data class ShiftSettingsUiState(
     val busy: Boolean = false,
     val done: SettingsDone? = null,
     val problem: Outcome<Any>? = null,
-    val calendar: CalendarStatus? = null,
-    val calendarBusy: Boolean = false,
-    val calendarProblem: Outcome<Any>? = null,
     /** The calendar link's full address, while it's on. */
     val feedUrl: String = "",
 )
@@ -42,8 +38,6 @@ interface ShiftSettingsActions {
     fun removeLetter(index: Int)
     fun save()
     fun feed(on: Boolean)
-    fun syncCalendar()
-    fun disconnectCalendar()
 }
 
 @HiltViewModel
@@ -60,10 +54,6 @@ class ShiftSettingsViewModel @Inject constructor(
                 is Outcome.Done -> take(r.value)
                 else -> if (_state.value.settings == null) _state.update { it.copy(problem = r) }
             }
-        }
-        viewModelScope.launch {
-            val r = shifts.calendar()
-            _state.update { it.copy(calendar = (r as? Outcome.Done)?.value) }
         }
     }
 
@@ -106,18 +96,6 @@ class ShiftSettingsViewModel @Inject constructor(
             val r = block()
             if (r is Outcome.Done) take(r.value)
             _state.update { it.copy(busy = false, done = done.takeIf { r is Outcome.Done }, problem = r.takeIf { o -> o !is Outcome.Done }) }
-        }
-    }
-
-    override fun syncCalendar() = calendar { shifts.syncCalendar() }
-
-    override fun disconnectCalendar() = calendar { shifts.disconnectCalendar() }
-
-    private fun calendar(block: suspend () -> Outcome<CalendarStatus>) {
-        _state.update { it.copy(calendarBusy = true, calendarProblem = null) }
-        viewModelScope.launch {
-            val r = block()
-            _state.update { it.copy(calendarBusy = false, calendar = (r as? Outcome.Done)?.value ?: it.calendar, calendarProblem = r.takeIf { o -> o !is Outcome.Done }) }
         }
     }
 }

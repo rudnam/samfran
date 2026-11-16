@@ -6,7 +6,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
-import com.rudnam.samfran.core.model.CalendarStatus
 import com.rudnam.samfran.core.testing.Samples
 import org.junit.Rule
 import org.junit.Test
@@ -14,7 +13,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
-import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 
@@ -54,8 +52,6 @@ class ShiftsScreenshotTest {
         override fun removeLetter(index: Int) {}
         override fun save() {}
         override fun feed(on: Boolean) {}
-        override fun syncCalendar() {}
-        override fun disconnectCalendar() {}
     }
 
     private val month = ShiftsUiState(
@@ -107,7 +103,6 @@ class ShiftsScreenshotTest {
         onSheet = "オトル サマンタ",
         lengths = listOf("D" to "8", "F" to "9"),
         feedUrl = "https://samfran.rudnam.com/calendar/abc123.ics",
-        calendar = CalendarStatus(available = true, connected = true, syncedAt = Instant.parse("2026-11-15T09:12:00Z"), error = ""),
     )
 
     @Test

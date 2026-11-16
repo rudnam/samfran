@@ -88,7 +88,16 @@ object Samples {
             "15" to "7F", "16" to "13F", "17" to "13F", "18" to "22F", "19" to "普", "20" to "研修", "21" to "普",
             "22" to "9F", "23" to "9F", "24" to "13F", "25" to "13Z", "26" to "法", "27" to "7F", "28" to "普",
             "29" to "22F", "30" to "普",
-        ).map { (dd, code) -> day("2026-11-$dd", code) },
+        ).map { (dd, code) ->
+            day("2026-11-$dd", code).let { d ->
+                // Others with the same code that day, as the photo reader lists them.
+                when (code) {
+                    "13F" -> d.copy(with = listOf("タナカ ユイ"))
+                    "22F" -> d.copy(with = listOf("スズキ ケン", "ヤマモト アオイ"))
+                    else -> d
+                }
+            }
+        },
     )
 
     val stop = BusStop(set = true, name = "葵西", lat = 34.9756, lng = 138.3829, alertMeters = 800)

@@ -19,10 +19,10 @@ private fun hours(h: Double?) = h?.let { if (it % 1.0 == 0.0) it.toInt().toStrin
 fun describe(e: ActivityEntry): String {
     val d = e.details
     return when (e.kind) {
-        "shifts_saved" -> stringResource(
-            R.string.change_shifts_saved,
-            runCatching { Dates.month(YearMonth.parse(d.month), currentLocale) }.getOrDefault(d.month),
-        )
+        "shifts_saved" -> {
+            val month = runCatching { YearMonth.parse(d.month) }.getOrNull()
+            stringResource(R.string.change_shifts_saved, if (month != null) Dates.month(month, currentLocale) else d.month)
+        }
         "shift_settings" -> buildList {
             for ((letter, change) in d.lengths.entries.sortedBy { it.key }) {
                 val (from, to) = change

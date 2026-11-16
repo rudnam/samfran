@@ -127,9 +127,11 @@ fun SamFranApp(
             }
         },
     ) { padding ->
+        // Where the app starts, fixed when it opens; after that it follows the session by navigating.
+        val start = remember { if (signedIn) FoodRoute else com.rudnam.samfran.feature.signin.navigation.SignInRoute() }
         NavHost(
             appState.navController,
-            startDestination = if (signedIn) FoodRoute else com.rudnam.samfran.feature.signin.navigation.SignInRoute(),
+            startDestination = start,
             modifier = Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding),
         ) {
             signInScreen()
@@ -154,8 +156,7 @@ fun SamFranApp(
                 navigation = object : ShiftsNavigation {
                     override fun navigate(route: Any) = appState.navController.navigate(route)
                     override fun replace(route: Any) {
-                        appState.navController.popBackStack()
-                        appState.navController.navigate(route) { launchSingleTop = true }
+                        if (route is com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute) appState.showMonth(route) else appState.navController.navigate(route)
                     }
                     override fun back() {
                         appState.navController.popBackStack()

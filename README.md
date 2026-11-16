@@ -8,7 +8,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. An introduction page at `/` and the app at `/app/`, both in English and Japanese. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** the same site, packaged as an app (see [android/README.md](android/README.md)).
+- **Android:** a native app (Kotlin, Jetpack Compose, Material 3) on the same API, with the bus-stop alarm, notifications and sharing from Google Maps (see [android/README.md](android/README.md)). The website stays for browsers; nothing of it is inside the app.
 
 ## Quick start
 
@@ -149,6 +149,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `e2e/` | Playwright browser tests, the throwaway stack that `verify.sh` and `preview.sh` use, and `seed/`, the preview's sample data. |
 | `.claude/` | Claude Code hooks: make Docker work in cloud sessions, and stop this folder's preview when a session ends. |
 | `deploy/` | Where the app runs: `local.yml` (this machine) and `aws.yml` (production). |
+| `android/` | The native Android app: `core/*` (models, the API client, the phone's copy of the server's answers in Room, repositories, the design system), `feature/*` (signing in and one module per tab: Food, Shifts, Bus, Us) and `app/` (the activity, tabs, the bus alarm service and the notifications). See [android/README.md](android/README.md). |
 
 ### Adding a feature
 
@@ -160,12 +161,15 @@ Follow `internal/restaurant`; a feature is about five files:
 4. `internal/server/<name>_test.go`: API tests against the real database.
 5. `web/src/api.ts` (types and calls), `web/src/features/<name>/` (the page), and `e2e/tests/<name>.spec.js` (a browser test).
 6. Optionally, sample data for the preview in `e2e/seed/main.go`.
+7. In the Android app, if it should have it: the call in `android/core/network` (`SamFranNetwork`), a repository in `android/core/data`, and the screen in the tab's `android/feature/<tab>`, with its strings in English and Japanese (android/README.md, "Native app").
 
 ### Translating
 
 The app is written in English, and the English is the key: `t('Save')` shows "Save", or its entry in `web/src/locales/ja.ts` in Japanese. A key missing from `ja.ts` fails the type check, so nothing ships half-translated. Use `tn()` for counts and `tx()` for text with elements in it. The server's messages stay in English (old clients show them as they are); list each in `jaServer`, and `errorMessage()` shows it in Japanese. The app sends its language as `Accept-Language`, and `httpx.Language(r)` reads it, for anything the server writes, such as emails.
 
 The language follows the device until someone picks one (the picker in the top bar, or the switch on the introduction page); the choice is kept in the browser and shared by both pages.
+
+The Android app has its own strings, in each module's `res/values/strings.xml` and `res/values-ja/strings.xml`, worded as the website's. Its Japanese for the server's messages is `jaServer` itself, copied into `android/core/ui`'s `ServerText.kt`; a test there fails when the two differ, so a message added to `jaServer` is added there too.
 
 ## API
 

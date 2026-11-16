@@ -3,7 +3,6 @@ package com.rudnam.samfran.core.network.model
 import com.rudnam.samfran.core.model.ActivityDetails
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
-import com.rudnam.samfran.core.model.CalendarStatus
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.McpToken
@@ -180,6 +179,8 @@ data class NetworkShiftDay(
     val start: String? = null,
     val end: String? = null,
     val problem: String? = null,
+    /** Others on the same shift (the same code that day), names as on the sheet. */
+    val with: List<String>? = null,
 )
 
 @Serializable
@@ -215,6 +216,7 @@ fun NetworkShiftMonth.asModel() = ShiftMonth(
             start = d.start?.let(OffsetDateTime::parse),
             end = d.end?.let(OffsetDateTime::parse),
             problem = d.problem,
+            with = d.with.orEmpty(),
         )
     },
     nameAsRead = nameAsRead,
@@ -222,7 +224,12 @@ fun NetworkShiftMonth.asModel() = ShiftMonth(
 )
 
 @Serializable
-data class NetworkShiftCode(val date: String, val code: String)
+data class NetworkShiftCode(
+    val date: String,
+    val code: String,
+    /** Who's on the same shift, kept only while the day's code is unchanged; left out otherwise. */
+    val with: List<String>? = null,
+)
 
 @Serializable
 data class NetworkSaveShifts(val month: String, val days: List<NetworkShiftCode>)
@@ -234,16 +241,6 @@ data class NetworkShiftSettingsInput(
     @SerialName("name_on_sheet") val nameOnSheet: String? = null,
     val lengths: Map<String, Double>? = null,
 )
-
-@Serializable
-data class NetworkCalendar(
-    val available: Boolean = false,
-    val connected: Boolean = false,
-    @SerialName("synced_at") val syncedAt: String? = null,
-    val error: String = "",
-)
-
-fun NetworkCalendar.asModel() = CalendarStatus(available, connected, syncedAt?.let { runCatching { Instant.parse(it) }.getOrNull() }, error)
 
 @Serializable
 data class NetworkBusStop(

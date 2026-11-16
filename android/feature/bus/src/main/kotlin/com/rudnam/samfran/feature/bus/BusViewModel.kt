@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Choosing the stop: by name from the search, a Google Maps link, or where the phone is. */
+/** Choosing the stop: by name from the search, or (folded away) a Google Maps link, or where the phone is. */
 data class StopForm(
     val name: String = "",
     /** What's being searched for: the name as typed, until a stop is picked. */
@@ -38,6 +38,8 @@ data class StopForm(
     /** The position came from OpenStreetMap, by the name in the link. */
     val byName: Boolean = false,
     val meters: Int = 800,
+    /** "Can't find it? Other ways" is open. */
+    val otherWays: Boolean = false,
     val busy: Boolean = false,
     val problem: StopProblem? = null,
 )
@@ -51,11 +53,24 @@ sealed interface StopProblem {
     data object NoHere : StopProblem
 }
 
+/** "Try it now": a pretend ride of a few seconds that ends the way a real one does, with the phone really buzzing. */
+sealed interface Practice {
+    /** [left]: 1 to 0, through the pretend ride. */
+    data class Riding(val left: Float) : Practice
+    data object Buzzing : Practice
+    data object Done : Practice
+}
+
 data class BusUiState(
     val stop: BusStop? = null,
     val trip: TripStatus = TripStatus(),
+    /** Where the ride started from, for the progress line: the first distance the phone knew. */
+    val from: Float = -1f,
+    val practice: Practice? = null,
     val editing: Boolean = false,
     val form: StopForm = StopForm(),
+    /** Saving a new buzz distance from the settings card. */
+    val savingDistance: Boolean = false,
     val prompts: Boolean = false,
     /** Notifications are off for the app: say how to allow them. */
     val promptsBlocked: Boolean = false,
@@ -65,6 +80,8 @@ data class BusUiState(
     val autoStart: Boolean = false,
 ) {
     val ready: Boolean get() = stop?.set == true
+    val buzzing: Boolean get() = trip.buzzing || practice == Practice.Buzzing
+    val riding: Boolean get() = trip.running && !trip.buzzing
 }
 
 interface BusActions {
@@ -72,13 +89,18 @@ interface BusActions {
     fun startTrip()
     fun locationDenied()
     fun stopTrip()
+    /** "Stop" while it buzzes, on a ride or in practice. */
     fun stopBuzz()
-    fun test()
+    fun practice()
+    fun endPractice()
     fun setPrompts(on: Boolean)
+    /** A buzz distance from the settings card: saved straight away. */
+    fun setDistance(meters: Int)
     fun edit()
     fun cancelEdit()
     fun setName(name: String)
     fun pick(stop: FoundStop)
+    fun setOtherWays(open: Boolean)
     fun setLink(link: String)
     fun useLink()
     fun useHere()
@@ -103,11 +125,26 @@ class BusViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             when (val r = bus.refresh()) {
-                is Outcome.Done -> local.update {
-                    // No stop yet: the form, to choose one.
-                    if (!r.value.set) it.copy(editing = true, form = formFor(r.value)) else it
-                }
+                // No stop yet: the setup, to choose one.
+                is Outcome.Done -> local.update { if (!r.value.set) it.copy(editing = true, form = formFor(r.value)) else it }
                 else -> local.update { it.copy(problem = r) }
+            }
+        }
+        viewModelScope.launch {
+            var sawBuzz = false
+            alarm.status.collect { trip ->
+                local.update { s ->
+                    // The ride's start, for the progress line.
+                    val from = if (!trip.running) -1f else if (s.from < 0 && trip.distance >= 0) trip.distance else s.from
+                    // In practice, "Stop" on the notification ends it too.
+                    val practice = if (s.practice == Practice.Buzzing) {
+                        if (trip.buzzing) sawBuzz = true
+                        if (sawBuzz && !trip.buzzing) Practice.Done.also { sawBuzz = false } else s.practice
+                    } else {
+                        s.practice
+                    }
+                    s.copy(from = from, practice = practice)
+                }
             }
         }
     }
@@ -124,7 +161,8 @@ class BusViewModel @Inject constructor(
     override fun startTrip() {
         val stop = state.value.stop?.takeIf { it.set } ?: return
         if (state.value.trip.running) return
-        local.update { it.copy(locationDenied = false, problem = null) }
+        practiceRun?.cancel()
+        local.update { it.copy(locationDenied = false, problem = null, practice = null) }
         alarm.start(stop)
     }
 
@@ -132,15 +170,49 @@ class BusViewModel @Inject constructor(
 
     override fun stopTrip() = alarm.stop()
 
-    override fun stopBuzz() = alarm.stopBuzz()
+    override fun stopBuzz() {
+        if (local.value.practice == Practice.Buzzing) local.update { it.copy(practice = Practice.Done) }
+        alarm.stopBuzz()
+    }
 
-    override fun test() = alarm.test(state.value.stop?.name.orEmpty())
+    private var practiceRun: Job? = null
+
+    override fun practice() {
+        practiceRun?.cancel()
+        local.update { it.copy(problem = null, practice = Practice.Riding(1f)) }
+        practiceRun = viewModelScope.launch {
+            val steps = PRACTICE_MS / TICK_MS
+            for (i in 1..steps) {
+                delay(TICK_MS)
+                local.update { it.copy(practice = Practice.Riding(1f - i.toFloat() / steps)) }
+            }
+            local.update { it.copy(practice = Practice.Buzzing) }
+            alarm.test(state.value.stop?.name.orEmpty())
+        }
+    }
+
+    override fun endPractice() {
+        practiceRun?.cancel()
+        if (local.value.practice == Practice.Buzzing) alarm.stopBuzz()
+        local.update { it.copy(practice = null) }
+    }
 
     override fun setPrompts(on: Boolean) {
         local.update { it.copy(promptsBlocked = false) }
         viewModelScope.launch {
             val now = reminders.setShiftPrompts(on)
             local.update { it.copy(promptsBlocked = on && !now) }
+        }
+    }
+
+    override fun setDistance(meters: Int) {
+        val stop = state.value.stop?.takeIf { it.set } ?: return
+        if (meters == stop.alertMeters || local.value.savingDistance) return
+        local.update { it.copy(savingDistance = true, problem = null) }
+        viewModelScope.launch {
+            val r = bus.save(stop.name, stop.lat, stop.lng, meters)
+            local.update { it.copy(savingDistance = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
+            if (r is Outcome.Done) reminders.sync(now = true)
         }
     }
 
@@ -178,6 +250,8 @@ class BusViewModel @Inject constructor(
         form { it.copy(name = stop.name, position = stop.lat to stop.lng, byName = false, query = "", found = null, problem = null) }
     }
 
+    override fun setOtherWays(open: Boolean) = form { it.copy(otherWays = open) }
+
     override fun setLink(link: String) = form { it.copy(link = link) }
 
     override fun useLink() {
@@ -194,6 +268,7 @@ class BusViewModel @Inject constructor(
                         busy = false,
                         position = r.value.lat!! to r.value.lng!!,
                         byName = r.value.foundByName,
+                        query = "",
                         name = f.name.ifBlank { stopNameFromMaps(r.value.name) },
                     )
                 }
@@ -205,7 +280,7 @@ class BusViewModel @Inject constructor(
         form { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             val here = alarm.here()
-            form { if (here == null) it.copy(busy = false, problem = StopProblem.NoHere) else it.copy(busy = false, position = here, byName = false) }
+            form { if (here == null) it.copy(busy = false, problem = StopProblem.NoHere) else it.copy(busy = false, position = here, byName = false, query = "") }
         }
     }
 
@@ -229,5 +304,11 @@ class BusViewModel @Inject constructor(
                 else -> form { it.copy(busy = false, problem = StopProblem.Server(r)) }
             }
         }
+    }
+
+    companion object {
+        /** How long the pretend ride of a practice run takes, before it buzzes. */
+        const val PRACTICE_MS = 6000L
+        private const val TICK_MS = 100L
     }
 }

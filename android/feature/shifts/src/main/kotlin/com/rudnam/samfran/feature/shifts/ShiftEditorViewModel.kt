@@ -37,6 +37,15 @@ data class ShiftEditorUiState(
     /** Checking what the photo reader found, rather than fixing the saved month by hand. */
     val fromPhoto: Boolean get() = base?.fromPhoto == true
 
+    /**
+     * Who's on the same shift, as read or saved. Only kept while the day's
+     * code is unchanged: a different code is a different shift.
+     */
+    fun withFor(date: LocalDate): List<String> {
+        val d = base?.days?.firstOrNull { it.date == date } ?: return emptyList()
+        return if (d.with.isNotEmpty() && ShiftCodes.normalize(d.code) == ShiftCodes.normalize(codes[date].orEmpty())) d.with else emptyList()
+    }
+
     fun meaning(date: LocalDate): ShiftCodes.Meaning? =
         codes[date]?.takeIf { it.isNotBlank() }?.let { ShiftCodes.explain(it, base?.settings?.lengths.orEmpty()) }
 }
@@ -93,8 +102,10 @@ class ShiftEditorViewModel @Inject constructor(
         if (_state.value.busy) return
         _state.update { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
-            val codes = _state.value.codes.mapValues { ShiftCodes.normalize(it.value) }
-            val r = shifts.save(month, codes)
+            val s = _state.value
+            val codes = s.codes.mapValues { ShiftCodes.normalize(it.value) }
+            val with = s.dates.associateWith { s.withFor(it) }.filterValues { it.isNotEmpty() }
+            val r = shifts.save(month, codes, with)
             if (r is Outcome.Done) reminders.sync(now = true) // the phone asks "Start bus alarm?" at the new times
             _state.update { it.copy(busy = false, saved = r is Outcome.Done, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }

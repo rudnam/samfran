@@ -172,7 +172,8 @@ fun UsScreen(
                                 buildAnnotatedString {
                                     if (isNew) withStyle(SpanStyle(color = colors.accentInk, fontWeight = FontWeight.Bold)) { append(stringResource(R.string.new_mark) + "  ") }
                                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(if (e.me) stringResource(R.string.you) else e.who.ifBlank { stringResource(R.string.someone) }) }
-                                    append(" ").append(text)
+                                    append(" ")
+                                    append(text)
                                     if (e.viaClaude) withStyle(SpanStyle(color = colors.muted)) { append(" · " + stringResource(R.string.via_claude)) }
                                 },
                                 Modifier.weight(1f),

@@ -38,12 +38,9 @@ import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
-import com.rudnam.samfran.core.ui.Dates
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.copyText
-import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
-import com.rudnam.samfran.core.ui.serverText
 import com.rudnam.samfran.core.ui.shareText
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
@@ -62,7 +59,7 @@ internal fun ShiftSettingsDestination(navigation: ShiftsNavigation, viewModel: S
 
 /**
  * Whose shifts, how to find their row on the sheet, how long each letter's
- * shift is, and the calendar feed (web/src/features/shifts/ShiftSettingsPage.tsx).
+ * shift is, and the calendar link (web/src/features/shifts/ShiftSettingsPage.tsx).
  */
 @Composable
 fun ShiftSettingsScreen(
@@ -168,27 +165,5 @@ fun ShiftSettingsScreen(
             }
         }
 
-        state.calendar?.takeIf { it.available }?.let { cal ->
-            SamFranCard {
-                CardTitle(stringResource(R.string.google_calendar))
-                Text(stringResource(R.string.google_calendar_intro), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                if (cal.connected) {
-                    Text(
-                        stringResource(R.string.connected) + (cal.syncedAt?.let { " · " + stringResource(R.string.updated_when, Dates.moment(it, currentLocale)) } ?: ""),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    if (cal.error.isNotBlank()) ErrorText(serverText(cal.error))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        SecondaryButton(stringResource(if (state.calendarBusy) R.string.updating else R.string.update_now), actions::syncCalendar, enabled = !state.calendarBusy)
-                        LinkButton(stringResource(R.string.disconnect), actions::disconnectCalendar, enabled = !state.calendarBusy, quiet = true)
-                    }
-                    Hint(stringResource(R.string.disconnect_hint))
-                } else {
-                    // Google doesn't allow connecting a calendar from inside an app.
-                    Hint(stringResource(R.string.connect_in_browser))
-                }
-                state.calendarProblem?.problem()?.let { ErrorText(it) }
-            }
-        }
     }
 }

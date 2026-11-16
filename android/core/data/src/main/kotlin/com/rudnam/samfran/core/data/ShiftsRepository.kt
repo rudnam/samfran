@@ -2,7 +2,6 @@ package com.rudnam.samfran.core.data
 
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
-import com.rudnam.samfran.core.model.CalendarStatus
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
@@ -36,8 +35,11 @@ interface ShiftsRepository {
     /** When working shifts end from now on (last, this and next month's), for "Start bus alarm?". */
     suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>>
 
-    /** Saves a month's codes (empty ones are left out). */
-    suspend fun save(month: YearMonth, codes: Map<LocalDate, String>): Outcome<ShiftMonth>
+    /**
+     * Saves a month's codes (empty ones are left out), with who's on the
+     * same shift for the days whose code is as it was read or saved.
+     */
+    suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>> = emptyMap()): Outcome<ShiftMonth>
 
     /** Reads a photo of the sheet; nothing is saved. The answer waits in [pendingRead] for the editor. */
     suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth>
@@ -53,12 +55,6 @@ interface ShiftsRepository {
 
     /** Turns the calendar link on (a new address each time) or off. */
     suspend fun feed(on: Boolean): Outcome<ShiftSettings>
-
-    suspend fun calendar(): Outcome<CalendarStatus>
-
-    suspend fun syncCalendar(): Outcome<CalendarStatus>
-
-    suspend fun disconnectCalendar(): Outcome<CalendarStatus>
 
     /** A path on the server (the calendar link's), as a full address. */
     fun address(path: String): String
@@ -110,9 +106,9 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
             .sorted()
     }
 
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>) = outcome(io) {
+    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
-            code.takeIf { it.isNotBlank() }?.let { NetworkShiftCode(date.toString(), it) }
+            code.takeIf { it.isNotBlank() }?.let { NetworkShiftCode(date.toString(), it, with[date]?.takeIf(List<String>::isNotEmpty)) }
         }
         val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days))
         keep(saved)
@@ -140,12 +136,6 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
     private suspend fun settingsChange(block: suspend () -> NetworkShiftSettings) = outcome(io) {
         block().also { documents.put(Keys.SHIFT_SETTINGS, NetworkShiftSettings.serializer(), it) }.asModel()
     }
-
-    override suspend fun calendar() = outcome(io) { network.calendar().asModel() }
-
-    override suspend fun syncCalendar() = outcome(io) { network.syncCalendar().asModel() }
-
-    override suspend fun disconnectCalendar() = outcome(io) { network.disconnectCalendar().asModel() }
 
     override fun address(path: String) = server.resolve(path)
 }

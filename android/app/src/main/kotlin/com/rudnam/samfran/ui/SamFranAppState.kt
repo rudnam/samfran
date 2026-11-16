@@ -7,7 +7,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.rudnam.samfran.R
@@ -53,7 +52,8 @@ class SamFranAppState(val navController: NavHostController) {
 
     fun navigateToTab(tab: TopLevelDestination) {
         navController.navigate(tab.route) {
-            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+            // Food is the root once someone is signed in (the graph may have started on signing in).
+            popUpTo<FoodRoute> { saveState = true }
             launchSingleTop = true
             restoreState = true
         }
@@ -62,7 +62,7 @@ class SamFranAppState(val navController: NavHostController) {
     fun open(link: AppLink) {
         when (link) {
             is AppLink.Bus -> navController.navigate(BusRoute(start = link.start)) {
-                popUpTo(navController.graph.findStartDestination().id)
+                popUpTo<FoodRoute>()
                 launchSingleTop = !link.start
             }
             AppLink.Us -> navigateToTab(TopLevelDestination.Us)
@@ -81,6 +81,14 @@ class SamFranAppState(val navController: NavHostController) {
         val mode = if (signUpNext) "sign-up" else "sign-in"
         signUpNext = false
         navController.navigate(SignInRoute(mode)) { popUpTo(0) { inclusive = true } }
+    }
+
+    /** A saved month: the Shifts tab's page, showing it, in place of the editor and the page under it. */
+    fun showMonth(route: ShiftsRoute) {
+        navController.navigate(route) {
+            popUpTo<ShiftsRoute> { inclusive = true }
+            launchSingleTop = true
+        }
     }
 
     fun showHome() {

@@ -84,6 +84,7 @@ class FoodViewModelTest {
         assertTrue(vm.state.value.visits.any { it.id == visit })
         vm.removeVisit(visit)
         vm.commitRemove()
+        testScheduler.runCurrent() // the delete runs in the app's scope, past the page
         assertNull(vm.state.value.removing)
         assertFalse(food.list.value!!.first { it.id == 12L }.visits!!.any { it.id == visit })
     }

@@ -49,13 +49,5 @@
     <string name="turn_on_link">Turn on the calendar link</string>
     <string name="made_new_link">Made a new link. Add it again where you used the old one.</string>
     <string name="link_off">The calendar link is off.</string>
-    <string name="google_calendar">Or connect Google Calendar</string>
-    <string name="google_calendar_intro">Optional, instead of the link: SamFran makes a calendar of the shifts in your Google account and updates it within seconds. Use one or the other, not both.</string>
-    <string name="connected">Connected</string>
-    <string name="updated_when">updated %s</string>
-    <string name="updating">Updating…</string>
-    <string name="update_now">Update now</string>
-    <string name="disconnect">Disconnect</string>
-    <string name="disconnect_hint">Disconnecting stops updates; the calendar stays in your Google account until you delete it there.</string>
-    <string name="connect_in_browser">Connect from samfran.rudnam.com in your phone’s browser or on a computer: Google doesn’t allow it inside the app.</string>
+    <string name="with_names">With %s</string>
 </resources>

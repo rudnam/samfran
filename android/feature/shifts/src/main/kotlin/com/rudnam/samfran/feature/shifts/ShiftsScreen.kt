@@ -27,7 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,6 +136,7 @@ fun ShiftsScreen(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
+                                WithNames(next.with)
                             }
                             CodeChip(next.code)
                         }

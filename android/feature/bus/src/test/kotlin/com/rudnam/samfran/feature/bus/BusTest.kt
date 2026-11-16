@@ -17,6 +17,10 @@ import com.rudnam.samfran.core.testing.FakeReminders
 import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.Samples
 import com.rudnam.samfran.feature.bus.navigation.BusRoute
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -50,12 +54,15 @@ class BusScreenshotTest {
         override fun locationDenied() {}
         override fun stopTrip() {}
         override fun stopBuzz() {}
-        override fun test() {}
+        override fun practice() {}
+        override fun endPractice() {}
         override fun setPrompts(on: Boolean) {}
+        override fun setDistance(meters: Int) {}
         override fun edit() {}
         override fun cancelEdit() {}
         override fun setName(name: String) {}
         override fun pick(stop: FoundStop) {}
+        override fun setOtherWays(open: Boolean) {}
         override fun setLink(link: String) {}
         override fun useLink() {}
         override fun useHere() {}
@@ -65,7 +72,14 @@ class BusScreenshotTest {
 
     private val ready = BusUiState(stop = Samples.stop, prompts = true)
 
-    private fun screen(state: BusUiState): @Composable () -> Unit = { BusScreen(state, actions, {}, {}, {}, {}) }
+    // The map is Google's page in a web view, which doesn't draw on the JVM: a stand-in of its size.
+    private fun screen(state: BusUiState): @Composable () -> Unit = {
+        BusScreen(state, actions, {}, {}, {}, {}, {}, map = { _, _, _ ->
+            androidx.compose.foundation.layout.Box(
+                androidx.compose.ui.Modifier.fillMaxWidth().height(280.dp).background(SamFranTheme.colors.sunken),
+            )
+        })
+    }
 
     @Test
     fun ready() = shot("ready", content = screen(ready))
@@ -78,15 +92,34 @@ class BusScreenshotTest {
     fun readyJapanese() = shot("ready-ja", content = screen(ready))
 
     @Test
-    fun onTheBus() = shot("trip", content = screen(ready.copy(trip = TripStatus(running = true, distance = 2340f))))
+    fun onTheBus() = shot("trip", content = screen(ready.copy(trip = TripStatus(running = true, distance = 2340f), from = 4200f)))
 
     @Test
     fun buzzing() = shot("buzzing", content = screen(ready.copy(trip = TripStatus(running = true, distance = 640f, buzzing = true))))
 
     @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun buzzingJapanese() = shot("buzzing-ja", content = screen(ready.copy(trip = TripStatus(running = true, distance = 640f, buzzing = true))))
+
+    @Test
+    fun practiceRide() = shot("practice", content = screen(ready.copy(practice = Practice.Riding(0.4f))))
+
+    @Test
+    fun practiceBuzz() = shot("practice-buzz", content = screen(ready.copy(practice = Practice.Buzzing)))
+
+    @Test
+    fun practiceDone() = shot("practice-done", content = screen(ready.copy(practice = Practice.Done)))
+
+    @Test
+    fun firstVisit() = shot("setup", content = screen(BusUiState(stop = BusStop(set = false), editing = true)))
+
+    @Test
     fun choosingTheStop() = shot("choose", content = screen(
         BusUiState(stop = BusStop(set = false), editing = true, form = StopForm(name = "葵西", query = "葵西", found = Samples.found.take(2))),
     ))
+
+    @Test
+    fun otherWays() = shot("other-ways", content = screen(BusUiState(stop = BusStop(set = false), editing = true, form = StopForm(otherWays = true))))
 
     @Test
     fun stopFound() = shot("found", content = screen(
@@ -115,12 +148,12 @@ class BusViewModelTest {
         assertTrue(vm.state.value.trip.running)
         vm.stopTrip()
         assertFalse(vm.state.value.trip.running)
-        vm.test()
-        assertEquals(listOf("葵西"), alarm.tests)
+        vm.setDistance(1500)
+        assertEquals(1500, bus.stopFlow.value?.alertMeters)
     }
 
     @Test
-    fun `no stop yet opens the form; searching, picking and saving choose one`() = runTest {
+    fun `no stop yet opens the form, and searching, picking and saving choose one`() = runTest {
         bus.stopFlow.value = BusStop(set = false)
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
@@ -138,6 +171,21 @@ class BusViewModelTest {
         assertFalse(vm.state.value.editing)
         assertEquals(BusStop(true, "葵西", 34.9756, 138.3829, 600), bus.stopFlow.value)
         assertEquals(1, reminders.syncs)
+    }
+
+    @Test
+    fun `try it now rides for six seconds, then really buzzes, and Stop ends it`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        vm.practice()
+        assertTrue(vm.state.value.practice is Practice.Riding)
+        advanceTimeBy(BusViewModel.PRACTICE_MS + 50)
+        assertEquals(Practice.Buzzing, vm.state.value.practice)
+        assertEquals(listOf("葵西"), alarm.tests)
+        vm.stopBuzz()
+        assertEquals(Practice.Done, vm.state.value.practice)
+        vm.endPractice()
+        assertEquals(null, vm.state.value.practice)
     }
 
     @Test

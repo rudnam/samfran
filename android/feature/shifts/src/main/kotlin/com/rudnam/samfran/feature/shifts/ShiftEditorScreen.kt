@@ -146,6 +146,7 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                             }
                             if (meaning.problem != null) Text(stringResource(R.string.unknown_length), style = MaterialTheme.typography.bodySmall, color = colors.danger)
                         }
+                        WithNames(state.withFor(date))
                     }
                 }
             }

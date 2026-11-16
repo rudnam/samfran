@@ -16,6 +16,7 @@ import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.Samples
 import com.rudnam.samfran.core.testing.TestPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -101,7 +102,8 @@ class UsViewModelTest {
         val activity = FakeActivityRepository(seen = 52)
         val vm = UsViewModel(FakeUserRepository(), FakeSpaceRepository(), activity, FakeReminders(), TestPreferences.repository())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
-        assertEquals(52L, vm.state.value.seenAtOpen)
+        // The preferences load on their own thread: wait for the page's state to be put together.
+        assertEquals(52L, vm.state.first { it.activity != null && it.seenAtOpen != null }.seenAtOpen)
         assertEquals(58L, activity.seenFlow.value)
     }
 
@@ -112,13 +114,13 @@ class UsViewModelTest {
         val reminders = FakeReminders().apply { alerts.value = true }
         val vm = UsViewModel(user, space, FakeActivityRepository(), reminders, TestPreferences.repository())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
-        assertEquals("Fran", vm.state.value.name)
+        assertEquals("Fran", vm.state.first { it.name != null }.name)
         vm.setName("Francis")
         vm.saveName()
-        assertTrue(vm.state.value.nameSaved)
+        assertTrue(vm.state.first { it.nameSaved }.nameSaved)
         assertEquals("Francis", space.spaceFlow.value?.members?.first()?.name)
         vm.createInviteLink()
-        assertEquals("https://samfran.example/join/abc", vm.state.value.invite?.url)
+        assertEquals("https://samfran.example/join/abc", vm.state.first { it.invite != null }.invite?.url)
         vm.signOut()
         assertTrue(user.signedOut)
         assertEquals(false, reminders.alerts.value)

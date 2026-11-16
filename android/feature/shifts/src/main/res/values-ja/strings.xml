@@ -49,13 +49,5 @@
     <string name="turn_on_link">カレンダーのリンクをオンにする</string>
     <string name="made_new_link">新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。</string>
     <string name="link_off">カレンダーのリンクをオフにしました。</string>
-    <string name="google_calendar">またはGoogleカレンダーに接続</string>
-    <string name="google_calendar_intro">リンクの代わりに使えます。SamFranがGoogleアカウントにシフトのカレンダーを作り、数秒で更新します。どちらか一方だけを使ってください。</string>
-    <string name="connected">接続済み</string>
-    <string name="updated_when">%sに更新</string>
-    <string name="updating">更新しています…</string>
-    <string name="update_now">今すぐ更新</string>
-    <string name="disconnect">接続を解除</string>
-    <string name="disconnect_hint">接続を解除すると更新が止まります。カレンダーはGoogleアカウントで削除するまで残ります。</string>
-    <string name="connect_in_browser">スマホのブラウザかパソコンで samfran.rudnam.com から接続してください（アプリ内ではGoogleが許可していません）。</string>
+    <string name="with_names">一緒: %s</string>
 </resources>

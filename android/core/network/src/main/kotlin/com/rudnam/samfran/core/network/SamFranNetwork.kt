@@ -5,7 +5,6 @@ import com.rudnam.samfran.core.network.model.NetworkAppCode
 import com.rudnam.samfran.core.network.model.NetworkAuthOptions
 import com.rudnam.samfran.core.network.model.NetworkBusStop
 import com.rudnam.samfran.core.network.model.NetworkBusStopInput
-import com.rudnam.samfran.core.network.model.NetworkCalendar
 import com.rudnam.samfran.core.network.model.NetworkCredentials
 import com.rudnam.samfran.core.network.model.NetworkDemo
 import com.rudnam.samfran.core.network.model.NetworkDownloads
@@ -93,10 +92,6 @@ internal interface SamFranApi {
     @POST("api/shifts/read")
     suspend fun readPhoto(@Part photo: MultipartBody.Part): NetworkShiftMonth
 
-    @GET("api/calendar") suspend fun calendar(): NetworkCalendar
-    @POST("api/calendar/sync") suspend fun syncCalendar(): NetworkCalendar
-    @DELETE("api/calendar") suspend fun disconnectCalendar(): NetworkCalendar
-
     @GET("api/bus/stop") suspend fun busStop(): NetworkBusStop
     @PUT("api/bus/stop") suspend fun saveBusStop(@Body body: NetworkBusStopInput): NetworkBusStop
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
@@ -153,10 +148,6 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun readPhoto(jpeg: ByteArray) = call {
         api.readPhoto(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType())))
     }
-
-    suspend fun calendar() = call { api.calendar() }
-    suspend fun syncCalendar() = call { api.syncCalendar() }
-    suspend fun disconnectCalendar() = call { api.disconnectCalendar() }
 
     suspend fun busStop() = call { api.busStop() }
     suspend fun saveBusStop(body: NetworkBusStopInput) = call { api.saveBusStop(body) }

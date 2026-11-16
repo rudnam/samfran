@@ -48,6 +48,7 @@ fun ShiftTone.dot(): Color = when (this) {
     ShiftTone.Late -> ShiftDotColors.late
     ShiftTone.Night -> ShiftDotColors.night
     ShiftTone.Off -> ShiftDotColors.off
+    ShiftTone.Leave -> ShiftDotColors.leave
     ShiftTone.Training -> ShiftDotColors.training
     ShiftTone.Other -> Color.Transparent
 }
@@ -61,6 +62,7 @@ private fun ShiftTone.square(): Pair2? {
         ShiftTone.Middle -> c.calMiddle
         ShiftTone.Late -> c.calLate
         ShiftTone.Night -> c.calNight
+        ShiftTone.Leave -> c.calLeave
         ShiftTone.Training -> c.calTraining
         else -> null
     }
@@ -131,7 +133,15 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
 @Composable
 fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
     val colors = SamFranTheme.colors
-    Row(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        DayRow(date, day, colors)
+        WithNames(day?.with.orEmpty(), Modifier.padding(start = 74.dp))
+    }
+}
+
+@Composable
+private fun DayRow(date: LocalDate, day: ShiftDay?, colors: com.rudnam.samfran.core.designsystem.theme.SamFranColors) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(Dates.day(date, currentLocale), Modifier.width(64.dp), style = MaterialTheme.typography.labelLarge, color = if (day == null || day.kind != com.rudnam.samfran.core.model.ShiftKind.Work) colors.muted else colors.text)
         if (day == null) {
             Text(stringResource(R.string.nothing_entered), Modifier.weight(1f), color = colors.muted, style = MaterialTheme.typography.bodyMedium)
@@ -145,4 +155,17 @@ fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
         Text(day.times, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
         CodeChip(day.code)
     }
+}
+
+/**
+ * Who else is on a shift: "With タナカ ユイ, スズキ ケン" (WithNames.tsx). Each
+ * name stays in one piece when the line wraps.
+ */
+@Composable
+fun WithNames(names: List<String>, modifier: Modifier = Modifier) {
+    if (names.isEmpty()) return
+    val sep = if (currentLocale.language == "ja") "、" else ", "
+    // Non-breaking spaces inside a name keep it on one line.
+    val list = names.joinToString(sep) { it.replace(' ', '\u00A0').replace('\u3000', '\u00A0') }
+    Text(stringResource(R.string.with_names, list), modifier, style = MaterialTheme.typography.bodySmall, color = SamFranTheme.colors.muted)
 }

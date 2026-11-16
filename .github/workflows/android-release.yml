@@ -1,7 +1,7 @@
 # Releases the Android app. It builds and signs the app with
 # android/build.sh, publishes the APK on samfran.rudnam.com with
 # android/publish.sh (phones on a build that checks are offered it, see
-# web/src/updates.ts), and keeps both files as a GitHub release,
+# UpdateRepository in android/core/data), and keeps both files as a GitHub release,
 # android-<versionCode>, whose .aab goes to the Play Console by hand. The
 # versionCode is one above the published APK (android/version.sh).
 #
@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: Version name people see (e.g. 2.2). Empty for <build.gradle's>.<versionCode>, e.g. 2.1.4
+        description: Version name people see (e.g. 2.2). Empty for <build.gradle.kts's>.<versionCode>, e.g. 2.0.10
         required: false
 
 concurrency:
@@ -91,11 +91,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.decide.outputs.sha }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: web/package-lock.json
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
@@ -105,18 +100,12 @@ jobs:
           # A release never reuses a cache another branch could have written.
           cache-read-only: true
 
-      # Before the key is on disk, and without install scripts, so no
-      # package's install step runs with the key within reach.
-      - name: Install web dependencies
-        working-directory: web
-        run: npm ci --ignore-scripts --no-audit --no-fund
-
       - name: Choose the version
         env:
           NAME: ${{ inputs.version_name }}
         run: |
           code=$(android/version.sh)
-          base=$(sed -n "s/.*SAMFRAN_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" android/app/build.gradle)
+          base=$(sed -n 's/.*SAMFRAN_VERSION_NAME") ?: "\(.*\)".*/\1/p' android/app/build.gradle.kts)
           name=${NAME:-$base.$code}
           [[ $name =~ ^[0-9A-Za-z.+-]{1,32}$ ]] || { echo "::error::Not a version name: $name"; exit 1; }
           echo "SAMFRAN_VERSION_CODE=$code" >> "$GITHUB_ENV"

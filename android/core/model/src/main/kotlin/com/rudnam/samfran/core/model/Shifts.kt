@@ -18,6 +18,8 @@ data class ShiftDay(
     val end: OffsetDateTime? = null,
     /** Why a working day has no times, e.g. "unknown length for Z". */
     val problem: String? = null,
+    /** Others on the same shift (the same code that day), by their names as printed on the sheet. */
+    val with: List<String> = emptyList(),
 ) {
     /** The colour it's drawn in. */
     val tone: ShiftTone
@@ -29,7 +31,8 @@ data class ShiftDay(
                 "Night" -> ShiftTone.Night
                 else -> ShiftTone.Other
             }
-            ShiftKind.Off, ShiftKind.Leave -> ShiftTone.Off
+            ShiftKind.Off -> ShiftTone.Off
+            ShiftKind.Leave -> ShiftTone.Leave
             ShiftKind.Training -> ShiftTone.Training
             ShiftKind.Other -> ShiftTone.Other
         }
@@ -50,7 +53,7 @@ data class ShiftDay(
 }
 
 /** The shift colours (web/src/styles.css, .shift-dot and .cal-day). */
-enum class ShiftTone { Early, Middle, Late, Night, Off, Training, Other }
+enum class ShiftTone { Early, Middle, Late, Night, Off, Leave, Training, Other }
 
 data class ShiftSettings(
     val personName: String = "",
@@ -75,16 +78,6 @@ data class ShiftMonth(
 ) {
     val fromPhoto: Boolean get() = nameAsRead != null
 }
-
-/** Google Calendar sync, for the signed-in person. */
-data class CalendarStatus(
-    /** The server can sync with Google Calendar. */
-    val available: Boolean,
-    val connected: Boolean,
-    val syncedAt: java.time.Instant?,
-    /** Why the last update failed; "" when it worked. */
-    val error: String,
-)
 
 /**
  * The shift codes, as internal/shift/codes.go reads them (and
@@ -148,11 +141,11 @@ object ShiftCodes {
 
     fun labelOf(label: String): String = labels[label] ?: label
 
-    /** "13:00", or "6:00 (+1)" for the next morning. */
+    /** "13:00"; a shift that ends the next morning just shows "7:00". */
     fun clock(hour: Double): String {
         val h = hour % 24
         val whole = h.toInt()
         val min = Math.round((h - whole) * 60).toInt()
-        return "$whole:%02d".format(min) + if (hour >= 24) " (+1)" else ""
+        return "$whole:%02d".format(min)
     }
 }

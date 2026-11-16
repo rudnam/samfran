@@ -95,3 +95,6 @@ keystore/
 # Release outputs build.sh copies here.
 samfran.apk
 samfran.aab
+
+# The Kotlin compiler's own files.
+.kotlin/

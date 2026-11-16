@@ -51,6 +51,17 @@ class ShiftsViewModelTest {
     }
 
     @Test
+    fun `who's on the same shift is kept only while the day's code is unchanged`() = runTest {
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(LocalDate.of(2026, 11, 4)))
+        vm.setCode(LocalDate.of(2026, 11, 5), "7F") // was 13F: a different shift
+        assertEquals(emptyList<String>(), vm.state.value.withFor(LocalDate.of(2026, 11, 5)))
+        vm.save()
+        assertEquals(listOf("タナカ ユイ"), shifts.savedWith?.get(LocalDate.of(2026, 11, 4)))
+        assertEquals(null, shifts.savedWith?.get(LocalDate.of(2026, 11, 5)))
+    }
+
+    @Test
     fun `a photo's reading opens in the editor to be checked`() = runTest {
         shifts.read = Samples.november.copy(month = YearMonth.of(2026, 12), nameAsRead = "オトル サマンタ")
         shifts.readPhoto(ByteArray(1))

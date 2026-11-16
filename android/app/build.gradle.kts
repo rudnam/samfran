@@ -14,8 +14,8 @@ android {
         applicationId = "com.rudnam.samfran"
         // Every release needs a higher versionCode: the app offers a build with a higher one as
         // an update. build.sh sets it from version.sh (one above the published APK); the number
-        // here is the floor. 1–8 were the Capacitor build; 9 is the first native one.
-        versionCode = (System.getenv("SAMFRAN_VERSION_CODE") ?: "9").toInt()
+        // here is the floor. 1–9 were the Capacitor build; 10 is the first native one.
+        versionCode = (System.getenv("SAMFRAN_VERSION_CODE") ?: "10").toInt()
         versionName = System.getenv("SAMFRAN_VERSION_NAME") ?: "2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

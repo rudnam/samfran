@@ -1,9 +1,10 @@
 # verify: on every push and pull request, ./verify.sh, with the browser
 #   tests' screenshots kept as the e2e-results artifact.
-# android: on every push and pull request, the Android app (Capacitor, as in
-#   RudWallet): its unit tests, and an unsigned release APK kept a week as the
-#   android-apk artifact. android/build.sh sign signs it; the key never comes here.
-#   (Android releases: android-release.yml.)
+# android: on every push and pull request, the native Android app (as in
+#   RudWallet): its JVM tests, which also draw every screen (kept a week as the
+#   native-screenshots artifact), Android Lint, and an unsigned release APK
+#   (R8 checked) kept a week as the android-apk artifact. android/build.sh sign
+#   signs it; the key never comes here. (Android releases: android-release.yml.)
 # deploy: on pushes to main, build the image, push it to ECR and run it on
 #   the AWS instance (rudnam/rudnam-infra). Also on demand from main: Actions
 #   → CI → Run workflow with a commit SHA redeploys that commit (a rollback);
@@ -154,23 +155,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 26
-          cache: npm
-          cache-dependency-path: web/package-lock.json
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
-      # The web app, built for the app and copied in (the runner has the Android SDK).
-      - run: npm ci --no-audit --no-fund && npm run android
-        working-directory: web
-      # Unit tests, and the release APK unsigned: android/build.sh sign signs it with the key.
-      - run: ./gradlew testReleaseUnitTest assembleRelease
+      # One Gradle run for everything, so the build is set up once and its tasks overlap:
+      # every module's tests (android/*/src/test, which also draw the screens into
+      # build/outputs/roborazzi), Android Lint, and the release APK unsigned (building it checks
+      # R8's shrinking). --continue: a failing test doesn't stop the rest; the job still fails.
+      - run: ./gradlew assembleRelease testDebugUnitTest lintNative --continue -Proborazzi.test.record=true
         working-directory: android
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        continue-on-error: true
+        with:
+          name: native-screenshots
+          path: android/**/build/outputs/roborazzi/
+          retention-days: 7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != '' }}
         with:
           name: android-apk
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk

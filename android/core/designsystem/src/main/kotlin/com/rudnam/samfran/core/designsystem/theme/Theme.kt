@@ -67,6 +67,8 @@ data class SamFranColors(
     val calMiddle: Pair2,
     val calLate: Pair2,
     val calNight: Pair2,
+    /** 有休 (paid leave): like a day off, with a faint mint wash. */
+    val calLeave: Pair2,
     val calTraining: Pair2,
 )
 
@@ -77,6 +79,7 @@ object ShiftDotColors {
     val late = Color(0xFFFF8A1F)
     val night = Color(0xFF5B4BC4)
     val off = Color(0xFFB9E6C8)
+    val leave = Color(0xFF9FD8D0)
     val training = Color(0xFF9AA4B2)
 }
 
@@ -105,6 +108,7 @@ val LightSamFranColors = SamFranColors(
     calMiddle = Pair2(Color(0xFFC9EFD6), Color(0xFF0F4D2A)),
     calLate = Pair2(Color(0xFFFFD6AD), Color(0xFF6B3100)),
     calNight = Pair2(Color(0xFFDCD6FF), Color(0xFF2F2480)),
+    calLeave = Pair2(Color(0xFFEEF7F2), Color(0xFF4F7A63)),
     calTraining = Pair2(Color(0xFFDFE4EA), Color(0xFF37404C)),
 )
 
@@ -133,6 +137,7 @@ val DarkSamFranColors = SamFranColors(
     calMiddle = Pair2(Color(0xFF1C4A30), Color(0xFFA6E8BF)),
     calLate = Pair2(Color(0xFF5C3410), Color(0xFFFFC993)),
     calNight = Pair2(Color(0xFF37307A), Color(0xFFD3CCFF)),
+    calLeave = Pair2(Color(0xFF1F2C26), Color(0xFFA6CDB7)),
     calTraining = Pair2(Color(0xFF3A424D), Color(0xFFD5DBE3)),
 )
 

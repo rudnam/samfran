@@ -19,7 +19,6 @@ import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.AppUpdate
 import com.rudnam.samfran.core.model.AuthOptions
 import com.rudnam.samfran.core.model.BusStop
-import com.rudnam.samfran.core.model.CalendarStatus
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
@@ -152,8 +151,8 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     val settingsFlow = MutableStateFlow<ShiftSettings?>(months.firstOrNull()?.settings ?: Samples.settings)
     var next: Outcome<Nothing>? = null
     var read: ShiftMonth? = null
-    var calendarStatus = CalendarStatus(available = true, connected = false, syncedAt = null, error = "")
     var saved: Map<LocalDate, String>? = null
+    var savedWith: Map<LocalDate, List<String>>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -163,9 +162,10 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
     override suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>> =
         Outcome.Done(months.value.values.flatMap { it.days }.mapNotNull { it.end?.toInstant() }.filter { it.isAfter(now) }.sorted())
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>): Outcome<ShiftMonth> {
+    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>): Outcome<ShiftMonth> {
         next?.let { return it }
         saved = codes
+        savedWith = with
         val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
         months.value = months.value + (month to m)
         return Outcome.Done(m)
@@ -185,9 +185,6 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         settingsFlow.value = s
         return Outcome.Done(s)
     }
-    override suspend fun calendar(): Outcome<CalendarStatus> = Outcome.Done(calendarStatus)
-    override suspend fun syncCalendar(): Outcome<CalendarStatus> = Outcome.Done(calendarStatus)
-    override suspend fun disconnectCalendar(): Outcome<CalendarStatus> = Outcome.Done(calendarStatus.copy(connected = false).also { calendarStatus = it })
     override fun address(path: String) = "https://samfran.example$path"
 }
 

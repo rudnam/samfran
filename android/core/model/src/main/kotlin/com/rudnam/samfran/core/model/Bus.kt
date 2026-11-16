@@ -36,9 +36,26 @@ data class TripStatus(
     val buzzing: Boolean = false,
 )
 
+/** What a buzz distance means on a ride, roughly: city bus stops are 300–500 m apart. */
+enum class Early { RightBefore, OneStop, TwoStops, Plenty }
+
 object Distances {
     /** The choices for how far before the stop to buzz. */
     val choices = listOf(400, 600, 800, 1000, 1500, 2000)
+
+    fun early(meters: Int): Early = when {
+        meters <= 400 -> Early.RightBefore
+        meters <= 800 -> Early.OneStop
+        meters <= 1500 -> Early.TwoStops
+        else -> Early.Plenty
+    }
+
+    /**
+     * How far along the ride the bus is, 0 to 1, for the progress line: from
+     * the first distance the phone knew ([from]) to where it starts buzzing.
+     */
+    fun progress(from: Float, now: Float, alert: Int): Float =
+        if (now < 0 || from <= alert) 0f else ((from - now) / (from - alert)).coerceIn(0f, 1f)
 
     /** "600 m", "1.5 km". */
     fun format(meters: Float): String =

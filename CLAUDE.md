@@ -15,6 +15,7 @@ Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScr
 - The Docker build type-checks the frontend, so a TypeScript error fails `./verify.sh`. Quick check on the host: `cd web && npm run build`.
 - When a browser test fails, its screenshot is at `e2e/test-results/<test>/test-failed-1.png`. Read it before guessing.
 - Report what the run actually printed. If something was skipped or couldn't run, say so.
+- `verify.sh` doesn't cover the native Android app (`android/`, android/README.md). For that: `cd android && ./gradlew testDebugUnitTest -Proborazzi.test.record=true` (JDK 21 and the Android SDK), which also draws every screen into each module's `build/outputs/roborazzi/`; CI's `android` job runs the same and keeps them as `native-screenshots`.
 
 ## Show the user what changed
 
