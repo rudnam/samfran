@@ -418,4 +418,6 @@ export const jaServer = {
   'your email is already confirmed': 'メールアドレスはすでに確認済みです',
   'the place search isn’t answering; try again in a moment': 'お店の検索が応答しません。少し待ってからもう一度お試しください',
   'the stop search isn’t answering; try again in a moment': 'バス停の検索が応答しません。少し待ってからもう一度お試しください',
+  'a photo is already being read; wait for it to finish': '写真を読み込み中です。終わるまでお待ちください',
+  "that photo isn't being read any more; send it again": 'その写真はもう読み込まれていません。もう一度送ってください',
 } as const;

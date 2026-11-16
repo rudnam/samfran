@@ -113,3 +113,50 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
   expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、スズキ ケン');
 });
+
+test('read a photo of the sheet: the page waits for the read, then opens the month to check', async ({ page }) => {
+  await signUp(page);
+  const month = thisMonth();
+  await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
+
+  // This server has no Claude key, so stand in for it: photos can be read,
+  // and the read takes a few askings to finish (like the minute Claude takes).
+  await page.route(/\/api\/shifts(\?.*)?$/, async (route) => {
+    const res = await route.fetch();
+    const body = await res.json();
+    body.settings.reader = true;
+    await route.fulfill({ response: res, json: body });
+  });
+  let started = 0;
+  await page.route('**/api/shifts/reads', (route) => {
+    started++;
+    return route.fulfill({ status: 202, json: { id: 'r1' } });
+  });
+  let asked = 0;
+  await page.route('**/api/shifts/reads/r1', async (route) => {
+    if (++asked < 3) return route.fulfill({ status: 202, json: { status: 'reading' } });
+    const settings = await (await page.request.get('/api/shifts/settings')).json();
+    return route.fulfill({
+      json: {
+        month,
+        settings: { ...settings, reader: true },
+        days: [{ date: `${month}-01`, code: '22F', kind: 'work', label: '夜勤' }],
+        name_as_read: 'オトル サマンタ',
+        notes: '',
+      },
+    });
+  });
+
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  // A real (1×1 PNG) photo, so the page can shrink it.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  await page.getByLabel('Photo of the sheet').setInputFiles({ name: 'sheet.png', mimeType: 'image/png', buffer: png });
+  await expect(page.getByRole('button', { name: 'Reading the sheet…' })).toBeDisabled();
+
+  await expect(page.getByRole('heading', { name: 'Check the shifts' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('status')).toContainText('オトル サマンタ');
+  const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
+  await expect(days.nth(0).getByRole('combobox')).toHaveValue('22F');
+  expect(started).toBe(1);
+  expect(asked).toBe(3);
+});
