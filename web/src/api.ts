@@ -177,7 +177,9 @@ export const api = {
     month: string,
     days: { date: string; code: string; with?: string[] }[],
     corrections?: { from: string; to: string }[],
-  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections }),
+    /** This month's 締め申請通知 days (dates in it); left out, they stay as they are. */
+    closing_days?: number[],
+  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections, closing_days }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
   saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone' | 'closing_days'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
@@ -274,6 +276,9 @@ export interface ShiftMonth {
   month: string;
   settings: ShiftSettings;
   days: ShiftDay[];
+  /** 締め申請通知 this month, as dates in it; custom: set for this month only. (Not on a photo read.) */
+  closing_days?: number[];
+  closing_custom?: boolean;
   /** From a photo: the name on the row that was read, and the reader's doubts. */
   name_as_read?: string;
   notes?: string;

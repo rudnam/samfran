@@ -101,6 +101,10 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Edit by hand' }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
+    // This month's 締め申請通知 changed: only the last day.
+    await page.getByRole('button', { name: 'Remove closing day 1' }).click();
+    await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
+    await shot('7a-shift-edit-closing');
 
     // The bus alarm: first time, then with a stop chosen.
     await page.getByRole('link', { name: 'Bus', exact: true }).click();
