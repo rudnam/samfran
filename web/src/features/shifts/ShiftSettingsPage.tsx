@@ -159,7 +159,6 @@ export function ShiftSettingsPage() {
 
           <div className="card stack">
             <h2>{t('In your calendar')}</h2>
-            <p className="muted">{t('Put the shifts in Google Calendar, so they’re on both of your phones.')}</p>
             <div className="row wrap">
               <a className="button secondary" href={href('shifts/calendar')}>
                 {t('Add to Google Calendar')}

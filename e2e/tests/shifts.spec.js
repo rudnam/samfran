@@ -78,7 +78,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
     'href',
     `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
   );
-  await expect(page.getByText('“Sam’s shifts” then shows under Other calendars.')).toBeVisible();
+  await expect(page.getByText('Turn on Sync for “Sam’s shifts”')).toBeVisible();
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');

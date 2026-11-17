@@ -137,7 +137,6 @@ fun ShiftSettingsScreen(
 
         SamFranCard {
             CardTitle(stringResource(R.string.in_your_calendar))
-            Text(stringResource(R.string.calendar_intro), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
             SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, icon = SamFranIcons.calendar)
         }
 

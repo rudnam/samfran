@@ -53,7 +53,6 @@ export function ShiftCalendarLinkPage() {
     <section className="stack">
       <BackLink href={href('shifts')} label="Shifts" />
       <h1 className="display">{t('Add to Google Calendar')}</h1>
-      <p className="muted">{t('The shifts show up in Google Calendar next to everything else, on your phone and computer, and stay up to date by themselves.')}</p>
       {!s && !error && <p className="muted">{t('Loading…')}</p>}
       {error && (
         <p role="alert" className="error">
@@ -62,7 +61,6 @@ export function ShiftCalendarLinkPage() {
       )}
       {s && !feedUrl && (
         <div className="card stack">
-          <p>{t('First, turn on the calendar link. It’s a private address only for these shifts.')}</p>
           <button type="button" disabled={busy} onClick={() => feed(true, '')}>
             {t('Turn on the calendar link')}
           </button>
@@ -80,8 +78,7 @@ export function ShiftCalendarLinkPage() {
               <li>
                 <span className="how-num" aria-hidden="true">1</span>
                 <div className="stack tight grow">
-                  <strong>{t('Open Google Calendar with the link')}</strong>
-                  <span className="hint">{t('Easiest on a computer: the Google Calendar phone app can’t add a calendar from a link. Sign in with your own Google account.')}</span>
+                  <strong>{t('On a computer, open Google Calendar')}</strong>
                   <div className="row wrap">
                     <a className="button" href={googleCalendarUrl(feedUrl)} target="_blank" rel="noopener noreferrer">
                       {t('Open Google Calendar')}
@@ -91,68 +88,47 @@ export function ShiftCalendarLinkPage() {
               </li>
               <li>
                 <span className="how-num" aria-hidden="true">2</span>
-                <div className="stack tight grow">
-                  <strong>{t('Click Add')}</strong>
-                  <span className="hint">{t('“{name}” then shows under Other calendars.', { name })}</span>
-                </div>
+                <strong className="grow">{t('Click Add')}</strong>
               </li>
               <li>
                 <span className="how-num" aria-hidden="true">3</span>
                 <div className="stack tight grow">
-                  <strong>{t('See it on your phone')}</strong>
-                  <span className="hint">{t('It appears in the Google Calendar app by itself. If it doesn’t, open the app’s Settings, tap “{name}” and turn on Sync.', { name })}</span>
-                </div>
-              </li>
-              <li>
-                <span className="how-num" aria-hidden="true">4</span>
-                <div className="stack tight grow">
                   <strong>{t('Send the link to the other one of you')}</strong>
-                  <span className="hint">{t('Each of you adds it to your own Google Calendar, the same way.')}</span>
                   <div className="row">
                     <input readOnly aria-label={t('Calendar link')} value={feedUrl} onFocus={(e) => e.target.select()} />
-                    <button type="button" className="secondary" onClick={copy}>
-                      {copied ? t('Copied') : t('Copy')}
+                    <button type="button" className="secondary" onClick={'share' in navigator ? share : copy}>
+                      {'share' in navigator ? t('Share') : copied ? t('Copied') : t('Copy')}
                     </button>
                   </div>
-                  {'share' in navigator && (
-                    <div className="row wrap">
-                      <button type="button" className="secondary" onClick={share}>
-                        {t('Share')}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </li>
             </ol>
-            <p className="hint">{t('Google checks the link for changes a few times a day, so a changed shift can take up to a day to show.')}</p>
+            <p className="hint">{t('Not on your phone? Turn on Sync for “{name}” in the app’s settings.', { name })}</p>
           </div>
 
-          <details className="other-ways card">
-            <summary>{t('If the button doesn’t work, or for another calendar app')}</summary>
+          <details className="other-ways">
+            <summary>{t('More')}</summary>
             <div className="stack tight">
-              <p className="hint">{t('In Google Calendar on a computer: next to Other calendars, click + › From URL, paste the link above and click Add calendar.')}</p>
-              <p className="hint">{t('On an iPhone or a Mac:')} <a href={feedUrl.replace(/^https?:/, 'webcal:')}>{t('Add to Apple Calendar')}</a></p>
-              <p className="hint">{t('Other apps: look for “subscribe” or “add calendar from URL” and paste the link.')}</p>
+              <p className="hint">{t('By hand: Other calendars › + › From URL.')}</p>
+              <p className="hint">
+                <a href={feedUrl.replace(/^https?:/, 'webcal:')}>{t('Add to Apple Calendar')}</a>
+              </p>
+              <p className="hint">{t('Anyone with the link can see the shifts.')}</p>
+              <div className="row wrap">
+                <button type="button" className="secondary" disabled={busy} onClick={() => feed(true, t('Made a new link. Add it again where you used the old one.'))}>
+                  {t('Make a new link')}
+                </button>
+                <button type="button" className="link quiet" disabled={busy} onClick={() => feed(false, t('The calendar link is off.'))}>
+                  {t('Turn off')}
+                </button>
+              </div>
             </div>
           </details>
-
-          <div className="card stack">
-            <h2>{t('The link')}</h2>
-            <span className="hint">{t('Anyone with this link can see the shifts. If it gets out, make a new one.')}</span>
-            <div className="row wrap">
-              <button type="button" className="secondary" disabled={busy} onClick={() => feed(true, t('Made a new link. Add it again where you used the old one.'))}>
-                {t('Make a new link')}
-              </button>
-              <button type="button" className="link quiet" disabled={busy} onClick={() => feed(false, t('The calendar link is off.'))}>
-                {t('Turn off')}
-              </button>
-            </div>
-            {status && (
-              <span className="hint" role="status">
-                {status}
-              </span>
-            )}
-          </div>
+          {status && (
+            <span className="hint" role="status">
+              {status}
+            </span>
+          )}
         </>
       )}
     </section>
