@@ -138,6 +138,22 @@ func TestShifts(t *testing.T) {
 		t.Errorf("closing day 32: %d, want 400", code)
 	}
 
+	// The calendar feed: off until turned on, then readable without a session.
+	if saved.Settings.FeedPath != "" {
+		t.Fatalf("feed on by default: %q", saved.Settings.FeedPath)
+	}
+	c.do("POST", "/api/shifts/feed", nil, &saved.Settings)
+	resp, body := get(t, ts.URL+saved.Settings.FeedPath)
+	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/calendar") ||
+		!strings.Contains(body, "SUMMARY:夜勤") || !strings.Contains(body, "DESCRIPTION:一緒: タナカ ユイ") {
+		t.Fatalf("feed: %d %s %s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
+	}
+	old := saved.Settings.FeedPath
+	c.do("DELETE", "/api/shifts/feed", nil, nil)
+	if resp, _ := get(t, ts.URL+old); resp.StatusCode != 404 {
+		t.Errorf("feed after turning it off: %d", resp.StatusCode)
+	}
+
 	// One month's 締め申請通知 days, saved with its shifts; the usual days
 	// make it follow the settings again.
 	var month monthJSON
@@ -176,21 +192,6 @@ func TestShifts(t *testing.T) {
 		t.Errorf("November follows the settings: %v", month.ClosingDays)
 	}
 
-	// The calendar feed: off until turned on, then readable without a session.
-	if saved.Settings.FeedPath != "" {
-		t.Fatalf("feed on by default: %q", saved.Settings.FeedPath)
-	}
-	c.do("POST", "/api/shifts/feed", nil, &saved.Settings)
-	resp, body := get(t, ts.URL+saved.Settings.FeedPath)
-	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/calendar") ||
-		!strings.Contains(body, "SUMMARY:夜勤") || !strings.Contains(body, "DESCRIPTION:一緒: タナカ ユイ") {
-		t.Fatalf("feed: %d %s %s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
-	}
-	old := saved.Settings.FeedPath
-	c.do("DELETE", "/api/shifts/feed", nil, nil)
-	if resp, _ := get(t, ts.URL+old); resp.StatusCode != 404 {
-		t.Errorf("feed after turning it off: %d", resp.StatusCode)
-	}
 
 	// Another space sees none of it.
 	other := newClient(t, ts)
