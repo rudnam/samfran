@@ -85,11 +85,19 @@ class FoodViewModelTest {
     }
 
     @Test
-    fun `with only one category there's nothing to filter`() = runTest {
+    fun `with only one category there's nothing to filter, but a remembered filter can still be undone`() = runTest {
         food.list.value = food.list.value!!.filter { it.category == PlaceCategory.Eat }
-        preferences.setPlacesCategory("nature")
         val vm = FoodListViewModel(food, space, preferences, clock)
         watch(vm.state)
+        assertFalse(vm.state.value.filterable)
+        assertEquals(4, vm.state.value.shown.size)
+
+        // Nature, remembered from before the parks were deleted: its chip stays, with nothing in it, so it can be switched off.
+        preferences.setPlacesCategory("nature")
+        assertTrue(vm.state.value.filterable)
+        assertEquals(listOf(PlaceCategory.Eat, PlaceCategory.Nature), vm.state.value.chips)
+        assertTrue(vm.state.value.shown.isEmpty())
+        vm.setFilter(null)
         assertFalse(vm.state.value.filterable)
         assertNull(vm.state.value.activeFilter)
         assertEquals(4, vm.state.value.shown.size)
