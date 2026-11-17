@@ -107,6 +107,7 @@ for (const [name, viewport] of [
     await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
     await shot('7b-bus-setup');
     expect((await page.request.put('/api/bus/stop', { data: { name: '葵西小学校入口', lat: 34.76966, lng: 137.71207, alert_meters: 800 } })).status()).toBe(200);
+    expect((await page.request.post('/api/bus/stops', { data: { name: '静岡駅', lat: 34.9717, lng: 138.3889, shifts: ['Early', 'Middle'] } })).status()).toBe(201);
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');

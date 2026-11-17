@@ -8,6 +8,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.TextButton
+import com.rudnam.samfran.core.model.BusStops
+import com.rudnam.samfran.core.model.ShiftCodes
+import com.rudnam.samfran.core.model.ShiftKinds
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -99,11 +110,10 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
     // The practice run's buzz shows a notification too: ask for that first (Android 13+), then practise either way.
     val askForPractice = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.practice() }
     // Opened from "Start bus alarm?": start once the stop is known.
-    LaunchedEffect(state.autoStart, state.stop) {
-        val stop = state.stop ?: return@LaunchedEffect
-        if (!state.autoStart) return@LaunchedEffect
+    LaunchedEffect(state.autoStart, state.stops) {
+        if (state.stops == null || !state.autoStart) return@LaunchedEffect
         viewModel.autoStartHandled()
-        if (stop.set && !state.trip.running) startTrip()
+        if (state.stop != null && !state.trip.running) startTrip()
     }
     BusScreen(
         state,
@@ -149,24 +159,27 @@ fun BusScreen(
     onMap: (String) -> Unit,
     map: @Composable (lat: Double, lng: Double, name: String) -> Unit = { lat, lng, name -> StopMap(lat, lng, name) },
 ) {
-    val stop = state.stop
+    val all = state.stops
     TabPage {
         item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
         if (state.locationDenied) item(key = "denied") { ErrorText(stringResource(R.string.location_denied)) }
         state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
-        if (stop == null) {
+        if (all == null) {
             item(key = "loading") { Skeleton(rows = 3) }
             return@TabPage
         }
+        val stop = state.stop
         when {
-            state.buzzing -> item(key = "buzz") { BuzzCard(stop, practice = state.practice != null, onStop = actions::stopBuzz) }
-            state.ready && !state.editing -> item(key = "ride") { RideCard(state, stop, actions, onStartTrip, onPractice, map) }
+            state.buzzing -> item(key = "buzz") { BuzzCard(stop ?: BusStop(set = false), practice = state.practice != null, onStop = actions::stopBuzz) }
+            stop != null && !state.isEditing && state.choosing && !state.trip.running ->
+                item(key = "choose") { ChooseCard(all, stop, actions, onStartTrip) }
+            stop != null && !state.isEditing -> item(key = "ride") { RideCard(state, all, stop, actions, onStartTrip, onPractice, map) }
         }
         if (!state.ready) item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
-        if (state.editing) {
-            item(key = "form") { StopFormCard(state, actions, onHere, onMap, map) }
+        if (state.isEditing) {
+            item(key = "form") { StopFormCard(state, all, actions, onHere, onMap, map) }
         } else if (state.ready) {
-            item(key = "settings") { AlarmSettings(state, stop, actions, onPrompts, onMap) }
+            item(key = "settings") { AlarmSettings(state, all, actions, onPrompts) }
             item(key = "fold") {
                 var open by rememberSaveable { mutableStateOf(false) }
                 SamFranCard(onClick = { open = !open }, spacing = 10) {
@@ -212,6 +225,7 @@ private fun BuzzCard(stop: BusStop, practice: Boolean, onStop: () -> Unit) {
 @Composable
 private fun RideCard(
     state: BusUiState,
+    all: BusStops,
     stop: BusStop,
     actions: BusActions,
     onStartTrip: () -> Unit,
@@ -252,9 +266,19 @@ private fun RideCard(
                 SecondaryButton(stringResource(R.string.stop_alarm), actions::stopTrip, Modifier.fillMaxWidth())
             }
             else -> {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Eyebrow(stringResource(R.string.your_stop))
-                    Text(name, style = MaterialTheme.typography.titleLarge)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Eyebrow(stringResource(R.string.get_off_at))
+                    StopChips(all, stop, actions)
+                    val shift = state.shift
+                    if (state.byShift && shift?.end != null) {
+                        Text(
+                            stringResource(R.string.because_shift, shift.workplaceLabel, "${shift.end!!.hour}:%02d".format(shift.end!!.minute), name),
+                            Modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).background(colors.highlight).padding(horizontal = 12.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    } else if (state.picked != null && all.forShift(shift) != null && all.forShift(shift) != stop) {
+                        Hint(stringResource(R.string.just_this_ride))
+                    }
                     Hint(stringResource(R.string.buzzes_before, Distances.format(alert.toFloat())) + " " + stringResource(earlyText(Distances.early(alert))))
                 }
                 map(stop.lat, stop.lng, stop.name)
@@ -382,22 +406,95 @@ private fun buzzAbout(b: Buzz) = when (b) {
     Buzz.Strongest -> R.string.buzz_strongest_about
 }
 
-/** The stop, how early and how it buzzes (saved as they're picked) and the question at the end of a shift. */
+/** Where to get off: one chip for each stop, with the shifts it's for, and one to add another. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun AlarmSettings(state: BusUiState, stop: BusStop, actions: BusActions, onPrompts: (Boolean) -> Unit, onMap: (String) -> Unit) {
+private fun StopChips(all: BusStops, stop: BusStop, actions: BusActions) {
+    val colors = SamFranTheme.colors
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (s in all.stops) {
+            val on = s.id == stop.id
+            Row(
+                Modifier
+                    .clip(CircleShape)
+                    .background(if (on) colors.accent else colors.sunken)
+                    .clickable(role = Role.RadioButton) { actions.pickStop(s.id) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val ink = if (on) colors.accentText else colors.text
+                if (on) Text("✓", color = ink, fontWeight = FontWeight.Bold)
+                Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, color = ink, fontWeight = FontWeight.SemiBold)
+                if (s.shifts.isNotEmpty()) {
+                    Text(
+                        s.shifts.joinToString("・") { ShiftCodes.labelOf(it) },
+                        Modifier.clip(CircleShape).background(ink.copy(alpha = 0.14f)).padding(horizontal = 7.dp, vertical = 2.dp),
+                        color = ink,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                }
+            }
+        }
+        if (all.stops.size < BusStops.MAX) {
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .border(1.5.dp, colors.border, CircleShape)
+                    .clickable(role = Role.Button) { actions.add() }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) { Text(stringResource(R.string.add_a_stop_short), color = colors.muted) }
+        }
+    }
+}
+
+/** From "Other stop" on the question at the end of a shift: where to get off, then start. */
+@Composable
+private fun ChooseCard(all: BusStops, stop: BusStop, actions: BusActions, onStartTrip: () -> Unit) {
+    val colors = SamFranTheme.colors
+    SamFranCard(spacing = 4) {
+        CardTitle(stringResource(R.string.where_today))
+        for ((i, s) in all.stops.withIndex()) {
+            if (i > 0) HorizontalDivider(color = colors.divider)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.RadioButton) { actions.pickStop(s.id) }.padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
+                    if (s.shifts.isNotEmpty()) Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
+                }
+                RadioButton(selected = s.id == stop.id, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = colors.accent))
+            }
+        }
+        PrimaryButton(stringResource(R.string.start_to, stop.name.ifBlank { stringResource(R.string.your_stop_lower) }), onStartTrip, Modifier.fillMaxWidth().padding(top = 8.dp), big = true)
+        LinkButton(stringResource(R.string.cancel), actions::endChoosing, Modifier.align(Alignment.CenterHorizontally))
+    }
+}
+
+/** The stops (each changed in its own form), how it buzzes (saved as it's picked) and the question at the end of a shift. */
+@Composable
+private fun AlarmSettings(state: BusUiState, all: BusStops, actions: BusActions, onPrompts: (Boolean) -> Unit) {
     val colors = SamFranTheme.colors
     SamFranCard(spacing = 14) {
         CardTitle(stringResource(R.string.alarm_settings))
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Eyebrow(stringResource(R.string.your_stop))
-                Text(stop.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
-                LinkButton(stringResource(R.string.see_on_map), { onMap(stop.mapLink) })
+        Column {
+            Eyebrow(stringResource(R.string.your_stops))
+            for ((i, s) in all.stops.withIndex()) {
+                if (i > 0) HorizontalDivider(color = colors.divider)
+                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
+                        val when_ = if (s.shifts.isEmpty()) stringResource(R.string.when_picked) else stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) })
+                        Hint(when_ + " · " + Distances.format(s.alertMeters.toFloat()))
+                    }
+                    SecondaryButton(stringResource(R.string.change), { actions.edit(s.id) })
+                }
             }
-            SecondaryButton(stringResource(R.string.change), actions::edit)
+            if (all.stops.size < BusStops.MAX) SecondaryButton(stringResource(R.string.add_a_stop_short), actions::add, Modifier.fillMaxWidth().padding(top = 4.dp))
+            Hint(stringResource(R.string.add_stop_hint), Modifier.padding(top = 6.dp))
         }
-        DistanceChips(stop.alertMeters, actions::setDistance, enabled = !state.savingSettings)
-        BuzzChips(stop.buzz, actions::setBuzz, enabled = !state.savingSettings)
+        BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings)
         HorizontalDivider(color = colors.divider)
         Row(
             Modifier.fillMaxWidth().clickable(role = Role.Switch) { onPrompts(!state.prompts) },
@@ -414,15 +511,53 @@ private fun AlarmSettings(state: BusUiState, stop: BusStop, actions: BusActions,
     }
 }
 
+/** Which kinds of shift a stop is for: four toggles, saying what they mean. */
+@Composable
+private fun ShiftToggles(all: BusStops, editing: Long?, f: StopForm, actions: BusActions) {
+    val colors = SamFranTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.use_after), style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (k in ShiftKinds) {
+                val on = k in f.shifts
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(if (on) colors.accent else colors.sunken)
+                        .clickable(role = Role.Checkbox) { actions.toggleShift(k) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(ShiftCodes.labelOf(k), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
+                }
+            }
+        }
+        val name = f.name.trim().ifEmpty { stringResource(R.string.this_stop) }
+        var hint = if (f.shifts.isEmpty()) stringResource(R.string.use_after_none) else stringResource(R.string.use_after_some, name)
+        val taken = all.stops.filter { s -> s.id != editing && s.shifts.any { it in f.shifts } }
+        if (taken.isNotEmpty()) hint += " " + stringResource(R.string.use_after_taken, taken.joinToString("、") { it.name })
+        Hint(hint)
+    }
+}
+
 /** Choosing the stop: search by name, or (folded away) a Google Maps link to it or where the phone is now. */
 @Composable
-private fun StopFormCard(state: BusUiState, actions: BusActions, onHere: () -> Unit, onMap: (String) -> Unit, map: @Composable (Double, Double, String) -> Unit) {
+private fun StopFormCard(state: BusUiState, all: BusStops, actions: BusActions, onHere: () -> Unit, onMap: (String) -> Unit, map: @Composable (Double, Double, String) -> Unit) {
     val colors = SamFranTheme.colors
     val f = state.form
     val first = !state.ready
+    val editing = all.byId(state.editing ?: BusUiState.NEW)
+    var confirmRemove by rememberSaveable { mutableStateOf(false) }
     SamFranCard(spacing = 14) {
         if (first) Eyebrow(stringResource(R.string.step_1_of_2), color = colors.accentInk)
-        CardTitle(stringResource(R.string.where_get_off))
+        CardTitle(
+            when {
+                editing != null -> editing.name.ifBlank { stringResource(R.string.unnamed_stop) }
+                first -> stringResource(R.string.where_get_off)
+                else -> stringResource(R.string.add_a_stop)
+            },
+        )
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             OutlinedTextField(
                 value = f.name,
@@ -495,15 +630,32 @@ private fun StopFormCard(state: BusUiState, actions: BusActions, onHere: () -> U
         }
         if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
         DistanceChips(f.meters, actions::setMeters)
+        if (!first) ShiftToggles(all, state.editing, f, actions)
         when (val p = f.problem) {
             null -> {}
             StopProblem.NoPosition -> ErrorText(stringResource(R.string.no_position))
             StopProblem.NoHere -> ErrorText(stringResource(R.string.no_here))
             is StopProblem.Server -> p.outcome.problem()?.let { ErrorText(it) }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (editing != null) LinkButton(stringResource(R.string.remove_stop), { confirmRemove = true }, enabled = !f.busy, danger = true)
+            Spacer(Modifier.weight(1f))
             if (state.ready) SecondaryButton(stringResource(R.string.cancel), actions::cancelEdit)
             PrimaryButton(stringResource(R.string.save), actions::saveStop, enabled = !f.busy && f.position != null)
         }
+    }
+    if (confirmRemove && editing != null) {
+        AlertDialog(
+            onDismissRequest = { confirmRemove = false },
+            title = { Text(stringResource(R.string.remove_stop_title, editing.name.ifBlank { stringResource(R.string.unnamed_stop) })) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRemove = false
+                    actions.removeStop()
+                }) { Text(stringResource(R.string.remove), color = colors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.cancel)) } },
+            containerColor = colors.surface,
+        )
     }
 }
