@@ -88,7 +88,8 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) error {
 		in.AlertMeters = 800
 	case in.AlertMeters < 200 || in.AlertMeters > 5000:
 		return httpx.Errorf(http.StatusBadRequest, "ring between 200 m and 5 km before the stop")
-	case in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz):
+	}
+	if in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz) {
 		return httpx.Errorf(http.StatusBadRequest, "buzz must be gentle, strong or strongest")
 	}
 	// A NULL buzz keeps the one saved, or the column's default for a new stop.
