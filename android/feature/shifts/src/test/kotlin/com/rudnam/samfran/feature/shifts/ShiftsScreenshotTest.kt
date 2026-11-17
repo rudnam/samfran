@@ -120,7 +120,7 @@ class ShiftsScreenshotTest {
                 )
             }
         }
-        compose.onNodeWithText("Use the usual days").performScrollTo()
+        compose.onNodeWithText("+ Day").performScrollTo()
         compose.onRoot().captureRoboImage("build/outputs/roborazzi/shifts-edit-closing.png")
     }
 
