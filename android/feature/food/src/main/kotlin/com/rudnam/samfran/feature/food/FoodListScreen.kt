@@ -121,13 +121,14 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                 when {
                     state.all == null -> item(key = "loading") { Skeleton(rows = 4) }
                     state.shown.isEmpty() -> item(key = "empty") {
+                        val filter = state.activeFilter
                         when {
                             state.query.isNotBlank() -> EmptyState(stringResource(R.string.nothing_matches, state.query.trim()), null)
-                            state.activeFilter != null && state.onTab.isNotEmpty() -> Column(
+                            filter != null && state.onTab.isNotEmpty() -> Column(
                                 Modifier.fillMaxWidth(),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                EmptyState(stringResource(R.string.nothing_in_category, stringResource(state.activeFilter.short)), null)
+                                EmptyState(stringResource(R.string.nothing_in_category, stringResource(filter.short)), null)
                                 TextButton(onClick = { actions.setFilter(null) }) { Text(stringResource(R.string.show_all)) }
                             }
                             state.tab == FoodTab.Been -> EmptyState(stringResource(R.string.no_places_yet), stringResource(R.string.add_first_place))
