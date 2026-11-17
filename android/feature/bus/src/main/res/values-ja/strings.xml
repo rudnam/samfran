@@ -39,6 +39,14 @@
     <string name="on_bus_hint">乗ったら「バスに乗った」をタップ。「今すぐ試す」は6秒の練習です。</string>
     <string name="buzz_how_far">バス停のどれくらい手前で振動させるか</string>
     <string name="alarm_settings">アラームの設定</string>
+    <string name="buzz_how">振動の強さ</string>
+    <string name="buzz_gentle">弱め</string>
+    <string name="buzz_strong">強め</string>
+    <string name="buzz_strongest">最強</string>
+    <string name="buzz_gentle_about">短めの振動を、スマホのふだんの強さで。</string>
+    <string name="buzz_strong_about">長めの振動を、最大の強さで。</string>
+    <string name="buzz_strongest_about">最大の強さで、ほとんど休みなく。</string>
+    <string name="buzz_try">「今すぐ試す」で確かめられます。</string>
     <string name="unnamed_stop">名前のないバス停</string>
     <string name="see_on_map">地図で見る</string>
     <string name="change">変更</string>

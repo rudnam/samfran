@@ -216,7 +216,8 @@ export const api = {
   /** Stops and stations whose names match q (2+ characters); near ones first when near is given. */
   searchStops: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundStop[]>('GET', `/api/bus/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
-  saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number }) => request<BusStop>('PUT', '/api/bus/stop', s),
+  /** Without buzz, the buzz stays as it was. */
+  saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number; buzz?: Buzz }) => request<BusStop>('PUT', '/api/bus/stop', s),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
@@ -313,7 +314,12 @@ export interface BusStop {
   lng: number;
   /** Ring this many metres before the stop. */
   alert_meters: number;
+  /** How the phone buzzes at the stop. */
+  buzz: Buzz;
 }
+
+/** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */
+export type Buzz = 'gentle' | 'strong' | 'strongest';
 
 /** A change to what you share, for Recent changes. */
 export interface ActivityEntry {

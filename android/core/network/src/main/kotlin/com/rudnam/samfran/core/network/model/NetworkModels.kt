@@ -3,6 +3,7 @@ package com.rudnam.samfran.core.network.model
 import com.rudnam.samfran.core.model.ActivityDetails
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.McpToken
@@ -276,9 +277,10 @@ data class NetworkBusStop(
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("alert_meters") val alertMeters: Int = 800,
+    val buzz: String = "strong",
 )
 
-fun NetworkBusStop.asModel() = BusStop(set, name, lat, lng, alertMeters)
+fun NetworkBusStop.asModel() = BusStop(set, name, lat, lng, alertMeters, Buzz.from(buzz))
 
 @Serializable
 data class NetworkBusStopInput(
@@ -286,6 +288,8 @@ data class NetworkBusStopInput(
     val lat: Double,
     val lng: Double,
     @SerialName("alert_meters") val alertMeters: Int,
+    /** Left out (null), the server keeps the buzz as it was. */
+    val buzz: String? = null,
 )
 
 @Serializable

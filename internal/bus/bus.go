@@ -1,7 +1,8 @@
 // Package bus keeps where each person gets off the bus, for the Android
 // app's wake-up alarm (android/…/BusTripService.java): during a trip the
 // phone watches its own position and rings when it gets within
-// alert_meters of the stop. The server only stores the stop; positions
+// alert_meters of the stop, and buzzes the way buzz says. The server only
+// stores the stop; positions
 // never leave the phone. Choosing the stop can search for it by name
 // (search.go).
 package bus
@@ -10,6 +11,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -24,7 +26,17 @@ type Stop struct {
 	Lat         float64 `json:"lat"`
 	Lng         float64 `json:"lng"`
 	AlertMeters int     `json:"alert_meters"`
+	// Buzz is how the phone buzzes at the stop: one of Buzzes.
+	Buzz string `json:"buzz"`
 }
+
+// Buzzes are the ways the phone can buzz: "gentle" (short buzzes at the
+// phone's usual strength, as it always did), "strong" (full strength,
+// longer buzzes; the default) and "strongest" (full strength, hardly a
+// pause). The patterns themselves are in the apps.
+var Buzzes = []string{"gentle", "strong", "strongest"}
+
+const defaultBuzz = "strong"
 
 type Handler struct {
 	db *sql.DB
@@ -41,9 +53,9 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 }
 
 func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
-	st := Stop{AlertMeters: 800}
-	err := h.db.QueryRowContext(r.Context(), `SELECT name, lat, lng, alert_meters FROM bus_stops WHERE user_id = $1`,
-		account.UserFrom(r).ID).Scan(&st.Name, &st.Lat, &st.Lng, &st.AlertMeters)
+	st := Stop{AlertMeters: 800, Buzz: defaultBuzz}
+	err := h.db.QueryRowContext(r.Context(), `SELECT name, lat, lng, alert_meters, buzz FROM bus_stops WHERE user_id = $1`,
+		account.UserFrom(r).ID).Scan(&st.Name, &st.Lat, &st.Lng, &st.AlertMeters, &st.Buzz)
 	switch {
 	case err == nil:
 		st.Set = true
@@ -60,6 +72,8 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) error {
 		Lat         *float64 `json:"lat"`
 		Lng         *float64 `json:"lng"`
 		AlertMeters int      `json:"alert_meters"`
+		// Left out (as older apps do), the buzz stays as it was.
+		Buzz *string `json:"buzz"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -74,11 +88,15 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) error {
 		in.AlertMeters = 800
 	case in.AlertMeters < 200 || in.AlertMeters > 5000:
 		return httpx.Errorf(http.StatusBadRequest, "ring between 200 m and 5 km before the stop")
+	case in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz):
+		return httpx.Errorf(http.StatusBadRequest, "buzz must be gentle, strong or strongest")
 	}
+	// A NULL buzz keeps the one saved, or the column's default for a new stop.
 	if _, err := h.db.ExecContext(r.Context(), `
-		INSERT INTO bus_stops (user_id, name, lat, lng, alert_meters) VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (user_id) DO UPDATE SET name = $2, lat = $3, lng = $4, alert_meters = $5, updated_at = now()`,
-		account.UserFrom(r).ID, name, *in.Lat, *in.Lng, in.AlertMeters); err != nil {
+		INSERT INTO bus_stops (user_id, name, lat, lng, alert_meters, buzz) VALUES ($1, $2, $3, $4, $5, COALESCE($6, 'strong'))
+		ON CONFLICT (user_id) DO UPDATE SET name = $2, lat = $3, lng = $4, alert_meters = $5,
+			buzz = COALESCE($6, bus_stops.buzz), updated_at = now()`,
+		account.UserFrom(r).ID, name, *in.Lat, *in.Lng, in.AlertMeters, in.Buzz); err != nil {
 		return err
 	}
 	return h.get(w, r)

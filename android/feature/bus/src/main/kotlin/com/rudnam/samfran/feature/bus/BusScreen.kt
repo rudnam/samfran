@@ -63,6 +63,7 @@ import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.Early
 import com.rudnam.samfran.core.model.mapLink
@@ -344,7 +345,44 @@ private fun DistanceChips(value: Int, onPick: (Int) -> Unit, enabled: Boolean = 
     }
 }
 
-/** The stop, how early it buzzes (saved as it's picked) and the question at the end of a shift. */
+@Composable
+private fun BuzzChips(value: Buzz, onPick: (Buzz) -> Unit, enabled: Boolean = true) {
+    val colors = SamFranTheme.colors
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.buzz_how), style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (b in Buzz.entries) {
+                val on = b == value
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clip(MaterialTheme.shapes.small)
+                        .background(if (on) colors.accent else colors.sunken)
+                        .clickable(enabled = enabled, role = Role.RadioButton) { onPick(b) }
+                        .padding(vertical = 12.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(stringResource(buzzName(b)), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
+                }
+            }
+        }
+        Hint(stringResource(buzzAbout(value)) + " " + stringResource(R.string.buzz_try))
+    }
+}
+
+private fun buzzName(b: Buzz) = when (b) {
+    Buzz.Gentle -> R.string.buzz_gentle
+    Buzz.Strong -> R.string.buzz_strong
+    Buzz.Strongest -> R.string.buzz_strongest
+}
+
+private fun buzzAbout(b: Buzz) = when (b) {
+    Buzz.Gentle -> R.string.buzz_gentle_about
+    Buzz.Strong -> R.string.buzz_strong_about
+    Buzz.Strongest -> R.string.buzz_strongest_about
+}
+
+/** The stop, how early and how it buzzes (saved as they're picked) and the question at the end of a shift. */
 @Composable
 private fun AlarmSettings(state: BusUiState, stop: BusStop, actions: BusActions, onPrompts: (Boolean) -> Unit, onMap: (String) -> Unit) {
     val colors = SamFranTheme.colors
@@ -358,7 +396,8 @@ private fun AlarmSettings(state: BusUiState, stop: BusStop, actions: BusActions,
             }
             SecondaryButton(stringResource(R.string.change), actions::edit)
         }
-        DistanceChips(stop.alertMeters, actions::setDistance, enabled = !state.savingDistance)
+        DistanceChips(stop.alertMeters, actions::setDistance, enabled = !state.savingSettings)
+        BuzzChips(stop.buzz, actions::setBuzz, enabled = !state.savingSettings)
         HorizontalDivider(color = colors.divider)
         Row(
             Modifier.fillMaxWidth().clickable(role = Role.Switch) { onPrompts(!state.prompts) },

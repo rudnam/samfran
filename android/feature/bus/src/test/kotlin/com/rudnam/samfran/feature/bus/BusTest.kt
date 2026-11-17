@@ -8,6 +8,7 @@ import androidx.navigation.testing.invoke
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.testing.FakeBusAlarm
@@ -58,6 +59,7 @@ class BusScreenshotTest {
         override fun endPractice() {}
         override fun setPrompts(on: Boolean) {}
         override fun setDistance(meters: Int) {}
+        override fun setBuzz(buzz: Buzz) {}
         override fun edit() {}
         override fun cancelEdit() {}
         override fun setName(name: String) {}
@@ -150,6 +152,10 @@ class BusViewModelTest {
         assertFalse(vm.state.value.trip.running)
         vm.setDistance(1500)
         assertEquals(1500, bus.stopFlow.value?.alertMeters)
+        assertEquals(Buzz.Strong, bus.stopFlow.value?.buzz) // kept
+        vm.setBuzz(Buzz.Strongest)
+        assertEquals(Buzz.Strongest, bus.stopFlow.value?.buzz)
+        assertEquals(1500, bus.stopFlow.value?.alertMeters) // kept
     }
 
     @Test
@@ -182,6 +188,7 @@ class BusViewModelTest {
         advanceTimeBy(BusViewModel.PRACTICE_MS + 50)
         assertEquals(Practice.Buzzing, vm.state.value.practice)
         assertEquals(listOf("葵西"), alarm.tests)
+        assertEquals(Buzz.Strong, alarm.testBuzz) // the stop's
         vm.stopBuzz()
         assertEquals(Practice.Done, vm.state.value.practice)
         vm.endPractice()

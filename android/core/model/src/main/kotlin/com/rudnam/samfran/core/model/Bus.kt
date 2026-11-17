@@ -12,9 +12,30 @@ data class BusStop(
     val lng: Double = 0.0,
     /** Buzz this many metres before the stop. */
     val alertMeters: Int = 800,
+    /** How the phone buzzes there. */
+    val buzz: Buzz = Buzz.Strong,
 ) {
     /** The stop on Google Maps. */
     val mapLink: String get() = mapLink(lat, lng)
+}
+
+/**
+ * How the phone buzzes at the stop ("buzz" in /api/bus/stop): [onMs] on,
+ * then [offMs] off, on repeat; at the phone's full strength when [full],
+ * where the phone can set it, or else at its usual strength. The website's
+ * practice run vibrates the same lengths (web/src/features/bus/BusPage.tsx).
+ */
+enum class Buzz(val api: String, val onMs: Long, val offMs: Long, val full: Boolean) {
+    /** How it always buzzed. */
+    Gentle("gentle", 800, 600, full = false),
+    Strong("strong", 1000, 300, full = true),
+    Strongest("strongest", 2000, 100, full = true),
+    ;
+
+    companion object {
+        /** An unknown one (from a newer server) is the default. */
+        fun from(api: String?): Buzz = entries.firstOrNull { it.api == api } ?: Strong
+    }
 }
 
 /** A stop or station whose name matches what's typed (GET /api/bus/search). */
