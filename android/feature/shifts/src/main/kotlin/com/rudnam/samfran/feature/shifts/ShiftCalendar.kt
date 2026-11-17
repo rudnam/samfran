@@ -84,7 +84,7 @@ fun isClosingDay(date: LocalDate, closing: List<Int>): Boolean = closing.any { m
 
 /** The red dot that marks a 締め申請通知 day (.cal-flag). */
 @Composable
-private fun ClosingFlag(modifier: Modifier = Modifier) {
+internal fun ClosingFlag(modifier: Modifier = Modifier) {
     Box(modifier.size(7.dp).clip(CircleShape).background(SamFranTheme.colors.danger))
 }
 

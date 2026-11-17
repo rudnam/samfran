@@ -176,6 +176,7 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     var savedWith: Map<LocalDate, List<String>>? = null
     var savedCorrections: Map<String, String>? = null
     var savedOthers: Map<LocalDate, List<ShiftCoworker>>? = null
+    var savedClosing: List<Int>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -190,6 +191,7 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         codes: Map<LocalDate, String>,
         with: Map<LocalDate, List<String>>,
         corrections: Map<String, String>,
+        closingDays: List<Int>?,
         others: Map<LocalDate, List<ShiftCoworker>>,
     ): Outcome<ShiftMonth> {
         next?.let { return it }
@@ -197,7 +199,8 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         savedWith = with
         savedCorrections = corrections
         savedOthers = others
-        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
+        savedClosing = closingDays
+        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty(), closingDays = closingDays ?: months.value[month]?.closingDays)
         months.value = months.value + (month to m)
         return Outcome.Done(m)
     }

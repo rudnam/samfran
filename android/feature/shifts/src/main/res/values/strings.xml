@@ -72,4 +72,8 @@
     <string name="who_with_on">Who’s with you on %s</string>
     <string name="who_with_hint">Separate names with commas, or tap them below</string>
     <string name="done">Done</string>
+    <string name="use_usual_days">Use the usual days</string>
+    <string name="closing_usual_hint">The usual days, from Settings. Change them here for %1$s only.</string>
+    <string name="closing_own_hint">Only for %1$s. Other months keep the usual days.</string>
+    <string name="no_closing_this_month">No 締め申請通知 this month.</string>
 </resources>

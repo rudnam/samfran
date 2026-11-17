@@ -144,7 +144,7 @@ export function ShiftsPage({ month }: { month?: string }) {
             key={data.month}
             month={data.month}
             days={data.days}
-            closing={data.settings.closing_days ?? [15, 31]}
+            closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]}
             who={me}
             everyone={everyone}
             onEveryone={showEveryone}

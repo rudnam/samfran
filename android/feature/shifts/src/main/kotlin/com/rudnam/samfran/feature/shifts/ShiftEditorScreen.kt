@@ -1,6 +1,14 @@
 package com.rudnam.samfran.feature.shifts
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.draw.clip
+import com.rudnam.samfran.core.designsystem.component.Hint
+import com.rudnam.samfran.core.designsystem.component.LinkButton
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -200,7 +208,56 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                 }
             }
         }
+        state.closing?.let { ClosingCard(it, state, actions) }
         state.problem?.let { ErrorText(problemText(it)) }
+    }
+}
+
+/**
+ * 締め申請通知 for this month: the days its hours are sent in, saved with its
+ * shifts. Each is picked from the month's dates; the usual days are in Settings.
+ */
+@Composable
+private fun ClosingCard(days: List<Int>, state: ShiftEditorUiState, actions: ShiftEditorActions) {
+    val colors = SamFranTheme.colors
+    val locale = currentLocale
+    val month = Dates.month(state.month, locale)
+    SamFranCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ClosingFlag()
+            Text(stringResource(R.string.hours_due), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            if (!state.closingIsUsual) LinkButton(stringResource(R.string.use_usual_days), actions::usualClosing)
+        }
+        Hint(stringResource(if (state.closingIsUsual) R.string.closing_usual_hint else R.string.closing_own_hint, month))
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+            days.forEachIndexed { i, day ->
+                var open by remember { mutableStateOf(false) }
+                val name = Dates.day(state.month.atDay(day), locale)
+                Row(
+                    Modifier.clip(RoundedCornerShape(12.dp)).border(1.dp, colors.divider, RoundedCornerShape(12.dp)),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box {
+                        Text(
+                            name,
+                            Modifier
+                                .clickable(onClickLabel = stringResource(R.string.closing_day_n, i + 1)) { open = true }
+                                .padding(start = 14.dp, end = 4.dp, top = 10.dp, bottom = 10.dp),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                            for (date in state.dates) {
+                                DropdownMenuItem(text = { Text(Dates.day(date, locale)) }, onClick = { actions.setClosing(i, date.dayOfMonth); open = false })
+                            }
+                        }
+                    }
+                    IconButton(onClick = { actions.removeClosing(i) }) { LineIcon(SamFranIcons.close, stringResource(R.string.remove_closing_day, name), tint = colors.muted) }
+                }
+            }
+            if (days.size < 10) LinkButton("+ " + stringResource(R.string.day), actions::addClosing)
+        }
+        if (days.isEmpty()) Text(stringResource(R.string.no_closing_this_month), style = MaterialTheme.typography.bodySmall, color = colors.muted)
     }
 }
 

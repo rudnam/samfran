@@ -43,13 +43,16 @@ interface ShiftsRepository {
      * Saves a month's codes (empty ones are left out), with who's on the
      * same shift for the days whose code is as it was read or saved.
      * [corrections] are names the photo reader got wrong (as read to as
-     * fixed), so later scans get them right.
+     * fixed), so later scans get them right. [closingDays], if given, are
+     * this month's 締め申請通知 days (dates in it); the usual days make it
+     * follow the settings again.
      */
     suspend fun save(
         month: YearMonth,
         codes: Map<LocalDate, String>,
         with: Map<LocalDate, List<String>> = emptyMap(),
         corrections: Map<String, String> = emptyMap(),
+        closingDays: List<Int>? = null,
         /** Others at work around each day, as read or saved; the server keeps those who overlap. */
         others: Map<LocalDate, List<ShiftCoworker>> = emptyMap(),
     ): Outcome<ShiftMonth>
@@ -124,6 +127,7 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         codes: Map<LocalDate, String>,
         with: Map<LocalDate, List<String>>,
         corrections: Map<String, String>,
+        closingDays: List<Int>?,
         others: Map<LocalDate, List<ShiftCoworker>>,
     ) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
@@ -137,7 +141,7 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
             }
         }
         val fixes = corrections.map { (from, to) -> NetworkNameFix(from, to) }.takeIf { it.isNotEmpty() }
-        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes))
+        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes, closingDays))
         keep(saved)
         // The current month's copy, if this is it.
         documents.get(key(null), serializer)?.takeIf { it.month == saved.month }?.let { documents.put(key(null), serializer, saved) }

@@ -99,6 +99,58 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(cal.locator('.cal-flag')).toHaveCount(0);
 });
 
+test('change the 締め申請通知 days for one month, next to its shifts', async ({ page }) => {
+  await signUp(page);
+  const month = thisMonth();
+  const [y, m] = month.split('-').map(Number);
+  const last = new Date(y, m, 0).getDate();
+  await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  await page.getByRole('link', { name: 'Edit by hand' }).click();
+
+  // The usual days (the 15th and the last day) to start with.
+  const box = page.getByRole('group', { name: 'Hours due (締め申請通知)' });
+  await expect(box.getByRole('combobox', { name: 'Closing day 1' })).toHaveValue('15');
+  await expect(box.getByRole('combobox', { name: 'Closing day 2' })).toHaveValue(String(last));
+  await expect(box).toContainText('The usual days');
+  await expect(box.getByRole('button', { name: 'Use the usual days' })).toHaveCount(0);
+
+  // This month only: the 20th instead of the 15th, saved with a shift.
+  await page.getByRole('list', { name: 'Days' }).getByRole('listitem').nth(0).getByRole('combobox').fill('13F');
+  await box.getByRole('combobox', { name: 'Closing day 1' }).selectOption('20');
+  await expect(box).toContainText('Only for');
+  await page.getByRole('button', { name: /^Save / }).click();
+  const cal = page.getByRole('group', { name: 'Calendar' });
+  await expect(cal.locator('.cal-flag')).toHaveCount(2);
+  await expect(cal.getByRole('button', { name: /^20 \S+: Nothing entered, Hours due/ })).toBeVisible();
+  await expect(cal.getByRole('button', { name: /^15 \S+: Nothing entered$/ })).toBeVisible();
+
+  // Next month keeps the usual days.
+  await page.getByRole('link', { name: 'Next month' }).click();
+  await expect(page).toHaveURL(/month=/);
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  const nextMonth = await (await page.request.get(`/api/shifts?month=${next}`)).json();
+  expect(nextMonth.closing_days[0]).toBe(15);
+  expect(nextMonth.closing_custom).toBe(false);
+
+  // The calendar link has this month's 20th, not its 15th.
+  const settings = await (await page.request.post('/api/shifts/feed')).json();
+  const feed = await (await page.request.get(settings.feed_path)).text();
+  const ymd = month.replace('-', '');
+  expect(feed).toContain(`DTSTART;VALUE=DATE:${ymd}20\r\nDTEND;VALUE=DATE:${ymd}21\r\nSUMMARY:締め申請通知`);
+  expect(feed).not.toContain(`DTSTART;VALUE=DATE:${ymd}15\r\nDTEND;VALUE=DATE:${ymd}16\r\nSUMMARY:締め申請通知`);
+
+  // Back to the usual days.
+  await page.getByRole('link', { name: 'Previous month' }).click();
+  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await expect(box).toContainText('Only for');
+  await box.getByRole('button', { name: 'Use the usual days' }).click();
+  await expect(box.getByRole('combobox', { name: 'Closing day 1' })).toHaveValue('15');
+  await page.getByRole('button', { name: /^Save / }).click();
+  await expect(cal.getByRole('button', { name: /^15 \S+: Nothing entered, Hours due/ })).toBeVisible();
+  expect((await (await page.request.get(`/api/shifts?month=${month}`)).json()).closing_custom).toBe(false);
+});
+
 test('see who else is on the same shift, and lose them when the shift changes', async ({ page }) => {
   await signUp(page);
   const month = thisMonth();
