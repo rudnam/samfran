@@ -8,6 +8,12 @@ package restaurant
 // first: the web page sends the person's bus stop, if they have one, so the
 // branch in their own town wins over one across the country.
 //
+// Romaji works when OpenStreetMap has a Latin name for the place (name:en
+// and the like), which chains mostly do: "sukiya" finds すき家, "coco ichi"
+// CoCo壱番屋. A local shop with only a Japanese name isn't found by romaji;
+// Photon has no readings, and spelling romaji out in kana doesn't help, since
+// most names are kanji ("matsuya" finds 松屋, "まつや" other shops).
+//
 // What goes to Photon: the text typed and that position; nothing else. The
 // form credits OpenStreetMap, as its licence asks.
 
@@ -85,6 +91,10 @@ func (s *placeSearch) search(ctx context.Context, q string, near *[2]float64) ([
 	if near != nil {
 		v.Set("lat", strconv.FormatFloat(near[0], 'f', 4, 64))
 		v.Set("lon", strconv.FormatFloat(near[1], 'f', 4, 64))
+		// Rank by distance and match, not how well known a place is: without
+		// this, "ラーメン" near Hamamatsu put places 80 km away first, ahead of
+		// eight ramen shops in town (tried on Photon, November 2026).
+		v.Set("location_bias_scale", "0")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.base+"?"+v.Encode(), nil)
 	if err != nil {

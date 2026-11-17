@@ -19,6 +19,7 @@ import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.AppUpdate
 import com.rudnam.samfran.core.model.AuthOptions
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
@@ -204,9 +205,9 @@ class FakeBusRepository(stop: BusStop? = Samples.stop) : BusRepository {
 
     override val stop: Flow<BusStop?> = stopFlow
     override suspend fun refresh(): Outcome<BusStop> = next ?: Outcome.Done(stopFlow.value ?: BusStop(set = false))
-    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int): Outcome<BusStop> {
+    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz?): Outcome<BusStop> {
         next?.let { return it }
-        return BusStop(true, name, lat, lng, alertMeters).also { stopFlow.value = it }.let { Outcome.Done(it) }
+        return BusStop(true, name, lat, lng, alertMeters, buzz ?: stopFlow.value?.buzz ?: Buzz.Strong).also { stopFlow.value = it }.let { Outcome.Done(it) }
     }
     override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>> =
         next ?: Outcome.Done(found.filter { it.name.contains(query) })
@@ -216,6 +217,7 @@ class FakeBusAlarm(status: TripStatus = TripStatus()) : BusAlarm {
     override val status = MutableStateFlow(status)
     var here: Pair<Double, Double>? = 34.97 to 138.38
     val tests = mutableListOf<String>()
+    var testBuzz: Buzz? = null
 
     override fun start(stop: BusStop) {
         status.value = TripStatus(running = true)
@@ -226,8 +228,9 @@ class FakeBusAlarm(status: TripStatus = TripStatus()) : BusAlarm {
     override fun stopBuzz() {
         status.value = TripStatus()
     }
-    override fun test(stopName: String) {
+    override fun test(stopName: String, buzz: Buzz) {
         tests += stopName
+        testBuzz = buzz
     }
     override suspend fun here() = here
 }

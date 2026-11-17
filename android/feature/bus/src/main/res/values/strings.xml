@@ -39,6 +39,14 @@
     <string name="on_bus_hint">Tap “I’m on the bus” when you get on. “Try it now” is a six-second practice.</string>
     <string name="buzz_how_far">Buzz this far before the stop</string>
     <string name="alarm_settings">Alarm settings</string>
+    <string name="buzz_how">How it buzzes</string>
+    <string name="buzz_gentle">Gentle</string>
+    <string name="buzz_strong">Strong</string>
+    <string name="buzz_strongest">Strongest</string>
+    <string name="buzz_gentle_about">Short buzzes, at the phone’s usual strength.</string>
+    <string name="buzz_strong_about">Longer buzzes, at full strength.</string>
+    <string name="buzz_strongest_about">Full strength, with hardly a pause.</string>
+    <string name="buzz_try">Try it now to feel it.</string>
     <string name="unnamed_stop">Unnamed stop</string>
     <string name="see_on_map">See it on the map</string>
     <string name="change">Change</string>

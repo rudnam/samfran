@@ -22,6 +22,7 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.TripStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +33,8 @@ import kotlinx.coroutines.flow.update
 /**
  * A bus trip: while it runs, the phone watches its position (GPS, the
  * network as a fallback) and, once it's within the alert distance of the
- * stop, buzzes: the phone vibrates, with no sound, until "I'm up" is tapped,
+ * stop, buzzes: the phone vibrates, with no sound and the way the stop's
+ * buzz says, until "I'm up" is tapped,
  * the notification is swiped away or SamFran is opened (or for ten minutes
  * at most). The service stays until then, so the buzzing isn't cut short.
  * It's a foreground service, so it shows a notification for as long as it
@@ -46,6 +48,7 @@ class BusTripService : Service(), LocationListener {
     private var lat = 0.0
     private var lng = 0.0
     private var radius = 800f
+    private var buzz = Buzz.Strong
     private var locations: LocationManager? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { stopSelf() }
@@ -61,6 +64,7 @@ class BusTripService : Service(), LocationListener {
         lng = intent.getDoubleExtra(EXTRA_LNG, 0.0)
         radius = intent.getFloatExtra(EXTRA_RADIUS, 800f)
         stopName = intent.getStringExtra(EXTRA_NAME).orEmpty()
+        buzz = Buzz.from(intent.getStringExtra(EXTRA_BUZZ))
         channels(this)
         val n = tripNotification(getString(R.string.trip_starting))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -94,7 +98,7 @@ class BusTripService : Service(), LocationListener {
         if (d[0] <= radius) {
             // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
             locations?.removeUpdates(this)
-            ring(this, stopName)
+            ring(this, stopName, buzz)
             return
         }
         getSystemService(NotificationManager::class.java)
@@ -140,6 +144,7 @@ class BusTripService : Service(), LocationListener {
         const val EXTRA_LNG = "lng"
         const val EXTRA_RADIUS = "radius"
         const val EXTRA_NAME = "name"
+        const val EXTRA_BUZZ = "buzz"
 
         private const val TRIP_CHANNEL = "trip"
         private const val ALARM_CHANNEL = "nearly"
@@ -181,15 +186,22 @@ class BusTripService : Service(), LocationListener {
          * Buzzes: vibrates on repeat, with a notification whose "I'm up" button
          * (or swiping it away, or opening SamFran) stops it. Ten minutes at most.
          */
-        fun ring(c: Context, name: String) {
+        fun ring(c: Context, name: String, buzz: Buzz) {
             val app = c.applicationContext
             channels(app)
-            val pattern = VibrationEffect.createWaveform(longArrayOf(0, 800, 600), 0)
+            val v = vibrator(app)
+            val timings = longArrayOf(0, buzz.onMs, buzz.offMs)
+            // Without a strength, Android uses the phone's usual one, which on many is well below its most.
+            val pattern = if (buzz.full && v.hasAmplitudeControl()) {
+                VibrationEffect.createWaveform(timings, intArrayOf(0, 255, 0), 0)
+            } else {
+                VibrationEffect.createWaveform(timings, 0)
+            }
             if (Build.VERSION.SDK_INT >= 33) {
-                vibrator(app).vibrate(pattern, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
+                v.vibrate(pattern, VibrationAttributes.createForUsage(VibrationAttributes.USAGE_ALARM))
             } else {
                 @Suppress("DEPRECATION")
-                vibrator(app).vibrate(pattern, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
+                v.vibrate(pattern, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
             }
             state.update { it.copy(buzzing = true) }
             val stop = PendingIntent.getBroadcast(app, 3, Intent(app, StopBuzzReceiver::class.java), PendingIntent.FLAG_IMMUTABLE)

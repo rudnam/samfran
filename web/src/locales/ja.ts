@@ -344,6 +344,7 @@ export const ja = {
   'Step 2 of 2': 'ステップ 2/2',
   'Can’t find it? Other ways': '見つからない場合は別の方法で',
   '{stop} on the map': '地図で{stop}を見る',
+<<<<<<< HEAD
   // The Food field, filled in from the kind of place picked from the search
   Café: 'カフェ',
   Bar: 'バー',
@@ -355,6 +356,17 @@ export const ja = {
   Bakery: 'パン屋',
   Pastries: '洋菓子',
   Sweets: 'スイーツ',
+=======
+  // The bus alarm: how it buzzes
+  'How it buzzes': '振動の強さ',
+  Gentle: '弱め',
+  Strong: '強め',
+  Strongest: '最強',
+  'Short buzzes, at the phone’s usual strength.': '短めの振動を、スマホのふだんの強さで。',
+  'Longer buzzes, at full strength.': '長めの振動を、最大の強さで。',
+  'Full strength, with hardly a pause.': '最大の強さで、ほとんど休みなく。',
+  'Try it now to feel it.': '「今すぐ試す」で確かめられます。',
+>>>>>>> origin/main
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -415,4 +427,5 @@ export const jaServer = {
   "that photo isn't being read any more; send it again": 'その写真はもう読み込まれていません。もう一度送ってください',
   'a closing day must be from 1 to 31 (31 is the last day of any month)': '締め日は1〜31で指定してください（31は月末です）',
   'at most 10 closing days': '締め日は10日までです',
+  'buzz must be gentle, strong or strongest': '振動は弱め・強め・最強のどれかにしてください',
 } as const;

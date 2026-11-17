@@ -3,6 +3,7 @@ package com.rudnam.samfran.core.data
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.network.SamFranNetwork
@@ -21,7 +22,8 @@ interface BusRepository {
 
     suspend fun refresh(): Outcome<BusStop>
 
-    suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int): Outcome<BusStop>
+    /** Without [buzz], it stays as it was. */
+    suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz? = null): Outcome<BusStop>
 
     /** Stops and stations whose names match [query] (2+ characters); near ones first when [near] is given. */
     suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>>
@@ -39,8 +41,8 @@ internal class OfflineFirstBusRepository @Inject constructor(
         network.busStop().also { documents.put(Keys.BUS_STOP, NetworkBusStop.serializer(), it) }.asModel()
     }
 
-    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int) = outcome(io) {
-        network.saveBusStop(NetworkBusStopInput(name.trim(), lat, lng, alertMeters))
+    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz?) = outcome(io) {
+        network.saveBusStop(NetworkBusStopInput(name.trim(), lat, lng, alertMeters, buzz?.api))
             .also { documents.put(Keys.BUS_STOP, NetworkBusStop.serializer(), it) }.asModel()
     }
 
@@ -64,8 +66,8 @@ interface BusAlarm {
     /** "I'm up": stops buzzing, and the trip with it. */
     fun stopBuzz()
 
-    /** Buzzes now, to feel what it's like. */
-    fun test(stopName: String)
+    /** Buzzes now, the way [buzz] says, to feel what it's like. */
+    fun test(stopName: String, buzz: Buzz)
 
     /** Where the phone is now (to choose the stop while standing at it); null if it can't tell. */
     suspend fun here(): Pair<Double, Double>?

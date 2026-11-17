@@ -80,6 +80,7 @@ object ServerText {
         "that photo isn't being read any more; send it again" to "その写真はもう読み込まれていません。もう一度送ってください",
         "a closing day must be from 1 to 31 (31 is the last day of any month)" to "締め日は1〜31で指定してください（31は月末です）",
         "at most 10 closing days" to "締め日は10日までです",
+        "buzz must be gentle, strong or strongest" to "振動は弱め・強め・最強のどれかにしてください",
         "month must be YYYY-MM" to "月は YYYY-MM の形式で指定してください",
         "every day must be in {month}" to "すべての日付を{month}の中にしてください",
         "a shift code must be at most {max} characters" to "シフト記号は{max}文字以内にしてください",
