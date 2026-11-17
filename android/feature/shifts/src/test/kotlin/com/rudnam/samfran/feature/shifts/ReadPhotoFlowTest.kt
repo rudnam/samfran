@@ -5,11 +5,14 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import androidx.test.core.app.ApplicationProvider
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.ShiftsRepository
+import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.testing.FakeShiftsRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.TestPreferences
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -22,6 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.time.Clock
+import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -69,5 +73,27 @@ class ReadPhotoFlowTest {
         backgroundScope.launch { vm.state.collect {} } // as the page does
         assertNotNull(vm.state.value.problem)
         assertNull(photos.photo.value)
+    }
+
+    @Test
+    fun `the next shift is there before the server answers`() = runTest(UnconfinedTestDispatcher()) {
+        val saved = FakeShiftsRepository()
+        val now = ZonedDateTime.of(2026, 11, 16, 9, 0, 0, 0, ZoneId.of("Asia/Tokyo")).toInstant()
+        // The server takes its time (a phone on mobile data): the page shouldn't wait for it, then jump.
+        val slow = object : ShiftsRepository by saved {
+            override suspend fun nextShift(now: Instant): ShiftDay? = awaitCancellation()
+        }
+        val vm = ShiftsViewModel(
+            SavedStateHandle(ShiftsRoute()),
+            slow,
+            TestPreferences.repository(),
+            ApplicationProvider.getApplicationContext(),
+            Dispatchers.Unconfined,
+            Clock.fixed(now, ZoneId.of("Asia/Tokyo")),
+            photos,
+        )
+        backgroundScope.launch { vm.state.collect {} }
+        assertNotNull(vm.state.value.next)
+        assertEquals(saved.nextShift(now), vm.state.value.next)
     }
 }
