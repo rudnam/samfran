@@ -344,7 +344,6 @@ export const ja = {
   'Step 2 of 2': 'ステップ 2/2',
   'Can’t find it? Other ways': '見つからない場合は別の方法で',
   '{stop} on the map': '地図で{stop}を見る',
-<<<<<<< HEAD
   // The Food field, filled in from the kind of place picked from the search
   Café: 'カフェ',
   Bar: 'バー',
@@ -356,7 +355,6 @@ export const ja = {
   Bakery: 'パン屋',
   Pastries: '洋菓子',
   Sweets: 'スイーツ',
-=======
   // The bus alarm: how it buzzes
   'How it buzzes': '振動の強さ',
   Gentle: '弱め',
@@ -366,7 +364,6 @@ export const ja = {
   'Longer buzzes, at full strength.': '長めの振動を、最大の強さで。',
   'Full strength, with hardly a pause.': '最大の強さで、ほとんど休みなく。',
   'Try it now to feel it.': '「今すぐ試す」で確かめられます。',
->>>>>>> origin/main
 } as const;
 
 // The server's messages, which are written in English (internal/, the
