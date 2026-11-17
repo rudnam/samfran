@@ -102,8 +102,9 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 		"input":                q,
 		"includedPrimaryTypes": googleFood,
 		"includedRegionCodes":  []string{"jp"},
-		"languageCode":         lang,
-		"regionCode":           "jp",
+		// Names in Japanese, as on the shop's sign, whatever the app's language.
+		"languageCode": "ja",
+		"regionCode":   "jp",
 	}
 	if near != nil {
 		body["locationBias"] = map[string]any{"circle": map[string]any{
@@ -173,6 +174,15 @@ func suggestedKind(types []string) string {
 	return "restaurant"
 }
 
+// typeInEnglish spells out a place type: "ramen_restaurant" → "Ramen restaurant".
+func typeInEnglish(t string) string {
+	s := strings.ReplaceAll(t, "_", " ")
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
+}
+
 // mapLink is the place's Google Maps link without the tracking Google adds
 // (…/?cid=123&g_mp=…): just its cid, which is all Maps needs.
 func mapLink(uri string) string {
@@ -208,9 +218,13 @@ func shortAddress(s string) string {
 }
 
 // details is the picked place: name, area, street, position, Google Maps
-// link and, when its type says something about the food, Food.
+// link and, when its type says something about the food, Food. The name and
+// address are always in Japanese, as on the shop's sign and in Maps; Food is
+// in lang: Google's own words in Japanese, or the type spelled out in English
+// ("ramen_restaurant" → "Ramen restaurant", as Google words it), so one
+// request serves both.
 func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (FoundPlace, error) {
-	v := url.Values{"languageCode": {lang}, "regionCode": {"jp"}}
+	v := url.Values{"languageCode": {"ja"}, "regionCode": {"jp"}}
 	if session != "" {
 		v.Set("sessionToken", session)
 	}
@@ -263,6 +277,9 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 	food := ""
 	if p.PrimaryType != "" && !slices.Contains(plainTypes, p.PrimaryType) {
 		food = p.PrimaryTypeDisplayName.Text
+		if lang != "ja" {
+			food = typeInEnglish(p.PrimaryType)
+		}
 	}
 	return FoundPlace{
 		Name:    p.DisplayName.Text,

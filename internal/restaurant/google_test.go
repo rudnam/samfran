@@ -173,3 +173,31 @@ func TestSuggestedKind(t *testing.T) {
 		}
 	}
 }
+
+func TestDetailsAlwaysInJapaneseFoodInTheAppsLanguage(t *testing.T) {
+	srv, reqs, bodies := fakeGoogle(t, false)
+	h := NewHandler(nil)
+	h.UseGoogle("k", srv.URL+"/")
+
+	// Someone using the app in English.
+	rec := httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/api/restaurants/place/ChIJishimatsu1?lang=en", nil)
+	r.SetPathValue("id", "ChIJishimatsu1")
+	if err := h.placeHandler(rec, r); err != nil {
+		t.Fatal(err)
+	}
+	var p FoundPlace
+	json.Unmarshal(rec.Body.Bytes(), &p)
+	if p.Name != "石松 JR浜松駅店" || p.Area != "浜松市 中央区" || p.Food != "Chinese restaurant" {
+		t.Errorf("in English: %+v", p)
+	}
+	if lang := (*reqs)[0].URL.Query().Get("languageCode"); lang != "ja" {
+		t.Errorf("details asked in %q, want ja", lang)
+	}
+
+	rec = httptest.NewRecorder()
+	h.suggestHandler(rec, httptest.NewRequest("GET", "/api/restaurants/suggest?q=ishimatsu&lang=en", nil))
+	if len(*bodies) != 2 || (*bodies)[1]["languageCode"] != "ja" {
+		t.Errorf("suggestions asked in %v, want ja", (*bodies)[len(*bodies)-1]["languageCode"])
+	}
+}
