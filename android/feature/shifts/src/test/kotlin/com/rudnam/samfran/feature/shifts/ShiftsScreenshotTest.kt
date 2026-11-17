@@ -133,6 +133,33 @@ class ShiftsScreenshotTest {
         )
     }
 
+    /** A busy month: several people on a shift, shown and open to edit. */
+    private val crowded = read.copy(
+        days = read.days.map {
+            when (it.date.dayOfMonth) {
+                2 -> it.copy(with = listOf("タナカ ユイ", "スズキ ケン", "ヤマモト アオイ", "サトウ ハナ", "ナカムラ ショウタロウ"))
+                3 -> it.copy(with = listOf("スズキ ケン", "ヤマモト アオイ", "イトウ メグミ", "コバヤシ ダイスケ"))
+                else -> it
+            }
+        },
+    )
+
+    @Test
+    fun severalCoworkers() = shot("check-many") {
+        ShiftEditorScreen(ShiftEditorUiState(crowded.month, base = crowded, codes = crowded.days.associate { it.date to it.code }), editor, {})
+    }
+
+    @Test
+    fun editingSeveralCoworkers() = shot("check-many-names") {
+        ShiftEditorScreen(
+            ShiftEditorUiState(
+                crowded.month, base = crowded, codes = crowded.days.associate { it.date to it.code },
+                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
+            ),
+            editor, {},
+        )
+    }
+
     private val settingsState = ShiftSettingsUiState(
         settings = Samples.settings.copy(feedPath = "/calendar/abc123.ics"),
         person = "Sam",
