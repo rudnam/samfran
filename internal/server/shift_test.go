@@ -192,7 +192,6 @@ func TestShifts(t *testing.T) {
 		t.Errorf("November follows the settings: %v", month.ClosingDays)
 	}
 
-
 	// Another space sees none of it.
 	other := newClient(t, ts)
 	other.signup("x@example.com")
