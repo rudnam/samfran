@@ -23,8 +23,10 @@ import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
+import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.RestaurantFields
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
@@ -173,6 +175,7 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     var saved: Map<LocalDate, String>? = null
     var savedWith: Map<LocalDate, List<String>>? = null
     var savedCorrections: Map<String, String>? = null
+    var savedOthers: Map<LocalDate, List<ShiftCoworker>>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -182,16 +185,23 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
     override suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>> =
         Outcome.Done(months.value.values.flatMap { it.days }.mapNotNull { it.end?.toInstant() }.filter { it.isAfter(now) }.sorted())
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>): Outcome<ShiftMonth> {
+    override suspend fun save(
+        month: YearMonth,
+        codes: Map<LocalDate, String>,
+        with: Map<LocalDate, List<String>>,
+        corrections: Map<String, String>,
+        others: Map<LocalDate, List<ShiftCoworker>>,
+    ): Outcome<ShiftMonth> {
         next?.let { return it }
         saved = codes
         savedWith = with
         savedCorrections = corrections
+        savedOthers = others
         val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
         months.value = months.value + (month to m)
         return Outcome.Done(m)
     }
-    override suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth> = next ?: read?.let { pending = it; Outcome.Done(it) } ?: Outcome.Refused("the photo couldn't be read; try a clearer one, or enter the shifts by hand")
+    override suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit): Outcome<ShiftMonth> = next ?: read?.let { pending = it; Outcome.Done(it) } ?: Outcome.Refused("the photo couldn't be read; try a clearer one, or enter the shifts by hand")
     override fun takePendingRead(month: YearMonth): ShiftMonth? = pending?.takeIf { it.month == month }.also { pending = null }
     override val settings: Flow<ShiftSettings?> = settingsFlow
     override suspend fun refreshSettings(): Outcome<ShiftSettings> = next ?: Outcome.Done(settingsFlow.value ?: ShiftSettings())

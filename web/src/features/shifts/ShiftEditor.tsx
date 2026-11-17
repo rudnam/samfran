@@ -26,6 +26,8 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
   const [codes, setCodes] = useState<Record<string, string>>({});
   // Coworkers typed by hand, per day, as one comma-separated line.
   const [typed, setTyped] = useState<Record<string, string>>({});
+  // Days whose names box is open: names show as one quiet line until "Fix".
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -72,7 +74,14 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     setError('');
     try {
       const days = Object.entries(codes)
-        .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
+        .map(([date, code]) => ({
+          date,
+          code: normalize(code),
+          with: withFor(date, code),
+          // Who else was there, as read or saved: the server keeps those who
+          // overlap the day's shift as saved.
+          others: original.get(date)?.others?.map(({ name, code, day_offset }) => ({ name, code, day_offset })),
+        }))
         .filter((d) => d.code);
       await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined);
       replaceRoute('shifts', { month });
@@ -115,6 +124,10 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         {datesOf(month).map((date) => {
           const code = codes[date] ?? '';
           const meaning = code ? explain(code, base.settings.lengths) : null;
+          const names = withFor(date, code) ?? [];
+          const was = original.get(date);
+          const there = was && normalize(was.code) === normalize(code) ? (was.others?.length ?? 0) : 0;
+          const working = meaning?.kind === 'work';
           return (
             <li key={date}>
               <label className="shift-date" htmlFor={`code-${date}`}>
@@ -131,21 +144,36 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
               />
               <span className="grow small">
                 {meaning && (
-                  <>
+                  <span className="meaning">
                     {labelOf(meaning.label)}
                     {meaning.hours && <span className="muted"> · {clock(meaning.hours[0])}–{clock(meaning.hours[1])}</span>}
                     {meaning.problem && <span className="error"> · {t('Unknown length: set it in Settings')}</span>}
-                  </>
+                  </span>
                 )}
-                {code && (
+                {code && open[date] && (
                   <input
                     className="with-input"
-                    value={typed[date] ?? withFor(date, code)?.join(', ') ?? ''}
+                    autoFocus
+                    value={typed[date] ?? names.join(', ')}
                     maxLength={400}
                     placeholder={t('Who else is on this shift (separate with commas)')}
                     aria-label={t('Who is with you on {day}', { day: dayName(date) })}
                     onChange={(e) => setTyped((w) => ({ ...w, [date]: e.target.value }))}
                   />
+                )}
+                {code && !open[date] && (working || names.length > 0) && (
+                  <span className="names-line">
+                    {names.length > 0 && <span className="names">{names.join(', ')}</span>}
+                    {there > 0 && <span className="muted">{t('+{count} there', { count: there })}</span>}
+                    <button
+                      type="button"
+                      className="link-inline"
+                      aria-label={t('Who is with you on {day}', { day: dayName(date) })}
+                      onClick={() => setOpen((o) => ({ ...o, [date]: true }))}
+                    >
+                      {names.length > 0 ? t('Fix') : t('Add who’s with you')}
+                    </button>
+                  </span>
                 )}
               </span>
             </li>

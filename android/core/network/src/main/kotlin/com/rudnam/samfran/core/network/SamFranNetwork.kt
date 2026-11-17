@@ -17,6 +17,7 @@ import com.rudnam.samfran.core.network.model.NetworkLookupResult
 import com.rudnam.samfran.core.network.model.NetworkMcpToken
 import com.rudnam.samfran.core.network.model.NetworkMe
 import com.rudnam.samfran.core.network.model.NetworkName
+import com.rudnam.samfran.core.network.model.NetworkReadProgress
 import com.rudnam.samfran.core.network.model.NetworkReadStarted
 import com.rudnam.samfran.core.network.model.NetworkNewVisit
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
@@ -165,9 +166,10 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     /**
      * Reads a photo of the sheet (a JPEG); nothing is saved until [saveShifts].
      * Reading takes about a minute, longer than one request may last behind
-     * the CDN, so this starts the read and asks after it until it's done.
+     * the CDN, so this starts the read and asks after it until it's done,
+     * telling [onProgress] how far it's got.
      */
-    suspend fun readPhoto(jpeg: ByteArray): NetworkShiftMonth = call {
+    suspend fun readPhoto(jpeg: ByteArray, onProgress: (NetworkReadProgress) -> Unit = {}): NetworkShiftMonth = call {
         val id = api.startRead(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType()))).id
         // The server gives up after 3 minutes; this waits a little longer.
         val until = System.currentTimeMillis() + 5 * 60_000
@@ -182,7 +184,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
                 continue
             }
             if (res.code() == 202) {
-                res.body()?.close()
+                val body = res.body()?.use { it.string() }
+                body?.let { runCatching { json.decodeFromString<NetworkReadProgress>(it) }.getOrNull() }?.let(onProgress)
                 continue
             }
             if (!res.isSuccessful) throw HttpException(res)

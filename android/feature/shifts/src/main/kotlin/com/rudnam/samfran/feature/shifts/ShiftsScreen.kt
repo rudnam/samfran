@@ -3,11 +3,11 @@ package com.rudnam.samfran.feature.shifts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -88,6 +88,7 @@ fun ShiftsScreen(
     val colors = SamFranTheme.colors
     val locale = currentLocale
     val data = state.data
+    val me = data?.settings?.personName?.takeIf(String::isNotBlank) ?: stringResource(R.string.you)
     PullToRefreshBox(isRefreshing = false, onRefresh = { actions.refresh() }) {
         TabPage {
             item(key = "head") {
@@ -111,7 +112,7 @@ fun ShiftsScreen(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                WithNames(next.with)
+                                WhoThere(next, me, state.everyone, actions::setEveryone)
                             }
                             CodeChip(next.code)
                         }
@@ -131,21 +132,25 @@ fun ShiftsScreen(
                             LineIcon(SamFranIcons.chevronRight, stringResource(R.string.next_month))
                         }
                     }
-                    Segmented(
-                        listOf(stringResource(R.string.calendar), stringResource(R.string.list)),
-                        selected = if (state.asList) 1 else 0,
-                        onSelect = { actions.setList(it == 1) },
-                    )
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Segmented(
+                            listOf(stringResource(R.string.calendar), stringResource(R.string.list)),
+                            selected = if (state.asList) 1 else 0,
+                            onSelect = { actions.setList(it == 1) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        EveryoneToggle(state.everyone, actions::setEveryone)
+                    }
                     when {
                         data == null -> Skeleton(rows = 4)
                         data.days.isEmpty() -> EmptyState(stringResource(R.string.no_shifts), stringResource(R.string.no_shifts_hint))
                         state.asList -> Column {
                             data.days.forEachIndexed { i, d ->
                                 if (i > 0) HorizontalDivider(color = colors.divider)
-                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp))
+                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp), me, state.everyone, actions::setEveryone)
                             }
                         }
-                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.settings.closingDays)
+                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.settings.closingDays, me, state.everyone, actions::setEveryone)
                     }
                 }
             }
@@ -184,12 +189,7 @@ fun ShiftsScreen(
                         }
                         SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
                     }
-                    if (state.reading) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.accentInk)
-                            Hint(stringResource(R.string.reading_hint))
-                        }
-                    }
+                    state.progress?.let { ReadingCard(it) }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Hint(stringResource(R.string.needs_name), Modifier.weight(1f))

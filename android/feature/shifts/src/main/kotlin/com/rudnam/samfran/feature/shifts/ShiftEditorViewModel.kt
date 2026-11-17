@@ -52,6 +52,12 @@ data class ShiftEditorUiState(
         return if (d.with.isNotEmpty() && ShiftCodes.normalize(d.code) == ShiftCodes.normalize(codes[date].orEmpty())) d.with else emptyList()
     }
 
+    /** How many others on other shifts are there, as read or saved, while the day's code is unchanged. */
+    fun thereCount(date: LocalDate): Int {
+        val d = base?.days?.firstOrNull { it.date == date } ?: return 0
+        return if (ShiftCodes.normalize(d.code) == ShiftCodes.normalize(codes[date].orEmpty())) d.others.size else 0
+    }
+
     /** The line in a day's names box: as typed, else the names joined. */
     fun withText(date: LocalDate): String = typed[date] ?: withFor(date).joinToString(", ")
 
@@ -156,7 +162,9 @@ class ShiftEditorViewModel @Inject constructor(
             val s = _state.value
             val codes = s.codes.mapValues { ShiftCodes.normalize(it.value) }
             val with = s.dates.associateWith { s.withFor(it) }.filterValues { it.isNotEmpty() }
-            val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap())
+            // Who else was there, as read or saved: the server keeps those who overlap the day's shift as saved.
+            val others = s.base?.days.orEmpty().associate { d -> d.date to d.others.map { it.coworker } }.filterValues { it.isNotEmpty() }
+            val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap(), others)
             if (r is Outcome.Done) reminders.sync(now = true) // the phone asks "Start bus alarm?" at the new times
             _state.update { it.copy(busy = false, saved = r is Outcome.Done, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }

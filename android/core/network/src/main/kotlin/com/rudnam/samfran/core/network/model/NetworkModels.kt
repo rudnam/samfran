@@ -15,6 +15,7 @@ import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
+import com.rudnam.samfran.core.model.ShiftThere
 import com.rudnam.samfran.core.model.Space
 import com.rudnam.samfran.core.model.Visit
 import com.rudnam.samfran.core.model.VisitNote
@@ -201,6 +202,33 @@ data class NetworkShiftDay(
     val problem: String? = null,
     /** Others on the same shift (the same code that day), names as on the sheet. */
     val with: List<String>? = null,
+    /** Others on other shifts whose hours overlap it; older servers leave it out. */
+    val others: List<NetworkShiftThere>? = null,
+)
+
+@Serializable
+data class NetworkShiftThere(
+    val name: String,
+    val code: String,
+    @SerialName("day_offset") val dayOffset: Int = 0,
+    val start: String? = null,
+    val end: String? = null,
+)
+
+/** Someone else at work around a day, as sent back when saving. */
+@Serializable
+data class NetworkCoworker(
+    val name: String,
+    val code: String,
+    @SerialName("day_offset") val dayOffset: Int = 0,
+)
+
+/** A read still going: how far it's got (older servers send only the status). */
+@Serializable
+data class NetworkReadProgress(
+    @SerialName("name_as_read") val nameAsRead: String? = null,
+    @SerialName("days_read") val daysRead: Int = 0,
+    @SerialName("days_in_month") val daysInMonth: Int = 0,
 )
 
 @Serializable
@@ -239,6 +267,9 @@ fun NetworkShiftMonth.asModel() = ShiftMonth(
             end = d.end?.let(OffsetDateTime::parse),
             problem = d.problem,
             with = d.with.orEmpty(),
+            others = d.others.orEmpty().map { o ->
+                ShiftThere(o.name, o.code, o.dayOffset, o.start?.let(OffsetDateTime::parse), o.end?.let(OffsetDateTime::parse))
+            },
         )
     },
     nameAsRead = nameAsRead,
@@ -251,6 +282,8 @@ data class NetworkShiftCode(
     val code: String,
     /** Who's on the same shift, kept only while the day's code is unchanged; left out otherwise. */
     val with: List<String>? = null,
+    /** Others at work around it, as read or saved; the server keeps those who overlap the day's shift. */
+    val others: List<NetworkCoworker>? = null,
 )
 
 @Serializable

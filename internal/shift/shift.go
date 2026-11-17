@@ -123,7 +123,7 @@ func (s *Store) spaceByFeed(ctx context.Context, token string) (int64, error) {
 // codes returns the days from..to (inclusive), by date.
 func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]DayCode, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT to_char(day, 'YYYY-MM-DD'), code, coworkers FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
+		SELECT to_char(day, 'YYYY-MM-DD'), code, coworkers, others FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
 		spaceID, from, to)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,11 @@ func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]Da
 	var out []DayCode
 	for rows.Next() {
 		var d DayCode
-		if err := rows.Scan(&d.Date, &d.Code, (*pq.StringArray)(&d.With)); err != nil {
+		var others []byte
+		if err := rows.Scan(&d.Date, &d.Code, (*pq.StringArray)(&d.With), &others); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(others, &d.Others); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -140,12 +144,14 @@ func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]Da
 	return out, rows.Err()
 }
 
-// explain works out a stored day, with who's on the same shift.
+// explain works out a stored day, with who's on the same shift and who
+// else is there.
 func explain(d DayCode, lengths map[string]float64, zone *time.Location) Day {
 	day := Explain(d.Date, d.Code, lengths, zone)
 	if day.Kind == Work && len(d.With) > 0 {
 		day.With = d.With
 	}
+	day.Others = overlapping(day, d.With, d.Others, lengths, zone)
 	return day
 }
 
@@ -160,8 +166,12 @@ func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last str
 		return err
 	}
 	for date, d := range days {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code, coworkers) VALUES ($1, $2, $3, $4)`,
-			spaceID, date, d.Code, pq.StringArray(append([]string{}, d.With...))); err != nil { // never NULL
+		others, err := json.Marshal(append([]Coworker{}, d.Others...)) // never null
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code, coworkers, others) VALUES ($1, $2, $3, $4, $5)`,
+			spaceID, date, d.Code, pq.StringArray(append([]string{}, d.With...)), others); err != nil { // never NULL
 			return err
 		}
 	}
@@ -295,12 +305,14 @@ func (e *InvalidError) Error() string { return e.Msg }
 
 func invalidf(format string, args ...any) error { return &InvalidError{fmt.Sprintf(format, args...)} }
 
-// DayCode is a day and its code, as typed or read, and who else is on the
-// same shift (optional).
+// DayCode is a day and its code, as typed or read, who else is on the
+// same shift, and others at work around it (both optional). Only the others
+// whose hours overlap the day's shift are kept.
 type DayCode struct {
-	Date string   `json:"date"`
-	Code string   `json:"code"`
-	With []string `json:"with,omitempty"`
+	Date   string     `json:"date"`
+	Code   string     `json:"code"`
+	With   []string   `json:"with,omitempty"`
+	Others []Coworker `json:"others,omitempty"`
 }
 
 // Limits on the coworkers kept for a day.
@@ -398,6 +410,10 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 	if !ok {
 		return MonthView{}, invalidf("month must be YYYY-MM")
 	}
+	st, zone, err := s.Settings(ctx, spaceID)
+	if err != nil {
+		return MonthView{}, err
+	}
 	codes := map[string]DayCode{}
 	for _, d := range days {
 		date, err := time.Parse(time.DateOnly, d.Date)
@@ -412,8 +428,14 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 		if err != nil {
 			return MonthView{}, err
 		}
+		others, err := cleanOthers(d.Others)
+		if err != nil {
+			return MonthView{}, err
+		}
 		if code != "" {
-			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with}
+			day := Explain(d.Date, code, st.Lengths, zone)
+			there := othersOf(overlapping(day, with, others, st.Lengths, zone))
+			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with, Others: there}
 		}
 	}
 	if err := s.replaceMonth(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly), codes); err != nil {
@@ -470,7 +492,7 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
-	view, err := run(ctx)
+	view, err := run(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -486,8 +508,8 @@ const uploadTimeout = 3 * time.Minute
 
 // prepareRead checks a request to read a photo and takes the photo from it.
 // The read itself is the returned func: it answers with the month found, or
-// an *httpx.Error to show.
-func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(context.Context) (any, error), error) {
+// an *httpx.Error to show, and tells progress (if not nil) how it's going.
+func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(context.Context, func(Progress)) (any, error), error) {
 	if h.reader == nil {
 		return nil, httpx.Errorf(http.StatusServiceUnavailable, "reading photos isn't set up on this server; enter the shifts by hand")
 	}
@@ -537,7 +559,9 @@ func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(cont
 		slog.ErrorContext(r.Context(), "load name corrections", "err", err)
 	}
 	hint.Names = known
-	return func(ctx context.Context) (any, error) {
+	return func(ctx context.Context, progress func(Progress)) (any, error) {
+		hint := hint
+		hint.Progress = progress
 		sheet, err := h.reader.Read(ctx, image, mediaType, st.NameOnSheet, hint)
 		if errors.Is(err, ErrRefused) {
 			return nil, httpx.Errorf(http.StatusUnprocessableEntity, "the photo couldn't be read; try a clearer one, or enter the shifts by hand")
@@ -581,6 +605,9 @@ func sheetView(sheet Sheet, st stored, zone *time.Location) (any, error) {
 		day := Explain(date.Format(time.DateOnly), code, st.Lengths, zone)
 		if with, err := cleanNames(d.With); err == nil && day.Kind == Work && code == d.Code {
 			day.With = with
+		}
+		if others, err := cleanOthers(d.Others); err == nil && code == d.Code {
+			day.Others = overlapping(day, day.With, others, st.Lengths, zone)
 		}
 		view.Days = append(view.Days, day)
 	}

@@ -94,7 +94,17 @@ private fun ClosingFlag(modifier: Modifier = Modifier) {
  * shows its times underneath.
  */
 @Composable
-fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, picked: LocalDate?, onPick: (LocalDate) -> Unit, closingDays: List<Int> = emptyList()) {
+fun ShiftCalendar(
+    month: YearMonth,
+    days: List<ShiftDay>,
+    today: LocalDate,
+    picked: LocalDate?,
+    onPick: (LocalDate) -> Unit,
+    closingDays: List<Int> = emptyList(),
+    who: String = "",
+    everyone: Boolean = false,
+    onEveryone: (Boolean) -> Unit = {},
+) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
     val byDate = days.associateBy { it.date }
@@ -162,7 +172,7 @@ fun ShiftCalendar(month: YearMonth, days: List<ShiftDay>, today: LocalDate, pick
             }
         }
         if (picked != null && YearMonth.from(picked) == month) {
-            DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp))
+            DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp), who, everyone, onEveryone)
             if (isClosingDay(picked, closingDays)) {
                 Row(Modifier.padding(start = 74.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ClosingFlag()
@@ -190,7 +200,14 @@ private fun cellText(size: TextUnit, weight: FontWeight) = TextStyle(
  * wrapping into its own column. The date never breaks across lines.
  */
 @Composable
-fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
+fun DayLine(
+    date: LocalDate,
+    day: ShiftDay?,
+    modifier: Modifier = Modifier,
+    who: String = "",
+    everyone: Boolean = false,
+    onEveryone: (Boolean) -> Unit = {},
+) {
     val colors = SamFranTheme.colors
     val type = MaterialTheme.typography
     val measurer = rememberTextMeasurer()
@@ -218,7 +235,7 @@ fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
                 if (oneLine) Text(day.times, style = type.bodyMedium, color = colors.muted, softWrap = false)
                 CodeChip(day.code)
             }
-            WithNames(day?.with.orEmpty(), Modifier.padding(start = dateWidth + gap))
+            if (day != null) WhoThere(day, who, everyone, onEveryone, Modifier.padding(start = dateWidth + gap))
         }
     }
 }
@@ -229,17 +246,17 @@ fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
  * would otherwise break between any two kana). [trailing] goes after the last.
  */
 @Composable
-fun WithNames(names: List<String>, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
+fun WithNames(names: List<String>, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null, color: Color? = null) {
     if (names.isEmpty()) return
     val sep = if (currentLocale.language == "ja") "、" else ", "
     // "With %s" around the names: the words before them stay with the first.
     val (before, after) = stringResource(R.string.with_names, "\u0000").split('\u0000').let { it[0] to it.getOrElse(1) { "" } }
     val style = MaterialTheme.typography.bodySmall
-    val color = SamFranTheme.colors.muted
+    val ink = color ?: SamFranTheme.colors.muted
     FlowRow(modifier, itemVerticalAlignment = Alignment.CenterVertically) {
         names.forEachIndexed { i, name ->
             val text = (if (i == 0) before else "") + name + (if (i < names.lastIndex) sep else after)
-            Text(text, style = style, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+            Text(text, style = style, color = ink, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
         }
         trailing?.invoke()
     }
