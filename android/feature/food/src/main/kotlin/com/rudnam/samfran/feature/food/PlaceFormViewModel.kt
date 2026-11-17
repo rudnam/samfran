@@ -68,7 +68,8 @@ interface PlaceFormActions {
     fun takeLink(text: String)
     /** The name as typed: it's also searched for, when adding. */
     fun setName(name: String)
-    fun pick(place: FoundPlace)
+    /** [food] is what the Food field says for its kind, in the person's language (foodFor); empty for none. */
+    fun pick(place: FoundPlace, food: String)
     /** "Not this one": forget the picked place, keep the name. */
     fun unpick()
     fun save()
@@ -135,11 +136,13 @@ class PlaceFormViewModel @Inject constructor(
         }
     }
 
-    override fun pick(place: FoundPlace) {
+    override fun pick(place: FoundPlace, food: String) {
         search?.cancel()
         _state.update { s ->
             val f = s.fields ?: return@update s
-            s.copy(fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }), picked = place, query = "", found = null)
+            // Area and Food are filled in only when empty: what they typed stays.
+            val fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }, cuisine = f.cuisine.ifBlank { food })
+            s.copy(fields = fields, picked = place, query = "", found = null)
         }
     }
 

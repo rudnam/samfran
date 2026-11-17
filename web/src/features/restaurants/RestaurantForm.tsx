@@ -49,6 +49,39 @@ function kindIcon(kind: string): string {
   return '🍽️';
 }
 
+/**
+ * What the Food field says for OpenStreetMap's kind of place, when the kind
+ * says something about the food. Empty for a plain restaurant: OpenStreetMap
+ * doesn't say which kind of food it serves, and the search doesn't return
+ * that.
+ */
+function kindFood(kind: string): string {
+  switch (kind) {
+    case 'cafe':
+      return t('Café');
+    case 'bar':
+      return t('Bar');
+    case 'pub':
+      return t('Pub');
+    case 'biergarten':
+      return t('Beer garden');
+    case 'fast_food':
+      return t('Fast food');
+    case 'food_court':
+      return t('Food court');
+    case 'ice_cream':
+      return t('Ice cream');
+    case 'bakery':
+      return t('Bakery');
+    case 'pastry':
+      return t('Pastries');
+    case 'confectionery':
+      return t('Sweets');
+    default:
+      return '';
+  }
+}
+
 /** Google Maps searching for the name around where it is: opens on that branch, not the chain. */
 function pickedMapURL(p: FoundPlace): string {
   return `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`;
@@ -96,7 +129,17 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const savedNamed = (name: string) => (name.trim() ? saved.find((r) => sameName(r.name, name)) : undefined);
 
   function pick(p: FoundPlace) {
-    setFields((f) => (f ? { ...f, name: p.name, area: f.area.trim() ? f.area : p.area } : f));
+    // Area and Food are filled in only when empty: what they typed stays.
+    setFields((f) =>
+      f
+        ? {
+            ...f,
+            name: p.name,
+            area: f.area.trim() ? f.area : p.area,
+            cuisine: f.cuisine.trim() ? f.cuisine : kindFood(p.kind),
+          }
+        : f,
+    );
     setPicked(p);
     setQuery('');
   }

@@ -179,10 +179,11 @@ test('find a place by typing its name: no Maps link needed', async ({ page }) =>
   await expect(page.getByRole('link', { name: 'Places from OpenStreetMap' })).toBeVisible();
   await list.getByRole('button', { name: /すき家 浜松駅前店/ }).click();
 
-  // Picking fills in the name and area; the list goes away.
+  // Picking fills in the name, area and, from the kind of place, the food; the list goes away.
   await expect(list).toHaveCount(0);
   await expect(name).toHaveValue('すき家 浜松駅前店');
   await expect(page.getByLabel('Area')).toHaveValue('浜松市 中央区');
+  await expect(page.getByLabel('Food')).toHaveValue('Fast food');
   await expect(page.getByRole('link', { name: 'Check on the map' })).toBeVisible();
   await expect(page.getByLabel('Google Maps link')).toHaveValue('');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -199,7 +200,10 @@ test('find a place by typing its name: no Maps link needed', async ({ page }) =>
   await page.getByRole('link', { name: 'Add a place' }).first().click();
   await name.fill('すき家');
   await expect(list.getByRole('link', { name: /すき家 浜松駅前店.*Already on your list/ })).toBeVisible();
-  await expect(list.getByRole('button', { name: /すき家 葵町店/ })).toBeVisible();
+  // What they typed in Food stays when they pick a place.
+  await page.getByLabel('Food').fill('Gyudon');
+  await list.getByRole('button', { name: /すき家 葵町店/ }).click();
+  await expect(page.getByLabel('Food')).toHaveValue('Gyudon');
   // Typed out in full, too.
   await name.fill('すき家 浜松駅前店');
   await expect(page.getByText('Already on your list:')).toBeVisible();

@@ -53,7 +53,7 @@ class FoodScreenshotTest {
         override fun setStars(stars: Int) {}
         override fun takeLink(text: String) {}
         override fun setName(name: String) {}
-        override fun pick(place: com.rudnam.samfran.core.model.FoundPlace) {}
+        override fun pick(place: com.rudnam.samfran.core.model.FoundPlace, food: String) {}
         override fun unpick() {}
         override fun save() {}
     }

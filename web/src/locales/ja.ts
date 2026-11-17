@@ -344,6 +344,17 @@ export const ja = {
   'Step 2 of 2': 'ステップ 2/2',
   'Can’t find it? Other ways': '見つからない場合は別の方法で',
   '{stop} on the map': '地図で{stop}を見る',
+  // The Food field, filled in from the kind of place picked from the search
+  Café: 'カフェ',
+  Bar: 'バー',
+  Pub: 'パブ',
+  'Beer garden': 'ビアガーデン',
+  'Fast food': 'ファストフード',
+  'Food court': 'フードコート',
+  'Ice cream': 'アイスクリーム',
+  Bakery: 'パン屋',
+  Pastries: '洋菓子',
+  Sweets: 'スイーツ',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
