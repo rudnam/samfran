@@ -25,6 +25,7 @@ docker compose up -d --build    # http://localhost:8080
 |---|---|---|
 | `./verify.sh` | Go vet, Go unit and integration tests, and browser tests, in throwaway containers | Before every commit or deploy. CI runs it too. |
 | `./preview.sh` | Builds the working tree (or `--ref <branch>`) and runs it privately at http://localhost:8081 with a fresh database of sample data | To **see** a change, e.g. what an AI just did, before deploying it |
+| `./ci-results.sh <number>` | Downloads a pull request's CI screenshots (browser tests and Android screens) into `ci-results/pr-<number>/` | To **see** a change CI just tested, without running anything (works from a Claude Code cloud session, where `gh run download` is blocked) |
 | `docker compose up -d --build` | Builds and (re)starts the local stack at http://localhost:8080 | To use it on this machine |
 
 ### Previewing a change before you deploy it
@@ -39,7 +40,7 @@ PREVIEW_MINUTES=0 ./preview.sh        # keep it until `down` (default: it stops 
 
 Sign in as `preview@example.com` / `preview-password`. A fresh preview comes with some sample data (`e2e/seed`, which adds it through the API). The preview runs exactly the image production would run, in its own Compose project with its own database, so it cannot touch the live app or its data. `/healthz` shows which version you are looking at. It cleans up after itself: it stops, data and all, after two hours, when a pull request from the branch it shows is merged (it asks GitHub every minute, through the `gh` CLI if it is signed in), or when the Claude Code session in that folder ends. `verify.sh` tears its stack down when it exits, and clears what a killed run left before it starts. Both share one Go module and build cache per app (Docker volumes `samfran-gomod` and `samfran-gobuild`), so a run compiles only what changed.
 
-You can also skip running anything: `./verify.sh` saves screenshots of the main screens at phone and desktop width in `e2e/test-results/`, and CI attaches them to every push and pull request as the `e2e-results` artifact.
+You can also skip running anything: `./verify.sh` saves screenshots of the main screens at phone and desktop width in `e2e/test-results/`, and CI attaches them to every push and pull request as the `e2e-results` artifact (on a pull request, `./ci-results.sh <number>` downloads them and the Android screens).
 
 ### Frontend hot reload
 

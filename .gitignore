@@ -35,3 +35,6 @@ android/*.aab
 # kept, so Docker doesn't create it as root when it mounts it.
 /downloads/*
 !/downloads/.gitkeep
+
+# CI results fetched by ./ci-results.sh
+/ci-results/

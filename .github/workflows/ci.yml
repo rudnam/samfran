@@ -6,6 +6,8 @@
 #   (R8 checked) kept a week as the android-apk artifact, and an installable
 #   "SamFran Preview" APK as the samfran-preview-apk artifact. android/build.sh sign
 #   signs it; the key never comes here. (Android releases: android-release.yml.)
+# On a pull request, both also attach those screenshots to the ci-pr-<number>
+#   pre-release (.github/pr-results.sh), where ./ci-results.sh fetches them.
 # deploy: on pushes to main, build the image, push it to ECR and run it on
 #   the AWS instance (rudnam/rudnam-infra). Also on demand from main: Actions
 #   → CI → Run workflow with a commit SHA redeploys that commit (a rollback);
@@ -29,6 +31,8 @@ jobs:
   verify:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # the ci-pr pre-release with the screenshots
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The Go tests' module and build caches, kept between runs so they
@@ -52,6 +56,14 @@ jobs:
           name: e2e-results
           path: e2e/test-results/
           if-no-files-found: ignore
+      - name: Attach screenshots to the pull request's ci-pr release
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: .github/pr-results.sh e2e-results e2e/test-results
 
   # Signs in as the github-deploy IAM user (secrets AWS_ACCESS_KEY_ID and
   # AWS_SECRET_ACCESS_KEY), which can do nothing but assume the deploy role
@@ -155,7 +167,7 @@ jobs:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
-      contents: write # the pull request's preview APK, as a pre-release
+      contents: write # the pull request's preview APK and screenshots, as pre-releases
       pull-requests: write # the comment linking to it
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -198,6 +210,14 @@ jobs:
           name: native-screenshots
           path: android/**/build/outputs/roborazzi/
           retention-days: 7
+      - name: Attach screenshots to the pull request's ci-pr release
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: .github/pr-results.sh native-screenshots $(find android -path '*/build/outputs/roborazzi' -type d)
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/release/app-release-unsigned.apk') != '' }}
         with:

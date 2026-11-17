@@ -8,7 +8,7 @@ Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScr
 
 1. Commit, push your branch (never `main`), and open a **draft** pull request if the branch doesn't have one yet; the verify job runs on pull requests, not on plain branch pushes.
 2. Follow it with `gh pr checks <number> --watch`.
-3. Download the run's artifacts with `gh run download` (`e2e-results`: the browser tests' screenshots and failures; `native-screenshots`: the Android screens). When a browser test fails, read its `test-failed-1.png` before guessing.
+3. Download the results with `./ci-results.sh <number>` into `ci-results/pr-<number>/` (`e2e-results`: the browser tests' screenshots and failures; `native-screenshots`: the Android screens). It prints which commit each set is from; wait for CI on your last push. It reads them from the pull request's `ci-pr-<number>` pre-release, which works from a cloud session; `gh run download` fetches the same as artifacts but from a storage host the cloud sandbox blocks. When a browser test fails, read its `test-failed-1.png` before guessing.
 4. Report what CI actually printed. If a job was skipped or couldn't run, say so.
 
 Run `./verify.sh` locally only when the user asks for it, or when you can't push (no remote access, or the user doesn't want a PR yet). Then:
@@ -33,7 +33,7 @@ Quick checks while you work are fine on the host and don't replace verify:
 The user reviews changes by looking at them, not by deploying them. When you change anything visible:
 
 1. Extend a browser test in `e2e/tests/` (one file per feature; import `{ test, expect }` from `./fixtures`, which fails on any console error or CSP violation). For new screens, add a step to `e2e/tests/screens.spec.js`, which saves phone and desktop screenshots.
-2. Verify (on CI, as above), then **Read the screenshots** from the `e2e-results` artifact (or `e2e/test-results/` after a local run) and check the change looks right at both widths.
+2. Verify (on CI, as above), then **Read the screenshots** from `./ci-results.sh` (or `e2e/test-results/` after a local run) and check the change looks right at both widths.
 3. On the user's machine, run `./preview.sh` and tell the user: "Preview at http://localhost:8081, sign in as preview@example.com / preview-password", plus what to click to see the change. In a cloud session the user can't open that address, so send them the screenshots instead. You don't need to stop it: it stops by itself after two hours (`PREVIEW_MINUTES`), when the PR from its branch is merged, and when this session ends (`.claude/hooks/session-end.sh`, which also clears anything a killed `verify.sh` left).
 
 ## Rules

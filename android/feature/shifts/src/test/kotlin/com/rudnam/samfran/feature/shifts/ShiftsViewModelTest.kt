@@ -62,6 +62,48 @@ class ShiftsViewModelTest {
     }
 
     @Test
+    fun `names typed for a day are saved, and stay when the code changes`() = runTest {
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val day = LocalDate.of(2026, 11, 2)
+        vm.editWith(day)
+        assertEquals(day, vm.state.value.editingWith)
+        vm.setWith(day, "サトウ ハナ、 タナカ ユイ ,")
+        vm.setCode(day, "9F")
+        assertEquals(listOf("サトウ ハナ", "タナカ ユイ"), vm.state.value.withFor(day))
+        vm.focus(LocalDate.of(2026, 11, 3)) // a code box: the names close
+        assertEquals(null, vm.state.value.editingWith)
+        vm.save()
+        assertEquals(listOf("サトウ ハナ", "タナカ ユイ"), shifts.savedWith?.get(day))
+        assertEquals(emptyMap<String, String>(), shifts.savedCorrections) // not checking a scan
+    }
+
+    @Test
+    fun `a name's chip adds it to the open day, and takes it off again`() = runTest {
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val day = LocalDate.of(2026, 11, 2)
+        val names = vm.state.value.namesBesides(day)
+        assertEquals("タナカ ユイ", names.first()) // the most frequent this month
+        vm.editWith(day)
+        vm.toggleName("スズキ ケン")
+        vm.toggleName("タナカ ユイ")
+        assertEquals("スズキ ケン, タナカ ユイ", vm.state.value.withText(day))
+        vm.toggleName("スズキ ケン")
+        assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(day))
+    }
+
+    @Test
+    fun `names fixed while checking a scan are sent as corrections`() = runTest {
+        shifts.read = Samples.november.copy(nameAsRead = "オトル サマンタ")
+        shifts.readPhoto(ByteArray(1))
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11", fromPhoto = true)), shifts, reminders)
+        val day = LocalDate.of(2026, 11, 4) // read as タナカ ユイ
+        vm.editWith(day)
+        vm.setWith(day, "タナカ ユエ")
+        vm.save()
+        assertEquals(mapOf("タナカ ユイ" to "タナカ ユエ"), shifts.savedCorrections)
+    }
+
+    @Test
     fun `a photo's reading opens in the editor to be checked`() = runTest {
         shifts.read = Samples.november.copy(month = YearMonth.of(2026, 12), nameAsRead = "オトル サマンタ")
         shifts.readPhoto(ByteArray(1))

@@ -8,6 +8,7 @@ import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.Server
+import com.rudnam.samfran.core.network.model.NetworkNameFix
 import com.rudnam.samfran.core.network.model.NetworkSaveShifts
 import com.rudnam.samfran.core.network.model.NetworkShiftCode
 import com.rudnam.samfran.core.network.model.NetworkShiftMonth
@@ -38,8 +39,15 @@ interface ShiftsRepository {
     /**
      * Saves a month's codes (empty ones are left out), with who's on the
      * same shift for the days whose code is as it was read or saved.
+     * [corrections] are names the photo reader got wrong (as read to as
+     * fixed), so later scans get them right.
      */
-    suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>> = emptyMap()): Outcome<ShiftMonth>
+    suspend fun save(
+        month: YearMonth,
+        codes: Map<LocalDate, String>,
+        with: Map<LocalDate, List<String>> = emptyMap(),
+        corrections: Map<String, String> = emptyMap(),
+    ): Outcome<ShiftMonth>
 
     /** Reads a photo of the sheet; nothing is saved. The answer waits in [pendingRead] for the editor. */
     suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth>
@@ -106,11 +114,12 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
             .sorted()
     }
 
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>) = outcome(io) {
+    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
             code.takeIf { it.isNotBlank() }?.let { NetworkShiftCode(date.toString(), it, with[date]?.takeIf(List<String>::isNotEmpty)) }
         }
-        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days))
+        val fixes = corrections.map { (from, to) -> NetworkNameFix(from, to) }.takeIf { it.isNotEmpty() }
+        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes))
         keep(saved)
         // The current month's copy, if this is it.
         documents.get(key(null), serializer)?.takeIf { it.month == saved.month }?.let { documents.put(key(null), serializer, saved) }
