@@ -224,11 +224,14 @@ data class NetworkShiftMonth(
     val days: List<NetworkShiftDay> = emptyList(),
     @SerialName("name_as_read") val nameAsRead: String? = null,
     val notes: String? = null,
+    /** This month's 締め申請通知 days (dates in it); null from older servers and photo reads. */
+    @SerialName("closing_days") val closingDays: List<Int>? = null,
 )
 
 fun NetworkShiftMonth.asModel() = ShiftMonth(
     month = YearMonth.parse(month),
     settings = settings.asModel(),
+    closingDays = closingDays,
     days = days.map { d ->
         ShiftDay(
             date = LocalDate.parse(d.date),

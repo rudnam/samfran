@@ -20,8 +20,11 @@ function describe(e: ActivityEntry): string {
   const d = e.details;
   const name = String(d.name ?? '');
   switch (e.kind) {
-    case 'shifts_saved':
-      return t('saved the shifts for {month}', { month: monthName(String(d.month)) });
+    case 'shifts_saved': {
+      const saved = t('saved the shifts for {month}', { month: monthName(String(d.month)) });
+      const closing = d.closing_days as [string, string] | undefined;
+      return closing ? `${saved} · ${t('締め申請通知: {days}', { days: closing[1] || t('none') })}` : saved;
+    }
     case 'shift_settings': {
       const parts: string[] = [];
       const lengths = (d.lengths ?? {}) as Record<string, [number | null, number | null]>;

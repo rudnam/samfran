@@ -46,8 +46,10 @@ type monthJSON struct {
 		Start, End                       string
 		With                             []string
 	}
-	NameAsRead string `json:"name_as_read"`
-	Notes      string
+	ClosingDays   []int  `json:"closing_days"`
+	ClosingCustom bool   `json:"closing_custom"`
+	NameAsRead    string `json:"name_as_read"`
+	Notes         string
 }
 
 // upload posts a fake JPEG as the photo to the reading that answers at once.
@@ -134,6 +136,44 @@ func TestShifts(t *testing.T) {
 	}
 	if code := c.do("PUT", "/api/shifts/settings", map[string]any{"closing_days": []int{32}}, nil); code != 400 {
 		t.Errorf("closing day 32: %d, want 400", code)
+	}
+
+	// One month's 締め申請通知 days, saved with its shifts; the usual days
+	// make it follow the settings again.
+	var month monthJSON
+	c.do("GET", "/api/shifts?month=2026-11", nil, &month)
+	if got := fmt.Sprint(month.ClosingDays); got != "[10 25]" || month.ClosingCustom {
+		t.Errorf("November's closing days, usual: %s %v", got, month.ClosingCustom)
+	}
+	nov := map[string]any{"month": "2026-11", "days": []map[string]string{{"date": "2026-11-02", "code": "13F"}}, "closing_days": []int{30, 20, 20}}
+	if code := c.do("PUT", "/api/shifts/month", nov, &month); code != 200 || fmt.Sprint(month.ClosingDays) != "[20 30]" || !month.ClosingCustom {
+		t.Errorf("November's own closing days: %d %v %v", code, month.ClosingDays, month.ClosingCustom)
+	}
+	c.do("GET", "/api/shifts?month=2026-12", nil, &month)
+	if fmt.Sprint(month.ClosingDays) != "[10 25]" || month.ClosingCustom {
+		t.Errorf("December keeps the usual days: %v %v", month.ClosingDays, month.ClosingCustom)
+	}
+	delete(nov, "closing_days") // an app that doesn't send them leaves them be
+	c.do("PUT", "/api/shifts/month", nov, &month)
+	if fmt.Sprint(month.ClosingDays) != "[20 30]" {
+		t.Errorf("saved without closing days: %v", month.ClosingDays)
+	}
+	nov["closing_days"] = []int{31}
+	if code := c.do("PUT", "/api/shifts/month", nov, nil); code != 400 {
+		t.Errorf("November 31st: %d, want 400", code)
+	}
+	nov["closing_days"] = []int{}
+	if c.do("PUT", "/api/shifts/month", nov, &month); len(month.ClosingDays) != 0 || !month.ClosingCustom {
+		t.Errorf("no closing days in November: %v %v", month.ClosingDays, month.ClosingCustom)
+	}
+	nov["closing_days"] = []int{25, 10}
+	if c.do("PUT", "/api/shifts/month", nov, &month); month.ClosingCustom {
+		t.Errorf("the usual days again: still custom")
+	}
+	c.do("PUT", "/api/shifts/settings", map[string]any{"closing_days": []int{15, 31}}, nil)
+	c.do("GET", "/api/shifts?month=2026-11", nil, &month)
+	if fmt.Sprint(month.ClosingDays) != "[15 30]" {
+		t.Errorf("November follows the settings: %v", month.ClosingDays)
 	}
 
 	// The calendar feed: off until turned on, then readable without a session.
