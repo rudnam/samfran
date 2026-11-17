@@ -97,9 +97,11 @@ export function ShiftsPage({ month }: { month?: string }) {
             <strong className="block">
               {dayName(next.date)} · {labelOf(next.label)} · {timesOf(next)}
             </strong>
-            <WhoThere day={next} who={me} everyone={everyone} onEveryone={showEveryone} className="with block" />
+            {!everyone && <WhoThere day={next} who={me} everyone={false} onEveryone={showEveryone} className="with block" />}
           </span>
           <span className="code-chip">{next.code}</span>
+          {/* Everyone there: under the shift, at the card's full width. */}
+          {everyone && <WhoThere day={next} who={me} everyone onEveryone={showEveryone} />}
         </div>
       )}
 
@@ -167,6 +169,7 @@ export function ShiftsPage({ month }: { month?: string }) {
         )}
       </div>
 
+      {reading && <ReadingCard progress={reading} />}
       <div className="row wrap">
         <input
           ref={fileInput}
@@ -176,7 +179,7 @@ export function ShiftsPage({ month }: { month?: string }) {
           aria-label={t('Photo of the sheet')}
           onChange={(e) => e.target.files?.[0] && readPhoto(e.target.files[0])}
         />
-        {data?.settings.reader && (
+        {data?.settings.reader && !reading && (
           <button type="button" disabled={!!reading || !!needsName} onClick={() => fileInput.current?.click()}>
             {reading ? t('Reading the sheet…') : t('Read a photo of the sheet')}
           </button>
@@ -185,7 +188,7 @@ export function ShiftsPage({ month }: { month?: string }) {
           {t('Edit by hand')}
         </a>
       </div>
-      {reading && <ReadingCard progress={reading} />}
+
       {needsName && data?.settings.reader && (
         <p className="hint">
           {t('To read photos, first set the name as it’s printed on the sheet in')} <a href={href('shifts/settings')}>{t('Settings')}</a>.

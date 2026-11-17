@@ -112,10 +112,12 @@ fun ShiftsScreen(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                WhoThere(next, me, state.everyone, actions::setEveryone)
+                                if (!state.everyone) WhoThere(next, me, false, actions::setEveryone)
                             }
                             CodeChip(next.code)
                         }
+                        // Everyone there: under the shift, at the card's full width.
+                        if (state.everyone) WhoThere(next, me, true, actions::setEveryone, Modifier.padding(start = 24.dp, top = 8.dp))
                     }
                 }
             }
@@ -158,7 +160,8 @@ fun ShiftsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // The two ways to fill in a month, one above the other at full width.
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (state.canRead) {
+                            state.progress?.let { ReadingCard(it) }
+                        if (state.canRead && !state.reading) {
                             var menu by remember { mutableStateOf(false) }
                             Box(Modifier.fillMaxWidth()) {
                                 PrimaryButton(
@@ -189,7 +192,6 @@ fun ShiftsScreen(
                         }
                         SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
                     }
-                    state.progress?.let { ReadingCard(it) }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Hint(stringResource(R.string.needs_name), Modifier.weight(1f))

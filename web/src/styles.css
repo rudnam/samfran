@@ -402,7 +402,8 @@ button.icon-toggle.on { background: var(--accent); color: var(--accent-text); }
 .there-bar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--muted); opacity: 0.55; }
 .there li.me .there-bar i, .there li.same .there-bar i { background: #f08a24; opacity: 0.9; }
 .there-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.8rem; text-align: right; white-space: nowrap; }
-.next-shift .there { margin-top: 6px; }
+.next-shift { flex-wrap: wrap; }
+.next-shift .there { margin-top: 0; padding-left: 22px; }
 .next-shift .there-time, .next-shift .there-tag.quiet { color: inherit; }
 .next-shift .there-bar { background: rgba(0, 0, 0, 0.08); }
 

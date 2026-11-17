@@ -111,7 +111,7 @@ object Samples {
                         others = listOf(there("ヤマダ ハナ", "9F", "2026-11-$dd"), there("サトウ ミオ", "17F", "2026-11-$dd")),
                     )
                     "22F" -> d.copy(with = listOf("スズキ ケン", "ヤマモト アオイ"), others = listOf(there("アサ ミキ", "6F", "2026-11-$dd", offset = 1)))
-                    "7F" -> d.copy(others = listOf(there("ヨル タロウ", "22F", "2026-11-$dd", offset = -1)))
+                    "7F" -> d.copy(others = listOf(there("ヨル タロウ", "23F", "2026-11-$dd", offset = -1)))
                     else -> d
                 }
             }

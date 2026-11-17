@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.MaterialTheme
@@ -129,7 +130,7 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean
                 }
                 val left = at(l.start, 0f)
                 val width = (at(l.end, 1f) - left).coerceAtLeast(0.04f)
-                BoxWithConstraints(Modifier.width(72.dp).height(8.dp).clip(RoundedCornerShape(4.dp)).background(if (ink != null) Color.Black.copy(alpha = 0.08f) else colors.sunken)) {
+                BoxWithConstraints(Modifier.width(56.dp).height(8.dp).clip(RoundedCornerShape(4.dp)).background(if (ink != null) Color.Black.copy(alpha = 0.08f) else colors.sunken)) {
                     Box(
                         Modifier
                             .offset(x = maxWidth * left)
@@ -141,7 +142,7 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean
                 }
                 Text(
                     listOf(l.start, l.end).joinToString("–") { t -> t?.let { "${it.hour}:%02d".format(it.minute) }.orEmpty() },
-                    Modifier.width(76.dp),
+                    Modifier.widthIn(min = 92.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = mutedColor,
                     textAlign = TextAlign.End,

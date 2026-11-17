@@ -192,7 +192,8 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
   // A real (1×1 PNG) photo, so the page can shrink it.
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   await page.getByLabel('Photo of the sheet').setInputFiles({ name: 'sheet.png', mimeType: 'image/png', buffer: png });
-  await expect(page.getByRole('button', { name: 'Reading the sheet…' })).toBeDisabled();
+  // The progress takes the read button's place until it's done.
+  await expect(page.getByRole('button', { name: 'Read a photo of the sheet' })).toHaveCount(0);
   // How far it's got: the photo's sent, the row found, and the days as they're read.
   const progress = page.getByRole('status', { name: 'Reading the sheet…' });
   await expect(progress).toContainText('Found オトル サマンタ on the sheet');
@@ -264,7 +265,7 @@ test('see everyone there during a shift, not only those on the same one', async 
   // A night shift from the day before shows on an early shift.
   await cal.getByRole('button', { name: /^2 / }).click();
   await expect(there.nth(0)).toContainText('ヨル タロウ');
-  await expect(there.nth(0)).toContainText('from the night before');
+  await expect(there.nth(0)).toContainText('night before');
   await expect(there.nth(0)).toContainText('22:00–7:00');
 
   // This device remembers it, and the list shows it too.

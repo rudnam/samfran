@@ -95,7 +95,7 @@ export function WhoThere({
         start: o.start,
         end: o.end,
         kind: 'other',
-        note: o.day_offset === -1 ? t('from the night before') : o.day_offset === 1 ? t('next morning') : undefined,
+        note: o.day_offset === -1 ? t('night before') : o.day_offset === 1 ? t('next morning') : undefined,
       }),
     ),
   ].sort((a, b) => Date.parse(a.start ?? '') - Date.parse(b.start ?? '') || (a.kind === 'me' ? -1 : b.kind === 'me' ? 1 : 0));
