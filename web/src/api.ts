@@ -63,6 +63,9 @@ export interface Restaurant {
   cuisine: string;
   /** Why you'd go: eat, nature, culture, fun, relax, shopping or other (features/restaurants/categories.tsx). */
   category: string;
+  /** Where it is; null until known (the server looks it up from the map link or name). */
+  lat?: number | null;
+  lng?: number | null;
   map_url: string;
   notes: string;
   /** Who added it; empty if they've left. */
@@ -87,6 +90,9 @@ export interface RestaurantFields {
   category: string;
   map_url: string;
   notes: string;
+  /** Where it is, both or neither: from the place picked in the search. */
+  lat?: number;
+  lng?: number;
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -149,6 +155,8 @@ export const api = {
 
   restaurants: () => request<Restaurant[]>('GET', '/api/restaurants'),
   restaurant: (id: number) => request<Restaurant>('GET', `/api/restaurants/${id}`),
+  /** The Google Maps key for the places' map; empty for no map. */
+  mapKey: () => request<{ key: string }>('GET', '/api/restaurants/map'),
   /** With visit, logs a first visit; with stars, the creator's rating. */
   createRestaurant: (f: RestaurantFields & { visit?: { visited_on: string; note?: string }; stars?: number }) =>
     request<Restaurant>('POST', '/api/restaurants', f),

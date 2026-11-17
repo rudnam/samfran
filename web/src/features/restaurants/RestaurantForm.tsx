@@ -250,6 +250,8 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
         : await api.createRestaurant({
             ...fields,
             map_url: fields.map_url.trim() || (picked ? pickedMapURL(picked) : ''),
+            // Where the picked place is (Google's suggestions have it only after their details).
+            ...(picked && (picked.lat || picked.lng) ? { lat: picked.lat, lng: picked.lng } : {}),
             ...(been ? { visit: { visited_on: visitedOn }, stars: stars || undefined } : {}),
           });
       // Back goes to the list, not to this form.

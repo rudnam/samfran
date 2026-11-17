@@ -1,6 +1,6 @@
 // The list: places you've been (latest visit first) and places you want to go,
-// all of them or one category's.
-import { useMemo, useState } from 'react';
+// all of them or one category's, newest or nearest first, as a list or on a map.
+import { useEffect, useMemo, useState } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
@@ -9,10 +9,32 @@ import { href } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
 import { categories, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
 import { shortDate, today } from './format';
+import { byDistance, distanceText, useLocation } from './nearby';
+import { PlacesMap } from './PlacesMap';
 
 export type Tab = 'been' | 'want';
 
 const filterKey = 'places.category';
+const sortKey = 'places.sort';
+const viewKey = 'places.view';
+
+/** A choice remembered on this device; def when there's none, or storage is off. */
+function remembered<T extends string>(key: string, options: readonly T[], def: T): T {
+  try {
+    const v = localStorage.getItem(key);
+    return v && (options as readonly string[]).includes(v) ? (v as T) : def;
+  } catch {
+    return def;
+  }
+}
+
+function remember(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Private browsing: it just isn't remembered.
+  }
+}
 
 /** The category last filtered by on this device, so the list opens on it. */
 function savedFilter(): Category | 'all' {
@@ -42,6 +64,26 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
     setFilterState(c);
     saveFilter(c);
   };
+  // Newest or nearest first; a list or a map. Both remembered on this device.
+  const [sort, setSortState] = useState(() => remembered(sortKey, ['newest', 'nearby'] as const, 'newest'));
+  const [view, setViewState] = useState(() => remembered(viewKey, ['list', 'map'] as const, 'list'));
+  const location = useLocation();
+  const { data: map } = useCached('map-key', api.mapKey, errorMessage);
+  const mapKey = map?.key ?? '';
+  const setSort = (s: 'newest' | 'nearby') => {
+    setSortState(s);
+    remember(sortKey, s);
+    if (s === 'nearby') location.ask();
+  };
+  const setView = (v: 'list' | 'map') => {
+    setViewState(v);
+    remember(viewKey, v);
+  };
+  // Opened on Nearby: ask where they are (a browser that was allowed before doesn't ask again).
+  useEffect(() => {
+    if (sort === 'nearby') location.ask();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const here = location.state.status === 'here' ? location.state.spot : null;
 
   const been = useMemo(
     () =>
@@ -61,7 +103,11 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
   const counts = new Map<Category, number>();
   for (const r of onTab) counts.set(categoryOf(r.category), (counts.get(categoryOf(r.category)) ?? 0) + 1);
   const activeFilter = showFilter ? filter : 'all';
-  const shown = onTab.filter((r) => (activeFilter === 'all' || categoryOf(r.category) === activeFilter) && matches(r, query));
+  const filtered = onTab.filter((r) => (activeFilter === 'all' || categoryOf(r.category) === activeFilter) && matches(r, query));
+  // Where they are, when the list is nearest first.
+  const near = sort === 'nearby' ? here : null;
+  const shown = near ? byDistance(near, filtered) : filtered;
+  const onMap = view === 'map' && mapKey !== '';
 
   return (
     <section className="stack">
@@ -113,6 +159,39 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
               ))}
           </div>
         )}
+        {list && list.length > 0 && (
+          <div className="row spread list-tools">
+            <div className="pill-seg" role="radiogroup" aria-label={t('Order')}>
+              <button type="button" role="radio" aria-checked={sort === 'newest'} className={sort === 'newest' ? 'on' : ''} onClick={() => setSort('newest')}>
+                {tab === 'been' ? t('Latest') : t('Newest')}
+              </button>
+              <button type="button" role="radio" aria-checked={sort === 'nearby'} className={sort === 'nearby' ? 'on' : ''} onClick={() => setSort('nearby')}>
+                <Icon name="nearby" size={15} />
+                {t('Nearby')}
+              </button>
+            </div>
+            {mapKey && (
+              <div className="pill-seg" role="radiogroup" aria-label={t('View')}>
+                <button type="button" role="radio" aria-checked={!onMap} className={!onMap ? 'on' : ''} onClick={() => setView('list')}>
+                  <Icon name="list" size={15} />
+                  {t('List')}
+                </button>
+                <button type="button" role="radio" aria-checked={onMap} className={onMap ? 'on' : ''} onClick={() => setView('map')}>
+                  <Icon name="map" size={15} />
+                  {t('Map')}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        {sort === 'nearby' && location.state.status === 'asking' && <p className="hint">{t('Finding where you are…')}</p>}
+        {sort === 'nearby' && location.state.status === 'failed' && (
+          <p className="hint">
+            {location.state.denied
+              ? t('Location is off for this site, so the list is newest first. Allow it in the browser to sort by distance.')
+              : t('Couldn’t find where you are, so the list is newest first.')}
+          </p>
+        )}
         {list && list.length > 4 && (
           <input
             type="search"
@@ -155,7 +234,8 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
           )}
         </div>
       )}
-      {shown.length > 0 && (
+      {onMap && shown.length > 0 && <PlacesMap places={shown} mapKey={mapKey} me={near} />}
+      {!onMap && shown.length > 0 && (
         <ul className="cards" aria-label={tab === 'been' ? t('Been there') : t('Want to go')}>
           {shown.map((r) => (
             <li key={r.id}>
@@ -184,11 +264,18 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                     </span>
                   )}
                 </span>
-                {r.last_visit && (
+                {near && distanceText(near, r) ? (
                   <span className="spot-when">
-                    <strong>{shortDate(r.last_visit)}</strong>
-                    <span>{tn(r.visit_count, '{n} visit', '{n} visits')}</span>
+                    <strong className="distance">{distanceText(near, r)}</strong>
+                    {r.last_visit && <span>{shortDate(r.last_visit)}</span>}
                   </span>
+                ) : (
+                  r.last_visit && (
+                    <span className="spot-when">
+                      <strong>{shortDate(r.last_visit)}</strong>
+                      <span>{tn(r.visit_count, '{n} visit', '{n} visits')}</span>
+                    </span>
+                  )
                 )}
               </a>
             </li>

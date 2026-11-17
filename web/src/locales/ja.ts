@@ -175,6 +175,19 @@ export const ja = {
   Onsen: '温泉',
   'Shopping mall': 'ショッピングモール',
   Market: '市場',
+  // Nearby and the map
+  Order: '並び順',
+  Latest: '最近',
+  Newest: '新しい順',
+  Nearby: '近い順',
+  Map: '地図',
+  'Finding where you are…': '現在地を確認しています…',
+  'Location is off for this site, so the list is newest first. Allow it in the browser to sort by distance.':
+    'このサイトの位置情報がオフなので、新しい順に並べています。距離順にするには、ブラウザで許可してください。',
+  'Couldn’t find where you are, so the list is newest first.': '現在地がわからなかったので、新しい順に並べています。',
+  'The map isn’t available right now.': '今は地図を表示できません。',
+  'Map of the places': '場所の地図',
+  '{n} not on the map yet: their place is still being looked up, or wasn’t found.': '{n}か所はまだ地図にありません（場所を調べている途中か、見つかりませんでした）。',
 
   // The Android app
   'Get the Android app': 'Androidアプリを入手',
