@@ -83,7 +83,10 @@ data class ShiftMonth(
     val fromPhoto: Boolean get() = nameAsRead != null
 
     /** The days this month's hours are sent in: its own, else the usual ones. */
-    val closing: List<Int> get() = closingDays ?: settings.closingDays
+    val closing: List<Int> get() = closingDays ?: usualClosing
+
+    /** The usual days (from the settings) as they fall in this month: a day past its end is its last day. */
+    val usualClosing: List<Int> get() = settings.closingDays.map { minOf(it, month.lengthOfMonth()) }.distinct().sorted()
 }
 
 /**

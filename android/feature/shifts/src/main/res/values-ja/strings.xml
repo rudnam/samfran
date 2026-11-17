@@ -62,4 +62,8 @@
     <string name="who_with_on">%sに一緒の人</string>
     <string name="who_with_hint">「、」か「,」で区切る。下の名前をタップしても入る</string>
     <string name="done">完了</string>
+    <string name="use_usual_days">いつもの日に戻す</string>
+    <string name="closing_usual_hint">設定のいつもの日です。ここで変えると%1$sだけ変わります。</string>
+    <string name="closing_own_hint">%1$sだけの日です。ほかの月はいつもの日のままです。</string>
+    <string name="no_closing_this_month">今月は締め申請通知なし</string>
 </resources>

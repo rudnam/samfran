@@ -32,6 +32,9 @@ data class ShiftEditorUiState(
     val typed: Map<LocalDate, String> = emptyMap(),
     /** The day whose names are open to edit; the chips then offer this month's names. */
     val editingWith: LocalDate? = null,
+    /** 締め申請通知 this month, as dates in it; null until known. Sent only once [closingChanged]. */
+    val closing: List<Int>? = null,
+    val closingChanged: Boolean = false,
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
     val saved: Boolean = false,
@@ -77,6 +80,12 @@ data class ShiftEditorUiState(
         return out
     }
 
+    /** The usual closing days as they fall in this month. */
+    val usualClosing: List<Int> get() = base?.usualClosing.orEmpty()
+
+    /** This month's closing days are the usual ones. */
+    val closingIsUsual: Boolean get() = closing == usualClosing
+
     fun meaning(date: LocalDate): ShiftCodes.Meaning? =
         codes[date]?.takeIf { it.isNotBlank() }?.let { ShiftCodes.explain(it, base?.settings?.lengths.orEmpty()) }
 }
@@ -94,6 +103,12 @@ interface ShiftEditorActions {
     fun setWith(date: LocalDate, text: String)
     /** A name's chip: adds it to the open day, or takes it off if it's there. */
     fun toggleName(name: String)
+    /** This month's closing day [index] becomes [day] (a date in the month). */
+    fun setClosing(index: Int, day: Int)
+    fun addClosing()
+    fun removeClosing(index: Int)
+    /** Back to the usual days from the settings. */
+    fun usualClosing()
     fun save()
 }
 
@@ -112,6 +127,11 @@ class ShiftEditorViewModel @Inject constructor(
         val read = if (route.fromPhoto) shifts.takePendingRead(month) else null
         if (read != null) {
             take(read)
+            // A photo read doesn't carry the month's closing days; the saved month does.
+            viewModelScope.launch {
+                val saved = (shifts.refresh(month) as? Outcome.Done)?.value ?: shifts.month(month).first()
+                _state.update { it.copy(closing = it.closing ?: (saved ?: read).closing) }
+            }
         } else {
             viewModelScope.launch {
                 when (val r = shifts.refresh(month)) {
@@ -124,8 +144,25 @@ class ShiftEditorViewModel @Inject constructor(
     }
 
     private fun take(m: ShiftMonth) = _state.update {
-        it.copy(base = m, codes = m.days.associate { d -> d.date to d.code }, focused = it.focused ?: month.atDay(1))
+        it.copy(
+            base = m,
+            codes = m.days.associate { d -> d.date to d.code },
+            focused = it.focused ?: month.atDay(1),
+            closing = if (m.fromPhoto) it.closing else m.closing,
+        )
     }
+
+    private fun closing(change: (List<Int>) -> List<Int>) = _state.update {
+        it.copy(closing = change(it.closing.orEmpty()).distinct().sorted(), closingChanged = true)
+    }
+
+    override fun setClosing(index: Int, day: Int) = closing { c -> c.mapIndexed { i, d -> if (i == index) day else d } }
+
+    override fun addClosing() = closing { c -> c + ((1..month.lengthOfMonth()).firstOrNull { it !in c } ?: return@closing c) }
+
+    override fun removeClosing(index: Int) = closing { c -> c.filterIndexed { i, _ -> i != index } }
+
+    override fun usualClosing() = closing { _state.value.usualClosing }
 
     override fun setCode(date: LocalDate, code: String) = _state.update { it.copy(codes = it.codes + (date to code.take(12))) }
 
@@ -156,7 +193,7 @@ class ShiftEditorViewModel @Inject constructor(
             val s = _state.value
             val codes = s.codes.mapValues { ShiftCodes.normalize(it.value) }
             val with = s.dates.associateWith { s.withFor(it) }.filterValues { it.isNotEmpty() }
-            val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap())
+            val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap(), s.closing.takeIf { s.closingChanged })
             if (r is Outcome.Done) reminders.sync(now = true) // the phone asks "Start bus alarm?" at the new times
             _state.update { it.copy(busy = false, saved = r is Outcome.Done, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }

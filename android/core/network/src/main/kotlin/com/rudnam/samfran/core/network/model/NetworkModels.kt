@@ -262,6 +262,8 @@ data class NetworkSaveShifts(
     val days: List<NetworkShiftCode>,
     /** Names the photo reader got wrong, as fixed while checking a scan; later scans use them. */
     val corrections: List<NetworkNameFix>? = null,
+    /** This month's 締め申請通知 days (dates in it); left out, they stay as they are. */
+    @SerialName("closing_days") val closingDays: List<Int>? = null,
 )
 
 @Serializable
