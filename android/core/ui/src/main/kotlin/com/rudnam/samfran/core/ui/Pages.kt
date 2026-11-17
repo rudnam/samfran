@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -49,7 +50,9 @@ val MaxContentWidth = 640.dp
 /**
  * A tab's page: a list drawn edge to edge, its content clear of the status
  * bar and the sides' insets (the tab bar below takes care of the bottom).
- * Content is centred and at most [MaxContentWidth] wide.
+ * Content is centred and at most [MaxContentWidth] wide. Behind the status
+ * bar is a strip of the page's ground, so what scrolls up passes under it
+ * instead of under the clock and icons.
  */
 @Composable
 fun TabPage(
@@ -76,6 +79,7 @@ fun TabPage(
             content = content,
         )
         }
+        Box(Modifier.fillMaxWidth().windowInsetsTopHeight(WindowInsets.safeDrawing).background(SamFranTheme.colors.bg))
     }
 }
 
