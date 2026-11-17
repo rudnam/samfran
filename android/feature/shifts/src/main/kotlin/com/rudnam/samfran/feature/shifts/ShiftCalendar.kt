@@ -244,5 +244,3 @@ fun WithNames(names: List<String>, modifier: Modifier = Modifier, trailing: (@Co
         trailing?.invoke()
     }
 }
-    Text(stringResource(R.string.with_names, list), modifier, style = MaterialTheme.typography.bodySmall, color = SamFranTheme.colors.muted)
-}
