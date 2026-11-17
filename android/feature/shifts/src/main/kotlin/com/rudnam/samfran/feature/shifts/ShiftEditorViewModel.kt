@@ -84,6 +84,12 @@ data class ShiftEditorUiState(
 /** Names are separated by commas (a name itself has a space in it). */
 internal fun splitNames(text: String): List<String> = text.split(',', '、', '，').map { it.trim() }.filter { it.isNotEmpty() }
 
+/** A name's chip: the names with [name] added, or taken off if it's there. */
+internal fun toggleName(text: String, name: String): String {
+    val now = splitNames(text)
+    return (if (name in now) now - name else now + name).joinToString(", ")
+}
+
 interface ShiftEditorActions {
     fun setCode(date: LocalDate, code: String)
     fun focus(date: LocalDate?)
@@ -92,8 +98,6 @@ interface ShiftEditorActions {
     /** Opens a day's names to edit, or closes them (null). */
     fun editWith(date: LocalDate?)
     fun setWith(date: LocalDate, text: String)
-    /** A name's chip: adds it to the open day, or takes it off if it's there. */
-    fun toggleName(name: String)
     fun save()
 }
 
@@ -135,13 +139,6 @@ class ShiftEditorViewModel @Inject constructor(
     override fun editWith(date: LocalDate?) = _state.update { it.copy(editingWith = date, focused = date ?: it.focused) }
 
     override fun setWith(date: LocalDate, text: String) = _state.update { it.copy(typed = it.typed + (date to text.take(400))) }
-
-    override fun toggleName(name: String) = _state.update { s ->
-        val day = s.editingWith ?: return@update s
-        val now = s.withFor(day)
-        val next = if (name in now) now - name else now + name
-        s.copy(typed = s.typed + (day to next.joinToString(", ")))
-    }
 
     override fun chip(code: String) = _state.update { s ->
         val day = s.focused ?: return@update s

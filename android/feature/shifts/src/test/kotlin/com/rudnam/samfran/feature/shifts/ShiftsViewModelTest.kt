@@ -78,17 +78,11 @@ class ShiftsViewModelTest {
     }
 
     @Test
-    fun `a name's chip adds it to the open day, and takes it off again`() = runTest {
+    fun `a name's chip adds it to the line, and takes it off again`() = runTest {
         val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
-        val day = LocalDate.of(2026, 11, 2)
-        val names = vm.state.value.namesBesides(day)
-        assertEquals("タナカ ユイ", names.first()) // the most frequent this month
-        vm.editWith(day)
-        vm.toggleName("スズキ ケン")
-        vm.toggleName("タナカ ユイ")
-        assertEquals("スズキ ケン, タナカ ユイ", vm.state.value.withText(day))
-        vm.toggleName("スズキ ケン")
-        assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(day))
+        assertEquals("タナカ ユイ", vm.state.value.namesBesides(LocalDate.of(2026, 11, 2)).first()) // the most frequent this month
+        assertEquals("スズキ ケン, タナカ ユイ", toggleName(toggleName("", "スズキ ケン"), "タナカ ユイ"))
+        assertEquals("タナカ ユイ", toggleName("スズキ ケン、 タナカ ユイ", "スズキ ケン"))
     }
 
     @Test

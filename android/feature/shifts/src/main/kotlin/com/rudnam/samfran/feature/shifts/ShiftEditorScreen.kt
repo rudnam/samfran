@@ -78,6 +78,16 @@ internal fun ShiftEditorDestination(navigation: ShiftsNavigation, viewModel: Shi
 @Composable
 fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, onBack: () -> Unit) {
     val colors = SamFranTheme.colors
+    // The open day's names, held here while they're edited: the keyboard's
+    // text (with what the input method is still composing) must not be
+    // replaced by the view model's copy, which arrives a frame later. The
+    // view model hears every change; the name chips change it here too.
+    val editing = state.editingWith
+    var names by remember(editing) { mutableStateOf(atEnd(editing?.let(state::withText).orEmpty())) }
+    fun setNames(value: TextFieldValue) {
+        names = value
+        editing?.let { actions.setWith(it, value.text) }
+    }
     val locale = currentLocale
     val month = Dates.month(state.month, locale)
     val requesters = remember(state.month) { state.dates.associateWith { FocusRequester() } }
@@ -90,7 +100,6 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
         bottomBar = if (state.base == null) null else ({
             Column {
                 HorizontalDivider(color = colors.border)
-                val editing = state.editingWith
                 if (editing == null) {
                     ChipRow {
                         for (code in ShiftCodes.common) {
@@ -105,14 +114,14 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                         }
                     }
                 } else {
-                    val names = state.namesBesides(editing)
-                    if (names.isNotEmpty()) {
-                        val now = state.withFor(editing)
+                    val others = state.namesBesides(editing)
+                    if (others.isNotEmpty()) {
+                        val now = splitNames(names.text)
                         ChipRow {
-                            for (name in names) {
+                            for (name in others) {
                                 FilterChip(
                                     selected = name in now,
-                                    onClick = { actions.toggleName(name) },
+                                    onClick = { setNames(atEnd(toggleName(names.text, name))) },
                                     label = { Text(name) },
                                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.a.bg),
                                 )
@@ -181,10 +190,10 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                 }
                 // Who's with you: under the day at full width, where its box opens in place.
                 if (state.editingWith == date) {
-                    NamesField(state.withText(date), date, day, actions)
+                    NamesField(names, ::setNames, day, onDone = { actions.editWith(null) })
                 } else {
-                    val names = state.withFor(date)
-                    if (names.isNotEmpty() || meaning?.kind == ShiftKind.Work) WithLine(names, day) { actions.editWith(date) }
+                    val with = state.withFor(date)
+                    if (with.isNotEmpty() || meaning?.kind == ShiftKind.Work) WithLine(with, day) { actions.editWith(date) }
                 }
             }
         }
@@ -229,23 +238,20 @@ private fun WithLine(names: List<String>, day: String, onClick: () -> Unit) {
  * takes the focus when it opens; Done (or the check) closes it.
  */
 @Composable
-private fun NamesField(text: String, date: LocalDate, day: String, actions: ShiftEditorActions) {
+private fun NamesField(value: TextFieldValue, onChange: (TextFieldValue) -> Unit, day: String, onDone: () -> Unit) {
     val requester = remember { FocusRequester() }
-    LaunchedEffect(date) { runCatching { requester.requestFocus() } }
-    // The cursor goes to the end when a chip changes the names.
-    var value by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
-    if (value.text != text) value = TextFieldValue(text, TextRange(text.length))
+    LaunchedEffect(Unit) { runCatching { requester.requestFocus() } }
     val label = stringResource(R.string.who_with_on, day)
     OutlinedTextField(
         value = value,
-        onValueChange = { value = it; actions.setWith(date, it.text) },
+        onValueChange = onChange,
         label = { Text(stringResource(R.string.who_with)) },
         supportingText = { Text(stringResource(R.string.who_with_hint)) },
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { actions.editWith(null) }),
+        keyboardActions = KeyboardActions(onDone = { onDone() }),
         trailingIcon = {
-            IconButton(onClick = { actions.editWith(null) }) { LineIcon(SamFranIcons.check, stringResource(R.string.done), size = 20.dp) }
+            IconButton(onClick = onDone) { LineIcon(SamFranIcons.check, stringResource(R.string.done), size = 20.dp) }
         },
         modifier = Modifier
             .fillMaxWidth()
@@ -254,3 +260,6 @@ private fun NamesField(text: String, date: LocalDate, day: String, actions: Shif
             .semantics { contentDescription = label },
     )
 }
+
+/** Text with the cursor at its end. */
+private fun atEnd(text: String) = TextFieldValue(text, TextRange(text.length))

@@ -44,7 +44,6 @@ class ShiftsScreenshotTest {
         override fun chip(code: String) {}
         override fun editWith(date: LocalDate?) {}
         override fun setWith(date: LocalDate, text: String) {}
-        override fun toggleName(name: String) {}
         override fun save() {}
     }
     private val settings = object : ShiftSettingsActions {
