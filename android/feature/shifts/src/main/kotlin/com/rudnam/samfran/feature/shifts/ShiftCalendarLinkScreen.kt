@@ -98,7 +98,7 @@ fun ShiftCalendarLinkScreen(
             Step(3, stringResource(R.string.step_paste_title))
             Hint(stringResource(R.string.sync_hint, name))
         }
-        SamFranCard {
+        SamFranCard(Modifier.fillMaxWidth()) {
             Hint(stringResource(R.string.calendar_link_private))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 SecondaryButton(stringResource(R.string.new_link), { actions.feed(true) }, enabled = !state.busy)
