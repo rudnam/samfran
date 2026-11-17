@@ -109,8 +109,13 @@ var (
 	monthArg = str("A month, YYYY-MM (e.g. 2026-11).")
 	dateArg  = str("A date, YYYY-MM-DD.")
 	starsArg = map[string]any{"type": "integer", "minimum": 0, "maximum": 5, "description": "1 to 5 stars; 0 clears the rating."}
-	idArg    = map[string]any{"type": "integer", "description": "The restaurant's id, from list_restaurants."}
+	idArg    = map[string]any{"type": "integer", "description": "The place's id, from list_restaurants."}
 )
+
+// categoryArg is a place's category, one of restaurant.Categories.
+func categoryArg(desc string) map[string]any {
+	return map[string]any{"type": "string", "enum": restaurant.Categories, "description": desc}
+}
 
 var toolList = []*tool{
 	{
@@ -231,14 +236,15 @@ var toolList = []*tool{
 	},
 	{
 		Name:        "list_restaurants",
-		Title:       "Restaurants",
-		Description: "The restaurants in samfran: ones you've been to (visit_count > 0, with the latest visit) and ones you want to go to (no visits), with each person's rating.",
+		Title:       "Places",
+		Description: "The places in samfran (restaurants, parks, shrines, onsen…): ones you've been to (visit_count > 0, with the latest visit) and ones you want to go to (no visits), with each person's rating and the place's category.",
 		InputSchema: object(map[string]any{
-			"list": map[string]any{"type": "string", "enum": []string{"all", "been", "want"}, "description": "Which list; all by default."},
+			"list":     map[string]any{"type": "string", "enum": []string{"all", "been", "want"}, "description": "Which list; all by default."},
+			"category": categoryArg("Only places in this category; all by default."),
 		}),
 		Annotations: readOnly,
 		run: func(c *call, args json.RawMessage) (any, error) {
-			var in struct{ List string }
+			var in struct{ List, Category string }
 			if err := decode(args, &in); err != nil {
 				return nil, err
 			}
@@ -252,7 +258,7 @@ var toolList = []*tool{
 			}
 			out := []restaurant.Restaurant{}
 			for _, r := range list {
-				if in.List == "been" && r.VisitCount == 0 || in.List == "want" && r.VisitCount > 0 {
+				if in.List == "been" && r.VisitCount == 0 || in.List == "want" && r.VisitCount > 0 || in.Category != "" && r.Category != in.Category {
 					continue
 				}
 				out = append(out, r)
@@ -262,13 +268,14 @@ var toolList = []*tool{
 	},
 	{
 		Name:  "add_restaurant",
-		Title: "Add a restaurant",
-		Description: "Adds a restaurant. With visited_on it's a place you've been (that visit is logged); without, it goes on the want-to-go list. " +
+		Title: "Add a place",
+		Description: "Adds a place to go: a restaurant, park, shrine, onsen… With visited_on it's a place you've been (that visit is logged); without, it goes on the want-to-go list. " +
 			"stars is the signed-in user's own rating. Check list_restaurants first so a place isn't added twice.",
 		InputSchema: object(map[string]any{
-			"name":       str("The restaurant's name."),
+			"name":       str("The place's name."),
 			"area":       str("Where it is, e.g. a neighbourhood or station."),
-			"cuisine":    str("The kind of food, e.g. Ramen."),
+			"cuisine":    str("The kind of place, e.g. Ramen, Park, Shrine."),
+			"category":   categoryArg("Why you'd go: eat (restaurants, cafés, bars), nature (parks, beaches, hikes), culture (shrines, temples, castles, museums), fun (theme parks, aquariums, zoos, sports, shows), relax (onsen, saunas, spas), shopping, or other. eat by default."),
 			"map_url":    str("A Google Maps link (https://…), if there is one."),
 			"notes":      str("Anything worth remembering: what to order, when to book."),
 			"visited_on": dateArg,

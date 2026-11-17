@@ -1,6 +1,16 @@
 package com.rudnam.samfran.feature.food
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.designsystem.component.EmptyState
@@ -45,9 +53,7 @@ import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.Space
-import com.rudnam.samfran.core.model.TileColor
 import com.rudnam.samfran.core.model.Tone
-import com.rudnam.samfran.core.model.initialOf
 import com.rudnam.samfran.core.ui.Avatar
 import com.rudnam.samfran.core.ui.Dates
 import com.rudnam.samfran.core.ui.RatingChip
@@ -62,7 +68,7 @@ internal fun FoodListDestination(navigation: FoodNavigation, viewModel: FoodList
     FoodListScreen(state, viewModel, onOpen = navigation::openPlace, onAdd = { navigation.addPlace(want = state.tab == FoodTab.Want) })
 }
 
-/** The Food tab (web/src/features/restaurants/RestaurantsPage.tsx): been there and want to go. */
+/** The Places tab (web/src/features/restaurants/RestaurantsPage.tsx): been there and want to go, all or one category's. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Long) -> Unit, onAdd: () -> Unit) {
@@ -89,6 +95,9 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                         counts = if (state.all == null) null else listOf(state.been.size.toString(), state.want.size.toString()),
                     )
                 }
+                if (state.filterable && state.all != null) {
+                    item(key = "filter") { CategoryFilter(state, actions) }
+                }
                 if (state.searchable) {
                     item(key = "search") {
                         OutlinedTextField(
@@ -114,6 +123,13 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                     state.shown.isEmpty() -> item(key = "empty") {
                         when {
                             state.query.isNotBlank() -> EmptyState(stringResource(R.string.nothing_matches, state.query.trim()), null)
+                            state.activeFilter != null && state.onTab.isNotEmpty() -> Column(
+                                Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                EmptyState(stringResource(R.string.nothing_in_category, stringResource(state.activeFilter.short)), null)
+                                TextButton(onClick = { actions.setFilter(null) }) { Text(stringResource(R.string.show_all)) }
+                            }
                             state.tab == FoodTab.Been -> EmptyState(stringResource(R.string.no_places_yet), stringResource(R.string.add_first_place))
                             else -> EmptyState(stringResource(R.string.nothing_on_list), stringResource(R.string.save_places_to_try))
                         }
@@ -145,7 +161,45 @@ private fun Avatars(space: Space, modifier: Modifier = Modifier) {
     }
 }
 
-/** One place on the list (.spot): its letter tile, name, ratings, what it is, and the last visit. */
+/** The category chips (.cat-filter): all, or one category's places; a row that scrolls sideways. */
+@Composable
+private fun CategoryFilter(state: FoodListUiState, actions: FoodListActions) {
+    val colors = SamFranTheme.colors
+    val label = stringResource(R.string.category)
+    @Composable
+    fun Chip(selected: Boolean, icon: String, text: String, count: Int, onClick: () -> Unit) {
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (selected) colors.text else colors.surface)
+                .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(50)))
+                .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            val ink = if (selected) colors.bg else colors.text
+            LineIcon(icon, null, tint = ink, size = 17.dp)
+            Text(text, color = ink, style = MaterialTheme.typography.labelLarge)
+            Text(count.toString(), color = ink.copy(alpha = 0.65f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Normal)
+        }
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .selectableGroup()
+            .semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Chip(state.activeFilter == null, SamFranIcons.all, stringResource(R.string.category_all), state.onTab.size) { actions.setFilter(null) }
+        for (c in state.chips) {
+            Chip(state.activeFilter == c, c.icon, stringResource(c.short), state.counts[c] ?: 0) { actions.setFilter(c) }
+        }
+    }
+}
+
+/** One place on the list (.spot): its category's tile, name, ratings, what it is, and the last visit. */
 @Composable
 private fun PlaceRow(
     place: Restaurant,
@@ -159,15 +213,7 @@ private fun PlaceRow(
     val colors = SamFranTheme.colors
     SamFranCard(onClick = onClick, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            val tile = when (place.tile) {
-                TileColor.Yellow -> colors.tileYellow
-                TileColor.Green -> colors.tileGreen
-                TileColor.Red -> colors.tileRed
-                TileColor.Orange -> colors.tileOrange
-            }
-            Box(Modifier.size(48.dp).clip(MaterialTheme.shapes.small).background(tile.bg), contentAlignment = Alignment.Center) {
-                Text(initialOf(place.name), color = tile.ink, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
-            }
+            CategoryTile(place.category)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(place.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {

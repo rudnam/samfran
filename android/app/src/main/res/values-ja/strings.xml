@@ -26,7 +26,7 @@
     <plurals name="notify_change_more">
         <item quantity="other">ほか%d件の変更</item>
     </plurals>
-    <string name="tab_food">ごはん</string>
+    <string name="tab_food">おでかけ</string>
     <string name="tab_shifts">シフト</string>
     <string name="tab_bus">バス</string>
     <string name="tab_us">ふたり</string>

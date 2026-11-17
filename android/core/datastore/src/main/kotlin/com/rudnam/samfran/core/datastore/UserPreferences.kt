@@ -33,6 +33,8 @@ data class UserPreferences(
     val activitySeen: Long? = null,
     /** The Shifts tab shows the month as a list rather than a calendar. */
     val shiftsAsList: Boolean = false,
+    /** The Places tab shows only this category ([com.rudnam.samfran.core.model.PlaceCategory.key]); empty for all. */
+    val placesCategory: String = "",
 )
 
 /** The user's choices about this phone's app, kept on the phone. */
@@ -46,6 +48,7 @@ class UserPreferencesRepository @Inject constructor(
             updateLaterVersion = p[UPDATE_LATER] ?: 0,
             activitySeen = p[ACTIVITY_SEEN],
             shiftsAsList = p[SHIFTS_AS_LIST] ?: false,
+            placesCategory = p[PLACES_CATEGORY] ?: "",
         )
     }
 
@@ -63,6 +66,10 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setShiftsAsList(list: Boolean) {
         dataStore.edit { it[SHIFTS_AS_LIST] = list }
+    }
+
+    suspend fun setPlacesCategory(key: String) {
+        dataStore.edit { if (key.isEmpty()) it.remove(PLACES_CATEGORY) else it[PLACES_CATEGORY] = key }
     }
 
     /** Who was signed in when the server last said, so the app can show it offline; null once they sign out. */
@@ -92,6 +99,7 @@ class UserPreferencesRepository @Inject constructor(
         val UPDATE_LATER = intPreferencesKey("update_later")
         val ACTIVITY_SEEN = longPreferencesKey("activity_seen")
         val SHIFTS_AS_LIST = booleanPreferencesKey("shifts_as_list")
+        val PLACES_CATEGORY = stringPreferencesKey("places_category")
         val ME_EMAIL = stringPreferencesKey("me_email")
         val ME_PASSWORD = booleanPreferencesKey("me_has_password")
         val ME_DEMO = booleanPreferencesKey("me_demo")

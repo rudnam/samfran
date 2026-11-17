@@ -33,7 +33,7 @@ test('invite your partner, who then sees and rates the same places', async ({ pa
   await expect(sam.getByRole('button', { name: '5 stars' })).toHaveAttribute('aria-pressed', 'true');
   await other.close();
 
-  await page.getByRole('link', { name: 'Food' }).click();
+  await page.getByRole('link', { name: 'Places' }).click();
   await expect(page.getByRole('list', { name: 'Been there' })).toContainText('F ★4');
   await page.reload();
   // What Sam did since Fran last looked: a dot on the Us tab, and "New" beside it there.

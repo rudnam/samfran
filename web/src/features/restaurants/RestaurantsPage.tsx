@@ -1,4 +1,5 @@
-// The list: places you've been (latest visit first) and places you want to go.
+// The list: places you've been (latest visit first) and places you want to go,
+// all of them or one category's.
 import { useMemo, useState } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
@@ -6,14 +7,41 @@ import { Skeleton } from '../../components/Overlay';
 import { t, tn } from '../../i18n';
 import { href } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
-import { shortDate, tileColor, today } from './format';
+import { categories, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
+import { shortDate, today } from './format';
 
 export type Tab = 'been' | 'want';
+
+const filterKey = 'places.category';
+
+/** The category last filtered by on this device, so the list opens on it. */
+function savedFilter(): Category | 'all' {
+  try {
+    const v = localStorage.getItem(filterKey);
+    return v && (categories as readonly string[]).includes(v) ? (v as Category) : 'all';
+  } catch {
+    return 'all';
+  }
+}
+
+function saveFilter(c: Category | 'all') {
+  try {
+    if (c === 'all') localStorage.removeItem(filterKey);
+    else localStorage.setItem(filterKey, c);
+  } catch {
+    // Private browsing: it just isn't remembered.
+  }
+}
 
 export function RestaurantsPage({ tab }: { tab: Tab }) {
   const { data: list, error } = useCached('restaurants', api.restaurants, errorMessage);
   const [query, setQuery] = useState('');
+  const [filter, setFilterState] = useState<Category | 'all'>(savedFilter);
   const { space } = useSpace();
+  const setFilter = (c: Category | 'all') => {
+    setFilterState(c);
+    saveFilter(c);
+  };
 
   const been = useMemo(
     () =>
@@ -26,7 +54,14 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
   const month = today().slice(0, 7);
   const thisMonth = been.filter((r) => r.last_visit?.startsWith(month)).length;
   const addHref = href('add', tab === 'want' ? { want: 1 } : undefined);
-  const shown = (tab === 'been' ? been : want).filter((r) => matches(r, query));
+  const onTab = tab === 'been' ? been : want;
+  // The chips: only once there's more than one category to tell apart.
+  const inUse = new Set((list ?? []).map((r) => categoryOf(r.category)));
+  const showFilter = inUse.size > 1 || (filter !== 'all' && inUse.size > 0);
+  const counts = new Map<Category, number>();
+  for (const r of onTab) counts.set(categoryOf(r.category), (counts.get(categoryOf(r.category)) ?? 0) + 1);
+  const activeFilter = showFilter ? filter : 'all';
+  const shown = onTab.filter((r) => (activeFilter === 'all' || categoryOf(r.category) === activeFilter) && matches(r, query));
 
   return (
     <section className="stack">
@@ -62,12 +97,28 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
             {t('Want to go')} <span className="count">{list ? want.length : ''}</span>
           </a>
         </nav>
+        {showFilter && (
+          <div className="cat-filter" role="radiogroup" aria-label={t('Category')}>
+            <button type="button" role="radio" aria-checked={activeFilter === 'all'} className={activeFilter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>
+              <Icon name="all" size={17} />
+              {t('All')} <span className="count">{onTab.length}</span>
+            </button>
+            {categories
+              .filter((c) => (counts.get(c) ?? 0) > 0 || c === activeFilter)
+              .map((c) => (
+                <button key={c} type="button" role="radio" aria-checked={activeFilter === c} className={activeFilter === c ? 'on' : ''} onClick={() => setFilter(c)}>
+                  <Icon name={c} size={17} />
+                  {categoryShort(c)} <span className="count">{counts.get(c) ?? 0}</span>
+                </button>
+              ))}
+          </div>
+        )}
         {list && list.length > 4 && (
           <input
             type="search"
             className="search"
             aria-label={t('Search')}
-            placeholder={t('Search by name, area, food or notes')}
+            placeholder={t('Search by name, area, kind or notes')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -84,15 +135,22 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
         <div className="empty">
           {query ? (
             <p>{t('Nothing matches “{query}”.', { query })}</p>
+          ) : activeFilter !== 'all' && onTab.length > 0 ? (
+            <>
+              <p>{t('Nothing in {category} here.', { category: categoryShort(activeFilter) })}</p>
+              <button type="button" className="link" onClick={() => setFilter('all')}>
+                {t('Show all')}
+              </button>
+            </>
           ) : tab === 'been' ? (
             <>
               <p className="empty-title">{t('No places yet')}</p>
-              <p className="muted">{t('Add the first place you ate together.')}</p>
+              <p className="muted">{t('Add the first place you went to together.')}</p>
             </>
           ) : (
             <>
               <p className="empty-title">{t('Nothing on the list')}</p>
-              <p className="muted">{t('Save places you’d like to try, so you have ideas for next time.')}</p>
+              <p className="muted">{t('Save places you’d like to go, so you have ideas for next time.')}</p>
             </>
           )}
         </div>
@@ -102,9 +160,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
           {shown.map((r) => (
             <li key={r.id}>
               <a className="spot" href={href('restaurant', { id: r.id })}>
-                <span className={`tile ${tileColor(r.id)}`} aria-hidden="true">
-                  {(r.name.trim()[0] ?? '?').toUpperCase()}
-                </span>
+                <CategoryTile category={categoryOf(r.category)} />
                 <span className="spot-body">
                   <span className="spot-name">{r.name}</span>
                   <span className="spot-line">

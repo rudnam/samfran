@@ -1,7 +1,12 @@
 package com.rudnam.samfran.feature.food
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +25,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -40,7 +49,9 @@ import com.rudnam.samfran.core.designsystem.component.SamFranCard
 import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import com.rudnam.samfran.core.designsystem.component.Segmented
 import com.rudnam.samfran.core.designsystem.component.Skeleton
+import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.named
 import com.rudnam.samfran.core.ui.DateField
 import com.rudnam.samfran.core.ui.StarPicker
@@ -112,6 +123,7 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
                 modifier = Modifier.fillMaxWidth().focusRequester(nameFocus),
             )
             if (!state.editing) PlaceSuggestions(state, actions, onOpen, onMap = { context.openWeb(it) })
+            CategoryPicker(fields.category, actions::setCategory)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = fields.area,
@@ -126,7 +138,7 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
                     value = fields.cuisine,
                     onValueChange = { actions.set(fields.copy(cuisine = it.take(60))) },
                     label = { Text(stringResource(R.string.food)) },
-                    placeholder = { Text(stringResource(R.string.food_hint)) },
+                    placeholder = fields.category.kindHint?.let { hint -> { Text(stringResource(hint)) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
                     modifier = Modifier.weight(1f),
@@ -154,6 +166,39 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
     }
     // A new place by hand starts on its name; one shared from Maps is already filled in.
     LaunchedEffect(Unit) { if (!state.editing && !state.fromShare) runCatching { nameFocus.requestFocus() } }
+}
+
+/** Picking the category (.cat-picker): why you'd go there. */
+@Composable
+private fun CategoryPicker(selected: PlaceCategory, onPick: (PlaceCategory) -> Unit) {
+    val colors = SamFranTheme.colors
+    val label = stringResource(R.string.category)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, color = colors.muted)
+        FlowRow(
+            Modifier.fillMaxWidth().selectableGroup().semantics { contentDescription = label },
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            for (c in PlaceCategory.entries) {
+                val on = c == selected
+                Row(
+                    Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (on) colors.accent else colors.sunken)
+                        .selectable(selected = on, role = Role.RadioButton, onClick = { onPick(c) })
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    val ink = if (on) colors.accentText else colors.text
+                    LineIcon(c.icon, null, tint = ink, size = 20.dp)
+                    Text(stringResource(c.title), color = ink, style = MaterialTheme.typography.labelLarge)
+                }
+            }
+        }
+        Hint(stringResource(selected.hint) + ". " + stringResource(R.string.category_hint_tie))
+    }
 }
 
 /** The Google Maps link: pasted whole, its name is looked up; typed, when the field is left. */
@@ -201,9 +246,9 @@ private fun MapLinkField(state: PlaceFormUiState, actions: PlaceFormActions, onP
  * already on the list says so and opens it, so it isn't added twice.
  */
 /**
- * What the Food field says for OpenStreetMap's kind of place, when the kind
- * says something about the food (web: kindFood). Null for a plain restaurant:
- * the search doesn't say which kind of food it serves.
+ * What the Kind field says for OpenStreetMap's kind of place, when the kind
+ * says something (web: kindName). Null for a plain restaurant: the search
+ * doesn't say which kind of food it serves.
  */
 @StringRes
 internal fun foodFor(kind: String): Int? = when (kind) {
@@ -217,6 +262,23 @@ internal fun foodFor(kind: String): Int? = when (kind) {
     "bakery" -> R.string.food_bakery
     "pastry" -> R.string.food_pastries
     "confectionery" -> R.string.food_sweets
+    "park" -> R.string.kind_park
+    "garden" -> R.string.kind_garden
+    "nature_reserve" -> R.string.kind_nature_reserve
+    "beach" -> R.string.kind_beach
+    "peak" -> R.string.kind_peak
+    "viewpoint" -> R.string.kind_viewpoint
+    "museum" -> R.string.kind_museum
+    "gallery" -> R.string.kind_gallery
+    "castle" -> R.string.kind_castle
+    "zoo" -> R.string.kind_zoo
+    "aquarium" -> R.string.kind_aquarium
+    "theme_park" -> R.string.kind_theme_park
+    "cinema" -> R.string.kind_cinema
+    "public_bath" -> R.string.kind_public_bath
+    "hot_spring" -> R.string.kind_hot_spring
+    "mall" -> R.string.kind_mall
+    "marketplace" -> R.string.kind_marketplace
     else -> null
 }
 
@@ -239,7 +301,7 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(p.icon)
+                        CategoryTile(p.category ?: PlaceCategory.Eat, size = 32.dp)
                         Column(Modifier.weight(1f)) {
                             Text(p.name, style = MaterialTheme.typography.titleSmall)
                             val line = if (already != null) stringResource(R.string.already_on_list) else p.where

@@ -3,10 +3,12 @@ package com.rudnam.samfran.feature.food
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.testing.FakeBusRepository
 import com.rudnam.samfran.core.testing.FakeFoodRepository
 import com.rudnam.samfran.core.testing.FakeSpaceRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
+import com.rudnam.samfran.core.testing.TestPreferences
 import com.rudnam.samfran.feature.food.navigation.PlaceFormRoute
 import com.rudnam.samfran.feature.food.navigation.PlaceRoute
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,33 +41,67 @@ class FoodViewModelTest {
     private val food = FakeFoodRepository()
     private val space = FakeSpaceRepository()
     private val bus = FakeBusRepository()
+    private val preferences = TestPreferences.repository()
 
     /** Keeps a StateFlow collected, as the screen does. */
     private fun <T> TestScope.watch(flow: kotlinx.coroutines.flow.StateFlow<T>) = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect {} }
 
     @Test
     fun `the list splits into been there and want to go, and searches both`() = runTest {
-        val vm = FoodListViewModel(food, space, clock)
+        val vm = FoodListViewModel(food, space, preferences, clock)
         watch(vm.state)
         val s = vm.state.value
-        assertEquals(listOf(12L, 9L, 7L, 5L), s.been.map { it.id })
-        assertEquals(listOf(15L, 14L), s.want.map { it.id })
+        assertEquals(listOf(12L, 9L, 20L, 7L, 5L), s.been.map { it.id })
+        assertEquals(listOf(23L, 22L, 21L, 15L, 14L), s.want.map { it.id })
         assertEquals(2, s.thisMonth)
         assertTrue(s.searchable)
         vm.setQuery("miso")
         assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want)
         vm.setQuery("")
-        assertEquals(listOf(15L, 14L), vm.state.value.shown.map { it.id })
+        assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+    }
+
+    @Test
+    fun `the list filters by category, and the phone remembers which`() = runTest {
+        val vm = FoodListViewModel(food, space, preferences, clock)
+        watch(vm.state)
+        vm.setTab(FoodTab.Want)
+        val s = vm.state.value
+        assertTrue(s.filterable)
+        assertEquals(listOf(PlaceCategory.Eat, PlaceCategory.Nature, PlaceCategory.Culture, PlaceCategory.Relax), s.chips)
+        assertEquals(2, s.counts[PlaceCategory.Eat])
+        vm.setFilter(PlaceCategory.Nature)
+        assertEquals(listOf(22L), vm.state.value.shown.map { it.id })
+        // Been there, the same filter.
+        vm.setTab(FoodTab.Been)
+        assertEquals(listOf(20L), vm.state.value.shown.map { it.id })
+        // Opened again later, it's still on Nature.
+        val later = FoodListViewModel(food, space, preferences, clock)
+        watch(later.state)
+        assertEquals(PlaceCategory.Nature, later.state.value.activeFilter)
+        later.setFilter(null)
+        assertEquals(5, later.state.value.shown.size)
+    }
+
+    @Test
+    fun `with only one category there's nothing to filter`() = runTest {
+        food.list.value = food.list.value!!.filter { it.category == PlaceCategory.Eat }
+        preferences.setPlacesCategory("nature")
+        val vm = FoodListViewModel(food, space, preferences, clock)
+        watch(vm.state)
+        assertFalse(vm.state.value.filterable)
+        assertNull(vm.state.value.activeFilter)
+        assertEquals(4, vm.state.value.shown.size)
     }
 
     @Test
     fun `offline, the phone's copy stays and says so`() = runTest {
         food.next = Outcome.Offline
-        val vm = FoodListViewModel(food, space, clock)
+        val vm = FoodListViewModel(food, space, preferences, clock)
         watch(vm.state)
         assertEquals(Outcome.Offline, vm.state.value.problem)
-        assertEquals(6, vm.state.value.all?.size)
+        assertEquals(10, vm.state.value.all?.size)
     }
 
     @Test
@@ -158,7 +194,7 @@ class FoodViewModelTest {
         val added = food.list.value!!.first { it.id == vm.state.value.savedId }
         assertEquals("https://www.google.com/maps/search/%E3%81%99%E3%81%8D%E5%AE%B6%20%E9%9D%99%E5%B2%A1%E9%A7%85%E5%8D%97%E5%BA%97/@34.968,138.389,17z", added.mapUrl)
 
-        // What they typed in Food stays when they pick a place.
+        // What they typed in Kind stays when they pick a place.
         val typed = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
         typed.set(com.rudnam.samfran.core.model.RestaurantFields(cuisine = "Gyudon"))
         typed.pick(com.rudnam.samfran.core.testing.Samples.places[1], "Fast food")
@@ -167,6 +203,30 @@ class FoodViewModelTest {
         val again = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
         again.setName("hanabi grill ")
         assertEquals(12L, again.state.value.duplicate?.id)
+    }
+
+    @Test
+    fun `a picked place sets the category, unless one was picked by hand, and it's saved`() = runTest {
+        val park = com.rudnam.samfran.core.testing.Samples.places.first { it.category == PlaceCategory.Nature }
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
+        assertEquals(PlaceCategory.Eat, vm.state.value.fields?.category)
+        vm.pick(park, "Park")
+        assertEquals(PlaceCategory.Nature, vm.state.value.fields?.category)
+        vm.save()
+        assertEquals(PlaceCategory.Nature, food.list.value!!.first { it.id == vm.state.value.savedId }.category)
+
+        val byHand = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
+        byHand.setCategory(PlaceCategory.Fun)
+        byHand.pick(park, "Park")
+        assertEquals(PlaceCategory.Fun, byHand.state.value.fields?.category)
+
+        // Editing keeps the category, and can change it.
+        val edit = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(id = 21)), food, bus, clock)
+        edit.state.first { it.fields != null }
+        assertEquals(PlaceCategory.Culture, edit.state.value.fields?.category)
+        edit.setCategory(PlaceCategory.Nature)
+        edit.save()
+        assertEquals(PlaceCategory.Nature, food.list.value!!.first { it.id == 21L }.category)
     }
 
     @Test

@@ -1,8 +1,8 @@
 package restaurant
 
 // Finding a place by name as it's typed, so adding one doesn't need a Google
-// Maps link: GET /api/restaurants/search?q=いちらん returns restaurants,
-// cafés, bars and the like whose names match, from Photon
+// Maps link: GET /api/restaurants/search?q=いちらん returns places to go
+// (restaurants, parks, shrines, museums… category.go) whose names match, from Photon
 // (photon.komoot.io), a search-as-you-type geocoder over OpenStreetMap data
 // (Nominatim forbids autocomplete). Results near lat/lng, when given, come
 // first: the web page sends the person's bus stop, if they have one, so the
@@ -41,24 +41,20 @@ const (
 	searchFor     = 24 * time.Hour
 )
 
-// foodTags are the OpenStreetMap tags of places to eat and drink.
-var foodTags = []string{
-	"amenity:restaurant", "amenity:fast_food", "amenity:cafe", "amenity:bar", "amenity:pub",
-	"amenity:food_court", "amenity:ice_cream", "amenity:biergarten",
-	"shop:bakery", "shop:confectionery", "shop:pastry",
-}
-
-// FoundPlace is a place to eat that matches what was typed.
+// FoundPlace is a place that matches what was typed.
 type FoundPlace struct {
 	Name string `json:"name"`
 	// Area is where it is: city and district, as the form's Area field wants.
 	Area string `json:"area"`
 	// Street is the street or neighbourhood, to tell branches apart.
 	Street string `json:"street"`
-	// Kind is OpenStreetMap's: restaurant, fast_food, cafe, bar, pub, bakery…
-	Kind string  `json:"kind"`
-	Lat  float64 `json:"lat"`
-	Lng  float64 `json:"lng"`
+	// Kind is OpenStreetMap's tag value (restaurant, cafe, park, museum…) or
+	// Google's place type (ramen_restaurant, park…).
+	Kind string `json:"kind"`
+	// Category is the one the kind of place is in (category.go).
+	Category string  `json:"category"`
+	Lat      float64 `json:"lat"`
+	Lng      float64 `json:"lng"`
 	// PlaceID is Google's, for a place Google suggested (google.go). Such a
 	// suggestion has only its name and Street (an address line) until its
 	// details are asked for: GET /api/restaurants/place/{place_id}.
@@ -96,7 +92,7 @@ func (s *placeSearch) search(ctx context.Context, q string, near *[2]float64) ([
 	}
 	s.mu.Unlock()
 
-	v := url.Values{"q": {q}, "limit": {"15"}, "osm_tag": foodTags}
+	v := url.Values{"q": {q}, "limit": {"15"}, "osm_tag": photonTags}
 	if near != nil {
 		v.Set("lat", strconv.FormatFloat(near[0], 'f', 4, 64))
 		v.Set("lon", strconv.FormatFloat(near[1], 'f', 4, 64))
@@ -125,6 +121,7 @@ func (s *placeSearch) search(ctx context.Context, q string, near *[2]float64) ([
 			} `json:"geometry"`
 			Properties struct {
 				Name     string `json:"name"`
+				OSMKey   string `json:"osm_key"`
 				OSMValue string `json:"osm_value"`
 				City     string `json:"city"`
 				District string `json:"district"`
@@ -162,7 +159,8 @@ next:
 		if street == "" {
 			street = p.Locality
 		}
-		found = append(found, FoundPlace{Name: p.Name, Area: strings.Join(area, " "), Street: street, Kind: p.OSMValue, Lat: c[1], Lng: c[0]})
+		found = append(found, FoundPlace{Name: p.Name, Area: strings.Join(area, " "), Street: street, Kind: p.OSMValue,
+			Category: osmCategory(p.OSMKey, p.OSMValue), Lat: c[1], Lng: c[0]})
 		if len(found) == maxFound {
 			break
 		}

@@ -102,7 +102,7 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
     override suspend fun create(fields: RestaurantFields, visitedOn: LocalDate?, stars: Int): Outcome<Restaurant> {
         next?.let { return it }
         val r = Restaurant(
-            nextId++, fields.name, fields.area, fields.cuisine, fields.mapUrl, fields.notes,
+            nextId++, fields.name, fields.area, fields.cuisine, category = fields.category, mapUrl = fields.mapUrl, notes = fields.notes,
             visitCount = if (visitedOn != null) 1 else 0, lastVisit = visitedOn,
             ratings = if (stars > 0 && visitedOn != null) listOf(com.rudnam.samfran.core.model.Rating("Fran", true, stars)) else emptyList(),
             visits = visitedOn?.let { listOf(Visit(1, it, "", "Fran")) } ?: emptyList(),
@@ -112,7 +112,7 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
     }
 
     override suspend fun update(id: Long, fields: RestaurantFields) = change(id) {
-        it.copy(name = fields.name, area = fields.area, cuisine = fields.cuisine, mapUrl = fields.mapUrl, notes = fields.notes)
+        it.copy(name = fields.name, area = fields.area, cuisine = fields.cuisine, category = fields.category, mapUrl = fields.mapUrl, notes = fields.notes)
     }
 
     override suspend fun delete(id: Long): Outcome<Unit> {

@@ -8,6 +8,7 @@ import { StarPicker } from '../../components/Stars';
 import { t, tn } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
+import { categoryName, categoryOf, CategoryTile } from './categories';
 import { mapLink, shortDate, today } from './format';
 
 export function RestaurantDetail({ id }: { id: number }) {
@@ -111,7 +112,10 @@ export function RestaurantDetail({ id }: { id: number }) {
       <BackLink href={href(r.visit_count > 0 ? 'home' : 'want')} label="Our spots" />
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
-        {(r.area || r.cuisine) && <p className="lead">{[r.area, r.cuisine].filter(Boolean).join(' · ')}</p>}
+        <p className="lead place-kind">
+          <CategoryTile category={categoryOf(r.category)} size="sm" />
+          {[categoryName(categoryOf(r.category)), r.cuisine, r.area].filter(Boolean).join(' · ')}
+        </p>
         <div className="row wrap">
           <a className="button secondary" href={mapLink(r)} target="_blank" rel="noreferrer">
             {t('Open in Maps')}
@@ -168,7 +172,7 @@ export function RestaurantDetail({ id }: { id: number }) {
           <input type="date" aria-label={t('Date')} required max={today()} value={visitOn} onChange={(e) => setVisitOn(e.target.value)} />
           <input
             aria-label={t('Note about this visit')}
-            placeholder={t('What did you have? (optional)')}
+            placeholder={t('How was it? (optional)')}
             maxLength={1000}
             value={visitNote}
             onChange={(e) => setVisitNote(e.target.value)}
