@@ -29,7 +29,6 @@
     <string name="reading_days_of">日ごとに読んでいます: %1$d/%2$d日</string>
     <string name="everyone_there">同じ時間帯の人</string>
     <string name="n_there">ほか%d人</string>
-    <string name="same_shift">同じシフト</string>
     <string name="night_before">前日の夜勤</string>
     <string name="next_morning">翌朝</string>
     <string name="you">あなた</string>

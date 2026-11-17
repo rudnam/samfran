@@ -117,15 +117,8 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean
             Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 FlowRow(Modifier.weight(1f), itemVerticalAlignment = Alignment.CenterVertically) {
                     Text(l.name, style = MaterialTheme.typography.bodySmall, fontWeight = if (l.me) FontWeight.Bold else null, color = textColor)
-                    val tag = if (l.same) stringResource(R.string.same_shift) else l.note
-                    if (tag != null) {
-                        Text(
-                            tag,
-                            Modifier.padding(start = 6.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (l.same) colors.accentInk else mutedColor,
-                        )
+                    if (l.note != null) {
+                        Text(l.note, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = mutedColor)
                     }
                 }
                 val left = at(l.start, 0f)

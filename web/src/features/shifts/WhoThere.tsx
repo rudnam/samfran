@@ -109,7 +109,6 @@ export function WhoThere({
           <li key={`${r.kind}:${r.name}`} className={r.kind}>
             <span className="there-name">
               {r.name}
-              {r.kind === 'same' && <span className="there-tag">{t('same shift')}</span>}
               {r.note && <span className="there-tag quiet">{r.note}</span>}
             </span>
             <span className="there-bar" aria-hidden="true">
