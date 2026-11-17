@@ -12,7 +12,7 @@ import { today } from './format';
  * Places matching what's typed in the name field, as it's typed: a quarter
  * second after the last key, two characters or more. null until searched.
  */
-function usePlaceSearch(query: string, near: { lat: number; lng: number } | null) {
+function usePlaceSearch(query: string, session: string, near: { lat: number; lng: number } | null) {
   const [found, setFound] = useState<FoundPlace[] | null>(null);
   const [failed, setFailed] = useState(false);
   const latest = useRef(0);
@@ -25,7 +25,7 @@ function usePlaceSearch(query: string, near: { lat: number; lng: number } | null
     }
     const n = ++latest.current;
     const timer = setTimeout(() => {
-      api.searchPlaces(q, near ?? undefined).then(
+      api.suggestPlaces(q, session, near ?? undefined).then(
         (f) => {
           if (n !== latest.current) return; // a newer search is on its way
           setFound(f);
@@ -41,11 +41,13 @@ function usePlaceSearch(query: string, near: { lat: number; lng: number } | null
 
 /** An emoji for OpenStreetMap's kind of place. */
 function kindIcon(kind: string): string {
-  if (kind === 'cafe') return '☕';
-  if (kind === 'bar' || kind === 'pub' || kind === 'biergarten') return '🍺';
-  if (kind === 'fast_food') return '🍔';
-  if (kind === 'ice_cream') return '🍦';
-  if (kind === 'bakery' || kind === 'pastry' || kind === 'confectionery') return '🥐';
+  if (kind === 'cafe' || kind === 'coffee_shop') return '☕';
+  if (kind === 'bar' || kind === 'pub' || kind === 'biergarten' || kind === 'izakaya_restaurant') return '🍺';
+  if (kind === 'fast_food' || kind === 'fast_food_restaurant' || kind === 'hamburger_restaurant') return '🍔';
+  if (kind === 'ice_cream' || kind === 'ice_cream_shop') return '🍦';
+  if (kind === 'bakery' || kind === 'pastry' || kind === 'confectionery' || kind === 'dessert_shop') return '🥐';
+  if (kind === 'ramen_restaurant') return '🍜';
+  if (kind === 'sushi_restaurant') return '🍣';
   return '🍽️';
 }
 
@@ -82,8 +84,12 @@ function kindFood(kind: string): string {
   }
 }
 
-/** Google Maps searching for the name around where it is: opens on that branch, not the chain. */
+/**
+ * The picked place on Google Maps: its own link, from Google, or Maps
+ * searching for the name around where it is, which opens on that branch, not the chain.
+ */
 function pickedMapURL(p: FoundPlace): string {
+  if (p.map_url) return p.map_url;
   return `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`;
 }
 
@@ -115,7 +121,9 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
   // What's already saved, to say so instead of adding it twice.
   const [saved, setSaved] = useState<Restaurant[]>([]);
-  const search = usePlaceSearch(query, near);
+  // One Google session from typing to picking; a new one after each pick.
+  const [session, setSession] = useState(() => crypto.randomUUID());
+  const search = usePlaceSearch(query, session, near);
 
   useEffect(() => {
     if (id) return;
@@ -128,20 +136,38 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
 
   const savedNamed = (name: string) => (name.trim() ? saved.find((r) => sameName(r.name, name)) : undefined);
 
-  function pick(p: FoundPlace) {
-    // Area and Food are filled in only when empty: what they typed stays.
+  /** Fills in the form from a place with its details. Area and Food only when empty: what they typed stays. */
+  function fillFrom(p: FoundPlace, food: string) {
     setFields((f) =>
       f
         ? {
             ...f,
             name: p.name,
             area: f.area.trim() ? f.area : p.area,
-            cuisine: f.cuisine.trim() ? f.cuisine : kindFood(p.kind),
+            cuisine: f.cuisine.trim() ? f.cuisine : food,
           }
         : f,
     );
     setPicked(p);
+  }
+
+  async function pick(p: FoundPlace) {
     setQuery('');
+    if (!p.place_id) {
+      fillFrom(p, kindFood(p.kind));
+      return;
+    }
+    // Google's suggestion has only a name: ask for the rest.
+    setFields((f) => (f ? { ...f, name: p.name } : f));
+    setPicked(null);
+    try {
+      const d = await api.placeDetails(p.place_id, session);
+      fillFrom(d, d.food ?? '');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSession(crypto.randomUUID());
+    }
   }
 
   useEffect(() => {

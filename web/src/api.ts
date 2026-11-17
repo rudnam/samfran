@@ -159,6 +159,19 @@ export const api = {
   /** Places to eat whose names match q (2+ characters), from OpenStreetMap; near ones first when near is given. */
   searchPlaces: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundPlace[]>('GET', `/api/restaurants/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
+  /**
+   * Places to eat whose names match q (2+ characters): from Google Places when
+   * the server has a key (each has a place_id; ask placeDetails for the rest),
+   * else as searchPlaces. session is the form's, shared with placeDetails.
+   */
+  suggestPlaces: (q: string, session: string, near?: { lat: number; lng: number }) =>
+    request<FoundPlace[]>(
+      'GET',
+      `/api/restaurants/suggest?${new URLSearchParams({ q, session, lang: language(), ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`,
+    ),
+  /** A place Google suggested: where it is, its Maps link, and its food. */
+  placeDetails: (placeId: string, session: string) =>
+    request<FoundPlace>('GET', `/api/restaurants/place/${encodeURIComponent(placeId)}?${new URLSearchParams({ session, lang: language() })}`),
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (
     month: string,
@@ -290,10 +303,16 @@ export interface FoundPlace {
   area: string;
   /** Street or neighbourhood, to tell branches apart. */
   street: string;
-  /** OpenStreetMap's: restaurant, fast_food, cafe, bar, pub, bakery… */
+  /** OpenStreetMap's (restaurant, fast_food, cafe, bar, pub, bakery…) or Google's (ramen_restaurant, cafe…). */
   kind: string;
   lat: number;
   lng: number;
+  /** Google's, for a place Google suggested: until placeDetails, only name and street (an address line) are set. */
+  place_id?: string;
+  /** From placeDetails: the kind of restaurant, for the Food field, when it says one. */
+  food?: string;
+  /** From placeDetails: the place's own Google Maps link. */
+  map_url?: string;
 }
 
 /** Where the signed-in person gets off the bus. */

@@ -56,7 +56,7 @@ for (const [name, viewport] of [
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
     await shot('5-add');
-    await page.route('**/api/restaurants/search?*', (route) =>
+    await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
           { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', lat: 34.704, lng: 137.734 },

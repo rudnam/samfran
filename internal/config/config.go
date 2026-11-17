@@ -65,6 +65,12 @@ type Config struct {
 	// AnthropicAPIKey, when set, lets the app read photos of shift sheets
 	// with Claude (internal/shift).
 	AnthropicAPIKey string
+	// GooglePlacesAPIKey, when set, finds places to eat with Google Places
+	// as their names are typed (internal/restaurant/google.go).
+	GooglePlacesAPIKey string
+	// GooglePlacesURL is not read from the environment; tests point it at a
+	// fake Google. Empty means Google's own.
+	GooglePlacesURL string
 	// ShiftReader is not read from the environment; tests set a fake. When
 	// nil, one is made from AnthropicAPIKey.
 	ShiftReader shift.Reader
@@ -98,6 +104,7 @@ func Load(getenv func(string) string) (Config, error) {
 		SMTPPassword:            r.str("SMTP_PASSWORD", ""),
 		MailFrom:                r.str("MAIL_FROM", ""),
 		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
+		GooglePlacesAPIKey:      r.str("GOOGLE_PLACES_API_KEY", ""),
 	}
 	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {

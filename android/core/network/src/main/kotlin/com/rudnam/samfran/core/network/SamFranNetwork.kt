@@ -89,6 +89,8 @@ internal interface SamFranApi {
     @PUT("api/restaurants/{id}/rating") suspend fun rate(@Path("id") id: Long, @Body body: NetworkStars): NetworkRestaurant
     @POST("api/restaurants/lookup") suspend fun lookup(@Body body: NetworkLookup): NetworkLookupResult
     @GET("api/restaurants/search") suspend fun searchPlaces(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<com.rudnam.samfran.core.network.model.NetworkFoundPlace>
+    @GET("api/restaurants/suggest") suspend fun suggestPlaces(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?, @Query("session") session: String): List<com.rudnam.samfran.core.network.model.NetworkFoundPlace>
+    @GET("api/restaurants/place/{id}") suspend fun placeDetails(@Path("id") id: String, @Query("session") session: String): com.rudnam.samfran.core.network.model.NetworkFoundPlace
 
     @GET("api/shifts") suspend fun shifts(@Query("month") month: String? = null): NetworkShiftMonth
     @PUT("api/shifts/month") suspend fun saveShifts(@Body body: NetworkSaveShifts): NetworkShiftMonth
@@ -148,6 +150,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun rate(id: Long, stars: Int) = call { api.rate(id, NetworkStars(stars)) }
     suspend fun lookup(url: String, position: Boolean) = call { api.lookup(NetworkLookup(url, position)) }
     suspend fun searchPlaces(q: String, lat: Double?, lng: Double?) = call { api.searchPlaces(q, lat, lng) }
+    suspend fun suggestPlaces(q: String, lat: Double?, lng: Double?, session: String) = call { api.suggestPlaces(q, lat, lng, session) }
+    suspend fun placeDetails(id: String, session: String) = call { api.placeDetails(id, session) }
 
     suspend fun shifts(month: String?) = call { api.shifts(month) }
     suspend fun saveShifts(body: NetworkSaveShifts) = call { api.saveShifts(body) }

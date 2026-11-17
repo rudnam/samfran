@@ -168,4 +168,33 @@ class FoodViewModelTest {
         again.setName("hanabi grill ")
         assertEquals(12L, again.state.value.duplicate?.id)
     }
+
+    @Test
+    fun `picking a place Google suggested asks for its details, in the session the search was in`() = runTest {
+        food.places = listOf(com.rudnam.samfran.core.model.FoundPlace("石松 JR浜松駅店", "", "静岡県浜松市中央区砂山町", "chinese_restaurant", 0.0, 0.0, placeId = "ChIJ1"))
+        food.details = mapOf(
+            "ChIJ1" to com.rudnam.samfran.core.model.FoundPlace(
+                "石松 JR浜松駅店", "浜松市 中央区", "砂山町", "chinese_restaurant", 34.7036, 137.7352,
+                placeId = "ChIJ1", food = "中華料理店", googleMapUrl = "https://maps.google.com/?cid=123",
+            ),
+        )
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        vm.setName("石松")
+        advanceTimeBy(300)
+        vm.pick(vm.state.value.found!!.single(), "")
+        assertEquals("浜松市 中央区", vm.state.value.fields?.area)
+        assertEquals("中華料理店", vm.state.value.fields?.cuisine)
+        assertFalse(vm.state.value.lookingUp)
+        assertEquals(2, food.sessions.size)
+        assertEquals(food.sessions[0], food.sessions[1])
+        vm.save()
+        val added = food.list.value!!.first { it.id == vm.state.value.savedId }
+        assertEquals("https://maps.google.com/?cid=123", added.mapUrl)
+
+        // Details that don't come: the name stays, and it says why.
+        val failing = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        failing.pick(com.rudnam.samfran.core.model.FoundPlace("どこか", "", "", "restaurant", 0.0, 0.0, placeId = "ChIJunknown"), "")
+        assertEquals("どこか", failing.state.value.fields?.name)
+        assertTrue(failing.state.value.problem is Outcome.Refused)
+    }
 }

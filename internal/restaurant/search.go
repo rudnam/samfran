@@ -59,6 +59,15 @@ type FoundPlace struct {
 	Kind string  `json:"kind"`
 	Lat  float64 `json:"lat"`
 	Lng  float64 `json:"lng"`
+	// PlaceID is Google's, for a place Google suggested (google.go). Such a
+	// suggestion has only its name and Street (an address line) until its
+	// details are asked for: GET /api/restaurants/place/{place_id}.
+	PlaceID string `json:"place_id,omitempty"`
+	// Food is what the form's Food field says, from Google's details: the
+	// kind of restaurant ("Ramen Restaurant", "ラーメン屋"), when it says one.
+	Food string `json:"food,omitempty"`
+	// MapURL is the place's own Google Maps link, from Google's details.
+	MapURL string `json:"map_url,omitempty"`
 }
 
 // placeSearch asks Photon, remembering recent answers.
@@ -169,10 +178,19 @@ next:
 }
 
 func (h *Handler) searchHandler(w http.ResponseWriter, r *http.Request) error {
-	q := strings.TrimSpace(r.URL.Query().Get("q"))
-	if n := utf8.RuneCountInString(q); n < 2 || n > 100 {
+	q, near, ok := searchParams(r)
+	if !ok {
 		httpx.WriteJSON(w, http.StatusOK, []FoundPlace{})
 		return nil
+	}
+	return h.answerSearch(w, r, q, near)
+}
+
+// searchParams reads q (2 to 100 characters, else not ok) and lat/lng, if valid.
+func searchParams(r *http.Request) (string, *[2]float64, bool) {
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if n := utf8.RuneCountInString(q); n < 2 || n > 100 {
+		return "", nil, false
 	}
 	var near *[2]float64
 	lat, err1 := strconv.ParseFloat(r.URL.Query().Get("lat"), 64)
@@ -180,6 +198,11 @@ func (h *Handler) searchHandler(w http.ResponseWriter, r *http.Request) error {
 	if err1 == nil && err2 == nil && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 {
 		near = &[2]float64{lat, lng}
 	}
+	return q, near, true
+}
+
+// answerSearch answers from Photon.
+func (h *Handler) answerSearch(w http.ResponseWriter, r *http.Request, q string, near *[2]float64) error {
 	found, err := h.search.search(r.Context(), q, near)
 	if err != nil {
 		if _, ok := err.(*httpx.Error); ok {

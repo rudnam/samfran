@@ -157,7 +157,7 @@ test('pasting "name and link" from Maps fills in both', async ({ page }) => {
 
 test('find a place by typing its name: no Maps link needed', async ({ page }) => {
   // The search is answered by Photon (OpenStreetMap); here, by this fake.
-  await page.route('**/api/restaurants/search?*', (route) => {
+  await page.route('**/api/restaurants/suggest?*', (route) => {
     const q = new URL(route.request().url()).searchParams.get('q');
     route.fulfill({
       json: q.startsWith('すき')
@@ -207,4 +207,52 @@ test('find a place by typing its name: no Maps link needed', async ({ page }) =>
   // Typed out in full, too.
   await name.fill('すき家 浜松駅前店');
   await expect(page.getByText('Already on your list:')).toBeVisible();
+});
+
+test('with Google: picking a suggestion fills in its area, food and its own Maps link', async ({ page }) => {
+  // The server asks Google Places when it has a key; here, this fake answers.
+  let sessions = [];
+  await page.route('**/api/restaurants/suggest?*', (route) => {
+    const u = new URL(route.request().url());
+    sessions.push(u.searchParams.get('session'));
+    route.fulfill({
+      json: u.searchParams.get('q').startsWith('ishi')
+        ? [
+            { name: '石松 JR浜松駅店', area: '', street: '静岡県浜松市中央区砂山町', kind: 'chinese_restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu1' },
+            { name: '石松餃子 浜北本店', area: '', street: '静岡県浜松市浜名区', kind: 'restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu2' },
+          ]
+        : [],
+    });
+  });
+  let detailsSession = '';
+  await page.route('**/api/restaurants/place/*', (route) => {
+    const u = new URL(route.request().url());
+    detailsSession = u.searchParams.get('session');
+    expect(u.pathname).toBe('/api/restaurants/place/ChIJishimatsu1');
+    route.fulfill({
+      json: {
+        name: '石松 JR浜松駅店', area: '浜松市 中央区', street: '砂山町', kind: 'chinese_restaurant', lat: 34.7036, lng: 137.7352,
+        place_id: 'ChIJishimatsu1', food: 'Chinese Restaurant', map_url: 'https://maps.google.com/?cid=123',
+      },
+    });
+  });
+  await signUp(page);
+  await page.getByRole('link', { name: 'Add a place' }).first().click();
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('ishimatsu');
+  const list = page.getByRole('list', { name: 'Matching places' });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  await list.getByRole('button', { name: /石松 JR浜松駅店/ }).click();
+
+  await expect(name).toHaveValue('石松 JR浜松駅店');
+  await expect(page.getByLabel('Area')).toHaveValue('浜松市 中央区');
+  await expect(page.getByLabel('Food')).toHaveValue('Chinese Restaurant');
+  await expect(page.getByRole('link', { name: 'Check on the map' })).toHaveAttribute('href', 'https://maps.google.com/?cid=123');
+  // Typing and picking were one Google session.
+  expect(detailsSession).toMatch(/^[0-9a-f-]{36}$/);
+  expect(sessions.at(-1)).toBe(detailsSession);
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '石松 JR浜松駅店' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute('href', 'https://maps.google.com/?cid=123');
 });

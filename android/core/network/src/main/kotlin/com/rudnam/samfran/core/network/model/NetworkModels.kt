@@ -181,11 +181,14 @@ data class NetworkFoundPlace(
     val area: String = "",
     val street: String = "",
     val kind: String = "",
-    val lat: Double,
-    val lng: Double,
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    @SerialName("place_id") val placeId: String = "",
+    val food: String = "",
+    @SerialName("map_url") val mapUrl: String = "",
 )
 
-fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(name, area, street, kind, lat, lng)
+fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(name, area, street, kind, lat, lng, placeId, food, mapUrl)
 
 @Serializable
 data class NetworkShiftDay(
