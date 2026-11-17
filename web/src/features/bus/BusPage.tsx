@@ -6,11 +6,27 @@
 // the way a real one does. It vibrates where the browser can, so anyone can
 // see what it does before relying on it.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { api, errorMessage, type BusStop, type Downloads, type FoundStop } from '../../api';
+import { api, errorMessage, type BusStop, type Buzz, type Downloads, type FoundStop } from '../../api';
 import { t, type Key } from '../../i18n';
 import { StopMap } from './StopMap';
 
 const distances = [400, 600, 800, 1000, 1500, 2000];
+
+/**
+ * The ways it can buzz, as the Android app does them (Buzz, in core/model's Bus.kt):
+ * milliseconds on, then off, repeating. The app also buzzes "strong" and
+ * "strongest" at the phone's full strength; a browser can't choose the
+ * strength, only how long.
+ */
+const buzzes: { buzz: Buzz; label: Key; about: Key; on: number; off: number }[] = [
+  { buzz: 'gentle', label: 'Gentle', about: 'Short buzzes, at the phone’s usual strength.', on: 800, off: 600 },
+  { buzz: 'strong', label: 'Strong', about: 'Longer buzzes, at full strength.', on: 1000, off: 300 },
+  { buzz: 'strongest', label: 'Strongest', about: 'Full strength, with hardly a pause.', on: 2000, off: 100 },
+];
+
+function buzzOf(b: Buzz | undefined) {
+  return buzzes.find((x) => x.buzz === b) ?? buzzes[1];
+}
 
 function km(m: number): string {
   return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
@@ -61,7 +77,7 @@ export function BusPage() {
 
   function buzzForPractice() {
     setPractice({ phase: 'buzzing' });
-    webBuzz(true);
+    webBuzz(true, stop?.buzz);
   }
 
   function endPractice() {
@@ -156,12 +172,14 @@ export function BusPage() {
 
 /** Vibrates on repeat where the browser can (Android's Chrome), until stopped. Nothing on the others. */
 let vibrating = false;
-function webBuzz(on: boolean) {
+function webBuzz(on: boolean, buzz?: Buzz) {
   if (typeof navigator === 'undefined' || !('vibrate' in navigator) || on === vibrating) return;
   vibrating = on;
   try {
-    // About 30 seconds of the app's pattern: 0.8 s on, 0.6 s off.
-    navigator.vibrate(on ? Array.from({ length: 42 }, (_, i) => (i % 2 ? 600 : 800)) : 0);
+    // About 30 seconds of the app's pattern.
+    const b = buzzOf(buzz);
+    const times = Array.from({ length: 2 * Math.ceil(30_000 / (b.on + b.off)) }, (_, i) => (i % 2 ? b.off : b.on));
+    navigator.vibrate(on ? times : 0);
   } catch {
     // Not allowed here: the practice run still shows what happens.
   }
@@ -310,6 +328,22 @@ function DistancePicker({ value, onPick, disabled }: { value: number; onPick: (m
   );
 }
 
+function BuzzPicker({ value, onPick, disabled }: { value: Buzz; onPick: (b: Buzz) => void; disabled?: boolean }) {
+  return (
+    <div className="field">
+      <span id="buzz-how">{t('How it buzzes')}</span>
+      <div className="chips three" role="radiogroup" aria-labelledby="buzz-how">
+        {buzzes.map((b) => (
+          <button key={b.buzz} type="button" role="radio" aria-checked={value === b.buzz} className={value === b.buzz ? 'on' : ''} disabled={disabled} onClick={() => onPick(b.buzz)}>
+            {t(b.label)}
+          </button>
+        ))}
+      </div>
+      <span className="hint">{t(buzzOf(value).about)} {t('Try it now to feel it.')}</span>
+    </div>
+  );
+}
+
 function AlarmSettings(p: {
   stop: BusStop;
   onChange: () => void;
@@ -319,12 +353,11 @@ function AlarmSettings(p: {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function setDistance(m: number) {
-    if (m === stop.alert_meters) return;
+  async function save(change: { alert_meters?: number; buzz?: Buzz }) {
     setBusy(true);
     setError('');
     try {
-      p.onSaved(await api.saveBusStop({ name: stop.name, lat: stop.lat, lng: stop.lng, alert_meters: m }));
+      p.onSaved(await api.saveBusStop({ name: stop.name, lat: stop.lat, lng: stop.lng, alert_meters: stop.alert_meters, ...change }));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -347,7 +380,8 @@ function AlarmSettings(p: {
           {t('Change')}
         </button>
       </div>
-      <DistancePicker value={stop.alert_meters} onPick={(m) => void setDistance(m)} disabled={busy} />
+      <DistancePicker value={stop.alert_meters} onPick={(m) => m !== stop.alert_meters && void save({ alert_meters: m })} disabled={busy} />
+      <BuzzPicker value={stop.buzz} onPick={(b) => b !== stop.buzz && void save({ buzz: b })} disabled={busy} />
       {error && (
         <p role="alert" className="error">
           {error}

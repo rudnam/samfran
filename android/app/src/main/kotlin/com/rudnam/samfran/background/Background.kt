@@ -21,6 +21,7 @@ import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.newestId
 import dagger.Binds
 import dagger.Module
@@ -48,6 +49,7 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
             .putExtra(BusTripService.EXTRA_LNG, stop.lng)
             .putExtra(BusTripService.EXTRA_RADIUS, stop.alertMeters.toFloat())
             .putExtra(BusTripService.EXTRA_NAME, stop.name)
+            .putExtra(BusTripService.EXTRA_BUZZ, stop.buzz.api)
         ContextCompat.startForegroundService(context, i)
     }
 
@@ -57,7 +59,7 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
 
     override fun stopBuzz() = BusTripService.stopBuzz(context)
 
-    override fun test(stopName: String) = BusTripService.ring(context, stopName)
+    override fun test(stopName: String, buzz: Buzz) = BusTripService.ring(context, stopName, buzz)
 
     @SuppressLint("MissingPermission") // checked first
     override suspend fun here(): Pair<Double, Double>? {

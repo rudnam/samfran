@@ -221,7 +221,7 @@ The Android app has its own strings, in each module's `res/values/strings.xml` a
 | POST | `/oauth/token` | – | `authorization_code` or `refresh_token` grants: `{access_token, token_type, expires_in: 3600, refresh_token}`. |
 | GET | `/privacy` | – | The privacy page (Google's consent screen links to it). |
 | GET | `/api/activity` | user | The space's latest 50 changes: `[{id, at, who, me, via, kind, details}]`, newest first. `via` is `app` or `claude`; the app words each `kind` (`shifts_saved`, `shift_settings`, `rated`, …). |
-| GET, PUT | `/api/bus/stop` | user | `{set, name, lat, lng, alert_meters}`: the signed-in person's stop. PUT `{name, lat, lng, alert_meters}` (200 m to 5 km; 800 by default). |
+| GET, PUT | `/api/bus/stop` | user | `{set, name, lat, lng, alert_meters, buzz}`: the signed-in person's stop, and how the phone buzzes there (`gentle`, `strong` or `strongest`; `strong` by default). PUT `{name, lat, lng, alert_meters, buzz?}` (200 m to 5 km; 800 by default). Without `buzz`, it stays as it was. |
 | GET | `/api/bus/search?q=&lat=&lng=` | user | Bus stops and stations whose names match `q` (2 to 80 characters; fewer gives `[]`), up to 8: `[{name, area, kind: "bus"\|"train", lat, lng}]`, near `lat`/`lng` first when given. From Photon (photon.komoot.io, OpenStreetMap data); a stop's two sides of the road come back as one. `502` when Photon doesn't answer. |
 | GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
 | GET | `/download/samfran.apk` | – | The Android app |

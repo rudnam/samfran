@@ -586,3 +586,6 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Three choices, side by side at every width (the bus alarm's "How it buzzes"). */
+.chips.three { grid-template-columns: repeat(3, 1fr); }

@@ -48,6 +48,27 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await page.reload();
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
   await expect(distance.getByRole('radio', { name: '600 m' })).toHaveAttribute('aria-checked', 'true');
+
+  // How it buzzes: strong by default; changed with one tap, and kept.
+  const how = page.getByRole('radiogroup', { name: 'How it buzzes' });
+  await expect(how.getByRole('radio', { name: 'Strong', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText('Longer buzzes, at full strength.')).toBeVisible();
+  await how.getByRole('radio', { name: 'Strongest' }).click();
+  await expect(page.getByText('Full strength, with hardly a pause.')).toBeVisible();
+  await page.reload();
+  await expect(how.getByRole('radio', { name: 'Strongest' })).toHaveAttribute('aria-checked', 'true');
+  await page.screenshot({ path: test.info().outputPath('bus-buzz.png'), fullPage: true });
+
+  // A practice run then vibrates that way, where the browser can.
+  await page.evaluate(() => {
+    window.vibrations = [];
+    navigator.vibrate = (p) => (window.vibrations.push(p), true);
+  });
+  await page.getByRole('button', { name: 'Try it now' }).click();
+  await expect(page.getByRole('alertdialog', { name: 'Your stop is next' })).toBeVisible({ timeout: 10_000 });
+  expect((await page.evaluate(() => window.vibrations[0])).slice(0, 2)).toEqual([2000, 100]);
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  expect(await page.evaluate(() => window.vibrations.at(-1))).toBe(0);
 });
 
 test('find the bus stop by typing part of its name', async ({ page }) => {

@@ -10,6 +10,7 @@ import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.model.stopNameFromMaps
@@ -69,8 +70,8 @@ data class BusUiState(
     val practice: Practice? = null,
     val editing: Boolean = false,
     val form: StopForm = StopForm(),
-    /** Saving a new buzz distance from the settings card. */
-    val savingDistance: Boolean = false,
+    /** Saving a new buzz distance, or how it buzzes, from the settings card. */
+    val savingSettings: Boolean = false,
     val prompts: Boolean = false,
     /** Notifications are off for the app: say how to allow them. */
     val promptsBlocked: Boolean = false,
@@ -96,6 +97,8 @@ interface BusActions {
     fun setPrompts(on: Boolean)
     /** A buzz distance from the settings card: saved straight away. */
     fun setDistance(meters: Int)
+    /** How it buzzes, from the settings card: saved straight away. */
+    fun setBuzz(buzz: Buzz)
     fun edit()
     fun cancelEdit()
     fun setName(name: String)
@@ -187,7 +190,8 @@ class BusViewModel @Inject constructor(
                 local.update { it.copy(practice = Practice.Riding(1f - i.toFloat() / steps)) }
             }
             local.update { it.copy(practice = Practice.Buzzing) }
-            alarm.test(state.value.stop?.name.orEmpty())
+            val stop = state.value.stop
+            alarm.test(stop?.name.orEmpty(), stop?.buzz ?: Buzz.Strong)
         }
     }
 
@@ -207,12 +211,22 @@ class BusViewModel @Inject constructor(
 
     override fun setDistance(meters: Int) {
         val stop = state.value.stop?.takeIf { it.set } ?: return
-        if (meters == stop.alertMeters || local.value.savingDistance) return
-        local.update { it.copy(savingDistance = true, problem = null) }
+        if (meters == stop.alertMeters || local.value.savingSettings) return
+        local.update { it.copy(savingSettings = true, problem = null) }
         viewModelScope.launch {
             val r = bus.save(stop.name, stop.lat, stop.lng, meters)
-            local.update { it.copy(savingDistance = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
+            local.update { it.copy(savingSettings = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
             if (r is Outcome.Done) reminders.sync(now = true)
+        }
+    }
+
+    override fun setBuzz(buzz: Buzz) {
+        val stop = state.value.stop?.takeIf { it.set } ?: return
+        if (buzz == stop.buzz || local.value.savingSettings) return
+        local.update { it.copy(savingSettings = true, problem = null) }
+        viewModelScope.launch {
+            val r = bus.save(stop.name, stop.lat, stop.lng, stop.alertMeters, buzz)
+            local.update { it.copy(savingSettings = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }
     }
 
