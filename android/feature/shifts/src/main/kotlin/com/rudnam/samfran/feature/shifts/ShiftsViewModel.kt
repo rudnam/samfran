@@ -22,12 +22,14 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -89,15 +91,32 @@ class ShiftsViewModel @Inject constructor(
     /** The photo just read: the editor opens on its month. */
     val readMonth = MutableStateFlow<YearMonth?>(null)
 
+    /**
+     * The next shift as the phone already has it (this month, else next), so
+     * its card is there when the page opens: arriving later, after the server
+     * answers, it pushed the page down under a finger about to tap.
+     */
+    private val savedNext: Flow<ShiftDay?> = shifts.month(null).flatMapLatest { current ->
+        val now = clock.instant()
+        fun upcoming(m: ShiftMonth?) = m?.days?.firstOrNull { d -> d.end?.toInstant()?.isAfter(now) == true }
+        when {
+            current == null -> flowOf(null)
+            upcoming(current) != null -> flowOf(upcoming(current))
+            else -> shifts.month(current.month.plusMonths(1)).map(::upcoming)
+        }
+    }
+
     val state: StateFlow<ShiftsUiState> = combine(
         local,
         local.map { it.asked }.flatMapLatest { shifts.month(it) },
         preferences.preferences.map { it.shiftsAsList },
-    ) { s, data, list -> s.copy(data = data, asList = list) }
+        savedNext,
+    ) { s, data, list, next -> s.copy(data = data, asList = list, next = next ?: s.next) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
         refresh()
+        // Asks the server too (and keeps what it says, for savedNext): the answer if the phone has none.
         viewModelScope.launch { local.update { it.copy(next = shifts.nextShift(clock.instant())) } }
         // A photo from the camera or the picker (through the activity), even one that came back while this page was gone.
         viewModelScope.launch { photos.photo.filterNotNull().collect { photos.take()?.let(::readPhoto) } }
