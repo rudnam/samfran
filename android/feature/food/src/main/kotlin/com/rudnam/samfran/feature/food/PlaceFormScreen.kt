@@ -1,5 +1,6 @@
 package com.rudnam.samfran.feature.food
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -199,9 +200,30 @@ private fun MapLinkField(state: PlaceFormUiState, actions: PlaceFormActions, onP
  * first), and what to do about them: pick one, or keep your own name; a place
  * already on the list says so and opens it, so it isn't added twice.
  */
+/**
+ * What the Food field says for OpenStreetMap's kind of place, when the kind
+ * says something about the food (web: kindFood). Null for a plain restaurant:
+ * the search doesn't say which kind of food it serves.
+ */
+@StringRes
+internal fun foodFor(kind: String): Int? = when (kind) {
+    "cafe" -> R.string.food_cafe
+    "bar" -> R.string.food_bar
+    "pub" -> R.string.food_pub
+    "biergarten" -> R.string.food_beer_garden
+    "fast_food" -> R.string.food_fast_food
+    "food_court" -> R.string.food_food_court
+    "ice_cream" -> R.string.food_ice_cream
+    "bakery" -> R.string.food_bakery
+    "pastry" -> R.string.food_pastries
+    "confectionery" -> R.string.food_sweets
+    else -> null
+}
+
 @Composable
 private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions, onOpen: (Long) -> Unit, onMap: (String) -> Unit) {
     val colors = SamFranTheme.colors
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val found = state.found
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (state.query.isNotEmpty() && !found.isNullOrEmpty()) {
@@ -212,7 +234,7 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .clickable { if (already != null) onOpen(already.id) else actions.pick(p) }
+                            .clickable { if (already != null) onOpen(already.id) else actions.pick(p, foodFor(p.kind)?.let(resources::getString).orEmpty()) }
                             .padding(vertical = 10.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),

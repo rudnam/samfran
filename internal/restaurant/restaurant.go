@@ -291,6 +291,22 @@ type Handler struct {
 	places *geocoder
 	// search finds places to eat by name as it's typed (search.go).
 	search *placeSearch
+	// google finds places with Google Places when it has a key (google.go);
+	// nil without one.
+	google *googlePlaces
+}
+
+// UseGoogle makes suggestions come from Google Places, with this API key
+// (GOOGLE_PLACES_API_KEY); base is the API's address, empty for Google's own.
+func (h *Handler) UseGoogle(key, base string) {
+	if key == "" {
+		h.google = nil
+		return
+	}
+	if base == "" {
+		base = googlePlacesBase
+	}
+	h.google = &googlePlaces{base: base, key: key, client: &http.Client{Timeout: 5 * time.Second}}
 }
 
 func NewHandler(st *Store) *Handler {
@@ -306,6 +322,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("POST /api/restaurants", h.create)
 	route("POST /api/restaurants/lookup", h.lookupHandler)
 	route("GET /api/restaurants/search", h.searchHandler)
+	route("GET /api/restaurants/suggest", h.suggestHandler)
+	route("GET /api/restaurants/place/{id}", h.placeHandler)
 	route("GET /api/restaurants/{id}", h.get)
 	route("PATCH /api/restaurants/{id}", h.update)
 	route("DELETE /api/restaurants/{id}", h.delete)

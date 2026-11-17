@@ -69,4 +69,15 @@
     <string name="not_this_one">これじゃない</string>
     <string name="check_on_map">地図で確認</string>
     <string name="maps_link_hint_picked">任意です。選んだお店はもう地図で開けます。</string>
+    <!-- The Food field, filled in from the kind of place picked from the search -->
+    <string name="food_cafe">カフェ</string>
+    <string name="food_bar">バー</string>
+    <string name="food_pub">パブ</string>
+    <string name="food_beer_garden">ビアガーデン</string>
+    <string name="food_fast_food">ファストフード</string>
+    <string name="food_food_court">フードコート</string>
+    <string name="food_ice_cream">アイスクリーム</string>
+    <string name="food_bakery">パン屋</string>
+    <string name="food_pastries">洋菓子</string>
+    <string name="food_sweets">スイーツ</string>
 </resources>

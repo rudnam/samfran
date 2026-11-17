@@ -84,22 +84,30 @@ data class FoundPlace(
     val kind: String,
     val lat: Double,
     val lng: Double,
+    /** Google's, for a place Google suggested: until its details come, only [name] and [street] (an address line) are set. */
+    val placeId: String = "",
+    /** From Google's details: the kind of restaurant, for the Food field, when it says one. */
+    val food: String = "",
+    /** From Google's details: the place's own Google Maps link. */
+    val googleMapUrl: String = "",
 ) {
     /** Where it is, as a suggestion's second line: street and area. */
     val where: String get() = listOf(street, area).filter { it.isNotBlank() }.joinToString(" · ")
 
-    /** Google Maps searching for the name around where it is: opens on that branch, not the chain. */
+    /** The place on Google Maps: its own link, from Google, or Maps searching for the name around where it is, which opens on that branch, not the chain. */
     val mapUrl: String
-        get() = "https://www.google.com/maps/search/" + URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "/@$lat,$lng,17z"
+        get() = googleMapUrl.ifBlank { null } ?: "https://www.google.com/maps/search/" + URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "/@$lat,$lng,17z"
 
     /** An emoji for the kind of place. */
     val icon: String
         get() = when (kind) {
-            "cafe" -> "☕"
-            "bar", "pub", "biergarten" -> "🍺"
-            "fast_food" -> "🍔"
-            "ice_cream" -> "🍦"
-            "bakery", "pastry", "confectionery" -> "🥐"
+            "cafe", "coffee_shop" -> "☕"
+            "bar", "pub", "biergarten", "izakaya_restaurant" -> "🍺"
+            "fast_food", "fast_food_restaurant", "hamburger_restaurant" -> "🍔"
+            "ice_cream", "ice_cream_shop" -> "🍦"
+            "bakery", "pastry", "confectionery", "dessert_shop" -> "🥐"
+            "ramen_restaurant" -> "🍜"
+            "sushi_restaurant" -> "🍣"
             else -> "🍽️"
         }
 }

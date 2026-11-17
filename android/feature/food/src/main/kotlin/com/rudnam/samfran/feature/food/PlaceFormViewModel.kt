@@ -68,7 +68,8 @@ interface PlaceFormActions {
     fun takeLink(text: String)
     /** The name as typed: it's also searched for, when adding. */
     fun setName(name: String)
-    fun pick(place: FoundPlace)
+    /** [food] is what the Food field says for its kind, in the person's language (foodFor); empty for none. A place Google suggested gets its own from its details. */
+    fun pick(place: FoundPlace, food: String)
     /** "Not this one": forget the picked place, keep the name. */
     fun unpick()
     fun save()
@@ -116,6 +117,8 @@ class PlaceFormViewModel @Inject constructor(
 
     private var near: Pair<Double, Double>? = null
     private var search: Job? = null
+    /** One Google session from typing to picking; a new one after each pick. */
+    private var session = java.util.UUID.randomUUID().toString()
 
     override fun setName(name: String) {
         val f = _state.value.fields ?: return
@@ -130,17 +133,37 @@ class PlaceFormViewModel @Inject constructor(
         }
         search = viewModelScope.launch {
             delay(250)
-            val r = food.search(n, near)
+            val r = food.search(n, near, session)
             _state.update { if (r is Outcome.Done) it.copy(found = r.value, searchFailed = false) else it.copy(searchFailed = true) }
         }
     }
 
-    override fun pick(place: FoundPlace) {
+    override fun pick(place: FoundPlace, food: String) {
         search?.cancel()
-        _state.update { s ->
-            val f = s.fields ?: return@update s
-            s.copy(fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }), picked = place, query = "", found = null)
+        if (place.placeId.isBlank()) {
+            fill(place, food)
+            return
         }
+        // Google's suggestion has only a name: ask for the rest.
+        _state.update { s -> s.copy(fields = s.fields?.copy(name = place.name), picked = null, query = "", found = null, lookingUp = true) }
+        val asked = session
+        session = java.util.UUID.randomUUID().toString()
+        viewModelScope.launch {
+            when (val r = this@PlaceFormViewModel.food.place(place.placeId, asked)) {
+                is Outcome.Done -> {
+                    _state.update { it.copy(lookingUp = false) }
+                    fill(r.value, r.value.food)
+                }
+                else -> _state.update { it.copy(lookingUp = false, problem = r) }
+            }
+        }
+    }
+
+    /** Fills in the form from a place with its details. Area and Food only when empty: what they typed stays. */
+    private fun fill(place: FoundPlace, food: String) = _state.update { s ->
+        val f = s.fields ?: return@update s
+        val fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }, cuisine = f.cuisine.ifBlank { food })
+        s.copy(fields = fields, picked = place, query = "", found = null)
     }
 
     override fun unpick() = _state.update { it.copy(picked = null) }

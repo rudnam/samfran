@@ -43,7 +43,7 @@ func TestSearch(t *testing.T) {
 	if f := found[2]; f.Area != "豊島区" {
 		t.Errorf("ward: %+v", f)
 	}
-	for _, want := range []string{"lat=34.7000", "osm_tag=amenity%3Arestaurant", "osm_tag=amenity%3Acafe"} {
+	for _, want := range []string{"lat=34.7000", "location_bias_scale=0", "osm_tag=amenity%3Arestaurant", "osm_tag=amenity%3Acafe"} {
 		if !strings.Contains(lastQuery, want) {
 			t.Errorf("query %q lacks %q", lastQuery, want)
 		}

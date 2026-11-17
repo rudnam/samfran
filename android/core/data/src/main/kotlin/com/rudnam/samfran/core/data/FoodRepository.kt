@@ -52,8 +52,15 @@ interface FoodRepository {
     /** The place's name (and, with [position], where it is) from a Google Maps link. */
     suspend fun lookup(url: String, position: Boolean = false): Outcome<MapLookup>
 
-    /** Places to eat whose names match [query] (2+ characters), from OpenStreetMap; near ones first when [near] is given. */
-    suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<com.rudnam.samfran.core.model.FoundPlace>>
+    /**
+     * Places to eat whose names match [query] (2+ characters), near ones first when [near] is given: from Google
+     * Places when the server has a key (each has a placeId; ask [place] for the rest), else from OpenStreetMap.
+     * [session] is the form's, shared with [place], so Google counts typing and picking as one.
+     */
+    suspend fun search(query: String, near: Pair<Double, Double>?, session: String): Outcome<List<com.rudnam.samfran.core.model.FoundPlace>>
+
+    /** A place Google suggested, with where it is, its Maps link and its food. */
+    suspend fun place(placeId: String, session: String): Outcome<com.rudnam.samfran.core.model.FoundPlace>
 }
 
 @Singleton
@@ -108,9 +115,11 @@ internal class OfflineFirstFoodRepository @Inject constructor(
         network.lookup(url.trim(), position).let { MapLookup(it.name, it.lat, it.lng, it.foundByName) }
     }
 
-    override suspend fun search(query: String, near: Pair<Double, Double>?) = outcome(io) {
-        network.searchPlaces(query.trim(), near?.first, near?.second).map { it.asModel() }
+    override suspend fun search(query: String, near: Pair<Double, Double>?, session: String) = outcome(io) {
+        network.suggestPlaces(query.trim(), near?.first, near?.second, session).map { it.asModel() }
     }
+
+    override suspend fun place(placeId: String, session: String) = outcome(io) { network.placeDetails(placeId, session).asModel() }
 
     /**
      * Runs a change the server answers with the place as it now is: that's

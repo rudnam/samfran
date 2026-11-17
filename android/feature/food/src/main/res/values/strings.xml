@@ -71,4 +71,15 @@
     <string name="not_this_one">Not this one</string>
     <string name="check_on_map">Check on the map</string>
     <string name="maps_link_hint_picked">Optional. The place you picked is already on the map.</string>
+    <!-- The Food field, filled in from the kind of place picked from the search -->
+    <string name="food_cafe">Café</string>
+    <string name="food_bar">Bar</string>
+    <string name="food_pub">Pub</string>
+    <string name="food_beer_garden">Beer garden</string>
+    <string name="food_fast_food">Fast food</string>
+    <string name="food_food_court">Food court</string>
+    <string name="food_ice_cream">Ice cream</string>
+    <string name="food_bakery">Bakery</string>
+    <string name="food_pastries">Pastries</string>
+    <string name="food_sweets">Sweets</string>
 </resources>
