@@ -71,14 +71,19 @@ const ClosingTitle = "締め申請通知"
 
 // ClosingDates lists the closing days (days of the month; past the month's
 // end means its last day) from the month of from to the month of to, as
-// YYYY-MM-DD, in order.
-func ClosingDates(from, to time.Time, days []int) []string {
+// YYYY-MM-DD, in order. custom has the months ("YYYY-MM") whose days were
+// set for that month only.
+func ClosingDates(from, to time.Time, usual []int, custom map[string][]int) []string {
 	var out []string
 	month := time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC)
 	end := time.Date(to.Year(), to.Month(), 1, 0, 0, 0, 0, time.UTC)
 	for ; !month.After(end); month = month.AddDate(0, 1, 0) {
 		last := month.AddDate(0, 1, -1).Day()
 		seen := map[int]bool{}
+		days, ok := custom[month.Format("2006-01")]
+		if !ok {
+			days = usual
+		}
 		for _, d := range days {
 			d = min(d, last)
 			if d >= 1 && !seen[d] {

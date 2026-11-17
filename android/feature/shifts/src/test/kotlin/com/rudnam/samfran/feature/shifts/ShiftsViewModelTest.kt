@@ -51,6 +51,30 @@ class ShiftsViewModelTest {
     }
 
     @Test
+    fun `a month's own closing days are saved with its shifts, and only once changed`() = runTest {
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        assertEquals(listOf(15, 30), vm.state.value.closing) // the usual 15th and last day, in November
+        assertTrue(vm.state.value.closingIsUsual)
+        vm.save()
+        assertEquals(null, shifts.savedClosing) // untouched: left as it is
+
+        val again = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        again.setClosing(0, 20)
+        again.addClosing()
+        assertEquals(listOf(1, 20, 30), again.state.value.closing)
+        assertTrue(!again.state.value.closingIsUsual)
+        again.removeClosing(0)
+        again.save()
+        assertEquals(listOf(20, 30), shifts.savedClosing)
+
+        val back = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        assertEquals(listOf(20, 30), back.state.value.closing)
+        back.usualClosing()
+        back.save()
+        assertEquals(listOf(15, 30), shifts.savedClosing)
+    }
+
+    @Test
     fun `who's on the same shift is kept only while the day's code is unchanged`() = runTest {
         val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
         assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(LocalDate.of(2026, 11, 4)))

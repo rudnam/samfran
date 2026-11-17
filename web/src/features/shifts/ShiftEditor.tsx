@@ -21,11 +21,20 @@ function splitNames(text: string): string[] {
 
 const common = ['7F', '9F', '13F', '22F', '普', '法', '有休'];
 
+/** The usual closing days as they fall in a month: a day past its end is its last day. */
+export function usualClosing(month: string, usual: number[]): number[] {
+  const last = datesOf(month).length;
+  return [...new Set(usual.map((d) => Math.min(d, last)))].sort((a, b) => a - b);
+}
+
 export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: boolean }) {
   const [base, setBase] = useState<ShiftMonth | null>(null);
   const [codes, setCodes] = useState<Record<string, string>>({});
   // Coworkers typed by hand, per day, as one comma-separated line.
   const [typed, setTyped] = useState<Record<string, string>>({});
+  // 締め申請通知 for this month: null until it's loaded; sent only once changed.
+  const [closing, setClosing] = useState<number[] | null>(null);
+  const [closingChanged, setClosingChanged] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -37,10 +46,20 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
       (m) => {
         setBase(m);
         setCodes(Object.fromEntries(m.days.map((d) => [d.date, d.code])));
+        // A photo read doesn't carry the month's closing days; the saved month does.
+        (m.closing_days ? Promise.resolve(m) : api.shifts(month)).then(
+          (saved) => setClosing(saved.closing_days ?? usualClosing(month, saved.settings.closing_days ?? [15, 31])),
+          () => setClosing(usualClosing(month, m.settings.closing_days ?? [15, 31])),
+        );
       },
       (err) => setError(errorMessage(err)),
     );
   }, [month, fromPhoto]);
+
+  function changeClosing(next: number[]) {
+    setClosing(next);
+    setClosingChanged(true);
+  }
 
   // Who's on the same shift: what was typed, else as read or saved. The read
   // names only stay while the day's code is unchanged (a different code is a
@@ -74,7 +93,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
       const days = Object.entries(codes)
         .map(([date, code]) => ({ date, code: normalize(code), with: withFor(date, code) }))
         .filter((d) => d.code);
-      await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined);
+      await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined, closingChanged && closing ? closing : undefined);
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));
@@ -152,6 +171,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
           );
         })}
       </ul>
+      {closing && <ClosingDays month={month} days={closing} usual={usualClosing(month, base.settings.closing_days ?? [15, 31])} onChange={changeClosing} />}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -166,5 +186,55 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         </button>
       </div>
     </section>
+  );
+}
+
+/** 締め申請通知 for one month: the days its hours are sent in, saved with its shifts. */
+function ClosingDays({ month, days, usual, onChange }: { month: string; days: number[]; usual: number[]; onChange: (days: number[]) => void }) {
+  const dates = datesOf(month);
+  const isUsual = days.join() === usual.join();
+  const free = dates.map((_, i) => i + 1).find((n) => !days.includes(n));
+  return (
+    <div className="card stack tight" role="group" aria-labelledby="closing-title">
+      <div className="row spread">
+        <h2 id="closing-title">
+          <span className="cal-flag" aria-hidden="true" /> {t('Hours due (締め申請通知)')}
+        </h2>
+        {!isUsual && (
+          <button type="button" className="link" onClick={() => onChange(usual)}>
+            {t('Use the usual days')}
+          </button>
+        )}
+      </div>
+      <span className="hint">
+        {isUsual ? t('The usual days, from Settings. Change them here for {month} only.', { month: monthName(month) }) : t('Only for {month}. Other months keep the usual days.', { month: monthName(month) })}
+      </span>
+      <div className="lengths">
+        {days.map((d, i) => (
+          <span key={i} className="length">
+            <select
+              aria-label={t('Closing day {n}', { n: i + 1 })}
+              value={d}
+              onChange={(e) => onChange([...new Set(days.map((x, j) => (j === i ? Number(e.target.value) : x)))].sort((a, b) => a - b))}
+            >
+              {dates.map((date, k) => (
+                <option key={date} value={k + 1}>
+                  {dayName(date)}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="link quiet" aria-label={t('Remove closing day {n}', { n: i + 1 })} onClick={() => onChange(days.filter((_, j) => j !== i))}>
+              ×
+            </button>
+          </span>
+        ))}
+        {days.length < 10 && free !== undefined && (
+          <button type="button" className="secondary" onClick={() => onChange([...days, free].sort((a, b) => a - b))}>
+            + {t('Day')}
+          </button>
+        )}
+      </div>
+      {days.length === 0 && <span className="muted small">{t('No 締め申請通知 this month.')}</span>}
+    </div>
   );
 }

@@ -77,8 +77,16 @@ data class ShiftMonth(
     val nameAsRead: String? = null,
     /** From a photo: the reader's doubts. */
     val notes: String = "",
+    /** This month's 締め申請通知 days, if the server said (it can set them per month). */
+    val closingDays: List<Int>? = null,
 ) {
     val fromPhoto: Boolean get() = nameAsRead != null
+
+    /** The days this month's hours are sent in: its own, else the usual ones. */
+    val closing: List<Int> get() = closingDays ?: usualClosing
+
+    /** The usual days (from the settings) as they fall in this month: a day past its end is its last day. */
+    val usualClosing: List<Int> get() = settings.closingDays.map { minOf(it, month.lengthOfMonth()) }.distinct().sorted()
 }
 
 /**

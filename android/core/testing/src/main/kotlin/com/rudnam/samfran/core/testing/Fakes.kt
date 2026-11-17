@@ -175,6 +175,7 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     var saved: Map<LocalDate, String>? = null
     var savedWith: Map<LocalDate, List<String>>? = null
     var savedCorrections: Map<String, String>? = null
+    var savedClosing: List<Int>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -187,12 +188,13 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     /** The shift [homeShift] answers; by default, worked out from the months. */
     var home: ShiftDay? = null
     override suspend fun homeShift(now: Instant): ShiftDay? = home ?: com.rudnam.samfran.core.model.homeShift(months.value.values.flatMap { it.days }, now)
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>): Outcome<ShiftMonth> {
+    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>, closingDays: List<Int>?): Outcome<ShiftMonth> {
         next?.let { return it }
         saved = codes
         savedWith = with
         savedCorrections = corrections
-        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
+        savedClosing = closingDays
+        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty(), closingDays = closingDays ?: months.value[month]?.closingDays)
         months.value = months.value + (month to m)
         return Outcome.Done(m)
     }
