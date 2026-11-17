@@ -105,6 +105,8 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	restaurantHandler := restaurant.NewHandler(restaurants)
 	restaurantHandler.Log = activities.Log
 	restaurantHandler.UseGoogle(cfg.GooglePlacesAPIKey, cfg.GooglePlacesURL)
+	restaurantHandler.Locate = cfg.LocatePlaces
+	restaurantHandler.MapKey = cfg.GoogleMapsBrowserKey
 	restaurantHandler.Register(mux, spaceHandler.Require)
 	reader := cfg.ShiftReader
 	if reader == nil && cfg.AnthropicAPIKey != "" {

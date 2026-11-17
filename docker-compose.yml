@@ -56,6 +56,9 @@ services:
       # Reading photos of shift sheets (internal/shift).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
+      # The places' map on the web page (Maps JavaScript API, restricted to this site).
+      GOOGLE_MAPS_BROWSER_KEY: ${GOOGLE_MAPS_BROWSER_KEY:-}
+      LOCATE_PLACES: ${LOCATE_PLACES:-true}
       # Offered on the Us tab, and to the Android app as an update, while
       # the file exists. On the server, rudnam-downloads copies it into
       # downloads/ (rudnam/rudnam-infra); android/publish.sh puts it there.
