@@ -9,6 +9,9 @@ for (const [name, viewport] of [
 ]) {
   test(`screens at ${name} width`, async ({ page }) => {
     await page.setViewportSize(viewport);
+    await page.context().grantPermissions(['geolocation']);
+    await page.context().setGeolocation({ latitude: 34.7038, longitude: 137.7349 }); // Hamamatsu Station
+    await page.route('**/api/restaurants/map', (route) => route.fulfill({ json: { key: 'test-key' } }));
     // animations: 'disabled' jumps entrances to their end, so each picture shows the settled screen.
     const shot = (label) =>
       page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true, animations: 'disabled' });
@@ -26,20 +29,20 @@ for (const [name, viewport] of [
     await page.reload();
     await shot('2-empty');
     // Sample places through the API, with visits and a rating.
-    for (const [name, area, cuisine, category, days, stars] of [
-      ['Hanabi Grill', 'Station East', 'Hamburg steak', 'eat', 3, 5],
-      ['Gyoza Komachi', 'Station East', 'Gyoza', 'eat', 12, 4],
-      ['Ramen Tsubaki', 'Old Town', 'Ramen', 'eat', 20, 3],
+    for (const [name, area, cuisine, category, days, stars, lat, lng] of [
+      ['Hanabi Grill', 'Station East', 'Hamburg steak', 'eat', 3, 5, 34.7046, 137.7362],
+      ['Gyoza Komachi', 'Station East', 'Gyoza', 'eat', 12, 4, 34.7031, 137.7371],
+      ['Ramen Tsubaki', 'Old Town', 'Ramen', 'eat', 20, 3, 34.7082, 137.7305],
       ['A restaurant with a very long name that has to wrap somewhere', 'Lakeside', 'Eel', 'eat', 75, 5],
-      ['Castle Park', 'Old Town', 'Park', 'nature', 30, 4],
-      ['Blue Sky Café', 'Riverside', 'Café', 'eat', null, 0],
-      ['Hilltop Shrine', 'North Hills', 'Shrine', 'culture', null, 0],
-      ['Sand Dunes', 'South Coast', 'Dunes', 'nature', null, 0],
-      ['Lakeside Onsen', 'Lakeside', 'Onsen', 'relax', null, 0],
+      ['Castle Park', 'Old Town', 'Park', 'nature', 30, 4, 34.7108, 137.7249],
+      ['Blue Sky Café', 'Riverside', 'Café', 'eat', null, 0, 34.6991, 137.7402],
+      ['Hilltop Shrine', 'North Hills', 'Shrine', 'culture', null, 0, 34.7354, 137.7187],
+      ['Sand Dunes', 'South Coast', 'Dunes', 'nature', null, 0, 34.656, 137.731],
+      ['Lakeside Onsen', 'Lakeside', 'Onsen', 'relax', null, 0, 34.7651, 137.5911],
       ['City Aquarium', 'Harbour', 'Aquarium', 'fun', null, 0],
     ]) {
       const visit = days === null ? undefined : { visited_on: new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) };
-      const res = await page.request.post('/api/restaurants', { data: { name, area, cuisine, category, visit, stars } });
+      const res = await page.request.post('/api/restaurants', { data: { name, area, cuisine, category, visit, stars, lat, lng } });
       expect(res.status()).toBe(201);
     }
     await page.reload();
@@ -52,6 +55,16 @@ for (const [name, viewport] of [
     await shot('3b-want-nature');
     await page.getByRole('radio', { name: /All/ }).click();
     await shot('3c-want-all');
+    // Nearest first, from Hamamatsu Station, then on the map (Google is a fake: fixtures.js).
+    await page.getByRole('radio', { name: 'Nearby' }).click();
+    await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem').first()).toContainText('Blue Sky Café');
+    await shot('3d-want-nearby');
+    await page.getByRole('radio', { name: 'Map' }).click();
+    await page.frameLocator('iframe[title="Map of the places"]').getByRole('button', { name: 'Hilltop Shrine' }).click();
+    await expect(page.locator('.map-card')).toContainText('Hilltop Shrine');
+    await shot('3e-want-map');
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.getByRole('radio', { name: 'Newest' }).click();
     await page.getByRole('link', { name: /Been there/ }).click();
 
     await page.getByRole('link', { name: /Hanabi Grill/ }).click();

@@ -7,6 +7,33 @@ const fakeMap =
   '<!doctype html><body style="margin:0;background:#e8eaed;font:14px sans-serif;display:grid;place-items:center;height:100vh">' +
   '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ea4335"></div></body>';
 
+// Google Maps' script for the places' map (web/src/map/main.ts), from a
+// fake that puts each overlay (a pin) on the page, spread out by position,
+// and calls back as Google does.
+const fakeMapsScript = `
+(() => {
+  const el = () => document.getElementById('map');
+  class LatLng { constructor(lat, lng) { this.lat = () => lat; this.lng = () => lng; } }
+  class Map {
+    constructor(div) { this.div = div; this.listeners = {}; div.style.position = 'relative'; div.style.background = '#e8eaed';
+      div.addEventListener('click', () => (this.listeners.click || []).forEach((f) => f())); }
+    addListener(name, f) { (this.listeners[name] = this.listeners[name] || []).push(f); }
+    setCenter() {} setZoom() {} fitBounds() {}
+  }
+  class OverlayView {
+    setMap(map) {
+      if (map) { this.getPanes = () => ({ overlayMouseTarget: el() });
+        this.getProjection = () => ({ fromLatLngToDivPixel: (p) => ({ x: 60 + ((p.lng() * 1000) % 250), y: 80 + ((p.lat() * 1000) % 300) }) });
+        this.onAdd(); this.draw(); }
+      else this.onRemove();
+    }
+  }
+  class LatLngBounds { extend() {} }
+  window.google = { maps: { Map, OverlayView, LatLng, LatLngBounds } };
+  const cb = new URL(document.currentScript.src).searchParams.get('callback');
+  setTimeout(() => window[cb](), 0);
+})();`;
+
 const test = base.test.extend({
   // Fails the test if the page throws or logs a console error (which includes
   // Content-Security-Policy violations).
@@ -25,6 +52,9 @@ const test = base.test.extend({
     await page.route('**/api/restaurants/search?*', (route) => route.fulfill({ json: [] }));
     await page.route('**/api/restaurants/suggest?*', (route) => route.fulfill({ json: [] }));
     await page.route('https://www.google.com/maps?*', (route) => route.fulfill({ contentType: 'text/html', body: fakeMap }));
+    await page.route('https://maps.googleapis.com/maps/api/js?*', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: fakeMapsScript }),
+    );
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);
   },

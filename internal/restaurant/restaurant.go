@@ -231,7 +231,7 @@ func (s *Store) Create(ctx context.Context, spaceID, by int64, f Fields) (int64,
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
 		INSERT INTO restaurants (space_id, name, area, cuisine, category, map_url, notes, added_by, lat, lng, located)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $9 IS NOT NULL) RETURNING id`,
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::float8, $10::float8, $9::float8 IS NOT NULL) RETURNING id`,
 		spaceID, f.Name, f.Area, f.Cuisine, f.Category, f.MapURL, f.Notes, by, f.Lat, f.Lng).Scan(&id)
 	return id, err
 }
