@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -223,13 +225,24 @@ fun DayLine(date: LocalDate, day: ShiftDay?, modifier: Modifier = Modifier) {
 
 /**
  * Who else is on a shift: "With タナカ ユイ, スズキ ケン" (WithNames.tsx). Each
- * name stays in one piece when the line wraps.
+ * name is laid out whole, so a wrapped line never splits one (Japanese text
+ * would otherwise break between any two kana). [trailing] goes after the last.
  */
 @Composable
-fun WithNames(names: List<String>, modifier: Modifier = Modifier) {
+fun WithNames(names: List<String>, modifier: Modifier = Modifier, trailing: (@Composable () -> Unit)? = null) {
     if (names.isEmpty()) return
     val sep = if (currentLocale.language == "ja") "、" else ", "
-    // Non-breaking spaces inside a name keep it on one line.
-    val list = names.joinToString(sep) { it.replace(' ', '\u00A0').replace('\u3000', '\u00A0') }
+    // "With %s" around the names: the words before them stay with the first.
+    val (before, after) = stringResource(R.string.with_names, "\u0000").split('\u0000').let { it[0] to it.getOrElse(1) { "" } }
+    val style = MaterialTheme.typography.bodySmall
+    val color = SamFranTheme.colors.muted
+    FlowRow(modifier, itemVerticalAlignment = Alignment.CenterVertically) {
+        names.forEachIndexed { i, name ->
+            val text = (if (i == 0) before else "") + name + (if (i < names.lastIndex) sep else after)
+            Text(text, style = style, color = color, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        }
+        trailing?.invoke()
+    }
+}
     Text(stringResource(R.string.with_names, list), modifier, style = MaterialTheme.typography.bodySmall, color = SamFranTheme.colors.muted)
 }

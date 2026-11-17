@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.shifts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -176,13 +177,15 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                             }
                             if (meaning.problem != null) Text(stringResource(R.string.unknown_length), style = MaterialTheme.typography.bodySmall, color = colors.danger)
                         }
-                        if (state.editingWith != date) {
-                            val names = state.withFor(date)
-                            if (names.isNotEmpty() || meaning?.kind == ShiftKind.Work) WithLine(names, day) { actions.editWith(date) }
-                        }
                     }
                 }
-                if (state.editingWith == date) NamesField(state.withText(date), date, day, actions)
+                // Who's with you: under the day at full width, where its box opens in place.
+                if (state.editingWith == date) {
+                    NamesField(state.withText(date), date, day, actions)
+                } else {
+                    val names = state.withFor(date)
+                    if (names.isNotEmpty() || meaning?.kind == ShiftKind.Work) WithLine(names, day) { actions.editWith(date) }
+                }
             }
         }
         state.problem?.let { ErrorText(problemText(it)) }
@@ -201,19 +204,22 @@ private fun ChipRow(content: @Composable () -> Unit) {
 @Composable
 private fun WithLine(names: List<String>, day: String, onClick: () -> Unit) {
     val colors = SamFranTheme.colors
-    Row(
+    val pencil = @Composable { LineIcon(SamFranIcons.edit, null, Modifier.padding(start = 6.dp), tint = colors.muted, size = 14.dp) }
+    Box(
         Modifier
+            .fillMaxWidth()
+            .padding(start = 76.dp, bottom = 6.dp)
             .heightIn(min = 32.dp)
             .clickable(onClickLabel = stringResource(R.string.edit_who_with, day), onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        contentAlignment = Alignment.CenterStart,
     ) {
         if (names.isEmpty()) {
-            LineIcon(SamFranIcons.add, null, tint = colors.accentInk, size = 14.dp)
-            Text(stringResource(R.string.add_who_with), style = MaterialTheme.typography.bodySmall, color = colors.accentInk)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LineIcon(SamFranIcons.add, null, tint = colors.accentInk, size = 14.dp)
+                Text(stringResource(R.string.add_who_with), style = MaterialTheme.typography.bodySmall, color = colors.accentInk)
+            }
         } else {
-            WithNames(names, Modifier.weight(1f, fill = false))
-            LineIcon(SamFranIcons.edit, null, tint = colors.muted, size = 14.dp)
+            WithNames(names, trailing = pencil)
         }
     }
 }
