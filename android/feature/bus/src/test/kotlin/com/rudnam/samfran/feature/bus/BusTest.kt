@@ -89,6 +89,11 @@ class BusScreenshotTest {
     @Test
     fun readyDark() = shot("ready-dark", dark = true, content = screen(ready))
 
+    // A tall screen, to see the whole of Alarm settings: how far and how it buzzes.
+    @Test
+    @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
+    fun settings() = shot("settings", content = screen(ready.copy(stop = Samples.stop.copy(buzz = Buzz.Strongest))))
+
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun readyJapanese() = shot("ready-ja", content = screen(ready))
