@@ -249,7 +249,7 @@ test('with Google: picking a suggestion fills in its area, food and its own Maps
   await expect(page.getByLabel('Food')).toHaveValue('Chinese Restaurant');
   await expect(page.getByRole('link', { name: 'Check on the map' })).toHaveAttribute('href', 'https://maps.google.com/?cid=123');
   // Typing and picking were one Google session.
-  expect(detailsSession).toMatch(/^[0-9a-f-]{36}$/);
+  expect(detailsSession).toMatch(/^[0-9a-f]{32}$/);
   expect(sessions.at(-1)).toBe(detailsSession);
 
   await page.getByRole('button', { name: 'Add', exact: true }).click();

@@ -93,6 +93,11 @@ function pickedMapURL(p: FoundPlace): string {
   return `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`;
 }
 
+/** A Google session token: 32 random hex digits (crypto.randomUUID needs https). */
+function newSession(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
 const empty: RestaurantFields = { name: '', area: '', cuisine: '', map_url: '', notes: '' };
@@ -122,7 +127,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   // What's already saved, to say so instead of adding it twice.
   const [saved, setSaved] = useState<Restaurant[]>([]);
   // One Google session from typing to picking; a new one after each pick.
-  const [session, setSession] = useState(() => crypto.randomUUID());
+  const [session, setSession] = useState(() => newSession());
   const search = usePlaceSearch(query, session, near);
 
   useEffect(() => {
@@ -166,7 +171,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
     } catch (err) {
       setError(errorMessage(err));
     } finally {
-      setSession(crypto.randomUUID());
+      setSession(newSession());
     }
   }
 
