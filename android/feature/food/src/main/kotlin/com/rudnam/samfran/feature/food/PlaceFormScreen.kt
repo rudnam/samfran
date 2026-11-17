@@ -184,15 +184,15 @@ private fun CategoryPicker(selected: PlaceCategory, onPick: (PlaceCategory) -> U
                 val on = c == selected
                 Row(
                     Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(50))
                         .background(if (on) colors.accent else colors.sunken)
                         .selectable(selected = on, role = Role.RadioButton, onClick = { onPick(c) })
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     val ink = if (on) colors.accentText else colors.text
-                    LineIcon(c.icon, null, tint = ink, size = 20.dp)
+                    LineIcon(c.icon, null, tint = ink, size = 18.dp)
                     Text(stringResource(c.title), color = ink, style = MaterialTheme.typography.labelLarge)
                 }
             }

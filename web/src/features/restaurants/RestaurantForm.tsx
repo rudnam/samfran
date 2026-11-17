@@ -431,7 +431,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                     setCategoryPicked(true);
                   }}
                 >
-                  <Icon name={c} size={20} />
+                  <Icon name={c} size={18} />
                   {categoryName(c)}
                 </button>
               ))}

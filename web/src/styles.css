@@ -313,10 +313,10 @@ select.language { width: auto; padding: 6px 10px; }
 .cat-filter button.on .count { color: inherit; opacity: 0.7; }
 
 /* Picking a category in the form. */
-.cat-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.cat-picker { display: flex; flex-wrap: wrap; gap: 6px; }
 .cat-picker button {
-  display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; text-align: left;
-  background: var(--sunken); color: var(--text); font-weight: 600; font-size: 0.875rem;
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; white-space: nowrap;
+  background: var(--sunken); color: var(--text); font-weight: 600; font-size: 0.8125rem;
 }
 .cat-picker button.on { background: var(--accent); color: var(--accent-text); }
 .spot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
