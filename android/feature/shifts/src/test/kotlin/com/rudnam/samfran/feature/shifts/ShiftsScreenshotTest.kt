@@ -42,6 +42,9 @@ class ShiftsScreenshotTest {
         override fun setCode(date: LocalDate, code: String) {}
         override fun focus(date: LocalDate?) {}
         override fun chip(code: String) {}
+        override fun editWith(date: LocalDate?) {}
+        override fun setWith(date: LocalDate, text: String) {}
+        override fun toggleName(name: String) {}
         override fun save() {}
     }
     private val settings = object : ShiftSettingsActions {
@@ -103,6 +106,31 @@ class ShiftsScreenshotTest {
     @Test
     fun checkingAPhotoDark() = shot("check-dark", dark = true) {
         ShiftEditorScreen(ShiftEditorUiState(read.month, base = read, codes = read.days.associate { it.date to it.code }), editor, {})
+    }
+
+    /** A day's names open to edit, with the month's other names as chips. */
+    @Test
+    fun editingWhoIsWith() = shot("check-names") {
+        ShiftEditorScreen(
+            ShiftEditorUiState(
+                read.month, base = read, codes = read.days.associate { it.date to it.code },
+                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
+                typed = mapOf(LocalDate.of(2026, 11, 2) to "タナカ ユイ, サトウ"),
+            ),
+            editor, {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun editingWhoIsWithJapanese() = shot("check-names-ja") {
+        ShiftEditorScreen(
+            ShiftEditorUiState(
+                read.month, base = read, codes = read.days.associate { it.date to it.code },
+                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
+            ),
+            editor, {},
+        )
     }
 
     private val settingsState = ShiftSettingsUiState(

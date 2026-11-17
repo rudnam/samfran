@@ -56,4 +56,10 @@
     <string name="made_new_link">新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。</string>
     <string name="link_off">カレンダーのリンクをオフにしました。</string>
     <string name="with_names">一緒: %s</string>
+    <string name="add_who_with">一緒の人を追加</string>
+    <string name="edit_who_with">%sに一緒の人を変える</string>
+    <string name="who_with">一緒の人</string>
+    <string name="who_with_on">%sに一緒の人</string>
+    <string name="who_with_hint">「、」か「,」で区切る。下の名前をタップしても入る</string>
+    <string name="done">完了</string>
 </resources>

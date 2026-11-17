@@ -159,6 +159,7 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     var read: ShiftMonth? = null
     var saved: Map<LocalDate, String>? = null
     var savedWith: Map<LocalDate, List<String>>? = null
+    var savedCorrections: Map<String, String>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -168,10 +169,11 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
     override suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>> =
         Outcome.Done(months.value.values.flatMap { it.days }.mapNotNull { it.end?.toInstant() }.filter { it.isAfter(now) }.sorted())
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>): Outcome<ShiftMonth> {
+    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>): Outcome<ShiftMonth> {
         next?.let { return it }
         saved = codes
         savedWith = with
+        savedCorrections = corrections
         val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
         months.value = months.value + (month to m)
         return Outcome.Done(m)

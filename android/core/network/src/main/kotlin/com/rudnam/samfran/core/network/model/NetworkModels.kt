@@ -250,7 +250,15 @@ data class NetworkShiftCode(
 )
 
 @Serializable
-data class NetworkSaveShifts(val month: String, val days: List<NetworkShiftCode>)
+data class NetworkSaveShifts(
+    val month: String,
+    val days: List<NetworkShiftCode>,
+    /** Names the photo reader got wrong, as fixed while checking a scan; later scans use them. */
+    val corrections: List<NetworkNameFix>? = null,
+)
+
+@Serializable
+data class NetworkNameFix(val from: String, val to: String)
 
 /** Only the fields being changed are sent. */
 @Serializable

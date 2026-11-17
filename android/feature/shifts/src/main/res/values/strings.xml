@@ -56,4 +56,10 @@
     <string name="made_new_link">Made a new link. Add it again where you used the old one.</string>
     <string name="link_off">The calendar link is off.</string>
     <string name="with_names">With %s</string>
+    <string name="add_who_with">Who’s with you?</string>
+    <string name="edit_who_with">change who’s with you on %s</string>
+    <string name="who_with">Who’s with you</string>
+    <string name="who_with_on">Who’s with you on %s</string>
+    <string name="who_with_hint">Separate names with commas, or tap them below</string>
+    <string name="done">Done</string>
 </resources>
