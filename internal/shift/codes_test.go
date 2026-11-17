@@ -80,13 +80,19 @@ func TestICS(t *testing.T) {
 func TestClosingDates(t *testing.T) {
 	from := time.Date(2026, 1, 20, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC)
-	got := strings.Join(ClosingDates(from, to, []int{31, 15, 30}), " ")
+	got := strings.Join(ClosingDates(from, to, []int{31, 15, 30}, nil), " ")
 	// February has no 30th or 31st: both mean the 28th, once.
 	want := "2026-01-15 2026-01-30 2026-01-31 2026-02-15 2026-02-28 2026-03-15 2026-03-30 2026-03-31"
 	if got != want {
 		t.Errorf("ClosingDates = %s, want %s", got, want)
 	}
-	if got := ClosingDates(from, to, nil); len(got) != 0 {
+	// February set by hand: the 20th only, and none in March.
+	custom := map[string][]int{"2026-02": {20}, "2026-03": {}}
+	got = strings.Join(ClosingDates(from, to, []int{15, 31}, custom), " ")
+	if want := "2026-01-15 2026-01-31 2026-02-20"; got != want {
+		t.Errorf("ClosingDates with February's own = %s, want %s", got, want)
+	}
+	if got := ClosingDates(from, to, nil, nil); len(got) != 0 {
 		t.Errorf("no closing days: %v", got)
 	}
 }

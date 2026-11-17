@@ -128,7 +128,7 @@ export function ShiftsPage({ month }: { month?: string }) {
             <p className="muted">{t('Read a photo of the sheet, or enter the days by hand.')}</p>
           </div>
         )}
-        {data && data.days.length > 0 && view === 'calendar' && <ShiftCalendar key={data.month} month={data.month} days={data.days} closing={data.settings.closing_days ?? [15, 31]} />}
+        {data && data.days.length > 0 && view === 'calendar' && <ShiftCalendar key={data.month} month={data.month} days={data.days} closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]} />}
         {data && data.days.length > 0 && view === 'list' && (
           <ul className="shift-list" aria-label={t('Shifts')}>
             {data.days.map((d) => (
