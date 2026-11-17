@@ -11,12 +11,17 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
 import androidx.core.content.edit
+import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 
 /**
- * "Start bus alarm?" when a shift ends. The app gives the times shifts end
- * ([Reminders] keeps them in the "reminders" preferences); this sets an
- * alarm for the next one, and when it goes off shows a notification whose
- * button opens the Bus tab and starts the trip (<package>://bus?start=1).
+ * "Start bus alarm?" when a shift ends. The app gives the times shifts end,
+ * each with the stop to get off at after it ([Reminders] keeps them in the
+ * "reminders" preferences); this sets an alarm for the next one, and when it
+ * goes off shows a notification naming the stop, whose button opens the Bus
+ * tab and starts the trip there (<package>://bus?start=1&stop=<id>), and with
+ * more than one stop, another to choose first (<package>://bus?pick=1).
  * Then it sets the alarm for the one after. The alarm is inexact (Android
  * may run it a few minutes late), which needs no special permission. Alarms
  * don't survive a restart of the phone, so it sets them again then.
@@ -28,7 +33,7 @@ class ShiftPrompt : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_ASK) {
             val now = System.currentTimeMillis()
-            if (ends(context).any { it <= now && it > now - LATE_MS }) ask(context)
+            ends(context).filter { it <= now && it > now - LATE_MS }.maxOrNull()?.let { ask(context, it) }
         }
         // Also after the phone restarts (BOOT_COMPLETED), and for the next shift.
         schedule(context)
@@ -49,7 +54,12 @@ class ShiftPrompt : BroadcastReceiver() {
         const val PREFS = "reminders"
         /** The times to ask, ms since 1970, joined with commas. */
         const val ENDS = "ends"
+        /** The stop's name, from before there could be several: for a time kept then. */
         const val STOP = "stop"
+        /** For each time in [ENDS], the stop: a JSON array of {at, id, name}. */
+        const val STOPS = "stops"
+        /** How many stops there are: "Other stop" is for more than one. */
+        const val STOP_COUNT = "stop-count"
         /** "Ask when a shift ends" is on (the Capacitor build kept this in its own preferences). */
         const val PROMPTS = "prompts"
 
@@ -63,13 +73,34 @@ class ShiftPrompt : BroadcastReceiver() {
             return PendingIntent.getBroadcast(c, 10, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
-        /** Keeps when to ask (none turns it off) and the stop's name, and sets the alarm. */
-        fun save(c: Context, ends: List<Long>, stop: String) {
+        /** A shift's end, and the stop to get off at after it. */
+        data class End(val at: Long, val stopId: Long, val stopName: String)
+
+        /** Keeps when to ask (none turns it off) and where to, and sets the alarm. */
+        fun save(c: Context, ends: List<End>, stopCount: Int) {
+            val stops = JSONArray()
+            for (e in ends) stops.put(JSONObject().put("at", e.at).put("id", e.stopId).put("name", e.stopName))
             prefs(c).edit {
-                putString(ENDS, ends.joinToString(","))
-                putString(STOP, stop)
+                putString(ENDS, ends.joinToString(",") { it.at.toString() })
+                putString(STOPS, stops.toString())
+                putInt(STOP_COUNT, stopCount)
+                remove(STOP)
             }
             schedule(c)
+        }
+
+        /** The stop kept for the shift that ended [at], if any. */
+        private fun stopFor(c: Context, at: Long): End? {
+            val stops = try {
+                JSONArray(prefs(c).getString(STOPS, "[]"))
+            } catch (e: JSONException) {
+                return null
+            }
+            for (i in 0 until stops.length()) {
+                val o = stops.optJSONObject(i) ?: continue
+                if (o.optLong("at") == at) return End(at, o.optLong("id"), o.optString("name"))
+            }
+            return null
         }
 
         /** Sets the alarm for the next time a shift ends, forgetting the ones that have passed. */
@@ -89,22 +120,26 @@ class ShiftPrompt : BroadcastReceiver() {
             return PendingIntent.getActivity(c, requestCode, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
-        private fun ask(c: Context) {
+        private fun ask(c: Context, at: Long) {
             if (BusTripService.status.value.running) return // already on the way
             val nm = c.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(NotificationChannel(CHANNEL, c.getString(R.string.channel_shift_end), NotificationManager.IMPORTANCE_HIGH))
-            val stop = prefs(c).getString(STOP, "").orEmpty()
-            val n = Notification.Builder(c, CHANNEL)
+            val end = stopFor(c, at)
+            val stop = end?.stopName ?: prefs(c).getString(STOP, "").orEmpty()
+            val start = if (end != null && end.stopId > 0) "bus?start=1&stop=${end.stopId}" else "bus?start=1"
+            val b = Notification.Builder(c, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_bus)
                 .setContentTitle(c.getString(R.string.shift_end_title))
                 .setContentText(if (stop.isEmpty()) c.getString(R.string.shift_end_text) else c.getString(R.string.shift_end_text_named, stop))
                 .setCategory(Notification.CATEGORY_REMINDER)
                 .setContentIntent(open(c, 12, "bus")) // a tap on the rest of it opens the Bus tab without starting
-                .addAction(Notification.Action.Builder(null, c.getString(R.string.shift_end_start), open(c, 11, "bus?start=1")).build())
+                .addAction(Notification.Action.Builder(null, c.getString(R.string.shift_end_start), open(c, 11, start)).build())
                 .setAutoCancel(true)
                 .setTimeoutAfter(SHOWN_MS)
-                .build()
-            nm.notify(NOTIFICATION, n)
+            if (prefs(c).getInt(STOP_COUNT, 1) > 1) {
+                b.addAction(Notification.Action.Builder(null, c.getString(R.string.shift_end_other), open(c, 13, "bus?pick=1")).build())
+            }
+            nm.notify(NOTIFICATION, b.build())
         }
 
         /** Takes the question away: SamFran was opened. */

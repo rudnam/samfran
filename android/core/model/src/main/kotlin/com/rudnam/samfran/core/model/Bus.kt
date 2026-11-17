@@ -3,7 +3,7 @@ package com.rudnam.samfran.core.model
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** Where the signed-in person gets off the bus (GET /api/bus/stop). */
+/** One of the places the signed-in person gets off the bus (GET /api/bus/stops), and how the phone buzzes there. */
 data class BusStop(
     /** False until a stop is chosen. */
     val set: Boolean,
@@ -12,15 +12,56 @@ data class BusStop(
     val lng: Double = 0.0,
     /** Buzz this many metres before the stop. */
     val alertMeters: Int = 800,
-    /** How the phone buzzes there. */
+    /** How the phone buzzes there (the person's, at every stop). */
     val buzz: Buzz = Buzz.Strong,
+    /** The server's id for it; 0 for none. */
+    val id: Long = 0,
+    /** The kinds of shift it's the stop for ([ShiftKinds]); each is on one stop at most. */
+    val shifts: List<String> = emptyList(),
 ) {
     /** The stop on Google Maps. */
     val mapLink: String get() = mapLink(lat, lng)
 }
 
+/** The kinds of working shift a stop can be for, as the server labels shifts by when they start. */
+val ShiftKinds = listOf("Early", "Middle", "Late", "Night")
+
+/** The signed-in person's stops, oldest first. */
+data class BusStops(
+    val stops: List<BusStop> = emptyList(),
+    /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
+    val lastId: Long = 0,
+    val buzz: Buzz = Buzz.Strong,
+) {
+    /** The stop used last (or the first). */
+    val last: BusStop? get() = stops.firstOrNull { it.id == lastId } ?: stops.firstOrNull()
+
+    fun byId(id: Long): BusStop? = stops.firstOrNull { it.id == id }
+
+    /** The stop for a shift, if one is for its kind. */
+    fun forShift(shift: ShiftDay?): BusStop? = shift?.let { s -> stops.firstOrNull { s.label in it.shifts } }
+
+    /** Where to get off after [shift]: its stop, or else the one used last. */
+    fun pick(shift: ShiftDay?): BusStop? = forShift(shift) ?: last
+
+    companion object {
+        /** How many stops a person can keep (MaxStops, internal/bus). */
+        const val MAX = 10
+    }
+}
+
 /**
- * How the phone buzzes at the stop ("buzz" in /api/bus/stop): [onMs] on,
+ * The shift you'd be going home from: one that ended in the last six hours,
+ * or else the next to end within a day. The website works it out the same
+ * way (homeShift, web/src/features/bus/BusPage.tsx).
+ */
+fun homeShift(days: List<ShiftDay>, now: java.time.Instant): ShiftDay? = days
+    .filter { it.kind == ShiftKind.Work && it.end != null }
+    .filter { val end = it.end!!.toInstant(); end.isAfter(now.minusSeconds(6 * 3600)) && end.isBefore(now.plusSeconds(24 * 3600)) }
+    .minByOrNull { it.end!!.toInstant() }
+
+/**
+ * How the phone buzzes at the stop ("buzz" in /api/bus/stops): [onMs] on,
  * then [offMs] off, on repeat; at the phone's full strength when [full],
  * where the phone can set it, or else at its usual strength. The website's
  * practice run vibrates the same lengths (web/src/features/bus/BusPage.tsx).
