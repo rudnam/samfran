@@ -68,6 +68,9 @@ for (const [name, viewport] of [
     await page.getByLabel('Name', { exact: true }).fill('Gyoza');
     await expect(page.getByRole('list', { name: 'Matching places' }).getByRole('listitem')).toHaveCount(3);
     await shot('5b-add-search');
+    await page.getByRole('button', { name: /Gyoza Café/ }).click();
+    await expect(page.getByLabel('Food')).toHaveValue('Café');
+    await shot('5c-add-picked');
 
     // Shifts, with a few days of this month.
     const d = new Date();
