@@ -67,17 +67,26 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(page.getByRole('radio', { name: 'List' })).toBeChecked();
   await expect(list).toHaveCount(3);
 
-  // The calendar link.
-  await page.getByRole('link', { name: 'Settings' }).click();
+  // The calendar link, from the Shifts page, with the way into Google Calendar.
+  await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
+  await expect(page.getByRole('heading', { name: 'Add to Google Calendar' })).toBeVisible();
   await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const link = page.getByLabel('Calendar link');
   await expect(link).toHaveValue(/\/api\/shifts\/feed\/[\w-]+\.ics$/);
+  const webcal = (await link.inputValue()).replace(/^https?:/, 'webcal:');
+  await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toHaveAttribute(
+    'href',
+    `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+  );
+  await expect(page.getByText('“Sam’s shifts” then shows under Other calendars.')).toBeVisible();
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');
   expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
+  await page.locator('a.back').click();
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
+  await page.getByRole('link', { name: 'Settings' }).click();
   await page.getByRole('combobox', { name: 'Closing day 1' }).selectOption('10');
   await page.getByRole('combobox', { name: 'Closing day 2' }).selectOption('25');
   await page.getByRole('button', { name: 'Save' }).click();
@@ -142,7 +151,7 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   await expect(list.nth(0)).toContainText('With タナカ ユイ, サトウ ミキ');
 
   // The calendar feed says who too.
-  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
   await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
   expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、サトウ ミキ');

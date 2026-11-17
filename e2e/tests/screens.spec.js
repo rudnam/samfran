@@ -101,6 +101,10 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Edit by hand' }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
+    await page.goto('/app/#/shifts/calendar');
+    await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
+    await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
+    await shot('7b-google-calendar');
 
     // The bus alarm: first time, then with a stop chosen.
     await page.getByRole('link', { name: 'Bus', exact: true }).click();

@@ -180,7 +180,26 @@ export const ja = {
 
   // The calendar link
   'In your calendar': 'カレンダーに表示',
-  'Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.': 'カレンダーのリンクをオンにして、パソコンのGoogleカレンダーで「他のカレンダー › + › URLで追加」から登録してください。ほかのカレンダーアプリでも使えます。Googleがリンクを確認するのは1日1回ほどなので、変更の反映に最大1日かかります。',
+  'Put the shifts in Google Calendar, so they’re on both of your phones.': 'シフトをGoogleカレンダーに入れて、ふたりのスマホで見られるようにします。',
+  'Add to Google Calendar': 'Googleカレンダーに追加',
+  'The shifts show up in Google Calendar next to everything else, on your phone and computer, and stay up to date by themselves.': 'シフトがGoogleカレンダーにほかの予定と一緒に表示されます。スマホでもパソコンでも見られて、自動で最新になります。',
+  'First, turn on the calendar link. It’s a private address only for these shifts.': 'まず、カレンダーのリンクをオンにしてください。このシフト専用の非公開のアドレスです。',
+  'Open Google Calendar with the link': 'リンクを入れてGoogleカレンダーを開く',
+  'Easiest on a computer: the Google Calendar phone app can’t add a calendar from a link. Sign in with your own Google account.': 'パソコンでするのがいちばん簡単です（スマホのGoogleカレンダーアプリではリンクから追加できません）。自分のGoogleアカウントでログインしてください。',
+  'Open Google Calendar': 'Googleカレンダーを開く',
+  'Click Add': '「追加」をクリック',
+  '“{name}” then shows under Other calendars.': '「他のカレンダー」に「{name}」が表示されます。',
+  'See it on your phone': 'スマホで見る',
+  'It appears in the Google Calendar app by itself. If it doesn’t, open the app’s Settings, tap “{name}” and turn on Sync.': 'Googleカレンダーのアプリにも自動で表示されます。表示されないときは、アプリの「設定」で「{name}」をタップし、「同期」をオンにしてください。',
+  'Send the link to the other one of you': 'もうひとりにリンクを送る',
+  'Each of you adds it to your own Google Calendar, the same way.': 'それぞれが自分のGoogleカレンダーに、同じ手順で追加します。',
+  'Google checks the link for changes a few times a day, so a changed shift can take up to a day to show.': 'Googleがリンクの変更を確認するのは1日に数回なので、シフトの変更が反映されるまで最大1日かかります。',
+  'If the button doesn’t work, or for another calendar app': 'ボタンがうまくいかないとき・ほかのカレンダーアプリ',
+  'In Google Calendar on a computer: next to Other calendars, click + › From URL, paste the link above and click Add calendar.': 'パソコンのGoogleカレンダーで「他のカレンダー」の横の「+」›「URLで追加」をクリックし、上のリンクを貼り付けて「カレンダーを追加」をクリックします。',
+  'On an iPhone or a Mac:': 'iPhone・Macの場合：',
+  'Add to Apple Calendar': 'Appleのカレンダーに追加',
+  'Other apps: look for “subscribe” or “add calendar from URL” and paste the link.': 'ほかのアプリ：「照会」や「URLでカレンダーを追加」を探して、リンクを貼り付けてください。',
+  'The link': 'リンク',
 
   // The bus-stop alarm
   Bus: 'バス',

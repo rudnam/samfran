@@ -1,5 +1,5 @@
 // Whose shifts, how to find their row on the sheet, how long each letter's
-// shift is, and the calendar link to subscribe to in a calendar app.
+// shift is. The calendar link is on ShiftCalendarLinkPage.
 import { BackLink } from '../../components/BackLink';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ShiftSettings } from '../../api';
@@ -23,7 +23,6 @@ export function ShiftSettingsPage() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   function take(next: ShiftSettings) {
     setS(next);
@@ -62,7 +61,6 @@ export function ShiftSettingsPage() {
     void run(() => api.saveShiftSettings({ person_name: person, name_on_sheet: onSheet, lengths: table, closing_days: closing }), t('Saved.'));
   }
 
-  const feedUrl = s?.feed_path ? `${location.origin}${s.feed_path}` : '';
   return (
     <section className="stack">
       <BackLink href={href('shifts')} label="Shifts" />
@@ -161,36 +159,12 @@ export function ShiftSettingsPage() {
 
           <div className="card stack">
             <h2>{t('In your calendar')}</h2>
-            <p className="muted">
-              {t('Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.')}
-            </p>
-            {feedUrl ? (
-              <>
-                <div className="row">
-                  <input readOnly aria-label={t('Calendar link')} value={feedUrl} onFocus={(e) => e.target.select()} />
-                  <button
-                    type="button"
-                    className="secondary"
-                    onClick={() => navigator.clipboard?.writeText(feedUrl).then(() => setCopied(true), () => {})}
-                  >
-                    {copied ? t('Copied') : t('Copy')}
-                  </button>
-                </div>
-                <span className="hint">{t('Anyone with this link can see the shifts. If it gets out, make a new one.')}</span>
-                <div className="row wrap">
-                  <button type="button" className="secondary" disabled={busy} onClick={() => run(() => api.shiftFeed(true), t('Made a new link. Add it again where you used the old one.'))}>
-                    {t('Make a new link')}
-                  </button>
-                  <button type="button" className="link quiet" disabled={busy} onClick={() => run(() => api.shiftFeed(false), t('The calendar link is off.'))}>
-                    {t('Turn off')}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <button type="button" disabled={busy} onClick={() => run(() => api.shiftFeed(true), '')}>
-                {t('Turn on the calendar link')}
-              </button>
-            )}
+            <p className="muted">{t('Put the shifts in Google Calendar, so they’re on both of your phones.')}</p>
+            <div className="row wrap">
+              <a className="button secondary" href={href('shifts/calendar')}>
+                {t('Add to Google Calendar')}
+              </a>
+            </div>
           </div>
         </>
       )}

@@ -26,7 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -47,36 +46,32 @@ import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.ui.SubPage
-import com.rudnam.samfran.core.ui.copyText
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
-import com.rudnam.samfran.core.ui.shareText
+import com.rudnam.samfran.feature.shifts.navigation.ShiftCalendarLinkRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
 @Composable
 internal fun ShiftSettingsDestination(navigation: ShiftsNavigation, viewModel: ShiftSettingsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     ShiftSettingsScreen(
         state,
         viewModel,
         onBack = navigation::back,
-        onCopy = { context.copyText(it) },
-        onShare = { context.shareText(it) },
+        onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
     )
 }
 
 /**
  * Whose shifts, how to find their row on the sheet, how long each letter's
- * shift is, and the calendar link (web/src/features/shifts/ShiftSettingsPage.tsx).
+ * shift is (web/src/features/shifts/ShiftSettingsPage.tsx). The calendar link is on [ShiftCalendarLinkScreen].
  */
 @Composable
 fun ShiftSettingsScreen(
     state: ShiftSettingsUiState,
     actions: ShiftSettingsActions,
     onBack: () -> Unit,
-    onCopy: (String) -> Unit,
-    onShare: (String) -> Unit,
+    onCalendar: () -> Unit,
 ) {
     val colors = SamFranTheme.colors
     SubPage(onBack = onBack) {
@@ -143,36 +138,7 @@ fun ShiftSettingsScreen(
         SamFranCard {
             CardTitle(stringResource(R.string.in_your_calendar))
             Text(stringResource(R.string.calendar_intro), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-            if (state.feedUrl.isNotEmpty()) {
-                var copied by rememberSaveable(state.feedUrl) { mutableStateOf(false) }
-                OutlinedTextField(
-                    value = state.feedUrl,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.calendar_link)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SecondaryButton(stringResource(if (copied) R.string.copied else R.string.copy), {
-                        onCopy(state.feedUrl)
-                        copied = true
-                    }, icon = SamFranIcons.copy)
-                    SecondaryButton(stringResource(R.string.share), { onShare(state.feedUrl) }, icon = SamFranIcons.share)
-                }
-                Hint(stringResource(R.string.calendar_link_private))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    SecondaryButton(stringResource(R.string.new_link), { actions.feed(true) }, enabled = !state.busy)
-                    LinkButton(stringResource(R.string.turn_off), { actions.feed(false) }, enabled = !state.busy, quiet = true)
-                }
-            } else {
-                PrimaryButton(stringResource(R.string.turn_on_link), { actions.feed(true) }, enabled = !state.busy)
-            }
-            when (state.done) {
-                SettingsDone.NewLink -> Hint(stringResource(R.string.made_new_link))
-                SettingsDone.LinkOff -> Hint(stringResource(R.string.link_off))
-                else -> {}
-            }
+            SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, icon = SamFranIcons.calendar)
         }
 
     }
