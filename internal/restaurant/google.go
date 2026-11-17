@@ -108,7 +108,10 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 	if near != nil {
 		body["locationBias"] = map[string]any{"circle": map[string]any{
 			"center": map[string]float64{"latitude": near[0], "longitude": near[1]},
-			"radius": 50000.0, // meters, Google's largest
+			// Meters. A bias, not a limit: with nothing near, places farther
+			// away still come. Tried near Hamamatsu: at 50 km, "komeda" put a
+			// branch 214 km away first; at 3 km, the five nearest came.
+			"radius": 3000.0,
 		}}
 		body["origin"] = map[string]float64{"latitude": near[0], "longitude": near[1]}
 	}
@@ -136,14 +139,10 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 		if p == nil || p.PlaceID == "" || p.StructuredFormat.MainText.Text == "" {
 			continue
 		}
-		kind := ""
-		if len(p.Types) > 0 {
-			kind = p.Types[0]
-		}
 		found = append(found, FoundPlace{
 			Name:    p.StructuredFormat.MainText.Text,
 			Street:  shortAddress(p.StructuredFormat.SecondaryText.Text),
-			Kind:    kind,
+			Kind:    suggestedKind(p.Types),
 			PlaceID: p.PlaceID,
 		})
 		if len(found) == maxFound {
@@ -153,14 +152,53 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 	return found, nil
 }
 
-// shortAddress drops the country and prefecture-level noise Google puts
-// first ("日本、〒430-0926 静岡県浜松市…"), keeping what tells branches apart.
+// iconKinds are the types the add form has an icon for, most telling first.
+var iconKinds = []string{"ramen_restaurant", "sushi_restaurant", "hamburger_restaurant", "fast_food_restaurant",
+	"coffee_shop", "cafe", "ice_cream_shop", "dessert_shop", "bakery", "izakaya_restaurant", "bar"}
+
+// suggestedKind is the kind for a suggestion's icon. A suggestion's types
+// come in no particular order (Sukiya's listed "cafe" first), so the most
+// telling one is chosen: one with an icon, else any kind of restaurant.
+func suggestedKind(types []string) string {
+	for _, k := range iconKinds {
+		if slices.Contains(types, k) {
+			return k
+		}
+	}
+	for _, t := range types {
+		if strings.HasSuffix(t, "_restaurant") {
+			return t
+		}
+	}
+	return "restaurant"
+}
+
+// mapLink is the place's Google Maps link without the tracking Google adds
+// (…/?cid=123&g_mp=…): just its cid, which is all Maps needs.
+func mapLink(uri string) string {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return ""
+	}
+	if cid := u.Query().Get("cid"); cid != "" {
+		return "https://maps.google.com/?" + url.Values{"cid": {cid}}.Encode()
+	}
+	if u.Scheme != "https" {
+		return ""
+	}
+	return uri
+}
+
+// shortAddress drops the country and postcode Google may add ("日本、〒430-0926
+// 静岡県浜松市…", "６−１ 砂山町 中央区 浜松市 静岡県 日本"), keeping what tells
+// branches apart.
 func shortAddress(s string) string {
 	for _, p := range []string{"日本、", "Japan, ", "日本 "} {
 		s = strings.TrimPrefix(s, p)
 	}
 	s = strings.TrimSuffix(s, ", Japan")
 	s = strings.TrimSuffix(s, "、日本")
+	s = strings.TrimSuffix(s, " 日本")
 	if strings.HasPrefix(s, "〒") {
 		if i := strings.IndexAny(s, " 　"); i > 0 {
 			s = strings.TrimSpace(s[i:])
@@ -235,7 +273,7 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 		Lng:     p.Location.Longitude,
 		PlaceID: p.ID,
 		Food:    food,
-		MapURL:  p.GoogleMapsURI,
+		MapURL:  mapLink(p.GoogleMapsURI),
 	}, nil
 }
 

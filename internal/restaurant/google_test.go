@@ -24,7 +24,7 @@ func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/places:autocomplete":
 			w.Write([]byte(`{"suggestions":[
-				{"placePrediction":{"placeId":"ChIJishimatsu1","structuredFormat":{"mainText":{"text":"石松 JR浜松駅店"},"secondaryText":{"text":"日本、〒430-0926 静岡県浜松市中央区砂山町"}},"types":["chinese_restaurant","restaurant","food"]}},
+				{"placePrediction":{"placeId":"ChIJishimatsu1","structuredFormat":{"mainText":{"text":"石松 JR浜松駅店"},"secondaryText":{"text":"日本、〒430-0926 静岡県浜松市中央区砂山町"}},"types":["food","chinese_restaurant","restaurant"]}},
 				{"queryPrediction":{"text":{"text":"石松餃子"}}},
 				{"placePrediction":{"placeId":"ChIJishimatsu2","structuredFormat":{"mainText":{"text":"石松餃子 浜北本店"},"secondaryText":{"text":"日本、静岡県浜松市浜名区"}},"types":["restaurant","food"]}}
 			]}`))
@@ -37,7 +37,7 @@ func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[
 					{"longText":"静岡県","types":["administrative_area_level_1","political"]}],
 				"location":{"latitude":34.7036,"longitude":137.7352},
 				"primaryType":"chinese_restaurant","primaryTypeDisplayName":{"text":"中華料理店"},
-				"googleMapsUri":"https://maps.google.com/?cid=123"}`))
+				"googleMapsUri":"https://maps.google.com/?cid=123&g_mp=CiVnb29nbGU"}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/places/ChIJishimatsu2":
 			w.Write([]byte(`{"id":"ChIJishimatsu2","displayName":{"text":"石松餃子 浜北本店"},
 				"addressComponents":[{"longText":"浜松市","types":["locality","political"]}],
@@ -157,6 +157,19 @@ func TestShortAddress(t *testing.T) {
 	} {
 		if got := shortAddress(in); got != want {
 			t.Errorf("shortAddress(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestSuggestedKind(t *testing.T) {
+	for want, types := range map[string][]string{
+		"ramen_restaurant":    {"food", "point_of_interest", "ramen_restaurant", "cafe"},
+		"cafe":                {"store", "cafe", "food"},
+		"dumpling_restaurant": {"food", "dumpling_restaurant", "restaurant"},
+		"restaurant":          {"food", "establishment"},
+	} {
+		if got := suggestedKind(types); got != want {
+			t.Errorf("suggestedKind(%v) = %q, want %q", types, got, want)
 		}
 	}
 }
