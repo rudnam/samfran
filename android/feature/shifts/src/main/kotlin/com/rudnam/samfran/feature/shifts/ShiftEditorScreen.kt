@@ -209,8 +209,8 @@ private fun WithLine(names: List<String>, day: String, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         if (names.isEmpty()) {
-            LineIcon(SamFranIcons.add, null, tint = colors.accentText, size = 14.dp)
-            Text(stringResource(R.string.add_who_with), style = MaterialTheme.typography.bodySmall, color = colors.accentText)
+            LineIcon(SamFranIcons.add, null, tint = colors.accentInk, size = 14.dp)
+            Text(stringResource(R.string.add_who_with), style = MaterialTheme.typography.bodySmall, color = colors.accentInk)
         } else {
             WithNames(names, Modifier.weight(1f, fill = false))
             LineIcon(SamFranIcons.edit, null, tint = colors.muted, size = 14.dp)
