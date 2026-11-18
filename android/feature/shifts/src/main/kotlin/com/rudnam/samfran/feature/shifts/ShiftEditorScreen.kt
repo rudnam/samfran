@@ -40,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -340,25 +341,16 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
             modifier = Modifier.width(64.dp).semantics { contentDescription = codeLabel },
         )
-        // Which day their cell is on: tapping it goes the same day, the day before, the next day.
-        val dayWord = stringResource(if (p.dayOffset < 0) R.string.the_day_before else if (p.dayOffset > 0) R.string.the_next_day else R.string.the_same_day)
-        val dayLabel = stringResource(R.string.which_day_works, label, dayWord)
-        Column(
-            Modifier
-                .width(86.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(role = Role.Button) { actions.nextPersonDay(p.key) }
-                .semantics(mergeDescendants = true) { contentDescription = dayLabel }
-                .padding(vertical = 4.dp, horizontal = 2.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
-            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, maxLines = 1, softWrap = false)
-            // Only a cell on another day is said; the same day needs no note.
-            if (p.dayOffset != 0) {
-                Text(dayWord, style = MaterialTheme.typography.labelSmall, color = colors.accentInk, fontWeight = FontWeight.Bold, maxLines = 1)
-            }
-        }
+        // Their hours (which day their cell is on comes from the read).
+        val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
+        Text(
+            h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–",
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            softWrap = false,
+            modifier = Modifier.width(86.dp).padding(horizontal = 2.dp),
+        )
         IconButton(onClick = { actions.removePerson(p.key) }, modifier = Modifier.size(32.dp)) {
             LineIcon(SamFranIcons.close, stringResource(R.string.remove_person, label), tint = colors.muted, size = 18.dp)
         }

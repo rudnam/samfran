@@ -92,7 +92,7 @@ class FoodViewModelTest {
         watch(vm.state)
         vm.setTab(FoodTab.Want)
         alarm.here = 34.975 to 138.385 // by Shizuoka Station
-        vm.setNearby(true)
+        vm.setOrder(PlaceOrder.Nearby)
         // Nearest first; those without a position last, newest first.
         assertEquals(listOf(22L, 21L, 15L, 23L, 14L), vm.state.value.shown.map { it.id })
         assertEquals(Locating.No, vm.state.value.locating)
@@ -103,12 +103,29 @@ class FoodViewModelTest {
     }
 
     @Test
+    fun `top rated puts the best first and the unrated last, A to Z by name, both remembered`() = runTest {
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
+        watch(vm.state)
+        // Hanabi and Menya both average 4.5: they keep their newest-first order.
+        vm.setOrder(PlaceOrder.TopRated)
+        assertEquals(listOf(12L, 9L, 20L, 5L, 7L), vm.state.value.shown.map { it.id })
+        vm.setTab(FoodTab.Want) // nobody's rated these: newest first
+        assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+        vm.setTab(FoodTab.Been)
+        vm.setOrder(PlaceOrder.Name)
+        assertEquals(listOf("Cafe Lune", "Hanabi Grill", "Menya Kaze", "Sumpu Castle Park", "Trattoria Sole"), vm.state.value.shown.map { it.name })
+        val later = FoodListViewModel(food, space, preferences, alarm, clock)
+        watch(later.state)
+        assertEquals(PlaceOrder.Name, later.state.value.order)
+    }
+
+    @Test
     fun `nearby without the phone's location stays newest first, and says so`() = runTest {
         alarm.here = null
         val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         vm.setTab(FoodTab.Want)
-        vm.setNearby(true)
+        vm.setOrder(PlaceOrder.Nearby)
         assertEquals(Locating.Failed, vm.state.value.locating)
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
     }

@@ -29,7 +29,7 @@ func (f *fakeReader) Read(_ context.Context, image []byte, mediaType, name strin
 	s.Days[2].With = []string{"サトウ ミホ"}                            // a day off: nobody kept
 	// Others around 13:00–22:00 on the 2nd: one there, one gone by then, one
 	// night shift from the day before that's over, and one also in With.
-	s.Days[1].Others = []shift.Coworker{{Name: "ヤマダ ハナ", Code: "9F"}, {Name: "コバヤシ リク", Code: "7D"},
+	s.Days[1].Others = []shift.Coworker{{Name: "ヤマダ ハナ", Code: "9F"}, {Name: "コバヤシ リク", Code: "7B"},
 		{Name: "ヨル タロウ", Code: "22F", DayOffset: -1}, {Name: "スズキ ケン", Code: "9F"}}
 	// The night shift on the 4th runs into the 5th's early morning.
 	s.Days[3].Others = []shift.Coworker{{Name: "アサ ミキ", Code: "6D", DayOffset: 1}, {Name: "ナカ", Code: "17D"}}
@@ -109,7 +109,7 @@ func TestShifts(t *testing.T) {
 	if o := m.Days[1].Others; len(o) != 1 || o[0].Name != "ヤマダ ハナ" || !strings.HasPrefix(o[0].Start, "2026-11-02T09:00:00+09:00") {
 		t.Errorf("others there on the 2nd: %+v", o)
 	}
-	// Those not there during the shift (the 7D, the night before) aren't read at all.
+	// Those not there during the shift (the 7B, the night before) aren't read at all.
 	if p := m.Days[1].People; len(p) != 3 || p[0]["name"] != "タナカ ユイ" || p[1]["name"] != "スズキ ケン" || p[2]["name"] != "ヤマダ ハナ" {
 		t.Errorf("people read on the 2nd: %+v", p)
 	}
@@ -140,7 +140,7 @@ func TestShifts(t *testing.T) {
 
 	// Everyone read around a day is sent (people); only those on the shift or
 	// there during it are kept, and who's shown follows the code.
-	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7D"}}
+	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7B"}}
 	shown := func(code string, people any, kept int) (string, string) {
 		t.Helper()
 		var m monthJSON

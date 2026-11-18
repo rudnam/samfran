@@ -8,7 +8,7 @@ import (
 
 func TestOverlapping(t *testing.T) {
 	zone, _ := time.LoadLocation("Asia/Tokyo")
-	lengths := DefaultLengths                          // F 9h, D 6h
+	lengths := map[string]float64{"F": 9, "D": 6}      // not the defaults: the hours below are worked out from these
 	sam := Explain("2026-11-18", "13F", lengths, zone) // 13:00–22:00
 	others := []Coworker{
 		{Name: "サトウ ミオ", Code: "17D"},                // 17–23: overlaps
@@ -80,7 +80,7 @@ func TestRegistered(t *testing.T) {
 	people := []Coworker{
 		{Name: "タナカ ユイ", Code: "13F"},                // the same shift: kept
 		{Name: "ヤマダ ハナ", Code: "9F"},                 // 9–18: kept
-		{Name: "コバヤシ リク", Code: "7D"},                // 7–13: not there, dropped
+		{Name: "コバヤシ リク", Code: "7B"},                // 7–12: not there, dropped
 		{Name: "ヨル タロウ", Code: "22F", DayOffset: -1}, // gone by 13: dropped
 		{Name: "ナゾ", Code: "9Z"},                     // unknown length: kept
 	}

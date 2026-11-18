@@ -250,7 +250,7 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         next?.let { return it }
         val all = now()
         val id = (all.stops.maxOfOrNull { it.id } ?: 0) + 1
-        val s = BusStop(true, stop.name.trim(), stop.lat, stop.lng, stop.alertMeters, all.buzz, id, stop.shifts.orEmpty(), stop.ask ?: true)
+        val s = BusStop(true, stop.name.trim(), stop.lat, stop.lng, stop.alertMeters, all.buzz, id, stop.shifts.orEmpty(), stop.ask ?: false)
         return set(take(all.copy(stops = all.stops + s, lastId = if (all.stops.isEmpty()) id else all.lastId), id, stop.shifts))
     }
 
@@ -341,21 +341,18 @@ class FakeActivityRepository(entries: List<ActivityEntry>? = Samples.activity, s
 }
 
 class FakeReminders : Reminders {
-    val prompts = MutableStateFlow(false)
     val alerts = MutableStateFlow(false)
     var allowed = true
     var syncs = 0
 
-    override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
-    override suspend fun setShiftPrompts(on: Boolean) = (on && allowed).also { prompts.value = it }
+    override fun notificationsAllowed() = allowed
     override suspend fun setActivityAlerts(on: Boolean) = (on && allowed).also { alerts.value = it }
     override suspend fun sync(now: Boolean) {
         syncs++
     }
     override fun clearNotifications() {}
     override fun turnOff() {
-        prompts.value = false
         alerts.value = false
     }
 }

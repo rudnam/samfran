@@ -98,8 +98,6 @@ export function ShiftsPage({ month }: { month?: string }) {
             </strong>
           </span>
           <span className="code-chip">{next.code}</span>
-          {/* Everyone there: under the shift, at the card's full width. */}
-          {everyone && <WhoThere day={next} who={me} everyone />}
         </div>
       )}
 

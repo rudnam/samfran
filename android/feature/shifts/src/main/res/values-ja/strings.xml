@@ -50,7 +50,6 @@
     <string name="remove_letter">%sを削除</string>
     <string name="save">保存</string>
     <string name="saved">保存しました。</string>
-    <string name="in_your_calendar">カレンダーに表示</string>
     <string name="step_send_title">リンクをパソコンに送る</string>
     <string name="step_add_title">Googleカレンダーを開く：他のカレンダー › + › URLで追加</string>
     <string name="step_paste_title">リンクを貼り付けて「カレンダーを追加」</string>
@@ -82,8 +81,4 @@
     <string name="code_of">%sのコード</string>
     <string name="their_name">名前</string>
     <string name="remove_person">%sを削除</string>
-    <string name="the_day_before">前日</string>
-    <string name="the_next_day">翌日</string>
-    <string name="the_same_day">当日</string>
-    <string name="which_day_works">%1$sの勤務日：%2$s</string>
 </resources>

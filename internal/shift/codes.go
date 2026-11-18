@@ -25,11 +25,12 @@ const (
 )
 
 // DefaultLengths are the hours on site (work plus break) for each letter.
-// F is confirmed (13F ends at 22:00, 7F at 16:00); the others were read
-// from the key at the bottom of the November 2026 sheet. They're a setting.
+// They're the 拘束時間 column of the key at the bottom of the sheet (労働時間,
+// the hours worked, is this minus the break); F is confirmed (13F ends at
+// 22:00, 7F at 16:00). They're a setting.
 var DefaultLengths = map[string]float64{
-	"A": 4, "B": 5, "W": 5.5, "D": 6, "E": 8, "F": 9, "G": 9,
-	"H": 10, "I": 10, "J": 11, "K": 12, "L": 12,
+	"A": 4, "B": 5, "W": 5.5, "D": 8, "E": 8, "F": 9, "G": 10,
+	"H": 10, "I": 11, "J": 11, "K": 12, "L": 12,
 }
 
 var workCode = regexp.MustCompile(`^([0-9]{1,2})([A-Z])$`)

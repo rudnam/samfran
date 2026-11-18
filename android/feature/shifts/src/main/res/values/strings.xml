@@ -50,7 +50,6 @@
     <string name="remove_letter">Remove %s</string>
     <string name="save">Save</string>
     <string name="saved">Saved.</string>
-    <string name="in_your_calendar">In your calendar</string>
     <string name="step_send_title">Send the link to a computer</string>
     <string name="step_add_title">Open Google Calendar: Other calendars › + › From URL</string>
     <string name="step_paste_title">Paste the link and click Add calendar</string>
@@ -82,8 +81,4 @@
     <string name="code_of">Code of %s</string>
     <string name="their_name">Their name</string>
     <string name="remove_person">Remove %s</string>
-    <string name="the_day_before">day before</string>
-    <string name="the_next_day">next day</string>
-    <string name="the_same_day">same day</string>
-    <string name="which_day_works">Which day %1$s works: %2$s</string>
 </resources>

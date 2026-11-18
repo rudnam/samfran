@@ -132,6 +132,9 @@
     <string name="sort_latest">最近</string>
     <string name="sort_newest">新しい順</string>
     <string name="sort_nearby">近い順</string>
+    <string name="sort_top_rated">評価の高い順</string>
+    <string name="sort_name">名前順</string>
+    <string name="order_is">並び順: %s</string>
     <string name="view">表示</string>
     <string name="view_list">リスト</string>
     <string name="view_map">地図</string>

@@ -418,7 +418,6 @@ select.language { width: auto; padding: 6px 10px; }
 }
 .next-shift .eyebrow { color: inherit; opacity: 0.8; }
 .next-shift strong { color: var(--text); }
-.next-shift .with { color: var(--text); opacity: 0.85; margin-top: 2px; }
 .with { color: var(--muted); font-weight: 500; line-height: 1.35; }
 .nowrap { white-space: nowrap; }
 /* Names get their own line under a day, lined up with its label. */
@@ -465,12 +464,9 @@ dialog.people-sheet { width: min(32rem, calc(100vw - 32px)); max-height: 86vh; o
 .people-edit .code-input { width: 3.6rem; padding: 9px 4px; }
 /* Not there during the shift: in grey, after those who are. */
 .people-edit li.away .person-name, .people-edit li.away .person-when { color: var(--muted); }
-button.person-when {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap;
-  background: none; color: var(--text); font-weight: 500; border-radius: 8px;
+.person-when {
+  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500;
 }
-button.person-when .block:not(.muted) { color: var(--accent-ink); font-weight: 700; }
 /* Who's with you, as one quiet line until it's opened to fix. */
 
 /* Calendar/List with the "Everyone there" toggle beside it. */
@@ -492,10 +488,6 @@ button.icon-toggle.on { background: var(--accent); color: var(--accent-text); }
 .there-bar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: var(--muted); opacity: 0.55; }
 .there li.me .there-bar i, .there li.same .there-bar i { background: #f08a24; opacity: 0.9; }
 .there-time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.8rem; text-align: right; white-space: nowrap; }
-.next-shift { flex-wrap: wrap; }
-.next-shift .there { margin-top: 0; padding-left: 22px; }
-.next-shift .there-time { color: inherit; }
-.next-shift .there-bar { background: rgba(0, 0, 0, 0.08); }
 
 /* Reading a photo: the steps, and a square for each day as it's read. */
 .reading .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
@@ -740,3 +732,12 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 .chips.four { grid-template-columns: repeat(4, 1fr); }
 .row.end .push-start { margin-right: auto; }
 .chips.two { grid-template-columns: repeat(2, 1fr); }
+
+/* The bus alarm's pages: a header with Settings beside it, the way back, and the stops as rows. */
+.page-head.with-action { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+button.link.back { align-self: flex-start; padding-left: 0; }
+button.link.start { align-self: flex-start; padding-left: 0; }
+button.link.inline { padding: 0; }
+.stop-list li { padding: 0; }
+.stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }
+.page-head.with-action > button { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }

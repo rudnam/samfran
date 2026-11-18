@@ -142,9 +142,9 @@ object Samples {
         },
     )
 
-    val stop = BusStop(set = true, name = "葵西", lat = 34.9756, lng = 138.3829, alertMeters = 800, id = 1, shifts = listOf("Late"))
+    val stop = BusStop(set = true, name = "葵西", lat = 34.9756, lng = 138.3829, alertMeters = 800, id = 1, shifts = listOf("Late"), ask = true)
 
-    val station = BusStop(set = true, name = "静岡駅", lat = 34.9715, lng = 138.3890, alertMeters = 600, id = 2, shifts = listOf("Early", "Middle"))
+    val station = BusStop(set = true, name = "静岡駅", lat = 34.9715, lng = 138.3890, alertMeters = 600, id = 2, shifts = listOf("Early", "Middle"), ask = true)
 
     val mums = BusStop(set = true, name = "実家", lat = 34.9500, lng = 138.4000, alertMeters = 800, id = 3)
 
