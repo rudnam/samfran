@@ -5,6 +5,7 @@ import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
+import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
 import com.rudnam.samfran.core.model.homeShift
@@ -35,6 +36,9 @@ interface ShiftsRepository {
 
     /** The next shift that hasn't ended, looking into next month if this one has none left. */
     suspend fun nextShift(now: Instant): ShiftDay?
+
+    /** Working shifts that end from now on (last, this and next month's), soonest first, for "Start bus alarm?". */
+    suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>>
 
     /** The shift you'd be going home from now ([com.rudnam.samfran.core.model.homeShift]), from this month as last fetched. */
     suspend fun homeShift(now: Instant): ShiftDay?
@@ -110,6 +114,14 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         upcoming(current)?.let { return it }
         val next = refresh(current.month.plusMonths(1)).valueOrNull ?: return null
         return upcoming(next)
+    }
+
+    override suspend fun upcomingShifts(now: Instant) = outcome(io) {
+        val current = network.shifts(null).also { keep(it, current = true) }.asModel()
+        val around = listOf(current.month.minusMonths(1), current.month.plusMonths(1)).map { network.shifts(it.toString()).also { m -> keep(m) }.asModel() }
+        (around + current).flatMap { it.days }
+            .filter { it.kind == ShiftKind.Work && it.end?.toInstant()?.isAfter(now) == true }
+            .sortedBy { it.end!!.toInstant() }
     }
 
     override suspend fun homeShift(now: Instant): ShiftDay? {

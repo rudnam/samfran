@@ -2,10 +2,6 @@ package com.rudnam.samfran.background
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.AlarmManager
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -17,10 +13,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.rudnam.samfran.ActivityJob
 import com.rudnam.samfran.BusTripService
+import com.rudnam.samfran.ShiftPrompt
 import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.BusAlarm
+import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
+import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.newestId
@@ -91,51 +90,45 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
 }
 
 /**
- * What the phone does while the app is closed: [ActivityJob] looks for the
- * other person's changes. It keeps its settings in the "reminders"
- * preferences, as the Capacitor build did, so they carry on through the
- * update.
+ * What the phone does while the app is closed: [ShiftPrompt] asks "Start
+ * bus alarm?" at the times kept here, and [ActivityJob] looks for the other
+ * person's changes. Both keep their settings in the "reminders" preferences,
+ * as the Capacitor build did, so they carry on through the update; that
+ * build kept whether the shift question was on in Capacitor's own
+ * preferences ("bus-prompt"), which is read here once.
  */
 @Singleton
 class AndroidReminders @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val shifts: ShiftsRepository,
+    private val bus: BusRepository,
     private val activity: ActivityRepository,
     private val clock: Clock,
 ) : Reminders {
-    private val prefs = ActivityJob.prefs(context)
+    private val prefs = ShiftPrompt.prefs(context)
 
     init {
         val old = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE)
         if (old.contains("bus-prompt") || old.contains("activity-alerts")) {
+            if (old.getString("bus-prompt", null) == "1") prefs.edit { putBoolean(ShiftPrompt.PROMPTS, true) }
             old.edit { remove("bus-prompt").remove("activity-alerts") }
         }
-        forgetShiftPrompts()
     }
 
-    /**
-     * There used to be a "Start bus alarm?" notification when a shift ended:
-     * once, after the update, take away its alarm, its notification, its
-     * channel in the phone's settings, and what it kept.
-     */
-    private fun forgetShiftPrompts() {
-        val keys = listOf("ends", "stop", "stops", "stop-count", "prompts")
-        if (keys.none(prefs::contains)) return
-        runCatching {
-            val i = Intent("com.rudnam.samfran.SHIFT_ENDED").setComponent(ComponentName(context.packageName, "com.rudnam.samfran.ShiftPrompt"))
-            PendingIntent.getBroadcast(context, 10, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_NO_CREATE)
-                ?.let(context.getSystemService(AlarmManager::class.java)::cancel)
-            context.getSystemService(NotificationManager::class.java).run {
-                cancel(3)
-                deleteNotificationChannel("shift_end")
-            }
-        }
-        prefs.edit { keys.forEach(::remove) }
-    }
-
+    private val prompts = MutableStateFlow(prefs.getBoolean(ShiftPrompt.PROMPTS, false))
     private val alerts = MutableStateFlow(prefs.getBoolean(ActivityJob.ALERTS, false))
+    override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
 
     private val allowed: Boolean get() = NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+    override suspend fun setShiftPrompts(on: Boolean): Boolean {
+        val now = on && allowed && sendShiftEnds()
+        prefs.edit { putBoolean(ShiftPrompt.PROMPTS, now) }
+        if (!now) ShiftPrompt.save(context, emptyList(), 0)
+        prompts.value = now
+        return now
+    }
 
     override suspend fun setActivityAlerts(on: Boolean): Boolean {
         val now = on && allowed
@@ -150,11 +143,28 @@ class AndroidReminders @Inject constructor(
         return now
     }
 
+    /**
+     * Gives [ShiftPrompt] the times shifts end from now on, each with the stop
+     * for that kind of shift (or else the one used last); false if they can't
+     * be had. Without a stop there's nothing to start.
+     */
+    private suspend fun sendShiftEnds(): Boolean {
+        val all = (bus.refresh() as? Outcome.Done)?.value ?: return false
+        val upcoming = (shifts.upcomingShifts(clock.instant()) as? Outcome.Done)?.value ?: return false
+        val ends = upcoming.mapNotNull { day ->
+            val stop = all.pick(day) ?: return@mapNotNull null
+            ShiftPrompt.Companion.End(day.end!!.toInstant().toEpochMilli(), stop.id, stop.name)
+        }
+        ShiftPrompt.save(context, ends, all.stops.size)
+        return true
+    }
+
     @Volatile private var last = 0L
 
     override suspend fun sync(now: Boolean) {
         if (!now && clock.millis() - last < 5 * 60 * 1000) return
         last = clock.millis()
+        if (prompts.value) sendShiftEnds()
         if (alerts.value) {
             ActivityJob.schedule(context, true)
             (activity.refresh() as? Outcome.Done)?.value?.newestId()?.let { newest ->
@@ -166,15 +176,19 @@ class AndroidReminders @Inject constructor(
 
     override fun clearNotifications() {
         BusTripService.stopBuzz(context)
+        ShiftPrompt.clear(context)
         ActivityJob.clear(context)
     }
 
     override fun turnOff() {
         prefs.edit {
+            putBoolean(ShiftPrompt.PROMPTS, false)
             putBoolean(ActivityJob.ALERTS, false)
             putLong(ActivityJob.SEEN, 0)
         }
+        ShiftPrompt.save(context, emptyList(), 0)
         ActivityJob.schedule(context, false)
+        prompts.value = false
         alerts.value = false
     }
 }

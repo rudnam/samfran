@@ -186,6 +186,8 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         next ?: months.value[month ?: current]?.let { Outcome.Done(it) } ?: Outcome.Done(ShiftMonth(month ?: current, settingsFlow.value ?: ShiftSettings(), emptyList()))
     override suspend fun nextShift(now: Instant): ShiftDay? =
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
+    override suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>> =
+        Outcome.Done(months.value.values.flatMap { it.days }.filter { it.end?.toInstant()?.isAfter(now) == true }.sortedBy { it.end!!.toInstant() })
     /** The shift [homeShift] answers; by default, worked out from the months. */
     var home: ShiftDay? = null
     override suspend fun homeShift(now: Instant): ShiftDay? = home ?: com.rudnam.samfran.core.model.homeShift(months.value.values.flatMap { it.days }, now)
@@ -341,17 +343,21 @@ class FakeActivityRepository(entries: List<ActivityEntry>? = Samples.activity, s
 }
 
 class FakeReminders : Reminders {
+    val prompts = MutableStateFlow(false)
     val alerts = MutableStateFlow(false)
     var allowed = true
     var syncs = 0
 
+    override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
+    override suspend fun setShiftPrompts(on: Boolean) = (on && allowed).also { prompts.value = it }
     override suspend fun setActivityAlerts(on: Boolean) = (on && allowed).also { alerts.value = it }
     override suspend fun sync(now: Boolean) {
         syncs++
     }
     override fun clearNotifications() {}
     override fun turnOff() {
+        prompts.value = false
         alerts.value = false
     }
 }

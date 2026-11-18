@@ -2,7 +2,7 @@
 
 The Android app is a native app (Kotlin, Jetpack Compose, Material 3; Android's recommended architecture): signing in and the four tabs, Food, Shifts, Bus and Us, with every page the website has for them. It talks to the same server as the website (`web/`), which stays for browsers; nothing of the website is inside the app. It's built like RudWallet's native app, scaled down. See **Native app** below for how.
 
-It also does what the website can't: the bus-stop alarm, notifications about the other person's changes, and adding a place shared from Google Maps.
+It also does what the website can't: the bus-stop alarm, asking "Start bus alarm?" when a shift ends, notifications about the other person's changes, and adding a place shared from Google Maps.
 
 - Package `com.rudnam.samfran` (permanent once published), talking to https://samfran.rudnam.com (`samfran.server` in `gradle.properties`, or `-Psamfran.server=…`).
 - App changes reach phones only with a new app build. Server changes reach them at once, so keep the API compatible with the last release and with older builds still in use (add fields; don't rename or remove them).
@@ -79,11 +79,11 @@ The structure follows Android's [architecture guide](https://developer.android.c
 
 | Module | What it is |
 |---|---|
-| `app` | The activity (`MainActivity`: edge to edge, the splash screen, and what opens the app: Google sign-in coming back, its own notifications' links, a place shared from Maps), the scaffold with the tabs and the notices above them (`ui/SamFranApp.kt`; a newer build, the demo, confirming the email), navigation (`ui/SamFranAppState.kt`), and what runs while the app is closed: the bus alarm (`BusTripService`, `StopBuzzReceiver`) and the changes check (`ActivityJob`), with `background/` connecting them to the screens. |
+| `app` | The activity (`MainActivity`: edge to edge, the splash screen, and what opens the app: Google sign-in coming back, its own notifications' links, a place shared from Maps), the scaffold with the tabs and the notices above them (`ui/SamFranApp.kt`; a newer build, the demo, confirming the email), navigation (`ui/SamFranAppState.kt`), and what runs while the app is closed: the bus alarm (`BusTripService`, `StopBuzzReceiver`), "Start bus alarm?" (`ShiftPrompt`) and the changes check (`ActivityJob`), with `background/` connecting them to the screens. |
 | `feature/signin` | Signing in (`SignInRoute`, the first page with nobody signed in): email and password, creating an account, a forgotten password (the emailed link opens the website), Google in a Custom Tab, and the demo. A language picker, as on the website's top bar. |
 | `feature/food` | The Food tab: Been there and Want to go (latest visit first, newest first), search through names, areas, food, notes and visits' notes, pull to refresh. A place's page: both ratings, notes, every visit, logging one (Material's date picker, today at the latest), removing one with Undo, and deleting the place. Adding (been there with a first visit and your rating, or want to go) and editing: a Google Maps link fills in the name, and so does a place shared from Maps. |
 | `feature/shifts` | The Shifts tab: the month as a calendar or a list (the arrows change month in place), the next shift, who's on the same shift, reading a photo of the sheet (taken with the camera, or chosen with Android's photo picker; shrunk to 2400 px first, as the website does), and checking or fixing a month by hand, with the common codes as one-tap chips that fill the day and move on. Shift settings: whose shifts, the name on the sheet, each letter's length, and the calendar link (copy, share, a new one, off). |
-| `feature/bus` | The Bus tab (the website's bus alarm): how it works, setting up the stop (by name from the OpenStreetMap search, a Google Maps link, or where the phone is) and how early and how it buzzes, a map of the stop, **I'm on the bus**, **Try it now** (a six-second practice that really buzzes), the ride with a progress line, and one big **Stop**. The map is Google's keyless embed, as on the website, in a web view (`StopMap.kt`). |
+| `feature/bus` | The Bus tab (the website's bus alarm): how it works, setting up the stop (by name from the OpenStreetMap search, a Google Maps link, or where the phone is) and how early and how it buzzes, a map of the stop, **I'm on the bus**, **Try it now** (a six-second practice that really buzzes), the ride with a progress line, one big **Stop**, and "Ask when a shift ends". The map is Google's keyless embed, as on the website, in a web view (`StopMap.kt`). |
 | `feature/us` | The Us tab: the two of you, inviting the other one (the link goes out through Android's share sheet), your name, recent changes with what's new marked, and this phone: notifications about changes, language, appearance, signing out (or ending the demo). |
 | `core/model` | The app's types and the website's logic in plain Kotlin: shift codes (`ShiftCodes`, as `web/src/features/shifts/codes.ts`), reading text shared from Maps (`Shared`, as `web/src/share.ts`), distances. |
 | `core/network` | The API with Retrofit and kotlinx.serialization (`SamFranNetwork`); `AuthInterceptor` signs requests in as the app. |
@@ -126,11 +126,19 @@ The key isn't in the repository (it's public). Make it once in a Google Cloud pr
 
 Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), and a location foreground service.
 
+## "Start bus alarm?" when a shift ends
+
+Off until switched on, on the **Bus** tab ("Ask when a shift ends"), on the phone of whoever's shifts they are. The app gives `ShiftPrompt` the times the coming shifts end (last, this and next month's; `AndroidReminders` in `app/background`), again each time the app opens and whenever shifts or the stop are saved. `ShiftPrompt` sets an alarm for the next one; when it goes off it shows a notification, **Start bus alarm?**, naming the stop for that kind of shift (or else the one used last), whose button opens `com.rudnam.samfran://bus?start=1&stop=<id>`: the Bus tab, which starts the trip to that stop as "I'm on the bus" does. With more than one stop, **Other stop** opens `com.rudnam.samfran://bus?pick=1`, to choose where to get off and start from there. A tap elsewhere on it opens the Bus tab without starting.
+
+- The alarm is inexact (`setAndAllowWhileIdle`), so Android may show it a few minutes late; in return it needs no exact-alarm permission. A shift that ended more than 45 minutes ago (the phone was off) isn't asked about.
+- The phone knows the shifts as of the last time the app was open on it. If the sheet changes on the other phone, this one catches up when SamFran is next opened.
+- Alarms don't survive a restart of the phone, so the same receiver sets them again on `BOOT_COMPLETED`.
+
 ## Notifications about the other person's changes
 
 Off until switched on, on the **Us** tab ("Tell me about changes"). About every half hour, while the phone is online, `ActivityJob` (a `JobService`) asks the server for the recent changes (`GET /api/activity`, with the app's session) and shows a notification for the other person's new places, visits, ratings and saved shifts. Android runs the job when it suits the battery, so it can be later than that. The phone asks rather than being pushed to, which needs no Firebase project or Google services; real push would be faster and would need both.
 
-It needs notification permission (asked when it's switched on), and `RECEIVE_BOOT_COMPLETED` to carry on after a restart. Opening SamFran clears its notifications. Its settings live in the `reminders` preferences, under the names the Capacitor build used, and the class keeps its name, so what a phone had switched on keeps working after the update.
+Both need notification permission (asked when one is switched on), and `RECEIVE_BOOT_COMPLETED` to carry on after a restart. Opening SamFran clears their notifications. Their settings live in the `reminders` preferences, under the names the Capacitor build used, and the classes keep its names, so what a phone had switched on keeps working after the update.
 
 ## Adding a place from Google Maps
 

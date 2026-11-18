@@ -1,11 +1,14 @@
 package com.rudnam.samfran.feature.bus
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import com.rudnam.samfran.core.data.BusAlarm
 import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
@@ -16,6 +19,7 @@ import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKinds
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.model.stopNameFromMaps
+import com.rudnam.samfran.feature.bus.navigation.BusRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -81,8 +85,15 @@ data class BusUiState(
     val form: StopForm = StopForm(),
     /** Saving how it buzzes, from the settings card. */
     val savingSettings: Boolean = false,
+    val prompts: Boolean = false,
+    /** Notifications are off for the app: say how to allow them. */
+    val promptsBlocked: Boolean = false,
     val problem: Outcome<Any>? = null,
     val locationDenied: Boolean = false,
+    /** Opened from "Start bus alarm?": the trip starts once the stop is known. */
+    val autoStart: Boolean = false,
+    /** Opened from "Other stop": choosing where to get off, then starting. */
+    val choosing: Boolean = false,
 ) {
     /** Where to get off: the one picked, or the shift's, or the one used last. */
     val stop: BusStop? get() = stops?.let { all -> picked?.let(all::byId) ?: all.pick(shift) }
@@ -108,10 +119,13 @@ interface BusActions {
     fun stopBuzz()
     fun practice()
     fun endPractice()
+    fun setPrompts(on: Boolean)
     /** How it buzzes, from the settings card: saved straight away. */
     fun setBuzz(buzz: Buzz)
     /** Where to get off, for this ride. */
     fun pickStop(id: Long)
+    /** "Other stop" is done with. */
+    fun endChoosing()
     fun edit(id: Long)
     fun add()
     fun cancelEdit()
@@ -129,16 +143,20 @@ interface BusActions {
 
 @HiltViewModel
 class BusViewModel @Inject constructor(
+    savedState: SavedStateHandle,
     private val bus: BusRepository,
     private val food: FoodRepository,
     private val alarm: BusAlarm,
+    private val reminders: Reminders,
     private val shifts: ShiftsRepository,
     private val clock: Clock,
 ) : ViewModel(), BusActions {
-    private val local = MutableStateFlow(BusUiState())
+    private val local = savedState.toRoute<BusRoute>().let { route ->
+        MutableStateFlow(BusUiState(autoStart = route.start, picked = route.stop.takeIf { it > 0 }, choosing = route.pick))
+    }
 
-    val state: StateFlow<BusUiState> = combine(local, bus.stops, alarm.status) { s, stops, trip ->
-        s.copy(stops = stops ?: s.stops, trip = trip)
+    val state: StateFlow<BusUiState> = combine(local, bus.stops, alarm.status, reminders.shiftPrompts) { s, stops, trip, prompts ->
+        s.copy(stops = stops ?: s.stops, trip = trip, prompts = prompts)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
@@ -179,11 +197,14 @@ class BusViewModel @Inject constructor(
         shifts = stop.shifts,
     )
 
+    /** The trip asked for by "Start bus alarm?" has been handled (started, or not possible). */
+    fun autoStartHandled() = local.update { it.copy(autoStart = false) }
+
     override fun startTrip() {
         val stop = state.value.stop ?: return
         if (state.value.trip.running) return
         practiceRun?.cancel()
-        local.update { it.copy(locationDenied = false, problem = null, practice = null) }
+        local.update { it.copy(locationDenied = false, problem = null, practice = null, choosing = false) }
         alarm.start(stop)
         // The one used last, for when no shift says (and for older apps).
         viewModelScope.launch { bus.use(stop.id) }
@@ -221,6 +242,14 @@ class BusViewModel @Inject constructor(
         local.update { it.copy(practice = null) }
     }
 
+    override fun setPrompts(on: Boolean) {
+        local.update { it.copy(promptsBlocked = false) }
+        viewModelScope.launch {
+            val now = reminders.setShiftPrompts(on)
+            local.update { it.copy(promptsBlocked = on && !now) }
+        }
+    }
+
     override fun setBuzz(buzz: Buzz) {
         val all = state.value.stops ?: return
         if (buzz == all.buzz || local.value.savingSettings) return
@@ -237,6 +266,7 @@ class BusViewModel @Inject constructor(
         local.update { it.copy(picked = id) }
     }
 
+    override fun endChoosing() = local.update { it.copy(choosing = false) }
 
     override fun edit(id: Long) {
         val stop = state.value.stops?.byId(id) ?: return
@@ -254,8 +284,10 @@ class BusViewModel @Inject constructor(
         form { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
             when (val r = bus.remove(id)) {
-                is Outcome.Done ->
+                is Outcome.Done -> {
                     local.update { it.copy(editing = if (r.value.stops.isEmpty()) BusUiState.NEW else null, form = StopForm(), picked = it.picked?.takeIf { p -> p != id }) }
+                    reminders.sync(now = true)
+                }
                 else -> form { it.copy(busy = false, problem = StopProblem.Server(r)) }
             }
         }
@@ -346,6 +378,7 @@ class BusViewModel @Inject constructor(
                     // A stop just added is the one to look at.
                     val added = r.value.stops.firstOrNull { it.id !in before }?.id
                     local.update { it.copy(editing = null, form = it.form.copy(busy = false), picked = if (editing == BusUiState.NEW && before.isNotEmpty()) added else it.picked) }
+                    reminders.sync(now = true) // the question names the stop
                 }
                 else -> form { it.copy(busy = false, problem = StopProblem.Server(r)) }
             }

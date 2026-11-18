@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.bus
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
@@ -13,9 +14,11 @@ import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.testing.FakeBusAlarm
 import com.rudnam.samfran.core.testing.FakeBusRepository
 import com.rudnam.samfran.core.testing.FakeFoodRepository
+import com.rudnam.samfran.core.testing.FakeReminders
 import com.rudnam.samfran.core.testing.FakeShiftsRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.Samples
+import com.rudnam.samfran.feature.bus.navigation.BusRoute
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -58,8 +61,10 @@ class BusScreenshotTest {
         override fun stopBuzz() {}
         override fun practice() {}
         override fun endPractice() {}
+        override fun setPrompts(on: Boolean) {}
         override fun setBuzz(buzz: Buzz) {}
         override fun pickStop(id: Long) {}
+        override fun endChoosing() {}
         override fun edit(id: Long) {}
         override fun add() {}
         override fun cancelEdit() {}
@@ -76,16 +81,16 @@ class BusScreenshotTest {
     }
 
     /** One stop, as before there could be several. */
-    private val ready = BusUiState(stops = Samples.oneStop)
+    private val ready = BusUiState(stops = Samples.oneStop, prompts = true)
 
     /** Three stops, and a late shift today: its stop is picked. */
-    private val several = BusUiState(stops = Samples.stops, shift = Samples.day("2026-11-17", "13F"))
+    private val several = BusUiState(stops = Samples.stops, shift = Samples.day("2026-11-17", "13F"), prompts = true)
 
     private val none = BusUiState(stops = BusStops(), editing = BusUiState.NEW)
 
     // The map is Google's page in a web view, which doesn't draw on the JVM: a stand-in of its size.
     private fun screen(state: BusUiState): @Composable () -> Unit = {
-        BusScreen(state, actions, {}, {}, {}, {}, map = { _, _, _ ->
+        BusScreen(state, actions, {}, {}, {}, {}, {}, map = { _, _, _ ->
             androidx.compose.foundation.layout.Box(
                 androidx.compose.ui.Modifier.fillMaxWidth().height(280.dp).background(SamFranTheme.colors.sunken),
             )
@@ -108,7 +113,11 @@ class BusScreenshotTest {
     @Test
     fun pickedForTheRide() = shot("stops-picked", content = screen(several.copy(picked = 3)))
 
-    // A tall screen, to see the whole of Alarm settings: the stops and how it buzzes.
+    // From "Other stop" on the question at the end of a shift.
+    @Test
+    fun choosingFromTheQuestion() = shot("stops-choose", content = screen(several.copy(choosing = true, picked = 2)))
+
+    // A tall screen, to see the whole of Alarm settings: the stops, how it buzzes, and the question.
     @Test
     @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
     fun settings() = shot("settings", content = screen(several.copy(stops = Samples.stops.copy(buzz = Buzz.Strongest))))
@@ -169,12 +178,13 @@ class BusViewModelTest {
 
     private val bus = FakeBusRepository()
     private val alarm = FakeBusAlarm()
+    private val reminders = FakeReminders()
     private val shifts = FakeShiftsRepository()
     // Long before the sample shifts: none is ending.
     private val clock = Clock.fixed(Instant.parse("2020-01-01T00:00:00Z"), ZoneOffset.UTC)
 
-    private fun vm() =
-        BusViewModel(bus, FakeFoodRepository(), alarm, shifts, clock)
+    private fun vm(route: BusRoute = BusRoute()) =
+        BusViewModel(SavedStateHandle(route), bus, FakeFoodRepository(), alarm, reminders, shifts, clock)
 
     @Test
     fun `a trip starts and stops, and is the one used last`() = runTest {
@@ -208,6 +218,22 @@ class BusViewModelTest {
     }
 
     @Test
+    fun `from the question, its stop starts, or another is chosen first`() = runTest {
+        val vm = vm(BusRoute(start = true, stop = 2))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        assertTrue(vm.state.value.autoStart)
+        assertEquals("静岡駅", vm.state.value.stop?.name)
+
+        val other = vm(BusRoute(pick = true))
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { other.state.collect {} }
+        assertTrue(other.state.value.choosing)
+        other.pickStop(3)
+        other.startTrip()
+        assertFalse(other.state.value.choosing)
+        assertEquals(listOf(3L), bus.used)
+    }
+
+    @Test
     fun `no stop yet opens the form, and searching, picking and saving choose one`() = runTest {
         bus.stopsFlow.value = BusStops()
         val vm = vm()
@@ -227,6 +253,7 @@ class BusViewModelTest {
         val saved = bus.stopsFlow.value!!.stops.single()
         assertEquals(listOf("葵西", "600"), listOf(saved.name, saved.alertMeters.toString()))
         assertEquals(saved, vm.state.value.stop)
+        assertEquals(1, reminders.syncs)
     }
 
     @Test
@@ -273,12 +300,17 @@ class BusViewModelTest {
     }
 
     @Test
-    fun `where I am now`() = runTest {
+    fun `where I am now, and the question at the end of a shift`() = runTest {
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         vm.edit(1)
         alarm.here = null
         vm.useHere()
         assertEquals(StopProblem.NoHere, vm.state.value.form.problem)
+        vm.setPrompts(true)
+        assertTrue(vm.state.value.prompts)
+        reminders.allowed = false
+        vm.setPrompts(true)
+        assertTrue(vm.state.value.promptsBlocked)
     }
 }

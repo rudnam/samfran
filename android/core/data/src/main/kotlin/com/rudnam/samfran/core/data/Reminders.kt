@@ -7,20 +7,26 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.Flow
 
 /**
- * What the phone does while the app is closed (the app's ActivityJob):
- * telling one of you when the other changes something. Off until switched
- * on, on this phone, and needs notifications: the screen asks for that
- * permission before switching it on.
+ * What the phone does while the app is closed (the app's ShiftPrompt and
+ * ActivityJob): asking "Start bus alarm?" when a shift ends, and telling one
+ * of you when the other changes something. Both are off until switched on,
+ * on this phone, and need notifications: the screen asks for that permission
+ * before switching one on.
  */
 interface Reminders {
+    val shiftPrompts: Flow<Boolean>
+
     val activityAlerts: Flow<Boolean>
 
     /** Answers whether it's on now (off when notifications aren't allowed). */
+    suspend fun setShiftPrompts(on: Boolean): Boolean
+
     suspend fun setActivityAlerts(on: Boolean): Boolean
 
     /**
-     * Brings the phone up to date with what's switched on: what's been seen
-     * here. [now]: even if it was done a few minutes ago.
+     * Brings the phone up to date with what's switched on: the shift ends as
+     * they are now, and what's been seen here. [now]: even if it was done a
+     * few minutes ago (shifts or the stop just changed).
      */
     suspend fun sync(now: Boolean = false)
 

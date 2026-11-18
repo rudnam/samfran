@@ -26,8 +26,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- <package>://auth?code=… (Google sign-in coming back from the browser) and <package>://us
-                 (the app's own notifications). MainActivity routes them. -->
+            <!-- <package>://auth?code=… (Google sign-in coming back from the browser), <package>://bus?start=1
+                 and <package>://us (the app's own notifications). MainActivity routes them. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -51,6 +51,13 @@
             android:foregroundServiceType="location" />
 
         <receiver android:name=".StopBuzzReceiver" android:exported="false" />
+
+        <!-- "Start bus alarm?" when a shift ends: its alarm, set again after the phone restarts. -->
+        <receiver android:name=".ShiftPrompt" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Looks for the other person's changes about every half hour, to notify about them. -->
         <service

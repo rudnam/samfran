@@ -3,16 +3,12 @@ package com.rudnam.samfran
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.job.JobInfo
 import android.app.job.JobParameters
 import android.app.job.JobScheduler
 import android.app.job.JobService
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
-import android.net.Uri
 import androidx.core.content.edit
 import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.Outcome
@@ -66,7 +62,7 @@ class ActivityJob : JobService() {
     }
 
     private suspend fun check() {
-        val p = prefs(this)
+        val p = ShiftPrompt.prefs(this)
         if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return
         val list = (activity.refresh() as? Outcome.Done)?.value ?: return
         val seen = p.getLong(SEEN, 0)
@@ -84,19 +80,9 @@ class ActivityJob : JobService() {
         private const val NOTIFICATION = 4
         private const val EVERY_MS = 30 * 60 * 1000L
 
-        /** In [prefs]: alerts are on, and the newest change already shown or notified. */
+        /** In ShiftPrompt.prefs: alerts are on, and the newest change already shown or notified. */
         const val ALERTS = "alerts"
         const val SEEN = "seen"
-
-        /** The "reminders" preferences (RemindersPlugin's in the Capacitor build). */
-        fun prefs(c: Context): SharedPreferences = c.getSharedPreferences("reminders", Context.MODE_PRIVATE)
-
-        /** Opens the app at <package>://path, e.g. us. */
-        private fun open(c: Context, requestCode: Int, path: String): PendingIntent {
-            val i = Intent(Intent.ACTION_VIEW, Uri.parse(c.packageName + "://" + path), c, MainActivity::class.java)
-                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            return PendingIntent.getActivity(c, requestCode, i, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        }
 
         fun schedule(c: Context, on: Boolean) {
             // The phone refusing the job (a limit, a security rule) must not crash the app: the alerts just won't arrive.
@@ -139,7 +125,7 @@ class ActivityJob : JobService() {
             val b = Notification.Builder(c, CHANNEL)
                 .setSmallIcon(R.drawable.ic_stat_bus)
                 .setContentTitle(lines[0])
-                .setContentIntent(open(c, 13, "us"))
+                .setContentIntent(ShiftPrompt.open(c, 13, "us"))
                 .setAutoCancel(true)
             if (lines.size > 1) {
                 b.setContentText(c.resources.getQuantityString(R.plurals.notify_change_more, lines.size - 1, lines.size - 1))
