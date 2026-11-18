@@ -87,8 +87,8 @@ func TestMCPTools(t *testing.T) {
 	if st["name_on_sheet"] != "オトル サマンタ" || st["lengths"].(map[string]any)["F"] != 9.0 || st["feed_path"] != "" {
 		t.Fatalf("settings: %v", st)
 	}
-	st, _ = tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"G": 10}})
-	if l := st["lengths"].(map[string]any); l["G"] != 10.0 || l["F"] != 9.0 {
+	st, _ = tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"G": 9.5}})
+	if l := st["lengths"].(map[string]any); l["G"] != 9.5 || l["F"] != 9.0 {
 		t.Errorf("set lengths: %v", st)
 	}
 	if _, msg := tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"ab": 3}}); msg == "" {

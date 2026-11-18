@@ -211,8 +211,8 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByLabel('Name of person 2').fill('サトウ ミキ');
   await sheet.getByRole('button', { name: '+ Add someone' }).click();
   await sheet.getByLabel('Name of person 3').fill('ヤマダ ハナ');
-  await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–23:00: there as the night starts
-  await expect(sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem').nth(2)).toContainText('17:00–23:00');
+  await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–1:00: there as the night starts
+  await expect(sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem').nth(2)).toContainText('17:00–1:00');
   // Someone on the next morning's early shift: their day is changed by tapping it.
   await sheet.getByRole('button', { name: '+ Add someone' }).click();
   await sheet.getByLabel('Name of person 4').fill('アサ ミキ');
@@ -325,7 +325,7 @@ test('see everyone there during a shift, not only those on the same one', async 
   await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
   const others = [
     { name: 'ヤマダ ハナ', code: '9F' }, // 9–18: there
-    { name: 'コバヤシ リク', code: '7D' }, // 7–13: gone as Sam starts
+    { name: 'コバヤシ リク', code: '7B' }, // 7–12: gone as Sam starts
     { name: 'ヨル タロウ', code: '22F', day_offset: -1 }, // the night before, over by 7
   ];
   const res = await page.request.put('/api/shifts/month', {
@@ -387,7 +387,7 @@ test('see everyone there during a shift, not only those on the same one', async 
   await expect(everyone.nth(3)).toContainText('day before');
   await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
   await sheet.getByRole('button', { name: 'Done' }).click();
-  // A 9F: the one on 7D is there now, and so is the one on 13F.
+  // A 9F: the one on 7B is there now, and so is the one on 13F.
   await days.nth(0).getByRole('combobox').fill('9F');
   await expect(count).toHaveText('3');
   const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));

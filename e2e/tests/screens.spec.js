@@ -123,7 +123,7 @@ for (const [name, viewport] of [
             ? [
                 ...together,
                 { name: 'ヤマダ ハナ', code: '9F' },
-                { name: 'コバヤシ リク', code: '7D' },
+                { name: 'コバヤシ リク', code: '7B' },
                 { name: 'サトウ ミオ', code: '17D' },
                 { name: 'ヨル タロウ', code: '22F', day_offset: -1 },
                 { name: 'アサ ミキ', code: '6D', day_offset: 1 },
