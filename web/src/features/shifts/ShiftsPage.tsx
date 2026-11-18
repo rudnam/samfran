@@ -43,7 +43,12 @@ export function ShiftsPage({ month }: { month?: string }) {
   const [readError, setError] = useState('');
   const error = readError || loadError;
   const [reading, setReading] = useState<ReadProgress | null>(null);
-  const [copied, setCopied] = useState(false);
+  // Which calendar line was just copied: Google Calendar's address or the plain link.
+  const [copied, setCopied] = useState<'google' | 'plain' | null>(null);
+  function copyCalendar(which: 'google' | 'plain', feedPath: string) {
+    const feed = `${location.origin}${feedPath}`;
+    void navigator.clipboard?.writeText(which === 'google' ? googleCalendarUrl(feed) : feed).then(() => setCopied(which), () => {});
+  }
   const [view, setView] = useState<View>(savedView);
   // Who else is at work stays hidden until the people button is pressed.
   const [everyone, showEveryone] = useState(false);
@@ -200,19 +205,18 @@ export function ShiftsPage({ month }: { month?: string }) {
           </a>
         )}
       </div>
-      {/* Once it's on there's nothing to do after each new month, so it's only a quiet line:
-          it copies the Open Google Calendar address, to send to whoever should add it. */}
+      {/* Once it's on there's nothing to do after each new month, so it's only a quiet line: it copies
+          the Open Google Calendar address (or the plain link, for any other calendar) to send. */}
       {data?.settings.feed_path && (
-        <button
-          type="button"
-          className="link quiet start"
-          onClick={() => {
-            const url = googleCalendarUrl(`${location.origin}${data.settings.feed_path}`);
-            void navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
-          }}
-        >
-          {copied ? t('Copied') : t('Share via Google Calendar')}
-        </button>
+        <div className="row tight-row muted">
+          <button type="button" className="link quiet inline" onClick={() => copyCalendar('google', data.settings.feed_path)}>
+            {copied === 'google' ? t('Copied') : t('Share via Google Calendar')}
+          </button>
+          <span aria-hidden="true">·</span>
+          <button type="button" className="link quiet inline" onClick={() => copyCalendar('plain', data.settings.feed_path)}>
+            {copied === 'plain' ? t('Copied') : t('Other calendars')}
+          </button>
+        </div>
       )}
 
       {needsName && data?.settings.reader && (

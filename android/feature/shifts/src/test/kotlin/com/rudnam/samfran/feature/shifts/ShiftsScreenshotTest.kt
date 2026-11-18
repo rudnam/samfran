@@ -97,6 +97,13 @@ class ShiftsScreenshotTest {
     @Test
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
 
+    /** With the calendar link on: a quiet line that copies it for Google Calendar or any other calendar. */
+    @Test
+    fun calendarLinkOn() = shot("list-calendar-on") {
+        val on = Samples.november.copy(settings = Samples.november.settings.copy(feedPath = "/calendar/abc123.ics"))
+        ShiftsScreen(month.copy(data = on, asList = true), actions, {}, {}, {}, {})
+    }
+
     @Test
     fun reading() = shot("reading") {
         ShiftsScreen(month.copy(progress = ReadProgress.Reading("オトル サマンタ", daysRead = 12, daysInMonth = 30)), actions, {}, {}, {}, {})

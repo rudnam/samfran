@@ -35,6 +35,7 @@
     <string name="read_new_sheet">新しい勤務表を読み込む</string>
     <string name="enter_by_hand">手で入力</string>
     <string name="share_via_google_calendar">Googleカレンダーで共有</string>
+    <string name="other_calendars">他のカレンダー</string>
     <string name="needs_name">写真を読み込むには、先に勤務表に書かれている名前を設定で入力してください。</string>
     <string name="photo_unreadable">この写真を開けませんでした。</string>
     <string name="check_shifts">シフトを確認</string>

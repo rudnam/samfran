@@ -212,6 +212,7 @@ export const ja = {
   'Read a new sheet': '新しい勤務表を読み込む',
   'Enter by hand': '手で入力',
   'Share via Google Calendar': 'Googleカレンダーで共有',
+  'Other calendars': '他のカレンダー',
   'Sending the photo': '写真を送っています',
   'Sending the photo: {percent}%': '写真を送っています: {percent}%',
   'Finding the row on the sheet': '勤務表から行を探しています',

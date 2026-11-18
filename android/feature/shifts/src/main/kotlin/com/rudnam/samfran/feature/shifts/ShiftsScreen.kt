@@ -76,7 +76,7 @@ internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsVi
         onTakePhoto = { viewModel.askPhoto(SheetPhotos.Source.Camera) },
         onChoosePhoto = { viewModel.askPhoto(SheetPhotos.Source.Picker) },
         onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
-        onCopyCalendar = { path -> context.copyText(googleCalendarUrl(viewModel.address(path))) },
+        onCopyCalendar = { path, google -> viewModel.address(path).let { context.copyText(if (google) googleCalendarUrl(it) else it) } },
     )
 }
 
@@ -91,8 +91,8 @@ fun ShiftsScreen(
     onTakePhoto: () -> Unit,
     onChoosePhoto: () -> Unit,
     onCalendar: () -> Unit = {},
-    /** Copies the Open Google Calendar address for this calendar link (its path on the server). */
-    onCopyCalendar: (String) -> Unit = {},
+    /** Copies the calendar link (its path on the server): as Google Calendar's address, or plain for other calendars. */
+    onCopyCalendar: (path: String, google: Boolean) -> Unit = { _, _ -> },
 ) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
@@ -204,15 +204,23 @@ fun ShiftsScreen(
                         if (state.data != null && !filled) {
                             SecondaryButton(stringResource(R.string.enter_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = shown != null, icon = SamFranIcons.edit)
                         }
-                        // Once it's on there's nothing to do after each new month, so it's only a quiet line:
-                        // it copies the Open Google Calendar address, to send to whoever should add it.
+                        // Once it's on there's nothing to do after each new month, so it's only a quiet line: it copies
+                        // the Open Google Calendar address (or the plain link, for any other calendar) to send.
                         val feedPath = state.data?.settings?.feedPath.orEmpty()
                         if (feedPath.isNotEmpty()) {
-                            var copied by remember(feedPath) { mutableStateOf(false) }
-                            LinkButton(stringResource(if (copied) R.string.copied else R.string.share_via_google_calendar), {
-                                onCopyCalendar(feedPath)
-                                copied = true
-                            }, quiet = true)
+                            // Which was just copied: Google Calendar's address, the plain link, or neither.
+                            var copied by remember(feedPath) { mutableStateOf<Boolean?>(null) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                LinkButton(stringResource(if (copied == true) R.string.copied else R.string.share_via_google_calendar), {
+                                    onCopyCalendar(feedPath, true)
+                                    copied = true
+                                }, quiet = true)
+                                Text("·", color = colors.muted)
+                                LinkButton(stringResource(if (copied == false) R.string.copied else R.string.other_calendars), {
+                                    onCopyCalendar(feedPath, false)
+                                    copied = false
+                                }, quiet = true)
+                            }
                         } else if (state.data != null) {
                             SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
                         }

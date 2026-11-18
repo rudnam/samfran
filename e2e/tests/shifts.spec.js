@@ -105,6 +105,10 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   expect(await page.evaluate(() => window.copiedText)).toBe(
     `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
   );
+  // Or the plain link, for any other calendar app.
+  await page.getByRole('button', { name: 'Other calendars' }).click();
+  await expect(page.getByRole('button', { name: 'Share via Google Calendar' })).toBeVisible();
+  expect(await page.evaluate(() => window.copiedText)).toMatch(/^https?:\/\/[^/]+\/api\/shifts\/feed\/[\w-]+\.ics$/);
   await expect(page.getByRole('link', { name: 'Add to Google Calendar' })).toHaveCount(0);
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
