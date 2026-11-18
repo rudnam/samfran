@@ -118,6 +118,9 @@
   color-scheme: dark;
 }
 
+/* Room for the scrollbar on every page, so going between a short page and a
+   long one doesn't nudge everything sideways (phones' scrollbars take none). */
+html { scrollbar-gutter: stable; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 body {
