@@ -145,14 +145,12 @@ func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]Da
 }
 
 // explain works out a stored day, with who's on the same shift and who
-// else is there.
+// else is there. The others column holds the day's people; days saved by
+// earlier releases have some only in coworkers (the same shift as then).
 func explain(d DayCode, lengths map[string]float64, zone *time.Location) Day {
 	day := Explain(d.Date, d.Code, lengths, zone)
-	if day.Kind == Work && len(d.With) > 0 {
-		day.With = d.With
-	}
-	day.Others = overlapping(day, d.With, d.Others, lengths, zone)
-	return day
+	people, _ := cleanPeople(legacyPeople(day.Code, d.With, d.Others))
+	return withPeople(day, people, lengths, zone)
 }
 
 // replaceMonth makes a month's days exactly days (by date).
@@ -166,7 +164,9 @@ func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last str
 		return err
 	}
 	for date, d := range days {
-		others, err := json.Marshal(append([]Coworker{}, d.Others...)) // never null
+		// The others column holds everyone (People); coworkers those on the
+		// same shift, as the previous release reads it.
+		others, err := json.Marshal(append([]Coworker{}, d.People...)) // never null
 		if err != nil {
 			return err
 		}
@@ -366,12 +366,13 @@ func (e *InvalidError) Error() string { return e.Msg }
 
 func invalidf(format string, args ...any) error { return &InvalidError{fmt.Sprintf(format, args...)} }
 
-// DayCode is a day and its code, as typed or read, who else is on the
-// same shift, and others at work around it (both optional). Only the others
-// whose hours overlap the day's shift are kept.
+// DayCode is a day and its code, as typed or read, and everyone at work
+// around it (People, others.go). Older app versions send With (names on the
+// same shift) and Others instead; they're used when People is left out.
 type DayCode struct {
 	Date   string     `json:"date"`
 	Code   string     `json:"code"`
+	People []Coworker `json:"people,omitempty"`
 	With   []string   `json:"with,omitempty"`
 	Others []Coworker `json:"others,omitempty"`
 }
@@ -494,18 +495,21 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 		if utf8.RuneCountInString(code) > maxCode {
 			return MonthView{}, invalidf("a shift code must be at most %d characters", maxCode)
 		}
-		with, err := cleanNames(d.With)
-		if err != nil {
-			return MonthView{}, err
+		people := d.People
+		if people == nil { // an older app version
+			with, err := cleanNames(d.With)
+			if err != nil {
+				return MonthView{}, err
+			}
+			people = legacyPeople(code, with, d.Others)
 		}
-		others, err := cleanOthers(d.Others)
+		people, err = cleanPeople(people)
 		if err != nil {
 			return MonthView{}, err
 		}
 		if code != "" {
-			day := Explain(d.Date, code, st.Lengths, zone)
-			there := othersOf(overlapping(day, with, others, st.Lengths, zone))
-			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with, Others: there}
+			day := withPeople(Explain(d.Date, code, st.Lengths, zone), people, st.Lengths, zone)
+			codes[d.Date] = DayCode{Date: d.Date, Code: code, People: day.People, With: day.With}
 		}
 	}
 	var closingDays []int
@@ -714,11 +718,10 @@ func sheetView(sheet Sheet, st stored, zone *time.Location) (any, error) {
 			leave = append(leave, fmt.Sprintf("%d (%s)", d.Day, normalize(d.Code)))
 		}
 		day := Explain(date.Format(time.DateOnly), code, st.Lengths, zone)
-		if with, err := cleanNames(d.With); err == nil && day.Kind == Work && code == d.Code {
-			day.With = with
-		}
-		if others, err := cleanOthers(d.Others); err == nil && code == d.Code {
-			day.Others = overlapping(day, day.With, others, st.Lengths, zone)
+		if with, err := cleanNames(d.With); err == nil && code == d.Code {
+			if people, err := cleanPeople(legacyPeople(day.Code, with, d.Others)); err == nil {
+				day = withPeople(day, people, st.Lengths, zone)
+			}
 		}
 		view.Days = append(view.Days, day)
 	}

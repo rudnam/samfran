@@ -84,19 +84,20 @@ for (const [name, viewport] of [
         month,
         days: Array.from({ length: last }, (_, i) => {
           const code = codes[i % codes.length];
-          // Who's on the same shift, on working days.
-          const together = /^\d/.test(code) ? [['タナカ ユイ', 'スズキ ケン'], ['サトウ ミホ']][i % 2] : undefined;
-          // Others on other shifts: the server keeps those whose hours overlap.
-          const others = /^\d/.test(code)
+          // Everyone around a working day: on the same shift, and on others
+          // (the server shows those whose hours overlap).
+          const together = /^\d/.test(code) ? [['タナカ ユイ', 'スズキ ケン'], ['サトウ ミホ']][i % 2].map((name) => ({ name, code })) : [];
+          const people = /^\d/.test(code)
             ? [
+                ...together,
                 { name: 'ヤマダ ハナ', code: '9F' },
                 { name: 'コバヤシ リク', code: '7D' },
                 { name: 'サトウ ミオ', code: '17D' },
                 { name: 'ヨル タロウ', code: '22F', day_offset: -1 },
                 { name: 'アサ ミキ', code: '6D', day_offset: 1 },
               ]
-            : undefined;
-          return { date: `${month}-${String(i + 1).padStart(2, '0')}`, code, with: together, others };
+            : [];
+          return { date: `${month}-${String(i + 1).padStart(2, '0')}`, code, people };
         }),
       },
     });
@@ -118,6 +119,11 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Edit by hand' }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
+    // Who's there on a day (the 3rd, a 13F), to fix a name or a code.
+    await page.getByRole('list', { name: 'Days' }).getByRole('listitem').nth(2).getByRole('button', { name: /^Who’s there on / }).click();
+    await expect(page.getByRole('dialog', { name: /^Who’s there on / })).toBeVisible();
+    await shot('7d-shift-people');
+    await page.getByRole('dialog', { name: /^Who’s there on / }).getByRole('button', { name: 'Done' }).click();
     // This month's 締め申請通知 changed: only the last day.
     await page.getByRole('button', { name: 'Remove closing day 1' }).click();
     await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();

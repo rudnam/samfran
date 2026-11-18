@@ -56,6 +56,7 @@ type monthJSON struct {
 			DayOffset  int `json:"day_offset"`
 			Start, End string
 		}
+		People []map[string]any
 	}
 	ClosingDays   []int  `json:"closing_days"`
 	ClosingCustom bool   `json:"closing_custom"`
@@ -119,7 +120,7 @@ func TestShifts(t *testing.T) {
 		t.Fatalf("reading stored days: %+v", saved.Days)
 	}
 
-	// Others sent back are kept if they overlap the day's shift as saved.
+	// An older app sends with and others: others are shown if they overlap the day's shift.
 	others := []map[string]any{{"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "ヤスミ", "code": "普"}}
 	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": "13F", "others": others}}}, &saved); code != 200 ||
 		len(saved.Days[0].Others) != 1 || saved.Days[0].Others[0].Name != "ヤマダ ハナ" {
@@ -131,6 +132,41 @@ func TestShifts(t *testing.T) {
 	// Changed to an early shift, the same others aren't there any more but the night before is.
 	if c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": "5A", "others": others}}}, &saved); len(saved.Days[0].Others) != 1 || saved.Days[0].Others[0].Name != "ヨル" {
 		t.Fatalf("others for 5A: %+v", saved.Days)
+	}
+
+	// Everyone around a day is kept (people), and who's shown follows the code.
+	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7D"}}
+	shown := func(code string, people any) (string, string) {
+		t.Helper()
+		var m monthJSON
+		if status := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": code, "people": people}}}, &m); status != 200 {
+			t.Fatalf("save %s with people: %d", code, status)
+		}
+		c.do("GET", "/api/shifts?month=2026-11", nil, &m)
+		var others []string
+		for _, o := range m.Days[0].Others {
+			others = append(others, o.Name)
+		}
+		if len(m.Days[0].People) != 4 {
+			t.Errorf("%s: people kept: %+v", code, m.Days[0].People)
+		}
+		return strings.Join(m.Days[0].With, "|"), strings.Join(others, "|")
+	}
+	if with, others := shown("13F", people); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
+		t.Errorf("13F: with %q, others %q", with, others)
+	}
+	// A corrected code: the one on 13F is still there, now on another shift.
+	if with, others := shown("9F", people); with != "ヤマダ ハナ" || others != "コバヤシ リク|タナカ ユイ" {
+		t.Errorf("9F: with %q, others %q", with, others)
+	}
+	// Back to 13F: nobody was lost.
+	if with, others := shown("13F", people); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
+		t.Errorf("13F again: with %q, others %q", with, others)
+	}
+	// Anyone's name can be fixed, not only those on the same shift.
+	people[1]["name"] = "ヤマダ ハル"
+	if _, others := shown("13F", people); others != "ヤマダ ハル" {
+		t.Errorf("a fixed name: others %q", others)
 	}
 
 	// Saving, with a fix, replaces the month.

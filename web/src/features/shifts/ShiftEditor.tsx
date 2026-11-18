@@ -6,17 +6,13 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
-import { clock, datesOf, dayName, explain, labelOf, monthName, normalize } from './codes';
+import { clock, datesOf, dayName, explain, hoursAround, labelOf, monthName, normalize } from './codes';
+import { isThere, PeopleSheet, personRow, type PersonRow } from './PeopleSheet';
 
 // The photo reader's answer, handed from ShiftsPage to this page.
 let pendingRead: ShiftMonth | null = null;
 export function setPendingRead(m: ShiftMonth) {
   pendingRead = m;
-}
-
-// Names are separated by commas (a name itself has a space in it).
-function splitNames(text: string): string[] {
-  return text.split(/[,、，]/).map((n) => n.trim()).filter(Boolean);
 }
 
 const common = ['7F', '9F', '13F', '22F', '普', '法', '有休'];
@@ -30,10 +26,10 @@ export function usualClosing(month: string, usual: number[]): number[] {
 export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: boolean }) {
   const [base, setBase] = useState<ShiftMonth | null>(null);
   const [codes, setCodes] = useState<Record<string, string>>({});
-  // Coworkers typed by hand, per day, as one comma-separated line.
-  const [typed, setTyped] = useState<Record<string, string>>({});
-  // Days whose names box is open: names show as one quiet line until "Fix".
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+  // Everyone at work around each day, as read or saved, and as fixed here.
+  const [people, setPeople] = useState<Record<string, PersonRow[]>>({});
+  // The day whose people are open, and who was listed first when it opened.
+  const [open, setOpen] = useState<{ date: string; shown: Set<number> } | null>(null);
   // 締め申請通知 for this month: null until it's loaded; sent only once changed.
   const [closing, setClosing] = useState<number[] | null>(null);
   const [closingChanged, setClosingChanged] = useState(false);
@@ -48,6 +44,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
       (m) => {
         setBase(m);
         setCodes(Object.fromEntries(m.days.map((d) => [d.date, d.code])));
+        setPeople(Object.fromEntries(m.days.map((d) => [d.date, (d.people ?? []).map((p) => personRow(p, fromPhoto))])));
         // A photo read doesn't carry the month's closing days; the saved month does.
         (m.closing_days ? Promise.resolve(m) : api.shifts(month)).then(
           (saved) => setClosing(saved.closing_days ?? usualClosing(month, saved.settings.closing_days ?? [15, 31])),
@@ -63,27 +60,29 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     setClosingChanged(true);
   }
 
-  // Who's on the same shift: what was typed, else as read or saved. The read
-  // names only stay while the day's code is unchanged (a different code is a
-  // different shift); typed names are the user's call and always stay.
-  const original = new Map(base?.days.map((d) => [d.date, d]) ?? []);
-  function withFor(date: string, code: string): string[] | undefined {
-    const d = original.get(date);
-    if (typed[date] !== undefined) return splitNames(typed[date]);
-    return d?.with?.length && normalize(d.code) === normalize(code) ? d.with : undefined;
+  const lengths = base?.settings.lengths ?? {};
+  const hoursOf = (date: string) => hoursAround(codes[date] ?? '', 0, lengths);
+  const thereOn = (date: string) => (people[date] ?? []).filter((p) => isThere(p, codes[date] ?? '', hoursOf(date), lengths));
+
+  // A day's people open with those there during its shift listed first.
+  function openDay(date: string) {
+    setOpen({ date, shown: new Set(thereOn(date).map((p) => p.key)) });
+  }
+  function addPerson(date: string) {
+    const added = personRow({ name: '', code: normalize(codes[date] ?? '') }, false);
+    setOpen((o) => o && { ...o, shown: new Set([...o.shown, added.key]) });
+    setPeople((p) => ({ ...p, [date]: [...(p[date] ?? []), added] }));
   }
 
   // Names fixed while checking a scan, as read → corrected, so the next scan
-  // gets them right. Only where the same number of names went as came, so
-  // each pairs with the one it replaced.
-  function corrections(days: { date: string; with?: string[] }[]) {
+  // gets them right.
+  function corrections() {
     const out = new Map<string, string>();
-    for (const d of days) {
-      const was = original.get(d.date)?.with ?? [];
-      const now = d.with ?? [];
-      const removed = was.filter((n) => !now.includes(n));
-      const added = now.filter((n) => !was.includes(n));
-      if (removed.length === added.length) removed.forEach((from, i) => out.set(from, added[i]));
+    for (const rows of Object.values(people)) {
+      for (const p of rows) {
+        const to = p.name.trim();
+        if (p.read && to && to !== p.read) out.set(p.read, to);
+      }
     }
     return [...out].map(([from, to]) => ({ from, to }));
   }
@@ -96,13 +95,13 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         .map(([date, code]) => ({
           date,
           code: normalize(code),
-          with: withFor(date, code),
-          // Who else was there, as read or saved: the server keeps those who
-          // overlap the day's shift as saved.
-          others: original.get(date)?.others?.map(({ name, code, day_offset }) => ({ name, code, day_offset })),
+          // Everyone, there during the shift or not: the server works out who's shown.
+          people: (people[date] ?? [])
+            .filter((p) => p.name.trim())
+            .map((p) => ({ name: p.name.trim(), code: normalize(p.code), day_offset: p.day_offset })),
         }))
         .filter((d) => d.code);
-      await api.saveShifts(month, days, fromPhoto ? corrections(days) : undefined, closingChanged && closing ? closing : undefined);
+      await api.saveShifts(month, days, fromPhoto ? corrections() : undefined, closingChanged && closing ? closing : undefined);
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));
@@ -143,10 +142,8 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         {datesOf(month).map((date) => {
           const code = codes[date] ?? '';
           const meaning = code ? explain(code, base.settings.lengths) : null;
-          const names = withFor(date, code) ?? [];
-          const was = original.get(date);
-          const there = was && normalize(was.code) === normalize(code) ? (was.others?.length ?? 0) : 0;
           const working = meaning?.kind === 'work';
+          const there = working ? thereOn(date).length : 0;
           return (
             <li key={date}>
               <label className="shift-date" htmlFor={`code-${date}`}>
@@ -166,39 +163,39 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
                   <span className="meaning">
                     {labelOf(meaning.label)}
                     {meaning.hours && <span className="muted"> · {clock(meaning.hours[0])}–{clock(meaning.hours[1])}</span>}
-                    {meaning.problem && <span className="error"> · {t('Unknown length: set it in Settings')}</span>}
                   </span>
                 )}
-                {code && open[date] && (
-                  <input
-                    className="with-input"
-                    autoFocus
-                    value={typed[date] ?? names.join(', ')}
-                    maxLength={400}
-                    placeholder={t('Who else is on this shift (separate with commas)')}
-                    aria-label={t('Who is with you on {day}', { day: dayName(date) })}
-                    onChange={(e) => setTyped((w) => ({ ...w, [date]: e.target.value }))}
-                  />
-                )}
-                {code && !open[date] && (working || names.length > 0) && (
-                  <span className="names-line">
-                    {names.length > 0 && <span className="names">{names.join(', ')}</span>}
-                    {there > 0 && <span className="muted">{t('+{count} there', { count: there })}</span>}
-                    <button
-                      type="button"
-                      className="link-inline"
-                      aria-label={t('Who is with you on {day}', { day: dayName(date) })}
-                      onClick={() => setOpen((o) => ({ ...o, [date]: true }))}
-                    >
-                      {names.length > 0 ? t('Fix') : t('Add who’s with you')}
-                    </button>
-                  </span>
-                )}
+                {meaning?.problem && <span className="error">{t('Unknown length: set it in Settings')}</span>}
               </span>
+              {working && (
+                <button
+                  type="button"
+                  className={`people-count${there ? '' : ' none'}`}
+                  aria-label={t('Who’s there on {day}', { day: dayName(date) }) + (there ? ` (${there})` : '')}
+                  onClick={() => openDay(date)}
+                >
+                  <PeopleIcon />
+                  <span aria-hidden="true">{there || '+'}</span>
+                </button>
+              )}
             </li>
           );
         })}
       </ul>
+      {open && (
+        <PeopleSheet
+          date={open.date}
+          code={codes[open.date] ?? ''}
+          hours={hoursOf(open.date)}
+          rows={people[open.date] ?? []}
+          shownKeys={open.shown}
+          lengths={lengths}
+          names={[...new Set(Object.entries(people).flatMap(([d, rows]) => (d === open.date ? [] : rows.map((p) => p.name.trim()).filter(Boolean))))]}
+          onChange={(rows) => setPeople((p) => ({ ...p, [open.date]: rows }))}
+          onAdd={() => addPerson(open.date)}
+          onClose={() => setOpen(null)}
+        />
+      )}
       {closing && <ClosingDays month={month} days={closing} usual={usualClosing(month, base.settings.closing_days ?? [15, 31])} onChange={changeClosing} />}
       {error && (
         <p role="alert" className="error">
@@ -264,5 +261,16 @@ function ClosingDays({ month, days, usual, onChange }: { month: string; days: nu
       </div>
       {days.length === 0 && <span className="muted small">{t('No 締め申請通知 this month.')}</span>}
     </div>
+  );
+}
+
+/** The people icon of the Shifts page's button, small. */
+function PeopleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="9" cy="8" r="3.5" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 1.8 6 5.5" />
+    </svg>
   );
 }
