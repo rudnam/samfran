@@ -57,8 +57,10 @@ class FoodViewModelTest {
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), s.want.map { it.id })
         assertEquals(2, s.thisMonth)
         assertTrue(s.searchable)
-        vm.setQuery("miso")
+        vm.setQuery("ramen")
         assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
+        vm.setQuery("miso") // only in an old visit's note, which the app no longer shows
+        assertEquals(emptyList<Long>(), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want)
         vm.setQuery("")
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
