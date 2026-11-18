@@ -31,7 +31,10 @@
     <string name="you">You</string>
     <string name="take_photo">Take a photo</string>
     <string name="choose_photo">Choose a photo</string>
-    <string name="edit_by_hand">Edit by hand</string>
+    <string name="edit_month">Edit %1$s</string>
+    <string name="read_new_sheet">Read a new sheet</string>
+    <string name="enter_by_hand">Enter by hand</string>
+    <string name="google_calendar_on">Google Calendar: on</string>
     <string name="needs_name">To read photos, first set the name as it’s printed on the sheet in Settings.</string>
     <string name="photo_unreadable">Could not open that photo.</string>
     <string name="check_shifts">Check the shifts</string>

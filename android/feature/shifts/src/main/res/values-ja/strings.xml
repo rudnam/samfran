@@ -31,7 +31,10 @@
     <string name="you">あなた</string>
     <string name="take_photo">写真を撮る</string>
     <string name="choose_photo">写真を選ぶ</string>
-    <string name="edit_by_hand">手で編集</string>
+    <string name="edit_month">%1$sを編集</string>
+    <string name="read_new_sheet">新しい勤務表を読み込む</string>
+    <string name="enter_by_hand">手で入力</string>
+    <string name="google_calendar_on">Googleカレンダー：オン</string>
     <string name="needs_name">写真を読み込むには、先に勤務表に書かれている名前を設定で入力してください。</string>
     <string name="photo_unreadable">この写真を開けませんでした。</string>
     <string name="check_shifts">シフトを確認</string>

@@ -148,7 +148,7 @@ for (const [name, viewport] of [
     await expect(page.locator('.cal-detail').getByRole('list', { name: 'Everyone there' })).toBeVisible();
     await shot('6c-shifts-everyone');
     await page.getByRole('button', { name: 'Everyone there' }).click();
-    await page.getByRole('link', { name: 'Edit by hand' }).click();
+    await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
     // Who's there on a day (the 3rd, a 13F), to fix a name or a code.

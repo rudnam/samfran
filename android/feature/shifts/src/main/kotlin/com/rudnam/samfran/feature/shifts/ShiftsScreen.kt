@@ -158,18 +158,23 @@ fun ShiftsScreen(
             }
             item(key = "actions") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    // The two ways to fill in a month, one above the other at full width.
+                    // A month with shifts is mostly fixed or looked at, so editing it
+                    // comes first; an empty one is filled in, best from a photo.
+                    val filled = state.data?.days?.isNotEmpty() == true
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            state.progress?.let { ReadingCard(it) }
+                        state.progress?.let { ReadingCard(it) }
+                        val shown = state.shown
+                        if (filled && shown != null) {
+                            SecondaryButton(stringResource(R.string.edit_month, Dates.month(shown, locale)), onEdit, Modifier.fillMaxWidth(), icon = SamFranIcons.edit)
+                        }
                         if (state.canRead && !state.reading) {
                             var menu by remember { mutableStateOf(false) }
                             Box(Modifier.fillMaxWidth()) {
-                                PrimaryButton(
-                                    stringResource(if (state.reading) R.string.reading_sheet else R.string.read_photo),
-                                    { menu = true },
-                                    Modifier.fillMaxWidth(),
-                                    enabled = !state.reading && !state.needsName,
-                                )
+                                if (filled) {
+                                    SecondaryButton(stringResource(R.string.read_new_sheet), { menu = true }, Modifier.fillMaxWidth(), enabled = !state.needsName, icon = SamFranIcons.camera)
+                                } else {
+                                    PrimaryButton(stringResource(R.string.read_photo), { menu = true }, Modifier.fillMaxWidth(), enabled = !state.needsName)
+                                }
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                     DropdownMenuItem(
                                         text = { Text(stringResource(R.string.take_photo)) },
@@ -190,8 +195,16 @@ fun ShiftsScreen(
                                 }
                             }
                         }
-                        SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
-                        SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
+                        if (state.data != null && !filled) {
+                            SecondaryButton(stringResource(R.string.enter_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = shown != null, icon = SamFranIcons.edit)
+                        }
+                        val calendarOn = state.data?.settings?.feedPath?.isNotEmpty() == true
+                        SecondaryButton(
+                            stringResource(if (calendarOn) R.string.google_calendar_on else R.string.add_to_google_calendar),
+                            onCalendar,
+                            Modifier.fillMaxWidth(),
+                            icon = SamFranIcons.calendar,
+                        )
                     }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -19,8 +19,10 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
 
+  // An empty month: read a photo or enter it by hand; nothing to edit yet.
+  await expect(page.getByRole('link', { name: /^Edit / })).toHaveCount(0);
   // By hand: the meaning shows as a code is typed.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: 'Enter by hand' }).click();
   const month = thisMonth();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await days.nth(0).getByRole('combobox').fill('22F'); // the 1st
@@ -32,6 +34,9 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await days.nth(2).getByRole('combobox').fill('１３Ｆ'); // full-width works too
   await expect(days.nth(2)).toContainText('遅番 · 13:00–22:00');
   await page.getByRole('button', { name: /^Save / }).click();
+  // A month with shifts: it's edited, by its name.
+  await expect(page.getByRole('link', { name: /^Edit \S+ \d{4}$/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Enter by hand' })).toHaveCount(0);
 
   // The month as a calendar: a square for every day, and a day's times when it's tapped.
   const cal = page.getByRole('group', { name: 'Calendar' });
@@ -84,6 +89,8 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   expect(await feed.text()).toContain('SUMMARY:夜勤');
   expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
   await page.locator('a.back').click();
+  // Once it's on, the Shifts page says so.
+  await expect(page.getByRole('link', { name: 'Google Calendar: on' })).toBeVisible();
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
   await page.getByRole('link', { name: 'Settings' }).click();
@@ -115,7 +122,7 @@ test('change the 締め申請通知 days for one month, next to its shifts', asy
   const last = new Date(y, m, 0).getDate();
   await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
   await page.getByRole('link', { name: 'Shifts', exact: true }).click();
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: 'Enter by hand' }).click();
 
   // The usual days (the 15th and the last day) to start with.
   const box = page.getByRole('group', { name: 'Hours due (締め申請通知)' });
@@ -151,7 +158,7 @@ test('change the 締め申請通知 days for one month, next to its shifts', asy
 
   // Back to the usual days.
   await page.getByRole('link', { name: 'Previous month' }).click();
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   await expect(box).toContainText('Only for');
   await box.getByRole('button', { name: 'Use the usual days' }).click();
   await expect(box.getByRole('combobox', { name: 'Closing day 1' })).toHaveValue('15');
@@ -192,7 +199,7 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await expect(list.nth(1)).not.toContainText('タナカ');
 
   // Editing: each day is one line, with a count of who's there that opens them.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await expect(days.nth(0)).not.toContainText('タナカ');
   const count = days.nth(0).getByRole('button', { name: /^Who’s there on / });
@@ -364,7 +371,7 @@ test('see everyone there during a shift, not only those on the same one', async 
 
   // Saved, a day keeps only those there during its shift: the ones on 7B
   // and the night before were dropped.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   const count = days.nth(0).getByRole('button', { name: /^Who’s there on / });
   await expect(count).toHaveText('2');
