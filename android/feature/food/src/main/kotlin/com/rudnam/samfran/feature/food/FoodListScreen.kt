@@ -1,6 +1,17 @@
 package com.rudnam.samfran.feature.food
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import com.rudnam.samfran.core.designsystem.component.Hint
+import com.rudnam.samfran.core.model.distanceText
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -73,6 +84,19 @@ internal fun FoodListDestination(navigation: FoodNavigation, viewModel: FoodList
 @Composable
 fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Long) -> Unit, onAdd: () -> Unit) {
     val locale = currentLocale
+    val context = LocalContext.current
+    // The map needs this build's Google Maps key; without one, it's a list.
+    val canMap = remember { hasMapsKey(context) }
+    val onMap = state.onMap && canMap
+    // Nearby asks for the phone's location first; turned down, it says so and stays newest first.
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { actions.setNearby(true) }
+    fun nearby() {
+        val granted = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            .any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
+        if (granted) actions.setNearby(true) else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+    }
+    // Opened on Nearby: find where the phone is.
+    LaunchedEffect(state.nearby) { if (state.nearby && state.here == null) actions.findHere() }
     Box(Modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
             TabPage(bottomSpace = 96) {
@@ -97,6 +121,32 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                 }
                 if (state.filterable && state.all != null) {
                     item(key = "filter") { CategoryFilter(state, actions) }
+                }
+                if (!state.all.isNullOrEmpty()) {
+                    item(key = "tools") {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            PillSeg(
+                                listOf(
+                                    null to stringResource(if (state.tab == FoodTab.Been) R.string.sort_latest else R.string.sort_newest),
+                                    SamFranIcons.nearby to stringResource(R.string.sort_nearby),
+                                ),
+                                selected = if (state.nearby) 1 else 0,
+                                label = stringResource(R.string.order),
+                            ) { if (it == 1) nearby() else actions.setNearby(false) }
+                            if (canMap) {
+                                PillSeg(
+                                    listOf(SamFranIcons.list to stringResource(R.string.view_list), SamFranIcons.map to stringResource(R.string.view_map)),
+                                    selected = if (onMap) 1 else 0,
+                                    label = stringResource(R.string.view),
+                                ) { actions.setOnMap(it == 1) }
+                            }
+                        }
+                    }
+                    if (state.nearby && state.locating != Locating.No) {
+                        item(key = "locating") {
+                            Hint(stringResource(if (state.locating == Locating.Asking) R.string.finding_location else R.string.location_off))
+                        }
+                    }
                 }
                 if (state.searchable) {
                     item(key = "search") {
@@ -135,8 +185,13 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                             else -> EmptyState(stringResource(R.string.nothing_on_list), stringResource(R.string.save_places_to_try))
                         }
                     }
+                    onMap -> item(key = "map") {
+                        PlacesMap(state.shown, state.near, onOpen) { place, open ->
+                            PlaceRow(place, state.space, state.tab, "", locale, state.today, state.near, onClick = open)
+                        }
+                    }
                     else -> items(state.shown, key = { it.id }) { place ->
-                        PlaceRow(place, state.space, state.tab, state.query, locale, state.today, onClick = { onOpen(place.id) })
+                        PlaceRow(place, state.space, state.tab, state.query, locale, state.today, state.near, onClick = { onOpen(place.id) })
                     }
                 }
             }
@@ -158,6 +213,38 @@ private fun Avatars(space: Space, modifier: Modifier = Modifier) {
     Row(modifier) {
         space.members.forEachIndexed { i, m ->
             Avatar(m.name, if (i == 1) Tone.B else Tone.A, Modifier.offset(x = (-8 * i).dp))
+        }
+    }
+}
+
+/** Two or so choices in a small pill (.pill-seg): newest or nearby, list or map. */
+@Composable
+private fun PillSeg(options: List<Pair<String?, String>>, selected: Int, label: String, onSelect: (Int) -> Unit) {
+    val colors = SamFranTheme.colors
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(colors.sunken)
+            .padding(3.dp)
+            .selectableGroup()
+            .semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        options.forEachIndexed { i, (icon, text) ->
+            val on = i == selected
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(if (on) colors.surface else Color.Transparent)
+                    .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(i) })
+                    .padding(horizontal = 11.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val ink = if (on) colors.text else colors.muted
+                icon?.let { LineIcon(it, null, tint = ink, size = 15.dp) }
+                Text(text, color = ink, style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
@@ -209,6 +296,7 @@ private fun PlaceRow(
     query: String,
     locale: java.util.Locale,
     today: java.time.LocalDate,
+    near: Pair<Double, Double>?,
     onClick: () -> Unit,
 ) {
     val colors = SamFranTheme.colors
@@ -235,10 +323,19 @@ private fun PlaceRow(
                     )
                 }
             }
-            place.lastVisit?.let { last ->
+            val away = near?.let(place::metersFrom)
+            if (away != null) {
+                // Nearby: how far, and when you last went.
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(Dates.short(last, locale, today), style = MaterialTheme.typography.labelMedium)
-                    Text(pluralStringResource(R.plurals.n_visits, place.visitCount, place.visitCount), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    Text(distanceText(away), style = MaterialTheme.typography.labelMedium, color = colors.accentInk)
+                    place.lastVisit?.let { Text(Dates.short(it, locale, today), style = MaterialTheme.typography.bodySmall, color = colors.muted) }
+                }
+            } else {
+                place.lastVisit?.let { last ->
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(Dates.short(last, locale, today), style = MaterialTheme.typography.labelMedium)
+                        Text(pluralStringResource(R.plurals.n_visits, place.visitCount, place.visitCount), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    }
                 }
             }
         }

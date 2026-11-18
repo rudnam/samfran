@@ -52,6 +52,8 @@ object SamFranIcons {
     const val catShopping = "M5.5 8h13l-1 13h-11zM9 10V6.5a3 3 0 0 1 6 0V10"
     const val catOther = "M6 12h.01M12 12h.01M18 12h.01"
     const val all = "M4 6h16M4 12h16M4 18h16"
+    /** Nearby: where you are. */
+    const val nearby = "M19 12a7 7 0 1 1-14 0a7 7 0 1 1 14 0zM12 2v3M12 19v3M2 12h3M19 12h3"
     const val star = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"
 
     private val cache = HashMap<String, ImageVector>()

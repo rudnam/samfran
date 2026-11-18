@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.model.PlaceCategory
+import com.rudnam.samfran.core.testing.FakeBusAlarm
 import com.rudnam.samfran.core.testing.FakeBusRepository
 import com.rudnam.samfran.core.testing.FakeFoodRepository
 import com.rudnam.samfran.core.testing.FakeSpaceRepository
@@ -42,13 +43,14 @@ class FoodViewModelTest {
     private val space = FakeSpaceRepository()
     private val bus = FakeBusRepository()
     private val preferences = TestPreferences.repository()
+    private val alarm = FakeBusAlarm()
 
     /** Keeps a StateFlow collected, as the screen does. */
     private fun <T> TestScope.watch(flow: kotlinx.coroutines.flow.StateFlow<T>) = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { flow.collect {} }
 
     @Test
     fun `the list splits into been there and want to go, and searches both`() = runTest {
-        val vm = FoodListViewModel(food, space, preferences, clock)
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         val s = vm.state.value
         assertEquals(listOf(12L, 9L, 20L, 7L, 5L), s.been.map { it.id })
@@ -64,7 +66,7 @@ class FoodViewModelTest {
 
     @Test
     fun `the list filters by category, and the phone remembers which`() = runTest {
-        val vm = FoodListViewModel(food, space, preferences, clock)
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         vm.setTab(FoodTab.Want)
         val s = vm.state.value
@@ -77,7 +79,7 @@ class FoodViewModelTest {
         vm.setTab(FoodTab.Been)
         assertEquals(listOf(20L), vm.state.value.shown.map { it.id })
         // Opened again later, it's still on Nature.
-        val later = FoodListViewModel(food, space, preferences, clock)
+        val later = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(later.state)
         assertEquals(PlaceCategory.Nature, later.state.value.activeFilter)
         later.setFilter(null)
@@ -85,9 +87,36 @@ class FoodViewModelTest {
     }
 
     @Test
+    fun `nearby sorts by distance from the phone, and is remembered`() = runTest {
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
+        watch(vm.state)
+        vm.setTab(FoodTab.Want)
+        alarm.here = 34.975 to 138.385 // by Shizuoka Station
+        vm.setNearby(true)
+        // Nearest first; those without a position last, newest first.
+        assertEquals(listOf(22L, 21L, 15L, 23L, 14L), vm.state.value.shown.map { it.id })
+        assertEquals(Locating.No, vm.state.value.locating)
+        // Opened again later: still nearby.
+        val later = FoodListViewModel(food, space, preferences, alarm, clock)
+        watch(later.state)
+        assertTrue(later.state.value.nearby)
+    }
+
+    @Test
+    fun `nearby without the phone's location stays newest first, and says so`() = runTest {
+        alarm.here = null
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
+        watch(vm.state)
+        vm.setTab(FoodTab.Want)
+        vm.setNearby(true)
+        assertEquals(Locating.Failed, vm.state.value.locating)
+        assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+    }
+
+    @Test
     fun `with only one category there's nothing to filter, but a remembered filter can still be undone`() = runTest {
         food.list.value = food.list.value!!.filter { it.category == PlaceCategory.Eat }
-        val vm = FoodListViewModel(food, space, preferences, clock)
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         assertFalse(vm.state.value.filterable)
         assertEquals(4, vm.state.value.shown.size)
@@ -106,7 +135,7 @@ class FoodViewModelTest {
     @Test
     fun `offline, the phone's copy stays and says so`() = runTest {
         food.next = Outcome.Offline
-        val vm = FoodListViewModel(food, space, preferences, clock)
+        val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         assertEquals(Outcome.Offline, vm.state.value.problem)
         assertEquals(10, vm.state.value.all?.size)

@@ -332,6 +332,7 @@ test('nearby: nearest first, with how far; and the places on a map', async ({ pa
     expect((await page.request.post('/api/restaurants', { data: { name, category, lat, lng } })).status()).toBe(201);
   }
   await page.goto('/app/#/want');
+  await page.reload(); // the places added above, not the list from signing up
   const want = page.getByRole('list', { name: 'Want to go' }).getByRole('listitem');
   await expect(want.first()).toContainText('Somewhere'); // newest first
 
@@ -363,6 +364,7 @@ test('without a map key there is no map, and Nearby says why when location is of
   await signUp(page);
   expect((await page.request.post('/api/restaurants', { data: { name: 'Castle Park', category: 'nature' } })).status()).toBe(201);
   await page.goto('/app/#/want');
+  await page.reload();
   await expect(page.getByRole('radio', { name: 'Map' })).toHaveCount(0);
   await page.getByRole('radio', { name: 'Nearby' }).click(); // no permission granted
   await expect(page.getByText(/Location is off for this site|Couldn’t find where you are/)).toBeVisible();
