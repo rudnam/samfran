@@ -60,6 +60,22 @@ const test = base.test.extend({
   },
 });
 
+/**
+ * Where the browser says the device is, for Nearby: at lat/lng, or, with
+ * none, location turned down. (The app is at http://server:8080 in Docker,
+ * where the browser's own location needs https, so this stands in for it.)
+ */
+async function standAt(page, lat, lng) {
+  await page.addInitScript(([lat, lng]) => {
+    navigator.geolocation.getCurrentPosition = (ok, fail) =>
+      setTimeout(() =>
+        lat === null
+          ? fail({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3, message: 'denied' })
+          : ok({ coords: { latitude: lat, longitude: lng, accuracy: 20 }, timestamp: Date.now() }),
+      );
+  }, [lat ?? null, lng ?? null]);
+}
+
 let n = 0;
 /** A unique email per call, so parallel tests never share an account. */
 function uniqueEmail() {
@@ -112,4 +128,4 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink };
+module.exports = { test, expect: base.expect, signUp, standAt, uniqueEmail, PASSWORD, confirmationLink, resetLink };

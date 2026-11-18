@@ -1,4 +1,4 @@
-const { test, expect, signUp } = require('./fixtures');
+const { test, expect, signUp, standAt } = require('./fixtures');
 
 test('add a place, rate it, log visits, edit and delete it', async ({ page }) => {
   await signUp(page);
@@ -318,8 +318,7 @@ test('places of every kind: a category for each, and the list filtered by one', 
 
 test('nearby: nearest first, with how far; and the places on a map', async ({ page }) => {
   // Standing at Hamamatsu Station.
-  await page.context().grantPermissions(['geolocation']);
-  await page.context().setGeolocation({ latitude: 34.7038, longitude: 137.7349 });
+  await standAt(page, 34.7038, 137.7349);
   // A map key, as the server has with GOOGLE_MAPS_BROWSER_KEY; Google itself is a fake (fixtures.js).
   await page.route('**/api/restaurants/map', (route) => route.fulfill({ json: { key: 'test-key' } }));
   await signUp(page);
@@ -361,12 +360,13 @@ test('nearby: nearest first, with how far; and the places on a map', async ({ pa
 });
 
 test('without a map key there is no map, and Nearby says why when location is off', async ({ page }) => {
+  await standAt(page); // location turned down
   await signUp(page);
   expect((await page.request.post('/api/restaurants', { data: { name: 'Castle Park', category: 'nature' } })).status()).toBe(201);
   await page.goto('/app/#/want');
   await page.reload();
   await expect(page.getByRole('radio', { name: 'Map' })).toHaveCount(0);
-  await page.getByRole('radio', { name: 'Nearby' }).click(); // no permission granted
-  await expect(page.getByText(/Location is off for this site|Couldn’t find where you are/)).toBeVisible();
+  await page.getByRole('radio', { name: 'Nearby' }).click();
+  await expect(page.getByText('Location is off for this site', { exact: false })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
 });

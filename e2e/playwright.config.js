@@ -1,8 +1,6 @@
 // @ts-check
 const { defineConfig } = require('@playwright/test');
 
-const baseURL = process.env.BASE_URL || 'http://localhost:8080';
-
 module.exports = defineConfig({
   testDir: './tests',
   outputDir: './test-results',
@@ -16,11 +14,7 @@ module.exports = defineConfig({
   timeout: 20_000,
   reporter: [['list']],
   use: {
-    baseURL,
-    // The app is at http://server:8080 in Docker; the browser gives a page
-    // the device's location (Nearby) only when it's https or localhost, so
-    // treat that address as if it were.
-    launchOptions: { args: [`--unsafely-treat-insecure-origin-as-secure=${new URL(baseURL).origin}`] },
+    baseURL: process.env.BASE_URL || 'http://localhost:8080',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
   },

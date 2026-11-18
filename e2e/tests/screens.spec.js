@@ -1,7 +1,7 @@
 // Screenshots of the main screens at phone and desktop width. They land in
 // e2e/test-results/ (and in CI's artifacts), so you can look at a change
 // without running anything. Add your own screens here.
-const { test, expect, signUp } = require('./fixtures');
+const { test, expect, signUp, standAt } = require('./fixtures');
 
 for (const [name, viewport] of [
   ['phone', { width: 390, height: 844 }],
@@ -9,8 +9,7 @@ for (const [name, viewport] of [
 ]) {
   test(`screens at ${name} width`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    await page.context().grantPermissions(['geolocation']);
-    await page.context().setGeolocation({ latitude: 34.7038, longitude: 137.7349 }); // Hamamatsu Station
+    await standAt(page, 34.7038, 137.7349); // Hamamatsu Station
     await page.route('**/api/restaurants/map', (route) => route.fulfill({ json: { key: 'test-key' } }));
     // animations: 'disabled' jumps entrances to their end, so each picture shows the settled screen.
     const shot = (label) =>
