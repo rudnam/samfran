@@ -1,6 +1,6 @@
 const { test, expect, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
 
-test('add a place, rate it, log visits, edit and delete it', async ({ page }) => {
+test('add a place, rate it, change when you went, edit and delete it', async ({ page }) => {
   await signUp(page);
   await expect(page.getByText('No places yet')).toBeVisible();
 
@@ -15,16 +15,17 @@ test('add a place, rate it, log visits, edit and delete it', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Taco Loco' })).toBeVisible();
   await expect(page.getByText('Eat & drink · Mexican · Station East')).toBeVisible();
   await expect(page.getByRole('button', { name: '4 stars' })).toHaveAttribute('aria-pressed', 'true');
-  const visits = page.getByRole('list', { name: 'Visits' }).getByRole('listitem');
-  await expect(visits).toHaveCount(1);
+  // One date, no list of visits.
+  await expect(page.getByText(/^Been · /)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Visits' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Mark as been' })).toHaveCount(0);
 
-  // Another visit with a note, then change the rating.
-  await page.getByLabel('Date').fill('2026-01-15');
-  await page.getByLabel('Note about this visit').fill('Green salsa!');
-  await page.getByRole('button', { name: 'Log visit' }).click();
-  await expect(visits).toHaveCount(2);
-  await expect(visits.last()).toContainText('Green salsa!'); // the older one is last
-  await expect(page.getByLabel('Note about this visit')).toHaveValue('');
+  // Change when you went, then the rating.
+  await page.getByRole('button', { name: 'Change' }).click();
+  await page.getByLabel('When did you go?').fill('2026-01-15');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Been · Jan 15/)).toBeVisible();
+  await expect(page.getByLabel('When did you go?')).toHaveCount(0);
   await page.getByRole('button', { name: '5 stars' }).click();
   await expect(page.getByRole('button', { name: '5 stars' })).toHaveAttribute('aria-pressed', 'true');
 
@@ -34,27 +35,21 @@ test('add a place, rate it, log visits, edit and delete it', async ({ page }) =>
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Ask for the green salsa.')).toBeVisible();
   await expect(page.getByText('Eat & drink · Mexican · Station East')).toBeVisible();
+  await expect(page.getByText(/^Been · Jan 15/)).toBeVisible();
 
-  // Back on the list, with the rating and visit count.
+  // Back on the list, with the rating and the date, and no count of visits.
   await page.getByRole('link', { name: 'Our spots' }).click();
   const card = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('★5');
-  await expect(card).toContainText('2 visits');
+  await expect(card).toContainText('Jan 15');
+  await expect(card).not.toContainText('visit');
 
-  // Remove a visit, then the place.
-  await card.getByRole('link').click();
-  // A removed visit can be brought back for a few seconds.
-  await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
-  await expect(visits).toHaveCount(1);
-  await expect(page.getByText('1 visit', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(visits).toHaveCount(2);
-  await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
-  await expect(visits).toHaveCount(1);
   // Deleting the place asks first, in the app's own dialog.
+  await card.getByRole('link').click();
   await page.getByRole('button', { name: 'Delete this place' }).click();
   const ask = page.getByRole('dialog', { name: 'Delete Taco Loco?' });
+  await expect(ask).toContainText('Its ratings go with it.');
   await ask.getByRole('button', { name: 'Cancel' }).click();
   await expect(ask).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Taco Loco' })).toBeVisible();
@@ -63,50 +58,78 @@ test('add a place, rate it, log visits, edit and delete it', async ({ page }) =>
   await expect(page.getByText('No places yet')).toBeVisible();
 });
 
-test('a removed visit is gone for good once Undo is no longer offered', async ({ page }) => {
+test('not been yet moves a place back to want to go, with Undo for a few seconds', async ({ page }) => {
   await signUp(page);
   const res = await page.request.post('/api/restaurants', { data: { name: 'Taco Loco', visit: { visited_on: '2026-10-01' } } });
   const { id } = await res.json();
-  expect((await page.request.post(`/api/restaurants/${id}/visits`, { data: { visited_on: '2026-11-02' } })).status()).toBe(201);
   await page.goto(`/app/#/restaurant?id=${id}`);
-  const visits = page.getByRole('list', { name: 'Visits' }).getByRole('listitem');
-  await expect(visits).toHaveCount(2);
-  await page.getByRole('button', { name: /^Delete the visit on/ }).first().click();
+  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
+  // Undo brings it back.
+  await page.getByRole('button', { name: 'Change' }).click();
+  await page.getByRole('button', { name: 'Not been yet' }).click();
+  await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
+  // Without Undo, it's saved once the offer ends.
+  await page.getByRole('button', { name: 'Change' }).click();
+  await page.getByRole('button', { name: 'Not been yet' }).click();
   await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Undo' })).toBeHidden({ timeout: 10_000 });
   await page.reload();
-  await expect(visits).toHaveCount(1);
-  await expect(visits).toContainText('Oct');
+  await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
+  await expect(page.getByText(/^Been · /)).toHaveCount(0);
+  await page.getByRole('link', { name: 'Our spots' }).click();
+  await expect(page.getByRole('list', { name: 'Want to go' })).toContainText('Taco Loco');
 });
 
-test('search finds a place by what was written about a visit', async ({ page }) => {
+test('a place logged several times before shows one date, keeps its visits, and its notes show', async ({ page }) => {
   await signUp(page);
-  for (const [name, note] of [
-    ['Hanabi Grill', ''],
-    ['Gyoza Komachi', ''],
-    ['Ramen Tsubaki', 'The tantanmen, extra spicy'],
-    ['Blue Sky Café', ''],
-    ['Taco Loco', 'Green salsa'],
-  ]) {
-    const res = await page.request.post('/api/restaurants', { data: { name, visit: { visited_on: '2026-10-01', note } } });
-    expect(res.status()).toBe(201);
+  // As an older app (or Claude) left it: two visits, with notes.
+  const res = await page.request.post('/api/restaurants', { data: { name: 'Ramen Tsubaki', visit: { visited_on: '2026-10-01', note: 'The tantanmen, extra spicy' } } });
+  const { id } = await res.json();
+  expect((await page.request.post(`/api/restaurants/${id}/visits`, { data: { visited_on: '2026-11-02', note: 'Shio this time' } })).status()).toBe(201);
+  // More places, so the list offers Search (it does from five).
+  for (const [name, on] of [['Gyoza Komachi', '2026-10-05'], ['Hanabi Grill', '2026-09-01'], ['Blue Sky Café', '2026-08-01'], ['Taco Loco', '2026-07-01']]) {
+    expect((await page.request.post('/api/restaurants', { data: { name, visit: { visited_on: on } } })).status()).toBe(201);
   }
+
   await page.reload();
   const cards = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(cards).toHaveCount(5);
-  // Search is a button until it's wanted.
+  await expect(cards.first()).toContainText('Ramen Tsubaki'); // latest date first
+  await expect(cards.first()).toContainText('Nov 2');
+  await expect(cards.first()).not.toContainText('visits');
+  // Search is a button until it's wanted; what was written about a visit is in the place's notes, so it finds it.
   await expect(page.getByRole('searchbox')).toHaveCount(0);
   await page.getByRole('button', { name: 'Search' }).click();
   await page.getByRole('searchbox', { name: 'Search' }).fill('tantan');
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Ramen Tsubaki');
-  await expect(cards).toContainText('The tantanmen, extra spicy');
   await page.getByRole('searchbox', { name: 'Search' }).fill('gyoza');
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Gyoza Komachi');
+
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  await expect(page.getByText(/^Been · Nov 2/)).toBeVisible();
+  // No list of visits, but what was written about them is in the place's notes.
+  await expect(page.getByRole('list', { name: 'Visits' })).toHaveCount(0);
+  await expect(page.getByText('2026-10-01 · The tantanmen, extra spicy')).toBeVisible();
+  await expect(page.getByText('2026-11-02 · Shio this time')).toBeVisible();
+  // Changing the date moves the newest visit; the older one stays in the API.
+  await page.getByRole('button', { name: 'Change' }).click();
+  await page.getByLabel('When did you go?').fill('2026-11-10');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Been · Nov 10/)).toBeVisible();
+  const fresh = await (await page.request.get(`/api/restaurants/${id}`)).json();
+  expect(fresh.visit_count).toBe(2);
+  expect(fresh.last_visit).toBe('2026-11-10');
+  expect(fresh.visits.map((v) => [v.visited_on, v.note])).toEqual([
+    ['2026-11-10', 'Shio this time'],
+    ['2026-10-01', 'The tantanmen, extra spicy'],
+  ]);
 });
 
-test('want to go, then went', async ({ page }) => {
+test('want to go, then been', async ({ page }) => {
   await signUp(page);
   await page.getByRole('link', { name: /Want to go/ }).click();
   await expect(page.getByText('Nothing on the list')).toBeVisible();
@@ -122,10 +145,19 @@ test('want to go, then went', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: 'Blue Sky Café' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Open in Maps' })).toHaveAttribute('href', 'https://maps.app.goo.gl/example');
-  await expect(page.getByText('Not yet')).toBeVisible();
+  await expect(page.getByText(/^Been · /)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'We went!' }).click();
-  await expect(page.getByRole('list', { name: 'Visits' }).getByRole('listitem')).toHaveCount(1);
+  // Mark as been asks when, today unless changed; Cancel leaves it as it was.
+  await page.getByRole('button', { name: 'Mark as been' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByLabel('When did you go?')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Mark as been' }).click();
+  const when = page.getByLabel('When did you go?');
+  const today = await page.evaluate(() => new Date().toLocaleDateString('en-CA'));
+  await expect(when).toHaveValue(today);
+  await expect(page.getByRole('button', { name: 'Not been yet' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/^Been · /)).toBeVisible();
   await page.getByRole('link', { name: 'Our spots' }).click();
   await expect(page.getByRole('list', { name: 'Been there' })).toContainText('Blue Sky Café');
 });

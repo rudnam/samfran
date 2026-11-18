@@ -23,7 +23,7 @@ import javax.inject.Singleton
 /** What a Google Maps link leads to (POST /api/restaurants/lookup). */
 data class MapLookup(val name: String, val lat: Double?, val lng: Double?, val foundByName: Boolean)
 
-/** The Food tab: places you've been and want to go, their visits and ratings. */
+/** The Food tab: places you've been (and when) and want to go, and their ratings. */
 interface FoodRepository {
     /** Every place, as last fetched; null before the first answer. */
     val restaurants: Flow<List<Restaurant>?>
@@ -42,9 +42,11 @@ interface FoodRepository {
 
     suspend fun delete(id: Long): Outcome<Unit>
 
-    suspend fun addVisit(id: Long, on: LocalDate, note: String): Outcome<Restaurant>
+    /** Been there on [on]: the one date a place shows (a first visit, or the newest one moved). */
+    suspend fun setBeen(id: Long, on: LocalDate): Outcome<Restaurant>
 
-    suspend fun deleteVisit(id: Long, visit: Long): Outcome<Restaurant>
+    /** Not been yet: back on the want-to-go list. */
+    suspend fun clearBeen(id: Long): Outcome<Restaurant>
 
     /** The signed-in person's rating; 0 clears it. */
     suspend fun rate(id: Long, stars: Int): Outcome<Restaurant>
@@ -105,9 +107,9 @@ internal class OfflineFirstFoodRepository @Inject constructor(
         }
     }
 
-    override suspend fun addVisit(id: Long, on: LocalDate, note: String) = changed { network.addVisit(id, on.toString(), note.trim()) }
+    override suspend fun setBeen(id: Long, on: LocalDate) = changed { network.setBeen(id, on.toString()) }
 
-    override suspend fun deleteVisit(id: Long, visit: Long) = changed { network.deleteVisit(id, visit) }
+    override suspend fun clearBeen(id: Long) = changed { network.clearBeen(id) }
 
     override suspend fun rate(id: Long, stars: Int) = changed { network.rate(id, stars) }
 

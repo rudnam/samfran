@@ -77,10 +77,20 @@ for (const [name, viewport] of [
     await expect(page.getByRole('dialog', { name: 'Delete Hanabi Grill?' })).toBeVisible();
     await shot('4b-delete-dialog');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('button', { name: /^Delete the visit on/ }).click();
+    await page.getByRole('button', { name: 'Change' }).click();
+    await expect(page.getByLabel('When did you go?')).toBeVisible();
+    await shot('4c-been-change');
+    await page.getByRole('button', { name: 'Not been yet' }).click();
     await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
-    await shot('4c-undo');
+    await shot('4d-undo');
     await page.getByRole('button', { name: 'Undo' }).click();
+    // A want-to-go place: Mark as been asks when.
+    await page.getByRole('link', { name: 'Our spots' }).click();
+    await page.getByRole('link', { name: /Want to go/ }).click();
+    await page.getByRole('link', { name: /Blue Sky Café/ }).click();
+    await page.getByRole('button', { name: 'Mark as been' }).click();
+    await expect(page.getByLabel('When did you go?')).toBeVisible();
+    await shot('4e-mark-been');
 
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();

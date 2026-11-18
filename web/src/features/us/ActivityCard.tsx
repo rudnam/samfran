@@ -54,9 +54,13 @@ function describe(e: ActivityEntry): string {
     case 'restaurant_deleted':
       return t('deleted {name}', { name });
     case 'visit_logged':
-      return t('logged a visit to {name}', { name });
-    case 'visit_removed':
+      return t('went to {name}', { name });
+    case 'visit_removed': // from older apps, which listed visits
       return t('removed a visit to {name}', { name });
+    case 'been_date_changed':
+      return t('changed the date for {name}', { name });
+    case 'been_cleared':
+      return t('moved {name} back to want to go', { name });
     case 'rated':
       return Number(d.stars) > 0 ? t('rated {name} ★{stars}', { name, stars: Number(d.stars) }) : t('cleared their rating of {name}', { name });
     case 'invited':

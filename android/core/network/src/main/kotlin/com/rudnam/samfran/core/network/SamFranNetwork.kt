@@ -20,7 +20,7 @@ import com.rudnam.samfran.core.network.model.NetworkMe
 import com.rudnam.samfran.core.network.model.NetworkName
 import com.rudnam.samfran.core.network.model.NetworkReadProgress
 import com.rudnam.samfran.core.network.model.NetworkReadStarted
-import com.rudnam.samfran.core.network.model.NetworkNewVisit
+import com.rudnam.samfran.core.network.model.NetworkBeen
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
 import com.rudnam.samfran.core.network.model.NetworkRestaurantInput
 import com.rudnam.samfran.core.network.model.NetworkSaveShifts
@@ -86,8 +86,8 @@ internal interface SamFranApi {
     @POST("api/restaurants") suspend fun createRestaurant(@Body body: NetworkRestaurantInput): NetworkRestaurant
     @PATCH("api/restaurants/{id}") suspend fun updateRestaurant(@Path("id") id: Long, @Body body: NetworkRestaurantInput): NetworkRestaurant
     @DELETE("api/restaurants/{id}") suspend fun deleteRestaurant(@Path("id") id: Long): Response<Unit>
-    @POST("api/restaurants/{id}/visits") suspend fun addVisit(@Path("id") id: Long, @Body body: NetworkNewVisit): NetworkRestaurant
-    @DELETE("api/restaurants/{id}/visits/{visit}") suspend fun deleteVisit(@Path("id") id: Long, @Path("visit") visit: Long): NetworkRestaurant
+    @PUT("api/restaurants/{id}/been") suspend fun setBeen(@Path("id") id: Long, @Body body: NetworkBeen): NetworkRestaurant
+    @DELETE("api/restaurants/{id}/been") suspend fun clearBeen(@Path("id") id: Long): NetworkRestaurant
     @PUT("api/restaurants/{id}/rating") suspend fun rate(@Path("id") id: Long, @Body body: NetworkStars): NetworkRestaurant
     @POST("api/restaurants/lookup") suspend fun lookup(@Body body: NetworkLookup): NetworkLookupResult
     @GET("api/restaurants/search") suspend fun searchPlaces(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<com.rudnam.samfran.core.network.model.NetworkFoundPlace>
@@ -151,8 +151,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun createRestaurant(input: NetworkRestaurantInput) = call { api.createRestaurant(input) }
     suspend fun updateRestaurant(id: Long, input: NetworkRestaurantInput) = call { api.updateRestaurant(id, input) }
     suspend fun deleteRestaurant(id: Long) = call { api.deleteRestaurant(id).orThrow() }
-    suspend fun addVisit(id: Long, visitedOn: String, note: String) = call { api.addVisit(id, NetworkNewVisit(visitedOn, note)) }
-    suspend fun deleteVisit(id: Long, visit: Long) = call { api.deleteVisit(id, visit) }
+    suspend fun setBeen(id: Long, visitedOn: String) = call { api.setBeen(id, NetworkBeen(visitedOn)) }
+    suspend fun clearBeen(id: Long) = call { api.clearBeen(id) }
     suspend fun rate(id: Long, stars: Int) = call { api.rate(id, NetworkStars(stars)) }
     suspend fun lookup(url: String, position: Boolean) = call { api.lookup(NetworkLookup(url, position)) }
     suspend fun searchPlaces(q: String, lat: Double?, lng: Double?) = call { api.searchPlaces(q, lat, lng) }
