@@ -1,10 +1,7 @@
 const { test, expect, signUp } = require('./fixtures');
 
-test('Claude asks to connect, and the Us tab shows how and lists the connection', async ({ page }) => {
+test('Claude asks to connect', async ({ page }) => {
   await signUp(page);
-  await page.getByRole('link', { name: 'Us', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Claude' })).toBeVisible();
-  await expect(page.getByLabel('Connector address')).toHaveValue(/\/mcp$/);
 
   // Claude registers itself and sends the browser to sign in.
   const callback = 'https://claude.example/api/mcp/auth_callback';

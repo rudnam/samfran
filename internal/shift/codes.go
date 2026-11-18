@@ -49,6 +49,9 @@ type Day struct {
 	// With are the others on the same shift (the same code that day), by
 	// their names as printed on the sheet. Only for working days.
 	With []string `json:"with,omitempty"`
+	// Others are the others on other shifts whose hours overlap this one,
+	// by when they start (others.go). Only for working days with times.
+	Others []There `json:"others,omitempty"`
 }
 
 // normalize tidies a code as typed or read: full-width letters and digits

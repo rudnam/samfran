@@ -48,6 +48,6 @@ internal object Keys {
     fun shifts(month: String) = "shifts:$month"
     const val SHIFT_SETTINGS = "shift-settings"
     const val SPACE = "space"
-    const val BUS_STOP = "bus-stop"
+    const val BUS_STOPS = "bus-stops"
     const val ACTIVITY = "activity"
 }

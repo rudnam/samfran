@@ -113,7 +113,7 @@ class PlaceFormViewModel @Inject constructor(
         if (route.id == null) {
             viewModelScope.launch { food.restaurants.collect { list -> _state.update { it.copy(saved = list.orEmpty()) } } }
             // Near the bus stop first, if there is one: likely the right town.
-            viewModelScope.launch { near = bus.stop.first()?.takeIf { it.set }?.let { it.lat to it.lng } }
+            viewModelScope.launch { near = bus.stops.first()?.last?.let { it.lat to it.lng } }
         }
         // Shared from Maps with only a link: ask the server for the name.
         _state.value.fields?.let { f -> if (route.shared != null && f.name.isBlank() && f.mapUrl.isNotBlank()) nameFromLink(f.mapUrl) }

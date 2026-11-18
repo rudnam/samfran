@@ -5,7 +5,7 @@ import type { ShiftDay } from '../../api';
 import { t } from '../../i18n';
 import { locale } from '../../language';
 import { datesOf, dayName, labelOf, timesOf } from './codes';
-import { WithNames } from './WithNames';
+import { WhoThere } from './WhoThere';
 
 /** Today as YYYY-MM-DD, on this device. */
 function today(): string {
@@ -31,7 +31,21 @@ export function isClosingDay(date: string, closing: number[]): boolean {
   return closing.some((c) => Math.min(c, last) === d);
 }
 
-export function ShiftCalendar({ month, days, closing }: { month: string; days: ShiftDay[]; closing: number[] }) {
+export function ShiftCalendar({
+  month,
+  days,
+  closing,
+  who,
+  everyone,
+  onEveryone,
+}: {
+  month: string;
+  days: ShiftDay[];
+  closing: number[];
+  who: string;
+  everyone: boolean;
+  onEveryone: (on: boolean) => void;
+}) {
   const now = today();
   const [picked, setPicked] = useState(now.startsWith(month) ? now : '');
   const byDate = new Map(days.map((d) => [d.date, d]));
@@ -77,7 +91,7 @@ export function ShiftCalendar({ month, days, closing }: { month: string; days: S
         })}
       </div>
       {picked && (
-        <p className="cal-detail" role="status">
+        <div className="cal-detail" role="status">
           <span className="shift-date">{dayName(picked)}</span>
           {shown ? (
             <>
@@ -88,7 +102,7 @@ export function ShiftCalendar({ month, days, closing }: { month: string; days: S
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
               <span className="code-chip">{shown.code}</span>
-              <WithNames names={shown.with} className="with small row-note" />
+              <WhoThere day={shown} who={who} everyone={everyone} onEveryone={onEveryone} />
             </>
           ) : (
             <span className="grow muted">{t('Nothing entered')}</span>
@@ -98,7 +112,7 @@ export function ShiftCalendar({ month, days, closing }: { month: string; days: S
               <span className="cal-flag" aria-hidden="true" /> {t('Hours due (締め申請通知)')}
             </span>
           )}
-        </p>
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type Downloads, type MCPToken, type Me } from '../../api';
+import { api, errorMessage, type Downloads, type Me } from '../../api';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -124,8 +124,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
 
       <ActivityCard />
 
-      {!me.demo && <ClaudeCard />}
-
       <div className="card stack">
         <h2>{t('This device')}</h2>
         <div className="row spread">
@@ -147,70 +145,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   );
 }
 
-/** Claude as a connector: the address to add, and the connections made. */
-function ClaudeCard() {
-  const [list, setList] = useState<MCPToken[] | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState('');
-  const url = `${location.origin}/mcp`;
-
-  useEffect(() => {
-    api.mcpTokens().then(setList, (err) => setError(errorMessage(err)));
-  }, []);
-
-  async function disconnect(id: number) {
-    try {
-      await api.deleteMCPToken(id);
-      setList((l) => l?.filter((x) => x.id !== id) ?? null);
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
-
-  return (
-    <div className="card stack">
-      <h2>{t('Claude')}</h2>
-      <p className="muted">
-        {t('Claude can read a photo of the shift sheet, and add or rate places for you.')}
-      </p>
-      <ol className="steps small">
-        <li>{t('In Claude (claude.ai), open Settings › Connectors › Add custom connector.')}</li>
-        <li>{t('Name it SamFran and paste this address:')}</li>
-      </ol>
-      <div className="row">
-        <input readOnly aria-label={t('Connector address')} value={url} onFocus={(e) => e.target.select()} />
-        <button type="button" className="secondary" onClick={() => navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {})}>
-          {copied ? t('Copied') : t('Copy')}
-        </button>
-      </div>
-      <span className="hint">{t('Claude then asks you to sign in here. After that, send it a photo of the sheet.')}</span>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      {list && list.length > 0 && (
-        <ul className="people" aria-label={t('Connections')}>
-          {list.map((c) => (
-            <li key={c.id}>
-              <span className="grow">
-                <strong>{c.name}</strong>
-                <span className="muted block small">
-                  {c.last_used_at ? t('Last used {date}', { date: new Date(c.last_used_at).toLocaleDateString() }) : t('Not used yet')}
-                </span>
-              </span>
-              <button type="button" className="link quiet" onClick={() => disconnect(c.id)}>
-                {t('Disconnect')}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/** Inviting your partner: a link to send them, which works once, for seven days. */
 function InviteLink({ open, onChange }: { open: { expires_at: string } | null; onChange: () => void }) {
   const [url, setUrl] = useState('');
   const [copied, setCopied] = useState(false);

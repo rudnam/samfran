@@ -29,7 +29,8 @@ enum class TopLevelDestination(@StringRes val label: Int, val icon: String, val 
 /** What opens a page from outside the app: its notifications, and a place shared from Google Maps. */
 sealed interface AppLink {
     /** The Bus tab; [start]: from "Start bus alarm?", which starts the trip. */
-    data class Bus(val start: Boolean) : AppLink
+    /** [start] the trip (to [stop], by id, when given), or [pick] which stop first. */
+    data class Bus(val start: Boolean, val stop: Long = 0, val pick: Boolean = false) : AppLink
 
     data object Us : AppLink
 
@@ -61,9 +62,9 @@ class SamFranAppState(val navController: NavHostController) {
 
     fun open(link: AppLink) {
         when (link) {
-            is AppLink.Bus -> navController.navigate(BusRoute(start = link.start)) {
+            is AppLink.Bus -> navController.navigate(BusRoute(start = link.start, stop = link.stop, pick = link.pick)) {
                 popUpTo<FoodRoute>()
-                launchSingleTop = !link.start
+                launchSingleTop = !link.start && !link.pick
             }
             AppLink.Us -> navigateToTab(TopLevelDestination.Us)
             is AppLink.AddPlace -> navController.navigate(PlaceFormRoute(shared = link.shared))

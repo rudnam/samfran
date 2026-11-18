@@ -2,12 +2,16 @@ package com.rudnam.samfran.core.data
 
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
+import com.rudnam.samfran.core.model.ReadProgress
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
+import com.rudnam.samfran.core.model.homeShift
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.Server
+import com.rudnam.samfran.core.network.model.NetworkCoworker
 import com.rudnam.samfran.core.network.model.NetworkNameFix
 import com.rudnam.samfran.core.network.model.NetworkSaveShifts
 import com.rudnam.samfran.core.network.model.NetworkShiftCode
@@ -33,24 +37,32 @@ interface ShiftsRepository {
     /** The next shift that hasn't ended, looking into next month if this one has none left. */
     suspend fun nextShift(now: Instant): ShiftDay?
 
-    /** When working shifts end from now on (last, this and next month's), for "Start bus alarm?". */
-    suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>>
+    /** Working shifts that end from now on (last, this and next month's), soonest first, for "Start bus alarm?". */
+    suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>>
+
+    /** The shift you'd be going home from now ([com.rudnam.samfran.core.model.homeShift]), from this month as last fetched. */
+    suspend fun homeShift(now: Instant): ShiftDay?
 
     /**
      * Saves a month's codes (empty ones are left out), with who's on the
      * same shift for the days whose code is as it was read or saved.
      * [corrections] are names the photo reader got wrong (as read to as
-     * fixed), so later scans get them right.
+     * fixed), so later scans get them right. [closingDays], if given, are
+     * this month's 締め申請通知 days (dates in it); the usual days make it
+     * follow the settings again.
      */
     suspend fun save(
         month: YearMonth,
         codes: Map<LocalDate, String>,
         with: Map<LocalDate, List<String>> = emptyMap(),
         corrections: Map<String, String> = emptyMap(),
+        closingDays: List<Int>? = null,
+        /** Others at work around each day, as read or saved; the server keeps those who overlap. */
+        others: Map<LocalDate, List<ShiftCoworker>> = emptyMap(),
     ): Outcome<ShiftMonth>
 
-    /** Reads a photo of the sheet; nothing is saved. The answer waits in [pendingRead] for the editor. */
-    suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth>
+    /** Reads a photo of the sheet, telling [onProgress] how far it's got; nothing is saved. The answer waits in [pendingRead] for the editor. */
+    suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit = {}): Outcome<ShiftMonth>
 
     /** The photo reader's answer, taken once by the editor. */
     fun takePendingRead(month: YearMonth): ShiftMonth?
@@ -104,29 +116,49 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         return upcoming(next)
     }
 
-    override suspend fun upcomingEnds(now: Instant) = outcome(io) {
+    override suspend fun upcomingShifts(now: Instant) = outcome(io) {
         val current = network.shifts(null).also { keep(it, current = true) }.asModel()
         val around = listOf(current.month.minusMonths(1), current.month.plusMonths(1)).map { network.shifts(it.toString()).also { m -> keep(m) }.asModel() }
         (around + current).flatMap { it.days }
-            .filter { it.kind == ShiftKind.Work }
-            .mapNotNull { it.end?.toInstant() }
-            .filter { it.isAfter(now) }
-            .sorted()
+            .filter { it.kind == ShiftKind.Work && it.end?.toInstant()?.isAfter(now) == true }
+            .sortedBy { it.end!!.toInstant() }
     }
 
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>) = outcome(io) {
+    override suspend fun homeShift(now: Instant): ShiftDay? {
+        val current = documents.get(key(null), serializer)?.asModel() ?: refresh(null).valueOrNull ?: return null
+        return homeShift(current.days, now)
+    }
+
+    override suspend fun save(
+        month: YearMonth,
+        codes: Map<LocalDate, String>,
+        with: Map<LocalDate, List<String>>,
+        corrections: Map<String, String>,
+        closingDays: List<Int>?,
+        others: Map<LocalDate, List<ShiftCoworker>>,
+    ) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
-            code.takeIf { it.isNotBlank() }?.let { NetworkShiftCode(date.toString(), it, with[date]?.takeIf(List<String>::isNotEmpty)) }
+            code.takeIf { it.isNotBlank() }?.let {
+                NetworkShiftCode(
+                    date.toString(),
+                    it,
+                    with[date]?.takeIf(List<String>::isNotEmpty),
+                    others[date]?.takeIf(List<ShiftCoworker>::isNotEmpty)?.map { o -> NetworkCoworker(o.name, o.code, o.dayOffset) },
+                )
+            }
         }
         val fixes = corrections.map { (from, to) -> NetworkNameFix(from, to) }.takeIf { it.isNotEmpty() }
-        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes))
+        val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes, closingDays))
         keep(saved)
         // The current month's copy, if this is it.
         documents.get(key(null), serializer)?.takeIf { it.month == saved.month }?.let { documents.put(key(null), serializer, saved) }
         saved.asModel()
     }
 
-    override suspend fun readPhoto(jpeg: ByteArray) = outcome(io) { network.readPhoto(jpeg).asModel() }.also {
+    override suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit) = outcome(io) {
+        onProgress(ReadProgress.Sending)
+        network.readPhoto(jpeg) { p -> onProgress(ReadProgress.Reading(p.nameAsRead, p.daysRead, p.daysInMonth)) }.asModel()
+    }.also {
         pending = (it as? Outcome.Done)?.value
     }
 

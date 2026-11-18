@@ -3,11 +3,11 @@ package com.rudnam.samfran.feature.shifts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +51,7 @@ import com.rudnam.samfran.core.ui.TabPage
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.feature.shifts.navigation.ShiftEditRoute
+import com.rudnam.samfran.feature.shifts.navigation.ShiftCalendarLinkRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftSettingsRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
@@ -71,6 +72,7 @@ internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsVi
         onEdit = { state.shown?.let { navigation.navigate(ShiftEditRoute(it.toString())) } },
         onTakePhoto = { viewModel.askPhoto(SheetPhotos.Source.Camera) },
         onChoosePhoto = { viewModel.askPhoto(SheetPhotos.Source.Picker) },
+        onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
     )
 }
 
@@ -84,10 +86,12 @@ fun ShiftsScreen(
     onEdit: () -> Unit,
     onTakePhoto: () -> Unit,
     onChoosePhoto: () -> Unit,
+    onCalendar: () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
     val data = state.data
+    val me = data?.settings?.personName?.takeIf(String::isNotBlank) ?: stringResource(R.string.you)
     PullToRefreshBox(isRefreshing = false, onRefresh = { actions.refresh() }) {
         TabPage {
             item(key = "head") {
@@ -111,10 +115,12 @@ fun ShiftsScreen(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                WithNames(next.with)
+                                if (!state.everyone) WhoThere(next, me, false, actions::setEveryone)
                             }
                             CodeChip(next.code)
                         }
+                        // Everyone there: under the shift, at the card's full width.
+                        if (state.everyone) WhoThere(next, me, true, actions::setEveryone, Modifier.padding(start = 24.dp, top = 8.dp))
                     }
                 }
             }
@@ -131,21 +137,25 @@ fun ShiftsScreen(
                             LineIcon(SamFranIcons.chevronRight, stringResource(R.string.next_month))
                         }
                     }
-                    Segmented(
-                        listOf(stringResource(R.string.calendar), stringResource(R.string.list)),
-                        selected = if (state.asList) 1 else 0,
-                        onSelect = { actions.setList(it == 1) },
-                    )
+                    Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Segmented(
+                            listOf(stringResource(R.string.calendar), stringResource(R.string.list)),
+                            selected = if (state.asList) 1 else 0,
+                            onSelect = { actions.setList(it == 1) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        EveryoneToggle(state.everyone, actions::setEveryone)
+                    }
                     when {
                         data == null -> Skeleton(rows = 4)
                         data.days.isEmpty() -> EmptyState(stringResource(R.string.no_shifts), stringResource(R.string.no_shifts_hint))
                         state.asList -> Column {
                             data.days.forEachIndexed { i, d ->
                                 if (i > 0) HorizontalDivider(color = colors.divider)
-                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp))
+                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp), me, state.everyone, actions::setEveryone)
                             }
                         }
-                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.settings.closingDays)
+                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.closing, me, state.everyone, actions::setEveryone)
                     }
                 }
             }
@@ -153,7 +163,8 @@ fun ShiftsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     // The two ways to fill in a month, one above the other at full width.
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (state.canRead) {
+                            state.progress?.let { ReadingCard(it) }
+                        if (state.canRead && !state.reading) {
                             var menu by remember { mutableStateOf(false) }
                             Box(Modifier.fillMaxWidth()) {
                                 PrimaryButton(
@@ -183,12 +194,7 @@ fun ShiftsScreen(
                             }
                         }
                         SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
-                    }
-                    if (state.reading) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.accentInk)
-                            Hint(stringResource(R.string.reading_hint))
-                        }
+                        SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
                     }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
