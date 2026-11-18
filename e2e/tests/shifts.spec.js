@@ -395,25 +395,3 @@ test('see everyone there during a shift, not only those on the same one', async 
   expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['タナカ ユイ', 'ヤマダ ハナ']);
   expect(sent.days[1].people).toEqual([{ name: 'ヨル タロウ', code: '22F', day_offset: -1 }]);
 });
-  await expect(count).toHaveText('2');
-  await count.click();
-  const sheet = page.getByRole('dialog', { name: /^Who’s there on / });
-  // Everyone that day in one list: those there first, then the rest in grey.
-  const everyone = sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem');
-  await expect(everyone).toHaveCount(4);
-  await expect(everyone.nth(0)).not.toHaveClass('away');
-  await expect(everyone.nth(1)).not.toHaveClass('away');
-  await expect(everyone.nth(2)).toHaveClass('away');
-  await expect(everyone.nth(3)).toHaveClass('away');
-  await expect(everyone.nth(3)).toContainText('day before');
-  await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
-  await sheet.getByRole('button', { name: 'Done' }).click();
-  // A 9F: the one on 7D is there now, and so is the one on 13F.
-  await days.nth(0).getByRole('combobox').fill('9F');
-  await expect(count).toHaveText('3');
-  const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));
-  await page.getByRole('button', { name: /^Save / }).click();
-  const sent = (await saving).postDataJSON();
-  expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['コバヤシ リク', 'タナカ ユイ', 'ヤマダ ハナ', 'ヨル タロウ']);
-  expect(sent.days[1].people).toEqual([{ name: 'ヨル タロウ', code: '22F', day_offset: -1 }]);
-});
