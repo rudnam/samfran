@@ -153,7 +153,7 @@ export function BusPage() {
           </div>
           {ready && !settings && !buzzing && (
             <button type="button" className="secondary" onClick={() => setSettings(true)}>
-              ⚙ {t('Settings')}
+              {t('Settings')}
             </button>
           )}
         </header>

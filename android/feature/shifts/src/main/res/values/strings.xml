@@ -31,7 +31,10 @@
     <string name="you">You</string>
     <string name="take_photo">Take a photo</string>
     <string name="choose_photo">Choose a photo</string>
-    <string name="edit_by_hand">Edit by hand</string>
+    <string name="edit_month">Edit %1$s</string>
+    <string name="read_new_sheet">Read a new sheet</string>
+    <string name="enter_by_hand">Enter by hand</string>
+    <string name="calendar_link_on">Calendar link is on · updates by itself</string>
     <string name="needs_name">To read photos, first set the name as it’s printed on the sheet in Settings.</string>
     <string name="photo_unreadable">Could not open that photo.</string>
     <string name="check_shifts">Check the shifts</string>
@@ -50,9 +53,11 @@
     <string name="remove_letter">Remove %s</string>
     <string name="save">Save</string>
     <string name="saved">Saved.</string>
-    <string name="step_send_title">Send the link to a computer</string>
-    <string name="step_add_title">Open Google Calendar: Other calendars › + › From URL</string>
-    <string name="step_paste_title">Paste the link and click Add calendar</string>
+    <string name="step_open_title">Open Google Calendar in the browser</string>
+    <string name="open_google_calendar">Open Google Calendar</string>
+    <string name="desktop_site_hint">On a phone: Chrome’s ⋮ menu › Desktop site.</string>
+    <string name="step_tap_add">Tap Add</string>
+    <string name="step_send_other">Send the link to the other one of you</string>
     <string name="sync_hint">Not on your phone? Turn on Sync for “%s” in the app’s settings.</string>
     <string name="add_to_google_calendar">Add to Google Calendar</string>
     <string name="calendar_link">Calendar link</string>
@@ -60,11 +65,6 @@
     <string name="copied">Copied</string>
     <string name="share">Share</string>
     <string name="calendar_link_private">Anyone with the link can see the shifts.</string>
-    <string name="new_link">Make a new link</string>
-    <string name="turn_off">Turn off</string>
-    <string name="turn_on_link">Turn on the calendar link</string>
-    <string name="made_new_link">Made a new link. Add it again where you used the old one.</string>
-    <string name="link_off">The calendar link is off.</string>
     <string name="with_names">With %s</string>
     <string name="done">Done</string>
     <string name="use_usual_days">Use the usual days</string>
@@ -81,8 +81,4 @@
     <string name="code_of">Code of %s</string>
     <string name="their_name">Their name</string>
     <string name="remove_person">Remove %s</string>
-    <string name="the_day_before">day before</string>
-    <string name="the_next_day">next day</string>
-    <string name="the_same_day">same day</string>
-    <string name="which_day_works">Which day %1$s works: %2$s</string>
 </resources>

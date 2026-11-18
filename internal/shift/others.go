@@ -6,13 +6,13 @@ import (
 	"unicode/utf8"
 )
 
-// Who else is there during a shift. Each working day keeps everyone read
-// around it (People): those working that day, on a night shift from the day
-// before, and on an early shift the next morning, each with their code.
+// Who else is there during a shift. A read lists everyone around each
+// working day (People): those working that day, on a night shift from the
+// day before, and on an early shift the next morning, each with their code.
 // What the apps show is worked out from them whenever the day is: those on
 // exactly the same shift (With), and those on other shifts whose hours
-// overlap it (Others). So a corrected code changes who's shown, and nobody
-// is lost: changing it back shows them again.
+// overlap it (Others). A read and a saved day keep only those there during
+// the shift (registered), so a corrected code can only drop people.
 
 // Coworker is someone else at work on or around a day, as read off the sheet.
 type Coworker struct {
@@ -128,6 +128,34 @@ func sameShift(day Day, people []Coworker) []string {
 	for _, p := range people {
 		if p.DayOffset == 0 && normalize(p.Code) == day.Code {
 			out = append(out, p.Name)
+		}
+	}
+	return out
+}
+
+// registered are the people a read or saved day keeps: those on its shift or there
+// during it. When that can't be told (the day's or their letter has no
+// length yet), they're kept, so setting the length later shows them.
+func registered(day Day, people []Coworker, lengths map[string]float64, zone *time.Location) []Coworker {
+	if day.Kind != Work {
+		return nil
+	}
+	if day.Start == nil || day.End == nil {
+		return people
+	}
+	date, err := time.Parse(time.DateOnly, day.Date)
+	if err != nil {
+		return people
+	}
+	out := []Coworker{}
+	for _, p := range people {
+		if p.DayOffset == 0 && normalize(p.Code) == day.Code {
+			out = append(out, p)
+			continue
+		}
+		e := Explain(date.AddDate(0, 0, p.DayOffset).Format(time.DateOnly), p.Code, lengths, zone)
+		if e.Start == nil || e.End == nil || (e.Start.Before(*day.End) && e.End.After(*day.Start)) {
+			out = append(out, p)
 		}
 	}
 	return out

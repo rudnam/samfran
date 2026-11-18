@@ -51,7 +51,6 @@ class ShiftsScreenshotTest {
         override fun openPeople(date: LocalDate?) {}
         override fun setPersonName(key: Long, name: String) {}
         override fun setPersonCode(key: Long, code: String) {}
-        override fun nextPersonDay(key: Long) {}
         override fun removePerson(key: Long) {}
         override fun addPerson() {}
         override fun setClosing(index: Int, day: Int) {}

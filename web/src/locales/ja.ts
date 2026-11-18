@@ -208,7 +208,11 @@ export const ja = {
   'Photo of the sheet': '勤務表の写真',
   'Reading the sheet…': '勤務表を読んでいます…',
   'Read a photo of the sheet': '勤務表の写真を読み込む',
-  'Edit by hand': '手で編集',
+  'Edit {month}': '{month}を編集',
+  'Read a new sheet': '新しい勤務表を読み込む',
+  'Enter by hand': '手で入力',
+  'Calendar link is on': 'カレンダーのリンク：オン',
+  'updates by itself': '自動で更新されます',
   'Sending the photo': '写真を送っています',
   'Sending the photo: {percent}%': '写真を送っています: {percent}%',
   'Finding the row on the sheet': '勤務表から行を探しています',
@@ -238,16 +242,12 @@ export const ja = {
   Copy: 'コピー',
   'Anyone with this link can see the shifts. If it gets out, make a new one.': 'このリンクを知っている人は誰でもシフトを見られます。漏れたら新しいリンクを作ってください。',
   'Make a new link': '新しいリンクを作る',
-  'Made a new link. Add it again where you used the old one.': '新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。',
-  'The calendar link is off.': 'カレンダーのリンクをオフにしました。',
-  'Turn off': 'オフにする',
-  'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
   // The calendar link
   'Add to Google Calendar': 'Googleカレンダーに追加',
   'Open Google Calendar': 'Googleカレンダーを開く',
-  'On a computer, open Google Calendar': 'パソコンでGoogleカレンダーを開く',
-  'Click Add': '「追加」をクリック',
+  'On a phone: the browser’s ⋮ menu › Desktop site.': 'スマホでは：ブラウザの ⋮ メニュー › PC版サイト',
+  'Press Add': '「追加」を押す',
   'Not on your phone? Turn on Sync for “{name}” in the app’s settings.': 'スマホに出ないときは、アプリの設定で「{name}」の同期をオンに。',
   More: 'その他',
   'By hand: Other calendars › + › From URL.': '手動で：他のカレンダー › + › URLで追加',
@@ -474,11 +474,7 @@ export const ja = {
   'Name of person {n}': '{n}人目の名前',
   'Code of {name}': '{name}のコード',
   'Remove {name}': '{name}を削除',
-  'day before': '前日',
-  'next day': '翌日',
   'Their name': '名前',
-  'same day': '当日',
-  'Which day {name} works: {day}': '{name}の勤務日：{day}',
 } as const;
 
 // The server's messages, which are written in English (internal/, the

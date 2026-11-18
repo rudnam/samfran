@@ -43,7 +43,7 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
 
   // The distance is the stop's, changed on its page in Settings, and kept.
-  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Change Kamijima Station' }).click();
   await expect(page.getByRole('heading', { name: 'Kamijima Station' })).toBeVisible();
@@ -61,14 +61,14 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
 
   // How it buzzes, in Settings: strong by default; changed with one tap, and kept.
-  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const how = page.getByRole('radiogroup', { name: 'How it buzzes' });
   await expect(how.getByRole('radio', { name: 'Strong', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('Longer buzzes, at full strength.')).toBeVisible();
   await how.getByRole('radio', { name: 'Strongest' }).click();
   await expect(page.getByText('Full strength, with hardly a pause.')).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(how.getByRole('radio', { name: 'Strongest' })).toHaveAttribute('aria-checked', 'true');
   await page.screenshot({ path: test.info().outputPath('bus-settings.png'), fullPage: true });
   await page.getByRole('button', { name: '‹ Bus alarm' }).click();
@@ -136,7 +136,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByRole('radio', { name: /葵西小学校入口/ })).toHaveAttribute('aria-checked', 'true');
 
   // A second stop, for late shifts, added in Settings.
-  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: '+ Add a stop' }).click();
   await expect(page.getByRole('heading', { name: 'Add a stop' })).toBeVisible();
   await page.getByLabel('Stop name').fill('静岡');
@@ -169,7 +169,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByTitle('葵西小学校入口 on the map')).toBeVisible();
 
   // Late shifts move to the first stop: the other one loses them.
-  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Change 葵西小学校入口' }).click();
   await shifts.getByRole('button', { name: '遅番' }).click();
   await expect(page.getByText('静岡駅 won’t be used for them any more.')).toBeVisible();

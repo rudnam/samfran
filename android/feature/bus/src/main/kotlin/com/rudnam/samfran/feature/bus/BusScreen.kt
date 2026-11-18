@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.TextButton
@@ -202,7 +203,9 @@ fun BusScreen(
         item(key = "head") {
             Row(verticalAlignment = Alignment.Top) {
                 PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f), subtitle = stringResource(R.string.bus_subtitle))
-                if (!state.trip.running && !state.buzzing) SecondaryButton(stringResource(R.string.settings), actions::openSettings, icon = SamFranIcons.settings)
+                if (!state.trip.running && !state.buzzing) {
+                    IconButton(onClick = actions::openSettings) { LineIcon(SamFranIcons.settings, stringResource(R.string.settings)) }
+                }
             }
         }
         problems(state)

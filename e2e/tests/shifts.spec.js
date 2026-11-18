@@ -19,8 +19,10 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
 
+  // An empty month: read a photo or enter it by hand; nothing to edit yet.
+  await expect(page.getByRole('link', { name: /^Edit / })).toHaveCount(0);
   // By hand: the meaning shows as a code is typed.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: 'Enter by hand' }).click();
   const month = thisMonth();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await days.nth(0).getByRole('combobox').fill('22F'); // the 1st
@@ -32,6 +34,9 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await days.nth(2).getByRole('combobox').fill('１３Ｆ'); // full-width works too
   await expect(days.nth(2)).toContainText('遅番 · 13:00–22:00');
   await page.getByRole('button', { name: /^Save / }).click();
+  // A month with shifts: it's edited, by its name.
+  await expect(page.getByRole('link', { name: /^Edit \S+ \d{4}$/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Enter by hand' })).toHaveCount(0);
 
   // The month as a calendar: a square for every day, and a day's times when it's tapped.
   const cal = page.getByRole('group', { name: 'Calendar' });
@@ -70,7 +75,8 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   // The calendar link, from the Shifts page, with the way into Google Calendar.
   await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
   await expect(page.getByRole('heading', { name: 'Add to Google Calendar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
+  // The link is on as soon as the page opens; it can't be turned off or replaced here.
+  await expect(page.getByRole('button', { name: 'Turn off' })).toHaveCount(0);
   const link = page.getByLabel('Calendar link');
   await expect(link).toHaveValue(/\/api\/shifts\/feed\/[\w-]+\.ics$/);
   const webcal = (await link.inputValue()).replace(/^https?:/, 'webcal:');
@@ -79,11 +85,16 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
     `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
   );
   await expect(page.getByText('Turn on Sync for “Sam’s shifts”')).toBeVisible();
+  // On a phone, the website as a desktop page (the app can't add a calendar from a link).
+  await expect(page.getByText('On a phone: the browser’s ⋮ menu › Desktop site.')).toBeVisible();
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');
   expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
   await page.locator('a.back').click();
+  // Once it's on, the Shifts page says so.
+  await expect(page.getByRole('link', { name: 'Calendar link is on' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Add to Google Calendar' })).toHaveCount(0);
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.
   await page.getByRole('link', { name: 'Settings' }).click();
@@ -115,7 +126,7 @@ test('change the 締め申請通知 days for one month, next to its shifts', asy
   const last = new Date(y, m, 0).getDate();
   await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
   await page.getByRole('link', { name: 'Shifts', exact: true }).click();
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: 'Enter by hand' }).click();
 
   // The usual days (the 15th and the last day) to start with.
   const box = page.getByRole('group', { name: 'Hours due (締め申請通知)' });
@@ -151,7 +162,7 @@ test('change the 締め申請通知 days for one month, next to its shifts', asy
 
   // Back to the usual days.
   await page.getByRole('link', { name: 'Previous month' }).click();
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   await expect(box).toContainText('Only for');
   await box.getByRole('button', { name: 'Use the usual days' }).click();
   await expect(box.getByRole('combobox', { name: 'Closing day 1' })).toHaveValue('15');
@@ -192,7 +203,7 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await expect(list.nth(1)).not.toContainText('タナカ');
 
   // Editing: each day is one line, with a count of who's there that opens them.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   await expect(days.nth(0)).not.toContainText('タナカ');
   const count = days.nth(0).getByRole('button', { name: /^Who’s there on / });
@@ -213,30 +224,21 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByLabel('Name of person 3').fill('ヤマダ ハナ');
   await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–1:00: there as the night starts
   await expect(sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem').nth(2)).toContainText('17:00–1:00');
-  // Someone on the next morning's early shift: their day is changed by tapping it.
-  await sheet.getByRole('button', { name: '+ Add someone' }).click();
-  await sheet.getByLabel('Name of person 4').fill('アサ ミキ');
-  await sheet.getByLabel('Code of アサ ミキ').fill('6D');
-  const day = sheet.getByRole('button', { name: /^Which day アサ ミキ works/ });
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: same day');
-  await day.click();
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: day before');
-  await day.click();
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: next day');
+  // Just their hours: no note of which day their cell is on.
+  await expect(sheet).not.toContainText('same day');
+  await expect(sheet).not.toContainText('day before');
   await sheet.getByRole('button', { name: 'Done' }).click();
   await expect(sheet).toBeHidden();
-  await expect(count).toHaveText('4');
+  await expect(count).toHaveText('3');
   await page.getByRole('button', { name: /^Save / }).click();
   await page.getByRole('radio', { name: 'List' }).click();
   await page.getByRole('button', { name: 'Everyone there' }).click();
   await expect(list.nth(0)).toContainText('サトウ ミキ');
   await expect(list.nth(0)).toContainText('ヤマダ ハナ');
-  await expect(list.nth(0)).toContainText('アサ ミキ');
   await expect(list.nth(0)).not.toContainText('スズキ');
 
   // The calendar feed leaves out who: it can be shared.
   await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
-  await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
   const ics = await feed.text();
   expect(ics).toContain('SUMMARY:');
@@ -370,29 +372,28 @@ test('see everyone there during a shift, not only those on the same one', async 
   await page.reload();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-  // Checking or fixing the month keeps everyone, there during the shift or not.
-  await page.getByRole('link', { name: 'Edit by hand' }).click();
+  // Saved, a day keeps only those there during its shift: the ones on 7B
+  // and the night before were dropped.
+  await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   const count = days.nth(0).getByRole('button', { name: /^Who’s there on / });
   await expect(count).toHaveText('2');
   await count.click();
   const sheet = page.getByRole('dialog', { name: /^Who’s there on / });
-  // Everyone that day in one list: those there first, then the rest in grey.
   const everyone = sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem');
-  await expect(everyone).toHaveCount(4);
+  await expect(everyone).toHaveCount(2);
   await expect(everyone.nth(0)).not.toHaveClass('away');
   await expect(everyone.nth(1)).not.toHaveClass('away');
-  await expect(everyone.nth(2)).toHaveClass('away');
-  await expect(everyone.nth(3)).toHaveClass('away');
-  await expect(everyone.nth(3)).toContainText('day before');
+  await expect(sheet).not.toContainText('コバヤシ');
+  await expect(sheet).not.toContainText('ヨル');
   await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
   await sheet.getByRole('button', { name: 'Done' }).click();
-  // A 9F: the one on 7B is there now, and so is the one on 13F.
+  // A 9F: the one on 13F is still there, now on another shift.
   await days.nth(0).getByRole('combobox').fill('9F');
-  await expect(count).toHaveText('3');
+  await expect(count).toHaveText('2');
   const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));
   await page.getByRole('button', { name: /^Save / }).click();
   const sent = (await saving).postDataJSON();
-  expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['コバヤシ リク', 'タナカ ユイ', 'ヤマダ ハナ', 'ヨル タロウ']);
+  expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['タナカ ユイ', 'ヤマダ ハナ']);
   expect(sent.days[1].people).toEqual([{ name: 'ヨル タロウ', code: '22F', day_offset: -1 }]);
 });

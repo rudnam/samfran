@@ -460,12 +460,9 @@ dialog.people-sheet { width: min(32rem, calc(100vw - 32px)); max-height: 86vh; o
 .people-edit .code-input { width: 3.6rem; padding: 9px 4px; }
 /* Not there during the shift: in grey, after those who are. */
 .people-edit li.away .person-name, .people-edit li.away .person-when { color: var(--muted); }
-button.person-when {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap;
-  background: none; color: var(--text); font-weight: 500; border-radius: 8px;
+.person-when {
+  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500;
 }
-button.person-when .block:not(.muted) { color: var(--accent-ink); font-weight: 700; }
 /* Who's with you, as one quiet line until it's opened to fix. */
 
 /* Calendar/List with the "Everyone there" toggle beside it. */
