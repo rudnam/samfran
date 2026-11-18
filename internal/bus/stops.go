@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/rudnam/samfran/internal/account"
+	"github.com/rudnam/samfran/internal/activity"
 	"github.com/rudnam/samfran/internal/httpx"
 )
 
@@ -27,6 +29,9 @@ type SavedStop struct {
 	// Shifts are the kinds of shift this is the stop for (ShiftKinds); each
 	// kind is on at most one of a person's stops.
 	Shifts []string `json:"shifts"`
+	// Ask is whether the Android app asks "Start bus alarm?" when a shift
+	// whose stop this is ends (if the question is switched on, on the phone).
+	Ask bool `json:"ask"`
 }
 
 // Stops are a person's stops, oldest first, and how their phone buzzes.
@@ -71,7 +76,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 		return all, err
 	}
 	// The one used last comes first here, then they're put in the order they were added.
-	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, shifts FROM bus_saved_stops
+	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, shifts, ask FROM bus_saved_stops
 		WHERE user_id = $1 ORDER BY used_at DESC, id DESC`, user)
 	if err != nil {
 		return all, err
@@ -79,7 +84,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 	defer rows.Close()
 	for rows.Next() {
 		var x SavedStop
-		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, (*pq.StringArray)(&x.Shifts)); err != nil {
+		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
 			return all, err
 		}
 		if all.LastID == 0 {
@@ -176,6 +181,8 @@ type savedInput struct {
 	stopInput
 	// Left out, a changed stop keeps the ones it had (a new one has none).
 	Shifts *[]string `json:"shifts"`
+	// Left out, a changed stop keeps it as it was (a new one asks).
+	Ask *bool `json:"ask"`
 }
 
 func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput, error) {
@@ -234,9 +241,9 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		// A new stop isn't the one used last, unless it's the first.
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
-			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END) RETURNING id`,
-			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0).Scan(&id); err != nil {
+			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask)
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, true)) RETURNING id`,
+			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask).Scan(&id); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, &kinds)
@@ -283,8 +290,8 @@ func (h *Handler) changeStop(w http.ResponseWriter, r *http.Request) error {
 	}
 	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
 		if _, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET name = $3, lat = $4, lng = $5, alert_meters = $6,
-			shifts = COALESCE($7, shifts) WHERE user_id = $1 AND id = $2`,
-			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts)); err != nil {
+			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask) WHERE user_id = $1 AND id = $2`,
+			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, in.Shifts)
@@ -305,12 +312,33 @@ func (h *Handler) deleteStop(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-// useStop says a trip to the stop has started: it's the one used last.
+// useStop says a trip to the stop has started: it's the one used last, and
+// the history says so ("bus_started", with the stop's name).
 func (h *Handler) useStop(w http.ResponseWriter, r *http.Request) error {
-	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
-		_, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET used_at = now() WHERE user_id = $1 AND id = $2`, user, id)
-		return err
+	var name string
+	err := h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
+		if err := tx.QueryRowContext(r.Context(), `UPDATE bus_saved_stops SET used_at = now() WHERE user_id = $1 AND id = $2 RETURNING name`, user, id).Scan(&name); err != nil {
+			return err
+		}
+		return nil
 	})
+	if err == nil {
+		h.logStarted(r, name)
+	}
+	return err
+}
+
+func (h *Handler) logStarted(r *http.Request, stop string) {
+	if h.Log == nil || h.SpaceOf == nil {
+		return
+	}
+	user := account.UserFrom(r).ID
+	spaceID, err := h.SpaceOf(r.Context(), user)
+	if err != nil {
+		slog.WarnContext(r.Context(), "bus_started: find space", "err", err) // the trip has started; don't fail it
+		return
+	}
+	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
 }
 
 func (h *Handler) setBuzz(w http.ResponseWriter, r *http.Request) error {

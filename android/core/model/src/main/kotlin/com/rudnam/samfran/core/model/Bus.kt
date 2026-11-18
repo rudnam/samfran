@@ -18,6 +18,8 @@ data class BusStop(
     val id: Long = 0,
     /** The kinds of shift it's the stop for ([ShiftKinds]); each is on one stop at most. */
     val shifts: List<String> = emptyList(),
+    /** Ask "Start bus alarm?" when a shift whose stop this is ends (if the question is on, on this phone). */
+    val ask: Boolean = true,
 ) {
     /** The stop on Google Maps. */
     val mapLink: String get() = mapLink(lat, lng)

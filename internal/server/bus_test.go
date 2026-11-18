@@ -60,6 +60,7 @@ type savedStop struct {
 	Lat, Lng    float64
 	AlertMeters int `json:"alert_meters"`
 	Shifts      []string
+	Ask         bool
 }
 
 type savedStops struct {
@@ -128,6 +129,25 @@ func TestSavedStops(t *testing.T) {
 	if a, s := all.named("Aoi"), all.named("Shizuoka Station"); len(a.Shifts) != 0 || len(s.Shifts) != 1 || s.Shifts[0] != "Late" {
 		t.Errorf("taking Late: %+v %+v", a, s)
 	}
+
+	// The question at the end of a shift: on for a new stop, switched off for
+	// one, and kept by a change that leaves it out.
+	if !all.named("Aoi").Ask {
+		t.Errorf("a new stop asks: %+v", all.named("Aoi"))
+	}
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "ask": false}, &all)
+	if all.named("Aoi").Ask || !all.named("Shizuoka Station").Ask {
+		t.Errorf("not asking: %+v", all)
+	}
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "alert_meters": 900}, &all)
+	if all.named("Aoi").Ask || all.named("Aoi").AlertMeters != 900 {
+		t.Errorf("kept: %+v", all.named("Aoi"))
+	}
+	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Gym", "lat": 34.9, "lng": 138.3, "ask": false}, &all)
+	if all.named("Gym").Ask {
+		t.Errorf("a new stop that doesn't ask: %+v", all.named("Gym"))
+	}
+	sam.do("DELETE", fmt.Sprintf("/api/bus/stops/%d", all.named("Gym").ID), nil, &all)
 
 	// Starting a trip makes it the one used last, which older apps see.
 	sam.do("POST", fmt.Sprintf("/api/bus/stops/%d/use", station.ID), nil, &all)

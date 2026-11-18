@@ -145,14 +145,15 @@ class AndroidReminders @Inject constructor(
 
     /**
      * Gives [ShiftPrompt] the times shifts end from now on, each with the stop
-     * for that kind of shift (or else the one used last); false if they can't
-     * be had. Without a stop there's nothing to start.
+     * for that kind of shift (or else the one used last), leaving out those
+     * whose stop doesn't ask; false if they can't be had. Without a stop
+     * there's nothing to start.
      */
     private suspend fun sendShiftEnds(): Boolean {
         val all = (bus.refresh() as? Outcome.Done)?.value ?: return false
         val upcoming = (shifts.upcomingShifts(clock.instant()) as? Outcome.Done)?.value ?: return false
         val ends = upcoming.mapNotNull { day ->
-            val stop = all.pick(day) ?: return@mapNotNull null
+            val stop = all.pick(day)?.takeIf { it.ask } ?: return@mapNotNull null
             ShiftPrompt.Companion.End(day.end!!.toInstant().toEpochMilli(), stop.id, stop.name)
         }
         ShiftPrompt.save(context, ends, all.stops.size)

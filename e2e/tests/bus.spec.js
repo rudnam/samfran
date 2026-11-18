@@ -156,6 +156,16 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByText('After 遅番 · 800 m')).toBeVisible();
   await expect(page.getByText('When you pick it · 800 m')).toBeVisible();
 
+  // No question at the end of its shifts, for one stop.
+  await page.getByRole('button', { name: 'Change 静岡駅' }).click();
+  const ask = page.getByRole('radiogroup', { name: 'Ask when a shift ends' });
+  await expect(ask.getByRole('radio', { name: 'Ask', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await ask.getByRole('radio', { name: 'Don’t ask' }).click();
+  await expect(page.getByText('Off: no question after shifts whose stop this is.')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('bus-stop-no-question.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('When you pick it · 800 m · No question')).toBeVisible();
+
   // Removing a stop.
   page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Change 静岡駅' }).click();

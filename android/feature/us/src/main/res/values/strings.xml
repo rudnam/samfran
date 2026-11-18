@@ -40,7 +40,7 @@
     <string name="disconnect">Disconnect</string>
     <string name="this_device">This device</string>
     <string name="tell_me">Tell me about changes</string>
-    <string name="tell_me_hint">A notification when the other one of you adds a place, logs a visit, rates one or saves the shifts. It can take half an hour.</string>
+    <string name="tell_me_hint">A notification when the other one of you adds a place, logs a visit, rates one, saves the shifts or starts a bus alarm. It can take half an hour.</string>
     <string name="allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
     <string name="language">Language</string>
     <string name="appearance">Appearance</string>

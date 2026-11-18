@@ -408,6 +408,8 @@ export interface SavedStop {
   alert_meters: number;
   /** The kinds of shift it's the stop for; each is on one stop at most. */
   shifts: ShiftLabel[];
+  /** The Android app asks "Start bus alarm?" when a shift whose stop this is ends. */
+  ask: boolean;
 }
 
 export interface BusStops {
@@ -426,6 +428,8 @@ export interface BusStopInput {
   alert_meters: number;
   /** Taken from the person's other stops. Left out, a changed stop keeps its own. */
   shifts?: ShiftLabel[];
+  /** Left out, a changed stop keeps its own; a new one asks. */
+  ask?: boolean;
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */

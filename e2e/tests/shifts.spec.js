@@ -312,6 +312,11 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
   const sent = (await saving).postDataJSON();
   expect(sent.days[0].people).toEqual([{ name: 'タナカ ユイ', code: '22F', day_offset: 0 }]);
   expect(sent.corrections).toEqual([{ from: 'タナカ ユエ', to: 'タナカ ユイ' }]);
+  // Saving opens the month, which loads it through the /api/shifts stand-in
+  // above. Wait for the month, then for any stand-in still running (the next
+  // month's load), or the test ends while one reads a response it's disposing.
+  await expect(page.getByRole('group', { name: 'Calendar' }).getByRole('button', { name: /^1 \S+: 夜勤/ })).toBeVisible();
+  await page.unrouteAll({ behavior: 'wait' });
 });
 
 test('see everyone there during a shift, not only those on the same one', async ({ page }) => {

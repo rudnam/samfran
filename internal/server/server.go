@@ -117,7 +117,10 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	shiftHandler.Log = activities.Log
 	shiftHandler.Register(mux, spaceHandler.Require)
 	activity.NewHandler(activities).Register(mux, spaceHandler.Require, func(r *http.Request) int64 { return account.UserFrom(r).ID })
-	bus.NewHandler(conn).Register(mux, accounts.RequireUser)
+	busHandler := bus.NewHandler(conn)
+	busHandler.Log = activities.Log
+	busHandler.SpaceOf = spaces.Of
+	busHandler.Register(mux, accounts.RequireUser)
 	mcpHandler := mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
 		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy})
 	mcpHandler.Log = activities.Log

@@ -26,8 +26,8 @@ import javax.inject.Inject
  * Tells one of you when the other changes something you share: about every
  * half hour, while the phone is online, it asks the server for the recent
  * changes (GET /api/activity, signed in as the app is) and shows a
- * notification for the other person's new places, visits, ratings and saved
- * shifts. Android runs it when it suits the battery, so it can be later
+ * notification for the other person's new places, visits, ratings, saved
+ * shifts and bus alarms started. Android runs it when it suits the battery, so it can be later
  * than that. It asks the server itself rather than being pushed to, which
  * needs no Google services. Switched on from the Us tab.
  *
@@ -64,7 +64,7 @@ class ActivityJob : JobService() {
     private suspend fun check() {
         val p = ShiftPrompt.prefs(this)
         if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return
-        val list = (activity.refresh() as? Outcome.Done)?.value ?: return
+        val list = (activity.forNotifications() as? Outcome.Done)?.value ?: return
         val seen = p.getLong(SEEN, 0)
         val fresh = list.filter { it.id > seen }
         if (fresh.isEmpty()) return
@@ -115,6 +115,7 @@ class ActivityJob : JobService() {
                 "visit_logged" -> c.getString(R.string.notify_change_visit, who, name)
                 "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
                 "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
+                "bus_started" -> c.getString(R.string.notify_bus_started, who, name)
                 else -> null
             }
         }

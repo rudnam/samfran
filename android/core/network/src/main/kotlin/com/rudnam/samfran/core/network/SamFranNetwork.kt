@@ -114,7 +114,7 @@ internal interface SamFranApi {
     @PUT("api/bus/buzz") suspend fun setBuzz(@Body body: NetworkBuzz): NetworkBusStops
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
 
-    @GET("api/activity") suspend fun activity(): List<NetworkActivity>
+    @GET("api/activity") suspend fun activity(@Query("bus") bus: Int? = null): List<NetworkActivity>
 
     @GET("api/mcp/tokens") suspend fun mcpTokens(): List<NetworkMcpToken>
     @DELETE("api/mcp/tokens/{id}") suspend fun deleteMcpToken(@Path("id") id: Long): Response<Unit>
@@ -208,6 +208,9 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun searchStops(q: String, lat: Double?, lng: Double?) = call { api.searchStops(q, lat, lng) }
 
     suspend fun activity() = call { api.activity() }
+
+    /** The latest changes and bus alarms started, for the notification check. */
+    suspend fun activityWithBus() = call { api.activity(bus = 1) }
 
     suspend fun mcpTokens() = call { api.mcpTokens() }
     suspend fun deleteMcpToken(id: Long) = call { api.deleteMcpToken(id).orThrow() }

@@ -17,8 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** A stop as it's saved: [shifts] null keeps a changed stop's own. */
-data class StopInput(val name: String, val lat: Double, val lng: Double, val alertMeters: Int, val shifts: List<String>? = null)
+/** A stop as it's saved: [shifts] or [ask] null keeps a changed stop's own. */
+data class StopInput(val name: String, val lat: Double, val lng: Double, val alertMeters: Int, val shifts: List<String>? = null, val ask: Boolean? = null)
 
 /** Where the signed-in person gets off the bus; the server only ever knows the stops, never the phone's position. */
 interface BusRepository {
@@ -53,7 +53,7 @@ internal class OfflineFirstBusRepository @Inject constructor(
 
     private suspend fun keep(f: suspend () -> NetworkBusStops) = outcome(io) { f().also { documents.put(Keys.BUS_STOPS, serializer, it) }.asModel() }
 
-    private fun StopInput.body() = NetworkBusStopInput(name.trim(), lat, lng, alertMeters, shifts)
+    private fun StopInput.body() = NetworkBusStopInput(name.trim(), lat, lng, alertMeters, shifts, ask)
 
     override suspend fun refresh() = keep { network.busStops() }
 

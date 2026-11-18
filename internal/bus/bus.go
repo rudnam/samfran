@@ -12,6 +12,7 @@
 package bus
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 	"slices"
@@ -44,6 +45,11 @@ type Handler struct {
 	db *sql.DB
 	// Stops finds stops by name (search.go).
 	Stops *Searcher
+	// Log and SpaceOf, if set, record a trip starting in the Us tab's
+	// history (internal/activity), so the other person can be told. Stops
+	// are the person's own, so the routes don't need a space; SpaceOf finds it.
+	Log     func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
+	SpaceOf func(ctx context.Context, userID int64) (int64, error)
 }
 
 func NewHandler(conn *sql.DB) *Handler { return &Handler{db: conn, Stops: NewSearcher()} }

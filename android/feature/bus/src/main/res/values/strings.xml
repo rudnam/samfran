@@ -93,4 +93,10 @@
     <string name="remove_stop">Remove this stop</string>
     <string name="remove_stop_title">Remove %1$s?</string>
     <string name="remove">Remove</string>
+    <!-- The question at the end of a shift, for each stop -->
+    <string name="ask_for_stop">Ask when a shift ends</string>
+    <string name="ask_for_stop_on">After a shift whose stop this is, it asks “Start bus alarm?”.</string>
+    <string name="ask_for_stop_off">Off: no question after shifts whose stop this is.</string>
+    <string name="ask_for_stop_phone_off">It’s off on this phone for now: switch on “Ask when a shift ends” in Alarm settings.</string>
+    <string name="no_question">No question</string>
 </resources>

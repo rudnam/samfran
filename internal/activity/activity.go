@@ -55,12 +55,17 @@ func (s *Store) Log(ctx context.Context, spaceID, userID int64, via, kind string
 	}
 }
 
-// List returns the space's latest changes, newest first.
-func (s *Store) List(ctx context.Context, spaceID, me int64, limit int) ([]Entry, error) {
+// BusStarted is a bus alarm starting: logged so the other person's phone
+// can be told, but not one of the changes the Us tab lists.
+const BusStarted = "bus_started"
+
+// List returns the space's latest changes, newest first; with bus, bus
+// alarms started too.
+func (s *Store) List(ctx context.Context, spaceID, me int64, limit int, bus bool) ([]Entry, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT a.id, a.created_at, coalesce(m.display_name, ''), coalesce(u.email, ''), coalesce(a.user_id, 0), a.via, a.kind, a.details
 		FROM activity a LEFT JOIN users u ON u.id = a.user_id LEFT JOIN space_members m ON m.user_id = a.user_id
-		WHERE a.space_id = $1 ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, spaceID, limit)
+		WHERE a.space_id = $1 AND ($3 OR a.kind <> $4) ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, spaceID, limit, bus, BusStarted)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +89,15 @@ func (s *Store) List(ctx context.Context, spaceID, me int64, limit int) ([]Entry
 	return out, rows.Err()
 }
 
-// Handler serves GET /api/activity: the latest 50 changes.
+// Handler serves GET /api/activity: the latest 50 changes. With ?bus=1
+// (the phone's notification check), bus alarms started are among them.
 type Handler struct{ store *Store }
 
 func NewHandler(st *Store) *Handler { return &Handler{store: st} }
 
 func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) http.Handler, userOf func(*http.Request) int64) {
 	mux.Handle("GET /api/activity", requireSpace(httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
-		list, err := h.store.List(r.Context(), space.SpaceFrom(r), userOf(r), 50)
+		list, err := h.store.List(r.Context(), space.SpaceFrom(r), userOf(r), 50, r.URL.Query().Get("bus") == "1")
 		if err != nil {
 			return err
 		}
