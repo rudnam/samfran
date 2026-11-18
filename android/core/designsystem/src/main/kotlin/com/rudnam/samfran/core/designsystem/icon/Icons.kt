@@ -55,6 +55,8 @@ object SamFranIcons {
     const val all = "M4 6h16M4 12h16M4 18h16"
     /** Nearby: where you are. */
     const val nearby = "M19 12a7 7 0 1 1-14 0a7 7 0 1 1 14 0zM12 2v3M12 19v3M2 12h3M19 12h3"
+    /** The order menu: arrows up and down. */
+    const val sort = "M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"
     const val star = "M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"
 
     private val cache = HashMap<String, ImageVector>()

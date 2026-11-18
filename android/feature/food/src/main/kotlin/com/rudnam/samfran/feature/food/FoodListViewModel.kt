@@ -23,9 +23,27 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.LocalDate
 import java.time.YearMonth
+import java.text.Collator
+import java.util.Locale
 import javax.inject.Inject
 
 enum class FoodTab { Been, Want }
+
+/** How the list is ordered, in the menu's order (web: RestaurantsPage.tsx's sorts). */
+enum class PlaceOrder(val key: String, val title: Int) {
+    Newest("newest", R.string.sort_newest),
+    Nearby("nearby", R.string.sort_nearby),
+    TopRated("rated", R.string.sort_top_rated),
+    Name("name", R.string.sort_name),
+    ;
+
+    companion object {
+        fun of(key: String): PlaceOrder = entries.firstOrNull { it.key == key } ?: Newest
+    }
+}
+
+/** The average of everyone's stars; null when nobody has rated it. */
+internal val Restaurant.averageStars: Double? get() = ratings.takeIf { it.isNotEmpty() }?.map { it.stars }?.average()
 
 /** Finding where the phone is, for Nearby. */
 enum class Locating { No, Asking, Failed }
@@ -37,8 +55,8 @@ data class FoodListUiState(
     val query: String = "",
     /** The category chosen to show; null for all. Remembered on the phone. */
     val filter: PlaceCategory? = null,
-    /** Nearest first rather than newest. Remembered on the phone. */
-    val nearby: Boolean = false,
+    /** How the list is ordered. Remembered on the phone. */
+    val order: PlaceOrder = PlaceOrder.Newest,
     /** On a map rather than a list. Remembered on the phone. */
     val onMap: Boolean = false,
     /** Where the phone is, once found for Nearby. */
@@ -73,13 +91,29 @@ data class FoodListUiState(
     /** The chips: every category the tab has a place in, and the one chosen. */
     val chips: List<PlaceCategory> get() = PlaceCategory.entries.filter { (counts[it] ?: 0) > 0 || it == activeFilter }
 
+    /** Nearest first. */
+    val nearby: Boolean get() = order == PlaceOrder.Nearby
+
     /** Where the phone is, when the list is nearest first. */
     val near: Pair<Double, Double>? get() = here.takeIf { nearby }
 
-    /** The tab's places in the chosen category that match the search, newest or nearest first. */
+    /**
+     * The tab's places in the chosen category that match the search, in the chosen order: newest, nearest
+     * (newest while the phone's place isn't known), best rated (the unrated last), or by name.
+     */
     val shown: List<Restaurant>
         get() = onTab.filter { (activeFilter == null || it.category == activeFilter) && it.matches(query) }
-            .let { list -> near?.let(list::byDistance) ?: list }
+            .let { list ->
+                when (order) {
+                    PlaceOrder.Newest -> list
+                    PlaceOrder.Nearby -> near?.let(list::byDistance) ?: list
+                    PlaceOrder.TopRated -> list.sortedByDescending { it.averageStars ?: -1.0 }
+                    PlaceOrder.Name -> {
+                        val collator = Collator.getInstance(Locale.getDefault()).apply { strength = Collator.PRIMARY }
+                        list.sortedWith { a, b -> collator.compare(a.name, b.name) }
+                    }
+                }
+            }
 
     /** Places last visited this month. */
     val thisMonth: Int get() = been.count { it.lastVisit?.let(YearMonth::from) == YearMonth.from(today) }
@@ -92,8 +126,8 @@ interface FoodListActions {
     fun setTab(tab: FoodTab)
     fun setQuery(query: String)
     fun setFilter(category: PlaceCategory?)
-    /** Nearest first; the screen asks for location permission before turning it on. */
-    fun setNearby(nearby: Boolean)
+    /** How to order the list; the screen asks for location permission before choosing Nearby. */
+    fun setOrder(order: PlaceOrder)
     /** Finds where the phone is (with permission), for Nearby. */
     fun findHere()
     fun setOnMap(onMap: Boolean)
@@ -120,7 +154,7 @@ class FoodListViewModel @Inject constructor(
             all = all ?: s.all,
             space = space,
             filter = p.placesCategory.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of),
-            nearby = p.placesNearby,
+            order = PlaceOrder.of(p.placesOrder),
             onMap = p.placesOnMap,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
@@ -137,9 +171,9 @@ class FoodListViewModel @Inject constructor(
         viewModelScope.launch { preferences.setPlacesCategory(category?.key.orEmpty()) }
     }
 
-    override fun setNearby(nearby: Boolean) {
-        viewModelScope.launch { preferences.setPlacesNearby(nearby) }
-        if (nearby) findHere()
+    override fun setOrder(order: PlaceOrder) {
+        viewModelScope.launch { preferences.setPlacesOrder(order.key) }
+        if (order == PlaceOrder.Nearby) findHere()
     }
 
     override fun findHere() {

@@ -104,11 +104,11 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     val searching = state.searchable && (searchOpen || state.query.isNotEmpty())
     // Nearby asks for the phone's location first; turned down, it says so and stays newest first.
-    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { actions.setNearby(true) }
+    val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { actions.setOrder(PlaceOrder.Nearby) }
     fun nearby() {
         val granted = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
             .any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
-        if (granted) actions.setNearby(true) else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+        if (granted) actions.setOrder(PlaceOrder.Nearby) else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
     // Opened on Nearby: find where the phone is.
     LaunchedEffect(state.nearby) { if (state.nearby && state.here == null) actions.findHere() }
@@ -125,7 +125,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                     )
                 }
                 if (!state.all.isNullOrEmpty()) {
-                    // One toolbar (.toolbar): the category menu, then search, Nearby and Map as icon toggles.
+                    // One toolbar (.toolbar): the category menu, then search, the order (a menu) and Map as icon buttons.
                     item(key = "tools") {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Box(Modifier.weight(1f)) { if (state.filterable) CategoryMenu(state, actions) }
@@ -136,9 +136,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                                         searchOpen = !searching
                                     }
                                 }
-                                IconToggle(SamFranIcons.nearby, stringResource(R.string.sort_nearby), state.nearby) {
-                                    if (state.nearby) actions.setNearby(false) else nearby()
-                                }
+                                OrderMenu(state.order) { if (it == PlaceOrder.Nearby) nearby() else actions.setOrder(it) }
                                 if (canMap) IconToggle(SamFranIcons.map, stringResource(R.string.view_map), onMap) { actions.setOnMap(!onMap) }
                             }
                         }
@@ -226,6 +224,41 @@ private fun IconToggle(icon: String, label: String, on: Boolean, onClick: () -> 
         contentAlignment = Alignment.Center,
     ) {
         LineIcon(icon, null, tint = if (on) colors.bg else colors.text, size = 21.dp)
+    }
+}
+
+/** How to order the list: an icon button (dark unless newest first) opening a menu of the ways. */
+@Composable
+private fun OrderMenu(order: PlaceOrder, onPick: (PlaceOrder) -> Unit) {
+    val colors = SamFranTheme.colors
+    var open by remember { mutableStateOf(false) }
+    val on = order != PlaceOrder.Newest
+    val label = stringResource(R.string.order_is, stringResource(order.title))
+    Box {
+        Box(
+            Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(if (on) colors.text else colors.surface)
+                .then(if (on) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(13.dp)))
+                .clickable(onClickLabel = label, role = Role.Button) { open = true }
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) {
+            LineIcon(if (order == PlaceOrder.Nearby) SamFranIcons.nearby else SamFranIcons.sort, null, tint = if (on) colors.bg else colors.text, size = 21.dp)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface, shape = RoundedCornerShape(16.dp)) {
+            for (o in PlaceOrder.entries) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(o.title), fontWeight = FontWeight.SemiBold) },
+                    onClick = {
+                        open = false
+                        onPick(o)
+                    },
+                    modifier = if (o == order) Modifier.background(colors.highlight) else Modifier,
+                )
+            }
+        }
     }
 }
 
