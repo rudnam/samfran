@@ -41,7 +41,7 @@ func TestVisitNotesMoveToPlaceNotes(t *testing.T) {
 	want := map[string]string{
 		"Hanabi Grill": "Book the window seats.\n\n2026-11-14 · Harami and the cold noodles\n2026-08-21 · Birthday dinner",
 		"Menya Kaze":   "2026-11-03 · Spicy miso, extra egg",
-		"Cafe Lune":    "Cash only", // no notes on its visits: untouched
+		"Cafe Lune":    "Cash only",                                // no notes on its visits: untouched
 		"Long notes":   strings.Repeat("x", 4990) + "\n\n2026-01-", // cut to the notes' limit
 	}
 	rows, err := conn.Query(`SELECT name, notes FROM restaurants`)
