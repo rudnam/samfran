@@ -176,6 +176,9 @@ export const ja = {
   Latest: '最近',
   Newest: '新しい順',
   Nearby: '近い順',
+  'Top rated': '評価の高い順',
+  'A–Z': '名前順',
+  'Order: {name}': '並び順: {name}',
   Map: '地図',
   'Finding where you are…': '現在地を確認しています…',
   'Location is off for this site, so the list is newest first. Allow it in the browser to sort by distance.':
@@ -241,7 +244,6 @@ export const ja = {
   'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
   // The calendar link
-  'In your calendar': 'カレンダーに表示',
   'Add to Google Calendar': 'Googleカレンダーに追加',
   'Open Google Calendar': 'Googleカレンダーを開く',
   'On a computer, open Google Calendar': 'パソコンでGoogleカレンダーを開く',
@@ -398,7 +400,6 @@ export const ja = {
   '{shift} until {time}, so it’s {stop}.': '{shift}（{time}まで）なので{stop}です。',
   'Your stops': '登録したバス停',
   'After {shifts}': '{shifts}のあと',
-  'When you pick it': '選んだときだけ',
   'Change {stop}': '{stop}を変更',
   'Use this stop after': 'このバス停を使うシフト',
   'After these shifts, the alarm picks {stop} for you. You can still pick another stop that day.': 'このシフトのあとは、アラームが自動で{stop}を選びます。その日に別のバス停を選ぶこともできます。',
@@ -407,8 +408,9 @@ export const ja = {
   '{stop} won’t be used for them any more.': '{stop}はこのシフトでは使わなくなります。',
   'Remove {stop}?': '{stop}を削除しますか？',
   'Remove this stop': 'このバス停を削除',
-  'No question': '確認なし',
-  'Ask when a shift ends': 'シフトが終わったら確認',
+  Where: '場所',
+  'When it’s used': '使うとき',
+  'Ask when these end': 'シフトが終わったら確認',
   Ask: '確認する',
   'Don’t ask': '確認しない',
   'After a shift whose stop this is, the Android app asks “Start bus alarm?”.': 'このバス停のシフトが終わると、Androidアプリが「バスアラームを開始しますか？」と聞きます。',
@@ -439,7 +441,6 @@ export const ja = {
   'A six-second practice ride, to see what happens.': 'どうなるかを見る、6秒の練習乗車です。',
   'The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.':
     '本物のアラームはSamFranのAndroidアプリで動きます。使うのは乗車中のスマホの位置情報だけです。',
-  'Alarm settings': 'アラームの設定',
   'Step 1 of 2': 'ステップ 1/2',
   'Step 2 of 2': 'ステップ 2/2',
   'Can’t find it? Other ways': '見つからない場合は別の方法で',

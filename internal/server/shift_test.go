@@ -29,7 +29,7 @@ func (f *fakeReader) Read(_ context.Context, image []byte, mediaType, name strin
 	s.Days[2].With = []string{"サトウ ミホ"}                            // a day off: nobody kept
 	// Others around 13:00–22:00 on the 2nd: one there, one gone by then, one
 	// night shift from the day before that's over, and one also in With.
-	s.Days[1].Others = []shift.Coworker{{Name: "ヤマダ ハナ", Code: "9F"}, {Name: "コバヤシ リク", Code: "7D"},
+	s.Days[1].Others = []shift.Coworker{{Name: "ヤマダ ハナ", Code: "9F"}, {Name: "コバヤシ リク", Code: "7B"},
 		{Name: "ヨル タロウ", Code: "22F", DayOffset: -1}, {Name: "スズキ ケン", Code: "9F"}}
 	// The night shift on the 4th runs into the 5th's early morning.
 	s.Days[3].Others = []shift.Coworker{{Name: "アサ ミキ", Code: "6D", DayOffset: 1}, {Name: "ナカ", Code: "17D"}}
@@ -135,7 +135,7 @@ func TestShifts(t *testing.T) {
 	}
 
 	// Everyone around a day is kept (people), and who's shown follows the code.
-	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7D"}}
+	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7B"}}
 	shown := func(code string, people any) (string, string) {
 		t.Helper()
 		var m monthJSON

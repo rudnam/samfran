@@ -42,23 +42,36 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
 
-  // The distance is the stop's, changed with the stop, and kept.
+  // The distance is the stop's, changed on its page in Settings, and kept.
+  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
   await page.getByRole('button', { name: 'Change Kamijima Station' }).click();
+  await expect(page.getByRole('heading', { name: 'Kamijima Station' })).toBeVisible();
+  // The map is folded away on a stop's page, until asked for.
+  await expect(page.getByTitle('Kamijima Station on the map')).toHaveCount(0);
+  await page.getByRole('button', { name: 'See it on the map' }).click();
+  await expect(page.getByTitle('Kamijima Station on the map')).toBeVisible();
   await distance.getByRole('radio', { name: '600 m' }).click();
   await page.getByRole('button', { name: 'Save' }).click();
+  // Back in Settings, then back to the ride.
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
 
-  // How it buzzes: strong by default; changed with one tap, and kept.
+  // How it buzzes, in Settings: strong by default; changed with one tap, and kept.
+  await page.getByRole('button', { name: '⚙ Settings' }).click();
   const how = page.getByRole('radiogroup', { name: 'How it buzzes' });
   await expect(how.getByRole('radio', { name: 'Strong', exact: true })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText('Longer buzzes, at full strength.')).toBeVisible();
   await how.getByRole('radio', { name: 'Strongest' }).click();
   await expect(page.getByText('Full strength, with hardly a pause.')).toBeVisible();
   await page.reload();
+  await page.getByRole('button', { name: '⚙ Settings' }).click();
   await expect(how.getByRole('radio', { name: 'Strongest' })).toHaveAttribute('aria-checked', 'true');
-  await page.screenshot({ path: test.info().outputPath('bus-buzz.png'), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath('bus-settings.png'), fullPage: true });
+  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
 
   // A practice run then vibrates that way, where the browser can.
   await page.evaluate(() => {
@@ -122,8 +135,9 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await page.getByRole('link', { name: 'Bus', exact: true }).click();
   await expect(page.getByRole('radio', { name: /葵西小学校入口/ })).toHaveAttribute('aria-checked', 'true');
 
-  // A second stop, for late shifts.
-  await page.getByRole('button', { name: '+ Add a stop' }).first().click();
+  // A second stop, for late shifts, added in Settings.
+  await page.getByRole('button', { name: '⚙ Settings' }).click();
+  await page.getByRole('button', { name: '+ Add a stop' }).click();
   await expect(page.getByRole('heading', { name: 'Add a stop' })).toBeVisible();
   await page.getByLabel('Stop name').fill('静岡');
   await page.getByRole('list', { name: 'Matching stops' }).getByRole('button', { name: /静岡駅/ }).click();
@@ -131,15 +145,21 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await shifts.getByRole('button', { name: '遅番' }).click();
   await expect(shifts.getByRole('button', { name: '遅番' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByText('After these shifts, the alarm picks 静岡駅 for you.')).toBeVisible();
+  // A new stop doesn't ask when its shifts end, until switched on.
+  const ask = page.getByRole('radiogroup', { name: 'Ask when these end' });
+  await expect(ask.getByRole('radio', { name: 'Don’t ask' })).toHaveAttribute('aria-checked', 'true');
   await page.screenshot({ path: test.info().outputPath('bus-stop-shifts.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save' }).click();
+  // Settings: each stop, and only the shifts it's for.
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Change 静岡駅' })).toContainText('After 遅番');
+  await expect(page.getByRole('button', { name: 'Change 葵西小学校入口' })).toHaveText(/^葵西小学校入口\s*›$/);
 
   // Today's shift is late, so it's that stop, and the page says why.
   await page.reload();
   const picker = page.getByRole('radiogroup', { name: 'Get off at' });
   await expect(picker.getByRole('radio', { name: /静岡駅/ })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText(/^遅番 until \d\d:\d\d, so it’s 静岡駅\.$/)).toBeVisible();
-  await expect(page.getByText('After 遅番 · 800 m')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stops.png'), fullPage: true });
 
   // Another for today: one tap, and no reason given.
@@ -149,27 +169,27 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByTitle('葵西小学校入口 on the map')).toBeVisible();
 
   // Late shifts move to the first stop: the other one loses them.
+  await page.getByRole('button', { name: '⚙ Settings' }).click();
   await page.getByRole('button', { name: 'Change 葵西小学校入口' }).click();
   await shifts.getByRole('button', { name: '遅番' }).click();
   await expect(page.getByText('静岡駅 won’t be used for them any more.')).toBeVisible();
+  // And it asks when they end.
+  await ask.getByRole('radio', { name: 'Ask', exact: true }).click();
+  await expect(page.getByText('After a shift whose stop this is, the Android app asks “Start bus alarm?”.')).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('bus-stop-ask.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText('After 遅番 · 800 m')).toBeVisible();
-  await expect(page.getByText('When you pick it · 800 m')).toBeVisible();
-
-  // No question at the end of its shifts, for one stop.
-  await page.getByRole('button', { name: 'Change 静岡駅' }).click();
-  const ask = page.getByRole('radiogroup', { name: 'Ask when a shift ends' });
+  await expect(page.getByRole('button', { name: 'Change 葵西小学校入口' })).toContainText('After 遅番');
+  await expect(page.getByRole('button', { name: 'Change 静岡駅' })).toHaveText(/^静岡駅\s*›$/);
+  await page.getByRole('button', { name: 'Change 葵西小学校入口' }).click();
   await expect(ask.getByRole('radio', { name: 'Ask', exact: true })).toHaveAttribute('aria-checked', 'true');
-  await ask.getByRole('radio', { name: 'Don’t ask' }).click();
-  await expect(page.getByText('Off: no question after shifts whose stop this is.')).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath('bus-stop-no-question.png'), fullPage: true });
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText('When you pick it · 800 m · No question')).toBeVisible();
+  await page.getByRole('button', { name: '‹ Settings' }).click();
 
   // Removing a stop.
   page.once('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'Change 静岡駅' }).click();
   await page.getByRole('button', { name: 'Remove this stop' }).click();
+  await expect(page.locator('.stop-list li')).toHaveCount(1);
+  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
   await expect(picker.getByRole('radio')).toHaveCount(1);
   await expect(page.getByText(/^遅番 until \d\d:\d\d, so it’s 葵西小学校入口\.$/)).toBeVisible();
 });

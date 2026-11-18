@@ -130,22 +130,22 @@ func TestSavedStops(t *testing.T) {
 		t.Errorf("taking Late: %+v %+v", a, s)
 	}
 
-	// The question at the end of a shift: on for a new stop, switched off for
+	// The question at the end of a shift: off for a new stop, switched on for
 	// one, and kept by a change that leaves it out.
-	if !all.named("Aoi").Ask {
-		t.Errorf("a new stop asks: %+v", all.named("Aoi"))
+	if all.named("Aoi").Ask {
+		t.Errorf("a new stop doesn't ask: %+v", all.named("Aoi"))
 	}
-	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "ask": false}, &all)
-	if all.named("Aoi").Ask || !all.named("Shizuoka Station").Ask {
-		t.Errorf("not asking: %+v", all)
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "ask": true}, &all)
+	if !all.named("Aoi").Ask || all.named("Shizuoka Station").Ask {
+		t.Errorf("asking: %+v", all)
 	}
 	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "alert_meters": 900}, &all)
-	if all.named("Aoi").Ask || all.named("Aoi").AlertMeters != 900 {
+	if !all.named("Aoi").Ask || all.named("Aoi").AlertMeters != 900 {
 		t.Errorf("kept: %+v", all.named("Aoi"))
 	}
-	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Gym", "lat": 34.9, "lng": 138.3, "ask": false}, &all)
-	if all.named("Gym").Ask {
-		t.Errorf("a new stop that doesn't ask: %+v", all.named("Gym"))
+	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Gym", "lat": 34.9, "lng": 138.3, "ask": true}, &all)
+	if !all.named("Gym").Ask {
+		t.Errorf("a new stop that asks: %+v", all.named("Gym"))
 	}
 	sam.do("DELETE", fmt.Sprintf("/api/bus/stops/%d", all.named("Gym").ID), nil, &all)
 

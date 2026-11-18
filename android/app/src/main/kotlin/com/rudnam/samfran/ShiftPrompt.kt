@@ -60,7 +60,11 @@ class ShiftPrompt : BroadcastReceiver() {
         const val STOPS = "stops"
         /** How many stops there are: "Other stop" is for more than one. */
         const val STOP_COUNT = "stop-count"
-        /** "Ask when a shift ends" is on (the Capacitor build kept this in its own preferences). */
+        /**
+         * "Ask when a shift ends" was on for this phone, before it was each
+         * stop's (the Capacitor build kept this in its own preferences). Read
+         * once, to switch it on for the stops (AndroidReminders), then gone.
+         */
         const val PROMPTS = "prompts"
 
         fun prefs(c: Context): SharedPreferences = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -1,7 +1,7 @@
 // Screenshots of the main screens at phone and desktop width. They land in
 // e2e/test-results/ (and in CI's artifacts), so you can look at a change
 // without running anything. Add your own screens here.
-const { test, expect, signUp, standAt, pickCategory } = require('./fixtures');
+const { test, expect, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
 
 for (const [name, viewport] of [
   ['phone', { width: 390, height: 844 }],
@@ -57,7 +57,9 @@ for (const [name, viewport] of [
     await pickCategory(page, /All places/);
     await shot('3c-want-all');
     // Nearest first, from Hamamatsu Station, then on the map (Google is a fake: fixtures.js).
-    await page.getByRole('button', { name: 'Nearby' }).click();
+    await page.getByRole('button', { name: /^Order:/ }).click();
+    await shot('3c2-order-menu');
+    await page.getByRole('radiogroup', { name: 'Order' }).getByRole('radio', { name: 'Nearby' }).click();
     await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem').first()).toContainText('Blue Sky Café');
     await shot('3d-want-nearby');
     await page.getByRole('button', { name: 'Map' }).click();
@@ -65,7 +67,7 @@ for (const [name, viewport] of [
     await expect(page.locator('.map-card')).toContainText('Hilltop Shrine');
     await shot('3e-want-map');
     await page.getByRole('button', { name: 'Map' }).click(); // back to the list
-    await page.getByRole('button', { name: 'Nearby' }).click(); // newest first again
+    await pickOrder(page, 'Newest'); // newest first again
     await page.getByRole('link', { name: /Been there/ }).click();
 
     await page.getByRole('link', { name: /Hanabi Grill/ }).click();
@@ -131,7 +133,7 @@ for (const [name, viewport] of [
             ? [
                 ...together,
                 { name: 'ヤマダ ハナ', code: '9F' },
-                { name: 'コバヤシ リク', code: '7D' },
+                { name: 'コバヤシ リク', code: '7B' },
                 { name: 'サトウ ミオ', code: '17D' },
                 { name: 'ヨル タロウ', code: '22F', day_offset: -1 },
                 { name: 'アサ ミキ', code: '6D', day_offset: 1 },
@@ -182,6 +184,10 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
+    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await shot('7d-bus-settings');
+    await page.getByRole('button', { name: '‹ Bus alarm' }).click();
 
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();

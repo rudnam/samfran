@@ -1,4 +1,4 @@
-const { test, expect, signUp, standAt, pickCategory } = require('./fixtures');
+const { test, expect, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
 
 test('add a place, rate it, change when you went, edit and delete it', async ({ page }) => {
   await signUp(page);
@@ -368,8 +368,8 @@ test('nearby: nearest first, with how far; and the places on a map', async ({ pa
   const want = page.getByRole('list', { name: 'Want to go' }).getByRole('listitem');
   await expect(want.first()).toContainText('Somewhere'); // newest first
 
-  await page.getByRole('button', { name: 'Nearby' }).click();
-  await expect(page.getByRole('button', { name: 'Nearby' })).toHaveAttribute('aria-pressed', 'true');
+  await pickOrder(page, 'Nearby');
+  await expect(page.getByRole('button', { name: 'Order: Nearby' })).toBeVisible();
   await expect(want).toHaveText([/うなぎ藤田.*\d+ m/, /浜松城公園.*1\.\d km/, /中田島砂丘.*5\.\d km/, /Somewhere/]);
   // Remembered: opened again, still nearest first.
   await page.reload();
@@ -400,7 +400,45 @@ test('without a map key there is no map, and Nearby says why when location is of
   await page.goto('/app/#/want');
   await page.reload();
   await expect(page.getByRole('button', { name: 'Map' })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Nearby' }).click();
+  await pickOrder(page, 'Nearby');
   await expect(page.getByText('Location is off for this site', { exact: false })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
+});
+
+test('order: newest, best rated or by name, and remembered', async ({ page }) => {
+  await signUp(page);
+  const today = new Date().toISOString().slice(0, 10);
+  // Added in this order, so newest first is the reverse.
+  for (const [name, stars] of [
+    ['Gyoza Komachi', 3],
+    ['Ramen Tsubaki', 5],
+    ['Unrated Udon', 0],
+    ['Bento Box', 4],
+  ]) {
+    const res = await page.request.post('/api/restaurants', { data: { name, category: 'eat', visit: { visited_on: today }, stars } });
+    expect(res.status()).toBe(201);
+  }
+  await page.reload();
+  const been = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
+  await expect(been).toHaveText([/Bento Box/, /Unrated Udon/, /Ramen Tsubaki/, /Gyoza Komachi/]);
+  await expect(page.getByRole('button', { name: 'Order: Newest' })).toBeVisible();
+
+  // Best rated first; nobody's rated Unrated Udon, so it's last.
+  await pickOrder(page, 'Top rated');
+  await expect(page.getByRole('button', { name: 'Order: Top rated' })).toBeVisible();
+  await expect(been).toHaveText([/Ramen Tsubaki/, /Bento Box/, /Gyoza Komachi/, /Unrated Udon/]);
+
+  // By name; remembered when the app is opened again.
+  await pickOrder(page, 'A–Z');
+  await expect(been).toHaveText([/Bento Box/, /Gyoza Komachi/, /Ramen Tsubaki/, /Unrated Udon/]);
+  await page.reload();
+  await expect(been).toHaveText([/Bento Box/, /Gyoza Komachi/, /Ramen Tsubaki/, /Unrated Udon/]);
+
+  // The menu closes on Escape, and Newest puts it back.
+  await page.getByRole('button', { name: /^Order:/ }).click();
+  await expect(page.getByRole('radiogroup', { name: 'Order' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('radiogroup', { name: 'Order' })).toHaveCount(0);
+  await pickOrder(page, 'Newest');
+  await expect(been.first()).toContainText('Bento Box');
 });

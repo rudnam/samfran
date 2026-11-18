@@ -341,7 +341,7 @@ data class NetworkBusStop(
     val lng: Double = 0.0,
     @SerialName("alert_meters") val alertMeters: Int = 800,
     val shifts: List<String> = emptyList(),
-    val ask: Boolean = true,
+    val ask: Boolean = false,
 )
 
 @Serializable
