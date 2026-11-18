@@ -14,30 +14,30 @@ import (
 
 type sample struct {
 	restaurant.Fields
-	daysAgo []int // visits; none puts it on the want-to-go list
+	daysAgo int // when you went; 0 puts it on the want-to-go list
 	stars   int
 }
 
 var samples = map[string][]sample{
 	"en": {
-		{Fields: restaurant.Fields{Name: "Hanabi Grill", Area: "Station East", Cuisine: "Hamburg steak", Notes: "Book ahead on weekends: the wait was two hours."}, daysAgo: []int{3, 40}, stars: 5},
-		{Fields: restaurant.Fields{Name: "Gyoza Komachi", Area: "Station East", Cuisine: "Gyoza"}, daysAgo: []int{12}, stars: 4},
-		{Fields: restaurant.Fields{Name: "Unagi Mizuno", Area: "Lakeside", Cuisine: "Eel", Notes: "For a special occasion."}, daysAgo: []int{75}, stars: 5},
-		{Fields: restaurant.Fields{Name: "Ramen Tsubaki", Area: "Old Town", Cuisine: "Ramen"}, daysAgo: []int{20}, stars: 3},
+		{Fields: restaurant.Fields{Name: "Hanabi Grill", Area: "Station East", Cuisine: "Hamburg steak", Notes: "Book ahead on weekends: the wait was two hours."}, daysAgo: 3, stars: 5},
+		{Fields: restaurant.Fields{Name: "Gyoza Komachi", Area: "Station East", Cuisine: "Gyoza"}, daysAgo: 12, stars: 4},
+		{Fields: restaurant.Fields{Name: "Unagi Mizuno", Area: "Lakeside", Cuisine: "Eel", Notes: "For a special occasion."}, daysAgo: 75, stars: 5},
+		{Fields: restaurant.Fields{Name: "Ramen Tsubaki", Area: "Old Town", Cuisine: "Ramen"}, daysAgo: 20, stars: 3},
 		{Fields: restaurant.Fields{Name: "Blue Sky Café", Area: "Riverside", Cuisine: "Café", Notes: "Their pancakes are supposed to be great."}},
 		{Fields: restaurant.Fields{Name: "Taco Loco", Area: "Station East", Cuisine: "Mexican"}},
-		{Fields: restaurant.Fields{Name: "Castle Park", Area: "Old Town", Cuisine: "Park", Category: restaurant.CategoryNature, Notes: "The cherry trees, in early April."}, daysAgo: []int{30}, stars: 4},
+		{Fields: restaurant.Fields{Name: "Castle Park", Area: "Old Town", Cuisine: "Park", Category: restaurant.CategoryNature, Notes: "The cherry trees, in early April."}, daysAgo: 30, stars: 4},
 		{Fields: restaurant.Fields{Name: "Hilltop Shrine", Area: "North Hills", Cuisine: "Shrine", Category: restaurant.CategoryCulture}},
 		{Fields: restaurant.Fields{Name: "Lakeside Onsen", Area: "Lakeside", Cuisine: "Hot spring", Category: restaurant.CategoryRelax, Notes: "Open until midnight."}},
 	},
 	"ja": {
-		{Fields: restaurant.Fields{Name: "はなび亭", Area: "駅東", Cuisine: "ハンバーグ", Notes: "週末は2時間待ち。早めに行く。"}, daysAgo: []int{3, 40}, stars: 5},
-		{Fields: restaurant.Fields{Name: "餃子小町", Area: "駅東", Cuisine: "餃子"}, daysAgo: []int{12}, stars: 4},
-		{Fields: restaurant.Fields{Name: "うなぎ水野", Area: "湖畔", Cuisine: "うなぎ", Notes: "特別な日に。"}, daysAgo: []int{75}, stars: 5},
-		{Fields: restaurant.Fields{Name: "ラーメン椿", Area: "旧市街", Cuisine: "ラーメン"}, daysAgo: []int{20}, stars: 3},
+		{Fields: restaurant.Fields{Name: "はなび亭", Area: "駅東", Cuisine: "ハンバーグ", Notes: "週末は2時間待ち。早めに行く。"}, daysAgo: 3, stars: 5},
+		{Fields: restaurant.Fields{Name: "餃子小町", Area: "駅東", Cuisine: "餃子"}, daysAgo: 12, stars: 4},
+		{Fields: restaurant.Fields{Name: "うなぎ水野", Area: "湖畔", Cuisine: "うなぎ", Notes: "特別な日に。"}, daysAgo: 75, stars: 5},
+		{Fields: restaurant.Fields{Name: "ラーメン椿", Area: "旧市街", Cuisine: "ラーメン"}, daysAgo: 20, stars: 3},
 		{Fields: restaurant.Fields{Name: "ブルースカイカフェ", Area: "川沿い", Cuisine: "カフェ", Notes: "パンケーキがおいしいらしい。"}},
 		{Fields: restaurant.Fields{Name: "タコロコ", Area: "駅東", Cuisine: "メキシコ料理"}},
-		{Fields: restaurant.Fields{Name: "城山公園", Area: "旧市街", Cuisine: "公園", Category: restaurant.CategoryNature, Notes: "桜は4月の初め。"}, daysAgo: []int{30}, stars: 4},
+		{Fields: restaurant.Fields{Name: "城山公園", Area: "旧市街", Cuisine: "公園", Category: restaurant.CategoryNature, Notes: "桜は4月の初め。"}, daysAgo: 30, stars: 4},
 		{Fields: restaurant.Fields{Name: "丘の上神社", Area: "北の丘", Cuisine: "神社", Category: restaurant.CategoryCulture}},
 		{Fields: restaurant.Fields{Name: "湖畔温泉", Area: "湖畔", Cuisine: "温泉", Category: restaurant.CategoryRelax, Notes: "夜12時まで。"}},
 	},
@@ -61,8 +61,8 @@ func Filler(spaces *space.Store, restaurants *restaurant.Store) func(ctx context
 			if err != nil {
 				return err
 			}
-			for _, d := range s.daysAgo {
-				if err := restaurants.AddVisit(ctx, sp, userID, id, today.AddDate(0, 0, -d).Format(time.DateOnly), ""); err != nil {
+			if s.daysAgo > 0 {
+				if err := restaurants.AddVisit(ctx, sp, userID, id, today.AddDate(0, 0, -s.daysAgo).Format(time.DateOnly), ""); err != nil {
 					return err
 				}
 			}

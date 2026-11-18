@@ -22,7 +22,7 @@
     <string name="notify_change_someone">Someone</string>
     <string name="notify_change_added_been">%1$s added %2$s</string>
     <string name="notify_change_added_want">%1$s wants to go to %2$s</string>
-    <string name="notify_change_visit">%1$s logged a visit to %2$s</string>
+    <string name="notify_change_visit">%1$s went to %2$s</string>
     <string name="notify_change_rated">%1$s rated %2$s ★%3$d</string>
     <string name="notify_change_shifts">%1$s saved the shifts</string>
     <string name="notify_bus_started">%1$s started the bus alarm to %2$s</string>

@@ -43,12 +43,13 @@ class FoodScreenshotTest {
     }
     private val place = object : PlaceActions {
         override fun rate(stars: Int) {}
-        override fun setVisitOn(date: LocalDate) {}
-        override fun setVisitNote(note: String) {}
-        override fun logVisit() {}
-        override fun removeVisit(id: Long) {}
-        override fun undoRemove() {}
-        override fun commitRemove() {}
+        override fun startPicking() {}
+        override fun setPicking(date: LocalDate) {}
+        override fun cancelPicking() {}
+        override fun saveBeen() {}
+        override fun notBeen() {}
+        override fun undoNotBeen() {}
+        override fun commitNotBeen() {}
         override fun delete() {}
     }
     private val form = object : PlaceFormActions {
@@ -90,7 +91,7 @@ class FoodScreenshotTest {
     fun wantToGoJapanese() = shot("want-ja") { FoodListScreen(been.copy(tab = FoodTab.Want), list, {}, {}) }
 
     @Test
-    fun searchFindsAVisitNote() = shot("search") { FoodListScreen(been.copy(query = "miso"), list, {}, {}) }
+    fun search() = shot("search") { FoodListScreen(been.copy(query = "ramen"), list, {}, {}) }
 
     @Test
     fun empty() = shot("empty") { FoodListScreen(FoodListUiState(all = emptyList(), today = today), list, {}, {}) }
@@ -98,7 +99,8 @@ class FoodScreenshotTest {
     @Test
     fun offline() = shot("offline") { FoodListScreen(been.copy(problem = Outcome.Offline), list, {}, {}) }
 
-    private val hanabi = PlaceUiState(place = Samples.restaurants.first(), loaded = true, space = Samples.space, visitOn = today, today = today)
+    // Logged four times by an older app: the page shows one date.
+    private val hanabi = PlaceUiState(place = Samples.restaurants.first(), loaded = true, space = Samples.space, today = today)
 
     @Test
     fun placePage() = shot("place") { PlaceScreen(hanabi, place, {}, {}, {}) }
@@ -109,6 +111,14 @@ class FoodScreenshotTest {
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun placePageJapanese() = shot("place-ja") { PlaceScreen(hanabi, place, {}, {}, {}) }
+
+    @Test
+    fun placeChangeDate() = shot("place-change-date") { PlaceScreen(hanabi.copy(picking = hanabi.place!!.lastVisit), place, {}, {}, {}) }
+
+    @Test
+    fun placeMarkAsBeen() = shot("place-mark-been") {
+        PlaceScreen(PlaceUiState(place = Samples.restaurants.first { !it.been }, loaded = true, space = Samples.space, today = today, picking = today), place, {}, {}, {})
+    }
 
     @Test
     fun placePark() = shot("place-park") {

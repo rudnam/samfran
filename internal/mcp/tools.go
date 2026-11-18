@@ -237,7 +237,7 @@ var toolList = []*tool{
 	{
 		Name:        "list_restaurants",
 		Title:       "Places",
-		Description: "The places in samfran (restaurants, parks, shrines, onsen…): ones you've been to (visit_count > 0, with the latest visit) and ones you want to go to (no visits), with each person's rating and the place's category.",
+		Description: "The places in samfran (restaurants, parks, shrines, onsen…): ones you've been to (visit_count > 0; last_visit is the date the apps show) and ones you want to go to (no visits), with each person's rating and the place's category.",
 		InputSchema: object(map[string]any{
 			"list":     map[string]any{"type": "string", "enum": []string{"all", "been", "want"}, "description": "Which list; all by default."},
 			"category": categoryArg("Only places in this category; all by default."),
@@ -328,10 +328,11 @@ var toolList = []*tool{
 		},
 	},
 	{
-		Name:        "log_visit",
-		Title:       "Log a visit",
-		Description: "Records that you went to a restaurant on a date, with an optional note (what you had). A want-to-go place moves to the been-there list.",
-		InputSchema: object(map[string]any{"restaurant_id": idArg, "visited_on": dateArg, "note": str("Optional: what you had, how it was.")}, "restaurant_id", "visited_on"),
+		Name:  "log_visit",
+		Title: "Log a visit",
+		Description: "Records that you went to a place on a date. A want-to-go place moves to the been-there list. The apps show one date per place (been, or not yet), " +
+			"so going again just moves that date to the later one; an earlier date than the one it has changes nothing. The optional note is added to the place's notes.",
+		InputSchema: object(map[string]any{"restaurant_id": idArg, "visited_on": dateArg, "note": str("Optional: what you had, how it was. Added to the place's notes.")}, "restaurant_id", "visited_on"),
 		Annotations: adds,
 		run: func(c *call, args json.RawMessage) (any, error) {
 			var in struct {
@@ -350,14 +351,26 @@ var toolList = []*tool{
 			if err != nil {
 				return nil, err
 			}
-			if err := c.h.restaurants.AddVisit(c.r.Context(), sp, c.userID, in.RestaurantID, on, note); err != nil {
+			ctx := c.r.Context()
+			cur, err := c.h.restaurants.Get(ctx, sp, c.userID, in.RestaurantID)
+			if err != nil {
 				return nil, asToolError(err, "restaurant")
 			}
-			r, err := c.h.restaurants.Get(c.r.Context(), sp, c.userID, in.RestaurantID)
-			if err == nil {
-				c.log("visit_logged", map[string]any{"name": r.Name, "date": on})
+			if cur.LastVisit == nil || *cur.LastVisit < on {
+				added, err := c.h.restaurants.SetBeen(ctx, sp, c.userID, in.RestaurantID, on)
+				if err != nil {
+					return nil, asToolError(err, "restaurant")
+				}
+				kind := "been_date_changed"
+				if added {
+					kind = "visit_logged"
+				}
+				c.log(kind, map[string]any{"name": cur.Name, "date": on})
 			}
-			return r, err
+			if err := c.h.restaurants.NoteVisit(ctx, sp, in.RestaurantID, on, note); err != nil {
+				return nil, asToolError(err, "restaurant")
+			}
+			return c.h.restaurants.Get(ctx, sp, c.userID, in.RestaurantID)
 		},
 	},
 	{

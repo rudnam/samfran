@@ -40,7 +40,7 @@
     <string name="disconnect">Disconnect</string>
     <string name="this_device">This device</string>
     <string name="tell_me">Tell me about changes</string>
-    <string name="tell_me_hint">A notification when the other one of you adds a place, logs a visit, rates one, saves the shifts or starts a bus alarm. It can take half an hour.</string>
+    <string name="tell_me_hint">A notification when the other one of you adds a place, goes to one, rates one, saves the shifts or starts a bus alarm. It can take half an hour.</string>
     <string name="allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
     <string name="language">Language</string>
     <string name="appearance">Appearance</string>
@@ -65,7 +65,9 @@
     <string name="change_added_want">added %s to want to go</string>
     <string name="change_edited">edited %s</string>
     <string name="change_deleted">deleted %s</string>
-    <string name="change_visit">logged a visit to %s</string>
+    <string name="change_visit">went to %s</string>
+    <string name="change_been_date">changed the date for %s</string>
+    <string name="change_been_cleared">moved %s back to want to go</string>
     <string name="change_visit_removed">removed a visit to %s</string>
     <string name="change_rated">rated %1$s ★%2$d</string>
     <string name="change_unrated">cleared their rating of %s</string>

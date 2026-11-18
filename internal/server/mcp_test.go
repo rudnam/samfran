@@ -119,9 +119,15 @@ func TestMCPTools(t *testing.T) {
 	if _, msg := tool(t, ts.URL, token, "add_restaurant", map[string]any{"name": "x", "map_url": "javascript:alert(1)"}); !strings.Contains(msg, "web address") {
 		t.Errorf("bad map link: %q", msg)
 	}
+	// Going again moves the one date; it doesn't add a visit. The note goes in the place's notes.
 	r, _ = tool(t, ts.URL, token, "log_visit", map[string]any{"restaurant_id": id, "visited_on": today, "note": "green salsa"})
-	if r["visit_count"] != 2.0 {
+	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != today+" · green salsa" {
 		t.Errorf("visit: %v", r)
+	}
+	// An earlier date than the one it has changes nothing but the notes.
+	r, _ = tool(t, ts.URL, token, "log_visit", map[string]any{"restaurant_id": id, "visited_on": "2026-01-02", "note": "tacos al pastor"})
+	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != today+" · green salsa\n2026-01-02 · tacos al pastor" {
+		t.Errorf("earlier visit: %v", r)
 	}
 	if _, msg := tool(t, ts.URL, token, "rate_restaurant", map[string]any{"restaurant_id": 999999, "stars": 3}); msg != `{"error":"no such restaurant"}` {
 		t.Errorf("unknown restaurant: %q", msg)

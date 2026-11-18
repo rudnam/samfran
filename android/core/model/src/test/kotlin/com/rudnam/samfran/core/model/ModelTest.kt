@@ -94,11 +94,11 @@ class FoodTest {
     }
 
     @Test
-    fun `search looks in visits' notes too`() {
+    fun `search looks in the place, not in old visits' notes`() {
         val p = place(1, "2026-10-01", notes = listOf(VisitNote(LocalDate.parse("2026-10-01"), "Spicy miso ramen")))
         assertTrue(p.matches("station"))
-        assertTrue(p.matches("MISO"))
-        assertEquals("Spicy miso ramen", p.noteMatching("miso")?.note)
+        assertTrue(p.matches("PLACE"))
+        assertFalse(p.matches("miso"))
         assertFalse(p.matches("pizza"))
     }
 
