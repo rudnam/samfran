@@ -2,32 +2,36 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SamFran</title>
 <meta name="description" content="An app for two." data-ja-content="ふたりのためのアプリ。">
-<meta name="theme-color" content="#fdf6ee">
+<meta name="theme-color" content="#fdf6ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17120e" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <!-- The introduction, served at /. The app is at /app/ (index.html).
-     landing.ts shows it in Japanese (data-ja) and offers the Android app
-     while the server has one. -->
+     Deliberately says nothing about what's inside: it's a private app for
+     two. landing.ts shows it in Japanese (data-ja: HTML, ours) and offers
+     the Android app while the server has one. -->
 <script type="module" src="/src/landing.ts"></script>
 </head>
 <body class="landing">
 <main class="intro">
-  <img class="intro-logo" src="/icon.svg" alt="" width="56" height="56">
+  <div class="intro-mark">
+    <img src="/icon.svg" alt="" width="88" height="88">
+  </div>
   <h1>SamFran</h1>
   <p class="intro-line" data-ja="ふたりのためのアプリ。">An app for two.</p>
   <div class="intro-actions">
-    <a class="button" href="/app/" data-ja="ログイン">Sign in</a>
+    <a class="button intro-primary" href="/app/" data-ja="ログイン">Sign in</a>
     <a class="button secondary" href="/download/samfran.apk" data-download hidden download data-ja="Android版をダウンロード">Download for Android</a>
   </div>
-  <p class="intro-foot">
-    <button type="button" class="link quiet" id="language-toggle" lang="ja" data-ja="English">日本語</button>
-    <span aria-hidden="true">·</span>
-    <a href="/privacy" data-ja="プライバシー">Privacy</a>
-  </p>
 </main>
+<footer class="intro-foot">
+  <button type="button" class="intro-lang" id="language-toggle" lang="ja" data-ja="English">日本語</button>
+  <span aria-hidden="true">·</span>
+  <a href="/privacy" data-ja="プライバシー">Privacy</a>
+</footer>
 </body>
 </html>
