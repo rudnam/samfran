@@ -199,11 +199,11 @@ class ShiftsScreenshotTest {
     )
 
     @Test
-    fun shiftSettings() = shot("settings") { ShiftSettingsScreen(settingsState, settings, {}, {}) }
+    fun shiftSettings() = shot("settings") { ShiftSettingsScreen(settingsState, settings, {}) }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
-    fun shiftSettingsJapanese() = shot("settings-ja") { ShiftSettingsScreen(settingsState, settings, {}, {}) }
+    fun shiftSettingsJapanese() = shot("settings-ja") { ShiftSettingsScreen(settingsState, settings, {}) }
 
     @Test
     fun googleCalendar() = shot("google-calendar") { ShiftCalendarLinkScreen(settingsState, settings, {}, {}, {}) }

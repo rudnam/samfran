@@ -33,14 +33,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.rudnam.samfran.core.designsystem.component.CardTitle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.Hint
 import com.rudnam.samfran.core.designsystem.component.LinkButton
 import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
-import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
@@ -48,7 +46,6 @@ import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
-import com.rudnam.samfran.feature.shifts.navigation.ShiftCalendarLinkRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
 @Composable
@@ -58,20 +55,18 @@ internal fun ShiftSettingsDestination(navigation: ShiftsNavigation, viewModel: S
         state,
         viewModel,
         onBack = navigation::back,
-        onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
     )
 }
 
 /**
  * Whose shifts, how to find their row on the sheet, how long each letter's
- * shift is (web/src/features/shifts/ShiftSettingsPage.tsx). The calendar link is on [ShiftCalendarLinkScreen].
+ * shift is (web/src/features/shifts/ShiftSettingsPage.tsx). The calendar link is on [ShiftCalendarLinkScreen], from the Shifts tab.
  */
 @Composable
 fun ShiftSettingsScreen(
     state: ShiftSettingsUiState,
     actions: ShiftSettingsActions,
     onBack: () -> Unit,
-    onCalendar: () -> Unit,
 ) {
     val colors = SamFranTheme.colors
     SubPage(onBack = onBack) {
@@ -133,11 +128,6 @@ fun ShiftSettingsScreen(
                 Hint(if (state.done == SettingsDone.Saved) stringResource(R.string.saved) else "", Modifier.weight(1f))
                 PrimaryButton(stringResource(R.string.save), actions::save, enabled = !state.busy)
             }
-        }
-
-        SamFranCard {
-            CardTitle(stringResource(R.string.in_your_calendar))
-            SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, icon = SamFranIcons.calendar)
         }
 
     }

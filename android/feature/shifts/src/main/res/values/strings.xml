@@ -50,7 +50,6 @@
     <string name="remove_letter">Remove %s</string>
     <string name="save">Save</string>
     <string name="saved">Saved.</string>
-    <string name="in_your_calendar">In your calendar</string>
     <string name="step_send_title">Send the link to a computer</string>
     <string name="step_add_title">Open Google Calendar: Other calendars › + › From URL</string>
     <string name="step_paste_title">Paste the link and click Add calendar</string>
