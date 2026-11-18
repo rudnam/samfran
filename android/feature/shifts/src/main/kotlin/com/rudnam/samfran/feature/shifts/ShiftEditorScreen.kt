@@ -164,7 +164,7 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                             date.plusDays(1).takeIf { it.month == date.month }?.let(actions::focus)
                         }),
                         modifier = Modifier
-                            .width(84.dp)
+                            .width(72.dp)
                             .focusRequester(requesters.getValue(date))
                             .onFocusChanged { if (it.isFocused && state.focused != date) actions.focus(date) }
                             .semantics { contentDescription = codeFor },
@@ -333,7 +333,7 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
     val label = p.name.trim().ifEmpty { stringResource(R.string.person_n, index + 1) }
     val nameLabel = stringResource(R.string.name_of_person, index + 1)
     val codeLabel = stringResource(R.string.code_of, label)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedTextField(
             value = p.name,
             onValueChange = { actions.setPersonName(p.key, it) },
@@ -349,14 +349,14 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
-            modifier = Modifier.width(72.dp).semantics { contentDescription = codeLabel },
+            modifier = Modifier.width(64.dp).semantics { contentDescription = codeLabel },
         )
         // Which day their cell is on: tapping it goes the same day, the day before, the next day.
         val dayWord = stringResource(if (p.dayOffset < 0) R.string.the_day_before else if (p.dayOffset > 0) R.string.the_next_day else R.string.the_same_day)
         val dayLabel = stringResource(R.string.which_day_works, label, dayWord)
         Column(
             Modifier
-                .width(64.dp)
+                .width(86.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .clickable(role = Role.Button) { actions.nextPersonDay(p.key) }
                 .semantics(mergeDescendants = true) { contentDescription = dayLabel }
@@ -364,7 +364,7 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
             horizontalAlignment = Alignment.End,
         ) {
             val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
-            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, maxLines = 1, softWrap = false)
             Text(
                 dayWord,
                 style = MaterialTheme.typography.labelSmall,

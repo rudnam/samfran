@@ -411,10 +411,10 @@ export const ja = {
   'Name of person {n}': '{n}人目の名前',
   'Code of {name}': '{name}のコード',
   'Remove {name}': '{name}を削除',
-  'the day before': '前日',
-  'the next day': '翌日',
+  'day before': '前日',
+  'next day': '翌日',
   'Their name': '名前',
-  'the same day': '当日',
+  'same day': '当日',
   'Which day {name} works: {day}': '{name}の勤務日：{day}',
 } as const;
 

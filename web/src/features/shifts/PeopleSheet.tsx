@@ -30,7 +30,7 @@ export function isThere(p: PersonRow, code: string, hours: [number, number] | un
 
 /** The same day → the day before → the next day → the same day. */
 const nextOffset = (o: number) => (o === 0 ? -1 : o < 0 ? 1 : 0);
-const dayWord = (o: number) => (o < 0 ? t('the day before') : o > 0 ? t('the next day') : t('the same day'));
+const dayWord = (o: number) => (o < 0 ? t('day before') : o > 0 ? t('next day') : t('same day'));
 
 export function PeopleSheet({
   date,

@@ -218,11 +218,11 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByLabel('Name of person 4').fill('アサ ミキ');
   await sheet.getByLabel('Code of アサ ミキ').fill('6D');
   const day = sheet.getByRole('button', { name: /^Which day アサ ミキ works/ });
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the same day');
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: same day');
   await day.click();
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the day before');
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: day before');
   await day.click();
-  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the next day');
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: next day');
   await sheet.getByRole('button', { name: 'Done' }).click();
   await expect(sheet).toBeHidden();
   await expect(count).toHaveText('4');
@@ -376,7 +376,7 @@ test('see everyone there during a shift, not only those on the same one', async 
   await sheet.getByText('2 more that day, not there during this shift').click();
   const away = sheet.getByRole('list', { name: 'Not there during this shift' }).getByRole('listitem');
   await expect(away).toHaveCount(2);
-  await expect(away.nth(1)).toContainText('the day before');
+  await expect(away.nth(1)).toContainText('day before');
   await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
   await sheet.getByRole('button', { name: 'Done' }).click();
   // A 9F: the one on 7D is there now, and so is the one on 13F.
