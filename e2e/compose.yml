@@ -43,6 +43,9 @@ services:
       # Every browser test signs up its own user, all from this one IP.
       AUTH_RATE_LIMIT: "1000"
       LOG_LEVEL: debug
+      # Places' positions aren't looked up on the internet; the browser
+      # tests give them positions themselves.
+      LOCATE_PLACES: "false"
       # Links in emails point here; preview.yml changes it to localhost.
       PUBLIC_ORIGIN: http://server:8080
       # Sign in with Google shows, with a client Google doesn't know: the

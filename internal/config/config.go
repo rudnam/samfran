@@ -68,6 +68,15 @@ type Config struct {
 	// GooglePlacesAPIKey, when set, finds places to eat with Google Places
 	// as their names are typed (internal/restaurant/google.go).
 	GooglePlacesAPIKey string
+	// GoogleMapsBrowserKey, when set, shows the places on a Google map on
+	// the web page (web/src/features/restaurants/PlacesMap.tsx). A key for
+	// the Maps JavaScript API, restricted to this site's address: the
+	// browser sends it to Google, so anyone can read it.
+	GoogleMapsBrowserKey string
+	// LocatePlaces looks up where saved places are in the background, from
+	// their map link or name (internal/restaurant/locate.go). On unless
+	// LOCATE_PLACES=false; the tests keep it off, so they ask no one.
+	LocatePlaces bool
 	// GooglePlacesURL is not read from the environment; tests point it at a
 	// fake Google. Empty means Google's own.
 	GooglePlacesURL string
@@ -105,6 +114,8 @@ func Load(getenv func(string) string) (Config, error) {
 		MailFrom:                r.str("MAIL_FROM", ""),
 		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
 		GooglePlacesAPIKey:      r.str("GOOGLE_PLACES_API_KEY", ""),
+		GoogleMapsBrowserKey:    r.str("GOOGLE_MAPS_BROWSER_KEY", ""),
+		LocatePlaces:            r.bool("LOCATE_PLACES", true),
 	}
 	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {

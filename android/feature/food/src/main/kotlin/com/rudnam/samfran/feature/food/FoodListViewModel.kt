@@ -2,6 +2,7 @@ package com.rudnam.samfran.feature.food
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudnam.samfran.core.data.BusAlarm
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.SpaceRepository
@@ -10,12 +11,12 @@ import com.rudnam.samfran.core.model.FoodLists
 import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.Space
+import com.rudnam.samfran.core.model.byDistance
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,6 +27,9 @@ import javax.inject.Inject
 
 enum class FoodTab { Been, Want }
 
+/** Finding where the phone is, for Nearby. */
+enum class Locating { No, Asking, Failed }
+
 data class FoodListUiState(
     /** Null until the first answer (from the phone's copy or the server). */
     val all: List<Restaurant>? = null,
@@ -33,6 +37,13 @@ data class FoodListUiState(
     val query: String = "",
     /** The category chosen to show; null for all. Remembered on the phone. */
     val filter: PlaceCategory? = null,
+    /** Nearest first rather than newest. Remembered on the phone. */
+    val nearby: Boolean = false,
+    /** On a map rather than a list. Remembered on the phone. */
+    val onMap: Boolean = false,
+    /** Where the phone is, once found for Nearby. */
+    val here: Pair<Double, Double>? = null,
+    val locating: Locating = Locating.No,
     val space: Space? = null,
     val refreshing: Boolean = false,
     /** The last refresh didn't work (offline, say); what's shown is the phone's copy. */
@@ -62,9 +73,13 @@ data class FoodListUiState(
     /** The chips: every category the tab has a place in, and the one chosen. */
     val chips: List<PlaceCategory> get() = PlaceCategory.entries.filter { (counts[it] ?: 0) > 0 || it == activeFilter }
 
-    /** The tab's places in the chosen category that match the search. */
+    /** Where the phone is, when the list is nearest first. */
+    val near: Pair<Double, Double>? get() = here.takeIf { nearby }
+
+    /** The tab's places in the chosen category that match the search, newest or nearest first. */
     val shown: List<Restaurant>
         get() = onTab.filter { (activeFilter == null || it.category == activeFilter) && it.matches(query) }
+            .let { list -> near?.let(list::byDistance) ?: list }
 
     /** Places last visited this month. */
     val thisMonth: Int get() = been.count { it.lastVisit?.let(YearMonth::from) == YearMonth.from(today) }
@@ -77,6 +92,11 @@ interface FoodListActions {
     fun setTab(tab: FoodTab)
     fun setQuery(query: String)
     fun setFilter(category: PlaceCategory?)
+    /** Nearest first; the screen asks for location permission before turning it on. */
+    fun setNearby(nearby: Boolean)
+    /** Finds where the phone is (with permission), for Nearby. */
+    fun findHere()
+    fun setOnMap(onMap: Boolean)
     fun refresh()
 }
 
@@ -85,6 +105,7 @@ class FoodListViewModel @Inject constructor(
     private val food: FoodRepository,
     private val spaces: SpaceRepository,
     private val preferences: UserPreferencesRepository,
+    private val location: BusAlarm,
     private val clock: Clock,
 ) : ViewModel(), FoodListActions {
     private val local = MutableStateFlow(FoodListUiState(today = LocalDate.now(clock)))
@@ -93,9 +114,15 @@ class FoodListViewModel @Inject constructor(
         local,
         food.restaurants,
         spaces.space,
-        preferences.preferences.map { it.placesCategory },
-    ) { s, all, space, filter ->
-        s.copy(all = all ?: s.all, space = space, filter = filter.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of))
+        preferences.preferences,
+    ) { s, all, space, p ->
+        s.copy(
+            all = all ?: s.all,
+            space = space,
+            filter = p.placesCategory.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of),
+            nearby = p.placesNearby,
+            onMap = p.placesOnMap,
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
@@ -108,6 +135,24 @@ class FoodListViewModel @Inject constructor(
 
     override fun setFilter(category: PlaceCategory?) {
         viewModelScope.launch { preferences.setPlacesCategory(category?.key.orEmpty()) }
+    }
+
+    override fun setNearby(nearby: Boolean) {
+        viewModelScope.launch { preferences.setPlacesNearby(nearby) }
+        if (nearby) findHere()
+    }
+
+    override fun findHere() {
+        if (local.value.locating == Locating.Asking) return
+        local.update { it.copy(locating = Locating.Asking) }
+        viewModelScope.launch {
+            val here = location.here()
+            local.update { if (here != null) it.copy(here = here, locating = Locating.No) else it.copy(locating = Locating.Failed) }
+        }
+    }
+
+    override fun setOnMap(onMap: Boolean) {
+        viewModelScope.launch { preferences.setPlacesOnMap(onMap) }
     }
 
     override fun refresh() = refresh(quietly = false)

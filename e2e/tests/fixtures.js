@@ -7,6 +7,33 @@ const fakeMap =
   '<!doctype html><body style="margin:0;background:#e8eaed;font:14px sans-serif;display:grid;place-items:center;height:100vh">' +
   '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#ea4335"></div></body>';
 
+// Google Maps' script for the places' map (web/src/map/main.ts), from a
+// fake that puts each overlay (a pin) on the page, spread out by position,
+// and calls back as Google does.
+const fakeMapsScript = `
+(() => {
+  const el = () => document.getElementById('map');
+  class LatLng { constructor(lat, lng) { this.lat = () => lat; this.lng = () => lng; } }
+  class Map {
+    constructor(div) { this.div = div; this.listeners = {}; div.style.position = 'relative'; div.style.background = '#e8eaed';
+      div.addEventListener('click', () => (this.listeners.click || []).forEach((f) => f())); }
+    addListener(name, f) { (this.listeners[name] = this.listeners[name] || []).push(f); }
+    setCenter() {} setZoom() {} fitBounds() {}
+  }
+  class OverlayView {
+    setMap(map) {
+      if (map) { this.getPanes = () => ({ overlayMouseTarget: el() });
+        this.getProjection = () => ({ fromLatLngToDivPixel: (p) => ({ x: 60 + ((p.lng() * 1000) % 250), y: 80 + ((p.lat() * 1000) % 300) }) });
+        this.onAdd(); this.draw(); }
+      else this.onRemove();
+    }
+  }
+  class LatLngBounds { extend() {} }
+  window.google = { maps: { Map, OverlayView, LatLng, LatLngBounds } };
+  const cb = new URL(document.currentScript.src).searchParams.get('callback');
+  setTimeout(() => window[cb](), 0);
+})();`;
+
 const test = base.test.extend({
   // Fails the test if the page throws or logs a console error (which includes
   // Content-Security-Policy violations).
@@ -25,10 +52,35 @@ const test = base.test.extend({
     await page.route('**/api/restaurants/search?*', (route) => route.fulfill({ json: [] }));
     await page.route('**/api/restaurants/suggest?*', (route) => route.fulfill({ json: [] }));
     await page.route('https://www.google.com/maps?*', (route) => route.fulfill({ contentType: 'text/html', body: fakeMap }));
+    await page.route('https://maps.googleapis.com/maps/api/js?*', (route) =>
+      route.fulfill({ contentType: 'text/javascript', body: fakeMapsScript }),
+    );
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);
   },
 });
+
+/**
+ * Where the browser says the device is, for Nearby: at lat/lng, or, with
+ * none, location turned down. (The app is at http://server:8080 in Docker,
+ * where the browser's own location needs https, so this stands in for it.)
+ */
+async function standAt(page, lat, lng) {
+  await page.addInitScript(([lat, lng]) => {
+    navigator.geolocation.getCurrentPosition = (ok, fail) =>
+      setTimeout(() =>
+        lat === null
+          ? fail({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3, message: 'denied' })
+          : ok({ coords: { latitude: lat, longitude: lng, accuracy: 20 }, timestamp: Date.now() }),
+      );
+  }, [lat ?? null, lng ?? null]);
+}
+
+/** Shows one category's places (or 'All places'), from the category menu above the list. */
+async function pickCategory(page, name) {
+  await page.getByRole('button', { name: /^Category:/ }).click();
+  await page.getByRole('radiogroup', { name: 'Category' }).getByRole('radio', { name }).click();
+}
 
 let n = 0;
 /** A unique email per call, so parallel tests never share an account. */
@@ -82,4 +134,4 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink };
+module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, uniqueEmail, PASSWORD, confirmationLink, resetLink };

@@ -51,6 +51,9 @@ data class Restaurant(
     val category: PlaceCategory = PlaceCategory.Eat,
     val mapUrl: String = "",
     val notes: String = "",
+    /** Where it is; null until the server knows (it looks it up from the map link or name). */
+    val lat: Double? = null,
+    val lng: Double? = null,
     /** Who added it; empty if they've left. */
     val addedBy: String = "",
     val createdAt: Instant = Instant.EPOCH,
@@ -83,6 +86,13 @@ data class Restaurant(
         val q = query.trim()
         if (q.isEmpty()) return true
         return listOf(name, area, cuisine, notes).any { it.contains(q, ignoreCase = true) } || noteMatching(q) != null
+    }
+
+    /** Meters from [here], or null when where it is isn't known. */
+    fun metersFrom(here: Pair<Double, Double>): Double? {
+        val a = lat ?: return null
+        val b = lng ?: return null
+        return meters(here.first, here.second, a, b)
     }
 
     /** The newest visit whose note has the search in it. */
@@ -121,6 +131,26 @@ data class FoundPlace(
         get() = googleMapUrl.ifBlank { null } ?: "https://www.google.com/maps/search/" + URLEncoder.encode(name, "UTF-8").replace("+", "%20") + "/@$lat,$lng,17z"
 }
 
+/** Meters between two points (internal/geo's formula). */
+fun meters(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
+    val rad = Math.PI / 180
+    val dLat = (lat2 - lat1) * rad
+    val dLng = (lng2 - lng1) * rad
+    val h = Math.sin(dLat / 2).let { it * it } + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(dLng / 2).let { it * it }
+    return 2 * 6371000.0 * Math.asin(Math.sqrt(h))
+}
+
+/** How far, as the website writes it: "350 m", "1.2 km", "14 km". */
+fun distanceText(meters: Double): String = when {
+    meters < 1000 -> "${maxOf(10, (Math.round(meters / 10) * 10).toInt())} m"
+    meters < 10000 -> String.format(java.util.Locale.ROOT, "%.1f km", meters / 1000)
+    else -> "${Math.round(meters / 1000)} km"
+}
+
+/** Nearest first; places without a position last, newest first among them. */
+fun List<Restaurant>.byDistance(here: Pair<Double, Double>): List<Restaurant> =
+    sortedWith(compareBy<Restaurant> { it.metersFrom(here) ?: Double.MAX_VALUE }.thenByDescending { it.id })
+
 /** A place on the list with this name (any case, spaces around ignored), so it isn't added twice. */
 fun List<Restaurant>.named(name: String): Restaurant? =
     name.trim().takeIf { it.isNotEmpty() }?.let { n -> firstOrNull { it.name.trim().equals(n, ignoreCase = true) } }
@@ -133,6 +163,9 @@ data class RestaurantFields(
     val category: PlaceCategory = PlaceCategory.Eat,
     val mapUrl: String = "",
     val notes: String = "",
+    /** Where it is, both or neither: from the place picked in the search. */
+    val lat: Double? = null,
+    val lng: Double? = null,
 )
 
 /** The two lists of the Places tab. */

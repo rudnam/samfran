@@ -219,7 +219,9 @@ class PlaceFormViewModel @Inject constructor(
         viewModelScope.launch {
             // A picked place without a link of its own opens on that branch in Maps.
             val withLink = if (fields.mapUrl.isBlank() && s.picked != null) fields.copy(mapUrl = s.picked.mapUrl) else fields
-            val result = if (s.id != null) food.update(s.id, fields) else food.create(withLink, s.visitedOn.takeIf { s.been }, s.stars)
+            // Where the picked place is (a Google suggestion has it only after its details).
+            val placed = s.picked?.takeIf { it.lat != 0.0 || it.lng != 0.0 }?.let { withLink.copy(lat = it.lat, lng = it.lng) } ?: withLink
+            val result = if (s.id != null) food.update(s.id, fields) else food.create(placed, s.visitedOn.takeIf { s.been }, s.stars)
             _state.update {
                 when (result) {
                     is Outcome.Done -> it.copy(busy = false, savedId = result.value.id)

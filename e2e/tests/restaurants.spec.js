@@ -1,4 +1,4 @@
-const { test, expect, signUp } = require('./fixtures');
+const { test, expect, signUp, standAt, pickCategory } = require('./fixtures');
 
 test('add a place, rate it, log visits, edit and delete it', async ({ page }) => {
   await signUp(page);
@@ -94,6 +94,9 @@ test('search finds a place by what was written about a visit', async ({ page }) 
   await page.reload();
   const cards = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(cards).toHaveCount(5);
+  // Search is a button until it's wanted.
+  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Search' }).click();
   await page.getByRole('searchbox', { name: 'Search' }).fill('tantan');
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Ramen Tsubaki');
@@ -284,13 +287,17 @@ test('places of every kind: a category for each, and the list filtered by one', 
   await page.getByRole('link', { name: 'Our spots' }).click();
   const want = page.getByRole('list', { name: 'Want to go' }).getByRole('listitem');
   await expect(want).toHaveCount(3);
-  const filter = page.getByRole('radiogroup', { name: 'Category' });
-  await expect(filter.getByRole('radio')).toHaveText([/All\s*3/, /Eat\s*1/, /Nature\s*1/, /Culture\s*1/]);
-  await filter.getByRole('radio', { name: /Nature/ }).click();
+  const menu = page.getByRole('button', { name: /^Category:/ });
+  await expect(menu).toHaveText(/All places\s*3/);
+  await menu.click();
+  const options = page.getByRole('radiogroup', { name: 'Category' }).getByRole('radio');
+  await expect(options).toHaveText([/All places\s*3/, /Eat & drink\s*1/, /Nature & parks\s*1/, /History & culture\s*1/]);
+  await options.filter({ hasText: 'Nature & parks' }).click();
+  await expect(options).toHaveCount(0); // the menu closes
   await expect(want).toHaveCount(1);
   await expect(want).toContainText('浜松城公園');
   await page.reload();
-  await expect(filter.getByRole('radio', { name: /Nature/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(menu).toHaveAccessibleName('Category: Nature & parks');
   await expect(want).toHaveCount(1);
 
   // A place's category can be changed; picked by hand, it stays when a place is picked from the search.
@@ -314,4 +321,60 @@ test('places of every kind: a category for each, and the list filtered by one', 
   await page.getByLabel('Name', { exact: true }).fill('浜名湖');
   await page.getByRole('list', { name: 'Matching places' }).getByRole('button', { name: /浜名湖ガーデンパーク/ }).click();
   await expect(page.getByRole('radio', { name: 'Fun & activities' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('nearby: nearest first, with how far; and the places on a map', async ({ page }) => {
+  // Standing at Hamamatsu Station.
+  await standAt(page, 34.7038, 137.7349);
+  // A map key, as the server has with GOOGLE_MAPS_BROWSER_KEY; Google itself is a fake (fixtures.js).
+  await page.route('**/api/restaurants/map', (route) => route.fulfill({ json: { key: 'test-key' } }));
+  await signUp(page);
+  for (const [name, category, lat, lng] of [
+    ['中田島砂丘', 'nature', 34.656, 137.731], // about 5 km south
+    ['浜松城公園', 'nature', 34.7108, 137.7249], // about 1.2 km
+    ['うなぎ藤田', 'eat', 34.7039, 137.7347], // next door
+    ['Somewhere we haven’t found', 'other', undefined, undefined],
+  ]) {
+    expect((await page.request.post('/api/restaurants', { data: { name, category, lat, lng } })).status()).toBe(201);
+  }
+  await page.goto('/app/#/want');
+  await page.reload(); // the places added above, not the list from signing up
+  const want = page.getByRole('list', { name: 'Want to go' }).getByRole('listitem');
+  await expect(want.first()).toContainText('Somewhere'); // newest first
+
+  await page.getByRole('button', { name: 'Nearby' }).click();
+  await expect(page.getByRole('button', { name: 'Nearby' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(want).toHaveText([/うなぎ藤田.*\d+ m/, /浜松城公園.*1\.\d km/, /中田島砂丘.*5\.\d km/, /Somewhere/]);
+  // Remembered: opened again, still nearest first.
+  await page.reload();
+  await expect(want.first()).toContainText('うなぎ藤田');
+
+  // The map: a pin per place with a position; tapping one shows its card, which opens it.
+  await page.getByRole('button', { name: 'Map' }).click();
+  const map = page.frameLocator('iframe[title="Map of the places"]');
+  await expect(map.getByRole('button')).toHaveCount(3);
+  await expect(page.getByText('1 not on the map yet', { exact: false })).toBeVisible();
+  await map.getByRole('button', { name: '浜松城公園' }).click();
+  const card = page.locator('.map-card');
+  await expect(card).toContainText('浜松城公園');
+  await expect(card).toContainText(/1\.\d km/);
+  // The category filter applies to the map too.
+  await pickCategory(page, /Eat & drink/);
+  await expect(map.getByRole('button')).toHaveCount(1);
+  await pickCategory(page, /All places/);
+  await map.getByRole('button', { name: '浜松城公園' }).click();
+  await card.click();
+  await expect(page.getByRole('heading', { name: '浜松城公園' })).toBeVisible();
+});
+
+test('without a map key there is no map, and Nearby says why when location is off', async ({ page }) => {
+  await standAt(page); // location turned down
+  await signUp(page);
+  expect((await page.request.post('/api/restaurants', { data: { name: 'Castle Park', category: 'nature' } })).status()).toBe(201);
+  await page.goto('/app/#/want');
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Map' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Nearby' }).click();
+  await expect(page.getByText('Location is off for this site', { exact: false })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
 });

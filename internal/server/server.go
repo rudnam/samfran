@@ -105,6 +105,8 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	restaurantHandler := restaurant.NewHandler(restaurants)
 	restaurantHandler.Log = activities.Log
 	restaurantHandler.UseGoogle(cfg.GooglePlacesAPIKey, cfg.GooglePlacesURL)
+	restaurantHandler.Locate = cfg.LocatePlaces
+	restaurantHandler.MapKey = cfg.GoogleMapsBrowserKey
 	restaurantHandler.Register(mux, spaceHandler.Require)
 	reader := cfg.ShiftReader
 	if reader == nil && cfg.AnthropicAPIKey != "" {
@@ -125,6 +127,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {
 		return httpx.Errorf(http.StatusNotFound, "not found")
 	}))
+	mux.Handle("GET /map.html", mapPage(static, cfg.PublicOrigin))
 	mux.Handle("/", webApp(static))
 
 	return httpx.Chain(space.WithInvite(mux),
@@ -170,6 +173,10 @@ func webApp(static fs.FS) http.Handler {
 		name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
 		if strings.HasPrefix(name, "assets/") {
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+			// The map page runs in a sandboxed frame, with no origin of its
+			// own, so its scripts load cross-origin (mappage.go). They're the
+			// same public files for anyone.
+			w.Header().Set("Access-Control-Allow-Origin", "*")
 		} else {
 			w.Header().Set("Cache-Control", "no-cache")
 		}

@@ -36,6 +36,9 @@ class FoodScreenshotTest {
         override fun setTab(tab: FoodTab) {}
         override fun setQuery(query: String) {}
         override fun setFilter(category: PlaceCategory?) {}
+        override fun setNearby(nearby: Boolean) {}
+        override fun findHere() {}
+        override fun setOnMap(onMap: Boolean) {}
         override fun refresh() {}
     }
     private val place = object : PlaceActions {
@@ -78,6 +81,9 @@ class FoodScreenshotTest {
 
     @Test
     fun wantToGoNature() = shot("want-nature") { FoodListScreen(been.copy(tab = FoodTab.Want, filter = PlaceCategory.Nature), list, {}, {}) }
+
+    @Test
+    fun wantToGoNearby() = shot("want-nearby") { FoodListScreen(been.copy(tab = FoodTab.Want, nearby = true, here = 34.975 to 138.385), list, {}, {}) }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")

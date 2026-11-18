@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Map</title>
+<!--
+  The places on a Google map (src/map/main.ts). The app shows this page in a
+  sandboxed frame (features/restaurants/PlacesMap.tsx) and sends it the
+  places; it has no access to the app or its session. The server serves it
+  with its own Content-Security-Policy, which Google Maps needs and the app
+  doesn't allow (internal/server/mappage.go). Styles stay inline here: the
+  sandboxed page has no origin of its own to load them from.
+-->
+<style>
+  html, body, #map { margin: 0; height: 100%; }
+  body { font-family: system-ui, sans-serif; background: #ece6dc; }
+  .pin {
+    position: absolute; width: 34px; height: 34px; margin: -40px 0 0 -17px; padding: 0;
+    border: 2px solid #fff; border-radius: 50% 50% 50% 4px; transform: rotate(-45deg);
+    display: grid; place-items: center; cursor: pointer; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s;
+  }
+  .pin svg { transform: rotate(45deg); width: 17px; height: 17px; }
+  .pin.on { transform: rotate(-45deg) scale(1.25); z-index: 2; }
+  .pin:focus-visible { outline: 3px solid #241f1c; outline-offset: 2px; }
+  .me {
+    position: absolute; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+    background: #2f6fd6; border: 3px solid #fff; box-shadow: 0 0 0 8px rgba(47, 111, 214, 0.2);
+  }
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="Map"></div>
+<script type="module" src="/src/map/main.ts"></script>
+</body>
+</html>
