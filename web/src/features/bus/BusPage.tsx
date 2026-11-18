@@ -172,7 +172,6 @@ export function BusPage() {
             setPicked(s.id);
             endPractice();
           }}
-          onAdd={() => setEditing('new')}
           practice={practice}
           practiceLeft={practice?.phase === 'riding' ? Math.max(0, 1 - (now - practice.startedAt) / practiceMs) : 0}
           apk={apk}
@@ -295,7 +294,6 @@ function RideCard(p: {
   /** The shift the stop was picked for, if it was. */
   shift: ShiftDay | null;
   onPick: (s: SavedStop) => void;
-  onAdd: () => void;
   practice: Practice;
   /** 1 to 0, through the pretend ride. */
   practiceLeft: number;
@@ -351,11 +349,6 @@ function RideCard(p: {
               {s.shifts.length > 0 && <span className="stop-tag">{s.shifts.map(labelOf).join('・')}</span>}
             </button>
           ))}
-          {p.all.stops.length < maxStops && (
-            <button type="button" className="add" onClick={p.onAdd}>
-              {t('+ Add a stop')}
-            </button>
-          )}
         </div>
         {p.shift?.end && (
           <p className="stop-why">
@@ -457,7 +450,6 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
             {t('+ Add a stop')}
           </button>
         )}
-        <span className="hint">{t('Got off somewhere else after some shifts? Add that stop, and say which shifts it’s for.')}</span>
       </div>
       <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setBuzz(b)} disabled={busy} />
       {error && (

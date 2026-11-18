@@ -44,8 +44,8 @@ interface ShiftsRepository {
     suspend fun homeShift(now: Instant): ShiftDay?
 
     /**
-     * Saves a month's codes (empty ones are left out), with who's on the
-     * same shift for the days whose code is as it was read or saved.
+     * Saves a month's codes (empty ones are left out), with everyone at work
+     * around each day ([people]: the server works out who's shown).
      * [corrections] are names the photo reader got wrong (as read to as
      * fixed), so later scans get them right. [closingDays], if given, are
      * this month's 締め申請通知 days (dates in it); the usual days make it
@@ -54,11 +54,9 @@ interface ShiftsRepository {
     suspend fun save(
         month: YearMonth,
         codes: Map<LocalDate, String>,
-        with: Map<LocalDate, List<String>> = emptyMap(),
+        people: Map<LocalDate, List<ShiftCoworker>> = emptyMap(),
         corrections: Map<String, String> = emptyMap(),
         closingDays: List<Int>? = null,
-        /** Others at work around each day, as read or saved; the server keeps those who overlap. */
-        others: Map<LocalDate, List<ShiftCoworker>> = emptyMap(),
     ): Outcome<ShiftMonth>
 
     /** Reads a photo of the sheet, telling [onProgress] how far it's got; nothing is saved. The answer waits in [pendingRead] for the editor. */
@@ -132,19 +130,13 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
     override suspend fun save(
         month: YearMonth,
         codes: Map<LocalDate, String>,
-        with: Map<LocalDate, List<String>>,
+        people: Map<LocalDate, List<ShiftCoworker>>,
         corrections: Map<String, String>,
         closingDays: List<Int>?,
-        others: Map<LocalDate, List<ShiftCoworker>>,
     ) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
             code.takeIf { it.isNotBlank() }?.let {
-                NetworkShiftCode(
-                    date.toString(),
-                    it,
-                    with[date]?.takeIf(List<String>::isNotEmpty),
-                    others[date]?.takeIf(List<ShiftCoworker>::isNotEmpty)?.map { o -> NetworkCoworker(o.name, o.code, o.dayOffset) },
-                )
+                NetworkShiftCode(date.toString(), it, people[date].orEmpty().map { p -> NetworkCoworker(p.name, p.code, p.dayOffset) })
             }
         }
         val fixes = corrections.map { (from, to) -> NetworkNameFix(from, to) }.takeIf { it.isNotEmpty() }

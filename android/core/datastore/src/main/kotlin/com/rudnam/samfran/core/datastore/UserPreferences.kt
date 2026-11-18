@@ -33,8 +33,6 @@ data class UserPreferences(
     val activitySeen: Long? = null,
     /** The Shifts tab shows the month as a list rather than a calendar. */
     val shiftsAsList: Boolean = false,
-    /** The Shifts tab shows everyone there during a shift, not only those on the same one. */
-    val shiftsEveryone: Boolean = false,
     /** The Places tab shows only this category ([com.rudnam.samfran.core.model.PlaceCategory.key]); empty for all. */
     val placesCategory: String = "",
     /** The Places tab lists the nearest first, rather than the newest. */
@@ -54,7 +52,6 @@ class UserPreferencesRepository @Inject constructor(
             updateLaterVersion = p[UPDATE_LATER] ?: 0,
             activitySeen = p[ACTIVITY_SEEN],
             shiftsAsList = p[SHIFTS_AS_LIST] ?: false,
-            shiftsEveryone = p[SHIFTS_EVERYONE] ?: false,
             placesCategory = p[PLACES_CATEGORY] ?: "",
             placesNearby = p[PLACES_NEARBY] ?: false,
             placesOnMap = p[PLACES_ON_MAP] ?: false,
@@ -75,10 +72,6 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setShiftsAsList(list: Boolean) {
         dataStore.edit { it[SHIFTS_AS_LIST] = list }
-    }
-
-    suspend fun setShiftsEveryone(on: Boolean) {
-        dataStore.edit { it[SHIFTS_EVERYONE] = on }
     }
 
     suspend fun setPlacesCategory(key: String) {
@@ -120,7 +113,6 @@ class UserPreferencesRepository @Inject constructor(
         val UPDATE_LATER = intPreferencesKey("update_later")
         val ACTIVITY_SEEN = longPreferencesKey("activity_seen")
         val SHIFTS_AS_LIST = booleanPreferencesKey("shifts_as_list")
-        val SHIFTS_EVERYONE = booleanPreferencesKey("shifts_everyone")
         val PLACES_CATEGORY = stringPreferencesKey("places_category")
         val PLACES_NEARBY = booleanPreferencesKey("places_nearby")
         val PLACES_ON_MAP = booleanPreferencesKey("places_on_map")

@@ -6,11 +6,13 @@ import (
 	"unicode/utf8"
 )
 
-// Who else is there during a shift: besides those on exactly the same shift
-// (With), the people on other shifts whose hours overlap it, including a
-// night shift from the day before that runs into the morning, and an early
-// shift the next morning that a night shift runs into. Only those who
-// overlap are kept, and only on the person's working days.
+// Who else is there during a shift. Each working day keeps everyone read
+// around it (People): those working that day, on a night shift from the day
+// before, and on an early shift the next morning, each with their code.
+// What the apps show is worked out from them whenever the day is: those on
+// exactly the same shift (With), and those on other shifts whose hours
+// overlap it (Others). So a corrected code changes who's shown, and nobody
+// is lost: changing it back shows them again.
 
 // Coworker is someone else at work on or around a day, as read off the sheet.
 type Coworker struct {
@@ -29,8 +31,8 @@ type There struct {
 	End   *time.Time `json:"end,omitempty"`
 }
 
-// maxOthers is how many others a day can list as read (before keeping only
-// those who overlap) and maxThere how many are kept.
+// maxOthers is how many people a day can keep, and maxThere how many are
+// shown as there during it.
 const (
 	maxOthers = 80
 	maxThere  = 40
@@ -40,7 +42,7 @@ const (
 // codes normalized, and nothing that isn't a working code.
 func cleanOthers(in []Coworker) ([]Coworker, error) {
 	if len(in) > maxOthers {
-		return nil, invalidf("at most %d others a day", maxOthers)
+		return nil, invalidf("at most %d people a day", maxOthers)
 	}
 	var out []Coworker
 	for _, o := range in {
@@ -90,11 +92,55 @@ func overlapping(day Day, with []string, others []Coworker, lengths map[string]f
 	return out
 }
 
-// othersOf is what's stored for those there: who they are and their code.
-func othersOf(there []There) []Coworker {
-	out := make([]Coworker, 0, len(there))
-	for _, t := range there {
-		out = append(out, t.Coworker)
+// cleanPeople tidies a day's people as read or sent: as cleanOthers, and
+// each person once (the first time they're listed).
+func cleanPeople(in []Coworker) ([]Coworker, error) {
+	people, err := cleanOthers(in)
+	if err != nil {
+		return nil, err
+	}
+	seen := map[string]bool{}
+	out := []Coworker{}
+	for _, p := range people {
+		if k := nameKey(p.Name); !seen[k] {
+			seen[k] = true
+			out = append(out, p)
+		}
+	}
+	return out, nil
+}
+
+// legacyPeople are a day's people from what older app versions send and
+// earlier releases stored: names on the same shift (with), on the day's
+// code, and others with their own.
+func legacyPeople(code string, with []string, others []Coworker) []Coworker {
+	out := make([]Coworker, 0, len(with)+len(others))
+	for _, n := range with {
+		out = append(out, Coworker{Name: n, Code: code})
+	}
+	return append(out, others...)
+}
+
+// sameShift are the names of those on exactly day's shift: the same code
+// that day.
+func sameShift(day Day, people []Coworker) []string {
+	var out []string
+	for _, p := range people {
+		if p.DayOffset == 0 && normalize(p.Code) == day.Code {
+			out = append(out, p.Name)
+		}
 	}
 	return out
+}
+
+// withPeople fills in who's around a worked-out day: its people, those on
+// the same shift, and the others there during it. Days off keep nobody.
+func withPeople(day Day, people []Coworker, lengths map[string]float64, zone *time.Location) Day {
+	if day.Kind != Work || len(people) == 0 {
+		return day
+	}
+	day.People = people
+	day.With = sameShift(day, people)
+	day.Others = overlapping(day, day.With, people, lengths, zone)
+	return day
 }

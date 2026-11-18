@@ -1,27 +1,9 @@
-// Who's at work with Sam on a day. Normally only those on exactly her shift
-// ("With タナカ ユイ, スズキ ケン"), with a quiet "+3 there" when others on
-// other shifts overlap it. With "Everyone there" on, everyone there during
-// her shift, by when they start, each with a bar of when they're there.
+// Who's at work with Sam on a day: nobody is shown until the people button
+// beside Calendar/List is on. Then everyone there during her shift, by when
+// they start, each with a bar of when they're there.
 import type { ShiftDay } from '../../api';
 import { t } from '../../i18n';
 import { WithNames } from './WithNames';
-
-/** "Everyone there" is remembered on this device. */
-const everyoneKey = 'shifts-everyone';
-export function savedEveryone(): boolean {
-  try {
-    return localStorage.getItem(everyoneKey) === '1';
-  } catch {
-    return false;
-  }
-}
-export function saveEveryone(on: boolean) {
-  try {
-    localStorage.setItem(everyoneKey, on ? '1' : '0');
-  } catch {
-    // Private browsing: it lasts until the page is left.
-  }
-}
 
 /** "9:00" from an ISO time with its offset, as written. */
 function hm(iso?: string): string {
@@ -53,32 +35,20 @@ export function WhoThere({
   day,
   who,
   everyone,
-  onEveryone,
   className = 'with small row-note',
 }: {
   day: ShiftDay;
   /** Sam's name, for her own row. */
   who: string;
   everyone: boolean;
-  onEveryone: (on: boolean) => void;
   className?: string;
 }) {
   const others = day.others ?? [];
-  if (!everyone || !day.start || !day.end) {
-    if (!day.with?.length && !others.length) return null;
-    return (
-      <span className={className}>
-        <WithNames names={day.with} className="" />
-        {others.length > 0 && (
-          <>
-            {day.with?.length ? ' · ' : ''}
-            <button type="button" className="link-inline" onClick={() => onEveryone(true)}>
-              {t('+{count} there', { count: others.length })}
-            </button>
-          </>
-        )}
-      </span>
-    );
+  if (!everyone) return null;
+  // No times to draw bars against (an unknown code): just the names.
+  if (!day.start || !day.end) {
+    const names = [...(day.with ?? []), ...others.map((o) => o.name)];
+    return names.length ? <WithNames names={names} className={className} /> : null;
   }
 
   // Bars against Sam's shift: 0 at her start, 1 at her end.

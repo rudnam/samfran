@@ -22,6 +22,8 @@ data class ShiftDay(
     val with: List<String> = emptyList(),
     /** Others on other shifts whose hours overlap this one, by when they start. */
     val others: List<ShiftThere> = emptyList(),
+    /** Everyone kept around the day, there during it or not: [with] and [others] are worked out from them. */
+    val people: List<ShiftCoworker> = emptyList(),
 ) {
     /** The colour it's drawn in. */
     val tone: ShiftTone
@@ -188,9 +190,20 @@ object ShiftCodes {
 
     fun labelOf(label: String): String = labels[label] ?: label
 
-    /** "13:00"; a shift that ends the next morning just shows "7:00". */
+    /**
+     * When someone is there, in hours from the start of the day being edited:
+     * their code's hours moved a day back or on ([dayOffset] -1 or 1). Null
+     * for a code without known hours.
+     */
+    fun hoursAround(code: String, dayOffset: Int, lengths: Map<String, Double>): Pair<Double, Double>? =
+        explain(code, lengths).hours?.let { (from, to) -> from + dayOffset * 24 to to + dayOffset * 24 }
+
+    /** Whether two spans of hours overlap (as internal/shift/others.go decides). */
+    fun overlaps(a: Pair<Double, Double>, b: Pair<Double, Double>): Boolean = a.first < b.second && a.second > b.first
+
+    /** "13:00"; a shift that ends the next morning just shows "7:00", and one from the night before "22:00". */
     fun clock(hour: Double): String {
-        val h = hour % 24
+        val h = ((hour % 24) + 24) % 24
         val whole = h.toInt()
         val min = Math.round((h - whole) * 60).toInt()
         return "$whole:%02d".format(min)

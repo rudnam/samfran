@@ -85,7 +85,6 @@
     <string name="start_to">Start to %1$s</string>
     <string name="your_stops">Your stops</string>
     <string name="when_picked">When you pick it</string>
-    <string name="add_stop_hint">Get off somewhere else after some shifts? Add that stop, and say which shifts it’s for.</string>
     <string name="use_after">Use this stop after</string>
     <string name="this_stop">this stop</string>
     <string name="use_after_none">None: it’s only used when you pick it.</string>

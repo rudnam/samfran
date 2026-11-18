@@ -51,9 +51,9 @@ export function labelOf(label: string): string {
   return labels[label] ?? label;
 }
 
-/** "13:00"; a shift that ends the next morning just shows "7:00". */
+/** "13:00"; a shift that ends the next morning just shows "7:00", and one from the night before "22:00". */
 export function clock(hour: number): string {
-  const h = hour % 24;
+  const h = ((hour % 24) + 24) % 24; // a night shift from the day before starts at -2: 22:00
   const whole = Math.floor(h);
   const min = Math.round((h - whole) * 60);
   return `${whole}:${String(min).padStart(2, '0')}`;
@@ -113,3 +113,18 @@ export async function shrinkPhoto(file: File): Promise<Blob> {
   );
 }
 
+
+/**
+ * When someone is there, in hours from the start of the day being edited:
+ * their code's hours moved a day back or on (day_offset -1 or 1). Nothing
+ * for a code without known hours.
+ */
+export function hoursAround(code: string, dayOffset: number, lengths: Record<string, number>): [number, number] | undefined {
+  const h = explain(code, lengths).hours;
+  return h && [h[0] + dayOffset * 24, h[1] + dayOffset * 24];
+}
+
+/** Whether two spans of hours overlap (as internal/shift/others.go decides). */
+export function overlaps(a: [number, number], b: [number, number]): boolean {
+  return a[0] < b[1] && a[1] > b[0];
+}
