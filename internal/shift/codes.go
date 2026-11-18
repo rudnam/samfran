@@ -52,10 +52,9 @@ type Day struct {
 	// Others are the others on other shifts whose hours overlap this one,
 	// by when they start (others.go). Only for working days with times.
 	Others []There `json:"others,omitempty"`
-	// People are everyone kept for the day (others.go): With and Others
-	// are worked out from them. A read lists everyone around the day, so
-	// they follow a code corrected while checking it; a saved day keeps only
-	// those on its shift or there during it. Only for working days.
+	// People are everyone kept for the day (others.go): those on its shift
+	// or there during it, as read or saved. With and Others are worked out
+	// from them. Only for working days.
 	People []Coworker `json:"people,omitempty"`
 }
 

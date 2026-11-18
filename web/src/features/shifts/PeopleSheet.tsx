@@ -1,8 +1,8 @@
 // Who's at work around one day, while a month is checked or fixed: everyone
 // read off the sheet (or added), each with the code in their cell, in one list.
-// Those there during the day's shift come first; the rest of that day's people
-// follow in grey, in case the shift's code is corrected. Names, codes and days
-// can all be fixed.
+// A read lists only those there during the day's shift; anyone who isn't
+// after a code is changed is shown in grey, and isn't kept when the month is
+// saved. Names, codes and days can all be fixed.
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
 import { clock, dayName, hoursAround, normalize, overlaps } from './codes';
@@ -101,7 +101,8 @@ export function PeopleSheet({
           onClick={() => update(r.key, { day_offset: nextOffset(r.day_offset) })}
         >
           {theirs ? `${clock(theirs[0])}–${clock(theirs[1])}` : '–'}
-          <span className={`block${r.day_offset === 0 ? ' muted' : ''}`}>{dayWord(r.day_offset)}</span>
+          {/* Only a cell on another day is said; the same day needs no note. */}
+          {r.day_offset !== 0 && <span className="block">{dayWord(r.day_offset)}</span>}
         </button>
         <button type="button" className="link quiet" aria-label={t('Remove {name}', { name: label })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))}>
           ×

@@ -11,9 +11,8 @@ import (
 // day before, and on an early shift the next morning, each with their code.
 // What the apps show is worked out from them whenever the day is: those on
 // exactly the same shift (With), and those on other shifts whose hours
-// overlap it (Others). While a read is checked, a corrected code changes
-// who's shown; once saved, a day keeps only those there during its shift
-// (registered).
+// overlap it (Others). A read and a saved day keep only those there during
+// the shift (registered), so a corrected code can only drop people.
 
 // Coworker is someone else at work on or around a day, as read off the sheet.
 type Coworker struct {
@@ -134,7 +133,7 @@ func sameShift(day Day, people []Coworker) []string {
 	return out
 }
 
-// registered are the people a saved day keeps: those on its shift or there
+// registered are the people a read or saved day keeps: those on its shift or there
 // during it. When that can't be told (the day's or their letter has no
 // length yet), they're kept, so setting the length later shows them.
 func registered(day Day, people []Coworker, lengths map[string]float64, zone *time.Location) []Coworker {

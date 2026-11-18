@@ -721,7 +721,7 @@ func sheetView(sheet Sheet, st stored, zone *time.Location) (any, error) {
 		day := Explain(date.Format(time.DateOnly), code, st.Lengths, zone)
 		if with, err := cleanNames(d.With); err == nil && code == d.Code {
 			if people, err := cleanPeople(legacyPeople(day.Code, with, d.Others)); err == nil {
-				day = withPeople(day, people, st.Lengths, zone)
+				day = withPeople(day, registered(day, people, st.Lengths, zone), st.Lengths, zone)
 			}
 		}
 		view.Days = append(view.Days, day)

@@ -354,13 +354,10 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
         ) {
             val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
             Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, maxLines = 1, softWrap = false)
-            Text(
-                dayWord,
-                style = MaterialTheme.typography.labelSmall,
-                color = if (p.dayOffset == 0) colors.muted else colors.accentInk,
-                fontWeight = if (p.dayOffset == 0) null else FontWeight.Bold,
-                maxLines = 1,
-            )
+            // Only a cell on another day is said; the same day needs no note.
+            if (p.dayOffset != 0) {
+                Text(dayWord, style = MaterialTheme.typography.labelSmall, color = colors.accentInk, fontWeight = FontWeight.Bold, maxLines = 1)
+            }
         }
         IconButton(onClick = { actions.removePerson(p.key) }, modifier = Modifier.size(32.dp)) {
             LineIcon(SamFranIcons.close, stringResource(R.string.remove_person, label), tint = colors.muted, size = 18.dp)

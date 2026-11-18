@@ -109,6 +109,10 @@ func TestShifts(t *testing.T) {
 	if o := m.Days[1].Others; len(o) != 1 || o[0].Name != "ヤマダ ハナ" || !strings.HasPrefix(o[0].Start, "2026-11-02T09:00:00+09:00") {
 		t.Errorf("others there on the 2nd: %+v", o)
 	}
+	// Those not there during the shift (the 7D, the night before) aren't read at all.
+	if p := m.Days[1].People; len(p) != 3 || p[0]["name"] != "タナカ ユイ" || p[1]["name"] != "スズキ ケン" || p[2]["name"] != "ヤマダ ハナ" {
+		t.Errorf("people read on the 2nd: %+v", p)
+	}
 	if o := m.Days[3].Others; len(o) != 2 || o[0].Name != "ナカ" || o[1].Name != "アサ ミキ" || o[1].DayOffset != 1 || !strings.HasPrefix(o[1].Start, "2026-11-05T06:00:00+09:00") {
 		t.Errorf("others there on the night of the 4th: %+v", o)
 	}

@@ -219,6 +219,7 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByLabel('Code of アサ ミキ').fill('6D');
   const day = sheet.getByRole('button', { name: /^Which day アサ ミキ works/ });
   await expect(day).toHaveAccessibleName('Which day アサ ミキ works: same day');
+  await expect(day).not.toContainText('same day'); // only another day is written
   await day.click();
   await expect(day).toHaveAccessibleName('Which day アサ ミキ works: day before');
   await day.click();
