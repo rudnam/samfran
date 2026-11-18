@@ -3,6 +3,7 @@ package com.rudnam.samfran.core.testing
 import com.rudnam.samfran.core.model.ActivityDetails
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.Member
@@ -118,7 +119,17 @@ object Samples {
         },
     )
 
-    val stop = BusStop(set = true, name = "葵西", lat = 34.9756, lng = 138.3829, alertMeters = 800)
+    val stop = BusStop(set = true, name = "葵西", lat = 34.9756, lng = 138.3829, alertMeters = 800, id = 1, shifts = listOf("Late"))
+
+    val station = BusStop(set = true, name = "静岡駅", lat = 34.9715, lng = 138.3890, alertMeters = 600, id = 2, shifts = listOf("Early", "Middle"))
+
+    val mums = BusStop(set = true, name = "実家", lat = 34.9500, lng = 138.4000, alertMeters = 800, id = 3)
+
+    /** One stop, as most people have. */
+    val oneStop = BusStops(listOf(stop.copy(shifts = emptyList())), lastId = 1)
+
+    /** A stop for late shifts, one for early and middle ones, and one for when it's picked. */
+    val stops = BusStops(listOf(stop, station, mums), lastId = 1)
 
     val found = listOf(
         FoundStop("葵西", "静岡市葵区", train = false, lat = 34.9756, lng = 138.3829),

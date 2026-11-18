@@ -9,9 +9,14 @@ import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
+import com.rudnam.samfran.core.data.ShiftsRepository
+import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
+import com.rudnam.samfran.core.model.ShiftDay
+import com.rudnam.samfran.core.model.ShiftKinds
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.model.stopNameFromMaps
 import com.rudnam.samfran.feature.bus.navigation.BusRoute
@@ -25,6 +30,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Clock
 import javax.inject.Inject
 
 /** Choosing the stop: by name from the search, or (folded away) a Google Maps link, or where the phone is. */
@@ -39,6 +45,8 @@ data class StopForm(
     /** The position came from OpenStreetMap, by the name in the link. */
     val byName: Boolean = false,
     val meters: Int = 800,
+    /** The kinds of shift it's the stop for. */
+    val shifts: List<String> = emptyList(),
     /** "Can't find it? Other ways" is open. */
     val otherWays: Boolean = false,
     val busy: Boolean = false,
@@ -63,14 +71,19 @@ sealed interface Practice {
 }
 
 data class BusUiState(
-    val stop: BusStop? = null,
+    val stops: BusStops? = null,
+    /** The shift being gone home from, if there is one. */
+    val shift: ShiftDay? = null,
+    /** A stop picked for this ride, instead of the one for the shift. */
+    val picked: Long? = null,
     val trip: TripStatus = TripStatus(),
     /** Where the ride started from, for the progress line: the first distance the phone knew. */
     val from: Float = -1f,
     val practice: Practice? = null,
-    val editing: Boolean = false,
+    /** The stop being changed (its id), [NEW] for adding one, null when not. */
+    val editing: Long? = null,
     val form: StopForm = StopForm(),
-    /** Saving a new buzz distance, or how it buzzes, from the settings card. */
+    /** Saving how it buzzes, from the settings card. */
     val savingSettings: Boolean = false,
     val prompts: Boolean = false,
     /** Notifications are off for the app: say how to allow them. */
@@ -79,10 +92,22 @@ data class BusUiState(
     val locationDenied: Boolean = false,
     /** Opened from "Start bus alarm?": the trip starts once the stop is known. */
     val autoStart: Boolean = false,
+    /** Opened from "Other stop": choosing where to get off, then starting. */
+    val choosing: Boolean = false,
 ) {
-    val ready: Boolean get() = stop?.set == true
+    /** Where to get off: the one picked, or the shift's, or the one used last. */
+    val stop: BusStop? get() = stops?.let { all -> picked?.let(all::byId) ?: all.pick(shift) }
+    /** The stop is the shift's (not picked, nor the one used last). */
+    val byShift: Boolean get() = stop != null && picked == null && stop == stops?.forShift(shift)
+    val ready: Boolean get() = stops?.stops?.isNotEmpty() == true
+    val isEditing: Boolean get() = editing != null
     val buzzing: Boolean get() = trip.buzzing || practice == Practice.Buzzing
     val riding: Boolean get() = trip.running && !trip.buzzing
+
+    companion object {
+        /** [editing] for a new stop. */
+        const val NEW = 0L
+    }
 }
 
 interface BusActions {
@@ -95,12 +120,17 @@ interface BusActions {
     fun practice()
     fun endPractice()
     fun setPrompts(on: Boolean)
-    /** A buzz distance from the settings card: saved straight away. */
-    fun setDistance(meters: Int)
     /** How it buzzes, from the settings card: saved straight away. */
     fun setBuzz(buzz: Buzz)
-    fun edit()
+    /** Where to get off, for this ride. */
+    fun pickStop(id: Long)
+    /** "Other stop" is done with. */
+    fun endChoosing()
+    fun edit(id: Long)
+    fun add()
     fun cancelEdit()
+    fun toggleShift(kind: String)
+    fun removeStop()
     fun setName(name: String)
     fun pick(stop: FoundStop)
     fun setOtherWays(open: Boolean)
@@ -118,20 +148,28 @@ class BusViewModel @Inject constructor(
     private val food: FoodRepository,
     private val alarm: BusAlarm,
     private val reminders: Reminders,
+    private val shifts: ShiftsRepository,
+    private val clock: Clock,
 ) : ViewModel(), BusActions {
-    private val local = MutableStateFlow(BusUiState(autoStart = savedState.toRoute<BusRoute>().start))
+    private val local = savedState.toRoute<BusRoute>().let { route ->
+        MutableStateFlow(BusUiState(autoStart = route.start, picked = route.stop.takeIf { it > 0 }, choosing = route.pick))
+    }
 
-    val state: StateFlow<BusUiState> = combine(local, bus.stop, alarm.status, reminders.shiftPrompts) { s, stop, trip, prompts ->
-        s.copy(stop = stop ?: s.stop, trip = trip, prompts = prompts)
+    val state: StateFlow<BusUiState> = combine(local, bus.stops, alarm.status, reminders.shiftPrompts) { s, stops, trip, prompts ->
+        s.copy(stops = stops ?: s.stops, trip = trip, prompts = prompts)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
         viewModelScope.launch {
             when (val r = bus.refresh()) {
                 // No stop yet: the setup, to choose one.
-                is Outcome.Done -> local.update { if (!r.value.set) it.copy(editing = true, form = formFor(r.value)) else it }
+                is Outcome.Done -> local.update { if (r.value.stops.isEmpty()) it.copy(editing = BusUiState.NEW, form = StopForm()) else it }
                 else -> local.update { it.copy(problem = r) }
             }
+        }
+        viewModelScope.launch {
+            val home = shifts.homeShift(clock.instant())
+            local.update { it.copy(shift = home) }
         }
         viewModelScope.launch {
             var sawBuzz = false
@@ -154,19 +192,22 @@ class BusViewModel @Inject constructor(
 
     private fun formFor(stop: BusStop) = StopForm(
         name = stop.name,
-        position = if (stop.set) stop.lat to stop.lng else null,
+        position = stop.lat to stop.lng,
         meters = stop.alertMeters.takeIf { it > 0 } ?: 800,
+        shifts = stop.shifts,
     )
 
     /** The trip asked for by "Start bus alarm?" has been handled (started, or not possible). */
     fun autoStartHandled() = local.update { it.copy(autoStart = false) }
 
     override fun startTrip() {
-        val stop = state.value.stop?.takeIf { it.set } ?: return
+        val stop = state.value.stop ?: return
         if (state.value.trip.running) return
         practiceRun?.cancel()
-        local.update { it.copy(locationDenied = false, problem = null, practice = null) }
+        local.update { it.copy(locationDenied = false, problem = null, practice = null, choosing = false) }
         alarm.start(stop)
+        // The one used last, for when no shift says (and for older apps).
+        viewModelScope.launch { bus.use(stop.id) }
     }
 
     override fun locationDenied() = local.update { it.copy(locationDenied = true) }
@@ -191,7 +232,7 @@ class BusViewModel @Inject constructor(
             }
             local.update { it.copy(practice = Practice.Buzzing) }
             val stop = state.value.stop
-            alarm.test(stop?.name.orEmpty(), stop?.buzz ?: Buzz.Strong)
+            alarm.test(stop?.name.orEmpty(), state.value.stops?.buzz ?: Buzz.Strong)
         }
     }
 
@@ -209,30 +250,48 @@ class BusViewModel @Inject constructor(
         }
     }
 
-    override fun setDistance(meters: Int) {
-        val stop = state.value.stop?.takeIf { it.set } ?: return
-        if (meters == stop.alertMeters || local.value.savingSettings) return
-        local.update { it.copy(savingSettings = true, problem = null) }
-        viewModelScope.launch {
-            val r = bus.save(stop.name, stop.lat, stop.lng, meters)
-            local.update { it.copy(savingSettings = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
-            if (r is Outcome.Done) reminders.sync(now = true)
-        }
-    }
-
     override fun setBuzz(buzz: Buzz) {
-        val stop = state.value.stop?.takeIf { it.set } ?: return
-        if (buzz == stop.buzz || local.value.savingSettings) return
+        val all = state.value.stops ?: return
+        if (buzz == all.buzz || local.value.savingSettings) return
         local.update { it.copy(savingSettings = true, problem = null) }
         viewModelScope.launch {
-            val r = bus.save(stop.name, stop.lat, stop.lng, stop.alertMeters, buzz)
+            val r = bus.setBuzz(buzz)
             local.update { it.copy(savingSettings = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }
     }
 
-    override fun edit() = local.update { it.copy(editing = true, form = formFor(state.value.stop ?: BusStop(set = false))) }
+    override fun pickStop(id: Long) {
+        if (state.value.trip.running) return
+        endPractice()
+        local.update { it.copy(picked = id) }
+    }
 
-    override fun cancelEdit() = local.update { it.copy(editing = false) }
+    override fun endChoosing() = local.update { it.copy(choosing = false) }
+
+    override fun edit(id: Long) {
+        val stop = state.value.stops?.byId(id) ?: return
+        local.update { it.copy(editing = id, form = formFor(stop)) }
+    }
+
+    override fun add() = local.update { it.copy(editing = BusUiState.NEW, form = StopForm()) }
+
+    override fun cancelEdit() = local.update { it.copy(editing = null) }
+
+    override fun toggleShift(kind: String) = form { f -> f.copy(shifts = if (kind in f.shifts) f.shifts - kind else ShiftKinds.filter { it in f.shifts || it == kind }) }
+
+    override fun removeStop() {
+        val id = local.value.editing?.takeIf { it != BusUiState.NEW } ?: return
+        form { it.copy(busy = true, problem = null) }
+        viewModelScope.launch {
+            when (val r = bus.remove(id)) {
+                is Outcome.Done -> {
+                    local.update { it.copy(editing = if (r.value.stops.isEmpty()) BusUiState.NEW else null, form = StopForm(), picked = it.picked?.takeIf { p -> p != id }) }
+                    reminders.sync(now = true)
+                }
+                else -> form { it.copy(busy = false, problem = StopProblem.Server(r)) }
+            }
+        }
+    }
 
     private fun form(f: (StopForm) -> StopForm) = local.update { it.copy(form = f(it.form)) }
 
@@ -308,11 +367,17 @@ class BusViewModel @Inject constructor(
             return
         }
         val pos = f.position ?: return
+        val editing = local.value.editing ?: return
         form { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
-            when (val r = bus.save(f.name, pos.first, pos.second, f.meters)) {
+            val input = StopInput(f.name, pos.first, pos.second, f.meters, f.shifts)
+            val before = state.value.stops?.stops.orEmpty().map { it.id }.toSet()
+            val r = if (editing == BusUiState.NEW) bus.add(input) else bus.change(editing, input)
+            when (r) {
                 is Outcome.Done -> {
-                    local.update { it.copy(editing = false, form = it.form.copy(busy = false)) }
+                    // A stop just added is the one to look at.
+                    val added = r.value.stops.firstOrNull { it.id !in before }?.id
+                    local.update { it.copy(editing = null, form = it.form.copy(busy = false), picked = if (editing == BusUiState.NEW && before.isNotEmpty()) added else it.picked) }
                     reminders.sync(now = true) // the question names the stop
                 }
                 else -> form { it.copy(busy = false, problem = StopProblem.Server(r)) }

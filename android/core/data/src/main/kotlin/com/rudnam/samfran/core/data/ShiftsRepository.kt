@@ -8,6 +8,7 @@ import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
+import com.rudnam.samfran.core.model.homeShift
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.Server
 import com.rudnam.samfran.core.network.model.NetworkCoworker
@@ -36,8 +37,11 @@ interface ShiftsRepository {
     /** The next shift that hasn't ended, looking into next month if this one has none left. */
     suspend fun nextShift(now: Instant): ShiftDay?
 
-    /** When working shifts end from now on (last, this and next month's), for "Start bus alarm?". */
-    suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>>
+    /** Working shifts that end from now on (last, this and next month's), soonest first, for "Start bus alarm?". */
+    suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>>
+
+    /** The shift you'd be going home from now ([com.rudnam.samfran.core.model.homeShift]), from this month as last fetched. */
+    suspend fun homeShift(now: Instant): ShiftDay?
 
     /**
      * Saves a month's codes (empty ones are left out), with who's on the
@@ -112,14 +116,17 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         return upcoming(next)
     }
 
-    override suspend fun upcomingEnds(now: Instant) = outcome(io) {
+    override suspend fun upcomingShifts(now: Instant) = outcome(io) {
         val current = network.shifts(null).also { keep(it, current = true) }.asModel()
         val around = listOf(current.month.minusMonths(1), current.month.plusMonths(1)).map { network.shifts(it.toString()).also { m -> keep(m) }.asModel() }
         (around + current).flatMap { it.days }
-            .filter { it.kind == ShiftKind.Work }
-            .mapNotNull { it.end?.toInstant() }
-            .filter { it.isAfter(now) }
-            .sorted()
+            .filter { it.kind == ShiftKind.Work && it.end?.toInstant()?.isAfter(now) == true }
+            .sortedBy { it.end!!.toInstant() }
+    }
+
+    override suspend fun homeShift(now: Instant): ShiftDay? {
+        val current = documents.get(key(null), serializer)?.asModel() ?: refresh(null).valueOrNull ?: return null
+        return homeShift(current.days, now)
     }
 
     override suspend fun save(

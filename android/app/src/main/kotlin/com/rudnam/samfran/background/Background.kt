@@ -125,7 +125,7 @@ class AndroidReminders @Inject constructor(
     override suspend fun setShiftPrompts(on: Boolean): Boolean {
         val now = on && allowed && sendShiftEnds()
         prefs.edit { putBoolean(ShiftPrompt.PROMPTS, now) }
-        if (!now) ShiftPrompt.save(context, emptyList(), "")
+        if (!now) ShiftPrompt.save(context, emptyList(), 0)
         prompts.value = now
         return now
     }
@@ -143,11 +143,19 @@ class AndroidReminders @Inject constructor(
         return now
     }
 
-    /** Gives [ShiftPrompt] the times shifts end from now on; false if they can't be had. Without a stop there's nothing to start. */
+    /**
+     * Gives [ShiftPrompt] the times shifts end from now on, each with the stop
+     * for that kind of shift (or else the one used last); false if they can't
+     * be had. Without a stop there's nothing to start.
+     */
     private suspend fun sendShiftEnds(): Boolean {
-        val stop = (bus.refresh() as? Outcome.Done)?.value ?: return false
-        val ends = (shifts.upcomingEnds(clock.instant()) as? Outcome.Done)?.value ?: return false
-        ShiftPrompt.save(context, if (stop.set) ends.map { it.toEpochMilli() } else emptyList(), stop.name)
+        val all = (bus.refresh() as? Outcome.Done)?.value ?: return false
+        val upcoming = (shifts.upcomingShifts(clock.instant()) as? Outcome.Done)?.value ?: return false
+        val ends = upcoming.mapNotNull { day ->
+            val stop = all.pick(day) ?: return@mapNotNull null
+            ShiftPrompt.Companion.End(day.end!!.toInstant().toEpochMilli(), stop.id, stop.name)
+        }
+        ShiftPrompt.save(context, ends, all.stops.size)
         return true
     }
 
@@ -178,7 +186,7 @@ class AndroidReminders @Inject constructor(
             putBoolean(ActivityJob.ALERTS, false)
             putLong(ActivityJob.SEEN, 0)
         }
-        ShiftPrompt.save(context, emptyList(), "")
+        ShiftPrompt.save(context, emptyList(), 0)
         ActivityJob.schedule(context, false)
         prompts.value = false
         alerts.value = false
