@@ -256,8 +256,8 @@ export const ja = {
   // The calendar link
   'Add to Google Calendar': 'Googleカレンダーに追加',
   'Open Google Calendar': 'Googleカレンダーを開く',
-  'On a computer, open Google Calendar': 'パソコンでGoogleカレンダーを開く',
-  'Click Add': '「追加」をクリック',
+  'On a phone: the browser’s ⋮ menu › Desktop site.': 'スマホでは：ブラウザの ⋮ メニュー › PC版サイト',
+  'Press Add': '「追加」を押す',
   'Not on your phone? Turn on Sync for “{name}” in the app’s settings.': 'スマホに出ないときは、アプリの設定で「{name}」の同期をオンに。',
   More: 'その他',
   'By hand: Other calendars › + › From URL.': '手動で：他のカレンダー › + › URLで追加',

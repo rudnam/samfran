@@ -53,9 +53,11 @@
     <string name="remove_letter">Remove %s</string>
     <string name="save">Save</string>
     <string name="saved">Saved.</string>
-    <string name="step_send_title">Send the link to a computer</string>
-    <string name="step_add_title">Open Google Calendar: Other calendars › + › From URL</string>
-    <string name="step_paste_title">Paste the link and click Add calendar</string>
+    <string name="step_open_title">Open Google Calendar in the browser</string>
+    <string name="open_google_calendar">Open Google Calendar</string>
+    <string name="desktop_site_hint">On a phone: Chrome’s ⋮ menu › Desktop site.</string>
+    <string name="step_tap_add">Tap Add</string>
+    <string name="step_send_other">Send the link to the other one of you</string>
     <string name="sync_hint">Not on your phone? Turn on Sync for “%s” in the app’s settings.</string>
     <string name="add_to_google_calendar">Add to Google Calendar</string>
     <string name="calendar_link">Calendar link</string>

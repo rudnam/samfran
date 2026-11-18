@@ -84,6 +84,8 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
     `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
   );
   await expect(page.getByText('Turn on Sync for “Sam’s shifts”')).toBeVisible();
+  // On a phone, the website as a desktop page (the app can't add a calendar from a link).
+  await expect(page.getByText('On a phone: the browser’s ⋮ menu › Desktop site.')).toBeVisible();
   const feed = await page.request.get(await link.inputValue());
   expect(feed.status()).toBe(200);
   expect(await feed.text()).toContain('SUMMARY:夜勤');

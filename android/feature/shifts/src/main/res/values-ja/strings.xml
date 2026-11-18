@@ -53,9 +53,11 @@
     <string name="remove_letter">%sを削除</string>
     <string name="save">保存</string>
     <string name="saved">保存しました。</string>
-    <string name="step_send_title">リンクをパソコンに送る</string>
-    <string name="step_add_title">Googleカレンダーを開く：他のカレンダー › + › URLで追加</string>
-    <string name="step_paste_title">リンクを貼り付けて「カレンダーを追加」</string>
+    <string name="step_open_title">ブラウザでGoogleカレンダーを開く</string>
+    <string name="open_google_calendar">Googleカレンダーを開く</string>
+    <string name="desktop_site_hint">スマホでは：Chromeの ⋮ メニュー › PC版サイト</string>
+    <string name="step_tap_add">「追加」をタップ</string>
+    <string name="step_send_other">もうひとりにリンクを送る</string>
     <string name="sync_hint">スマホに出ないときは、アプリの設定で「%s」の同期をオンに。</string>
     <string name="add_to_google_calendar">Googleカレンダーに追加</string>
     <string name="calendar_link">カレンダーのリンク</string>

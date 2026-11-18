@@ -78,17 +78,18 @@ export function ShiftCalendarLinkPage() {
               <li>
                 <span className="how-num" aria-hidden="true">1</span>
                 <div className="stack tight grow">
-                  <strong>{t('On a computer, open Google Calendar')}</strong>
                   <div className="row wrap">
                     <a className="button" href={googleCalendarUrl(feedUrl)} target="_blank" rel="noopener noreferrer">
                       {t('Open Google Calendar')}
                     </a>
                   </div>
+                  {/* The phone app can't add a calendar from a link; the website can, as a desktop page. */}
+                  <span className="hint">{t('On a phone: the browser’s ⋮ menu › Desktop site.')}</span>
                 </div>
               </li>
               <li>
                 <span className="how-num" aria-hidden="true">2</span>
-                <strong className="grow">{t('Click Add')}</strong>
+                <strong className="grow">{t('Press Add')}</strong>
               </li>
               <li>
                 <span className="how-num" aria-hidden="true">3</span>

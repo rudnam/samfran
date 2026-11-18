@@ -1,5 +1,8 @@
 package com.rudnam.samfran.feature.shifts
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,12 +54,30 @@ internal fun ShiftCalendarLinkDestination(navigation: ShiftsNavigation, viewMode
         onBack = navigation::back,
         onCopy = { context.copyText(it) },
         onShare = { context.shareText(it) },
+        onOpen = { url ->
+            // In Chrome itself, not the Calendar app (which can't add a calendar
+            // from a link) nor a Custom Tab, so Desktop site is in its menu.
+            val view = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(Intent(view).setPackage("com.android.chrome"))
+            } catch (_: ActivityNotFoundException) {
+                try {
+                    context.startActivity(view)
+                } catch (_: ActivityNotFoundException) {
+                }
+            }
+        },
     )
 }
 
+/** Google Calendar's "add this calendar" page, with the link filled in (as googleCalendarUrl on the web). */
+internal fun googleCalendarUrl(feedUrl: String): String =
+    "https://calendar.google.com/calendar/r?cid=" + Uri.encode(feedUrl.replaceFirst(Regex("^https?:"), "webcal:"))
+
 /**
  * Putting the shifts in Google Calendar (web/src/features/shifts/ShiftCalendarLinkPage.tsx):
- * three steps. Google Calendar's phone app can't add a calendar from a link, so it goes to a computer first.
+ * three steps. Google Calendar's phone app can't add a calendar from a link, so it's added on Google
+ * Calendar's website, which on a phone needs Chrome's Desktop site.
  */
 @Composable
 fun ShiftCalendarLinkScreen(
@@ -65,6 +86,7 @@ fun ShiftCalendarLinkScreen(
     onBack: () -> Unit,
     onCopy: (String) -> Unit,
     onShare: (String) -> Unit,
+    onOpen: (String) -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     SubPage(onBack = onBack) {
@@ -85,7 +107,12 @@ fun ShiftCalendarLinkScreen(
         }
         var copied by rememberSaveable(state.feedUrl) { mutableStateOf(false) }
         SamFranCard(spacing = 16) {
-            Step(1, stringResource(R.string.step_send_title)) {
+            Step(1, stringResource(R.string.step_open_title)) {
+                PrimaryButton(stringResource(R.string.open_google_calendar), { onOpen(googleCalendarUrl(state.feedUrl)) })
+                Hint(stringResource(R.string.desktop_site_hint))
+            }
+            Step(2, stringResource(R.string.step_tap_add))
+            Step(3, stringResource(R.string.step_send_other)) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SecondaryButton(stringResource(R.string.share), { onShare(state.feedUrl) }, icon = SamFranIcons.share)
                     SecondaryButton(stringResource(if (copied) R.string.copied else R.string.copy), {
@@ -94,8 +121,6 @@ fun ShiftCalendarLinkScreen(
                     }, icon = SamFranIcons.copy)
                 }
             }
-            Step(2, stringResource(R.string.step_add_title))
-            Step(3, stringResource(R.string.step_paste_title))
             Hint(stringResource(R.string.sync_hint, name))
         }
         SamFranCard(Modifier.fillMaxWidth()) {
