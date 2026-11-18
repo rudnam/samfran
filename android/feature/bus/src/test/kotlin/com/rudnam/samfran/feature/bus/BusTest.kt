@@ -308,7 +308,7 @@ class BusViewModelTest {
     }
 
     @Test
-    fun `a stop asks once switched on, and it's kept; a new one doesn't`() = runTest {
+    fun `a stop asks once switched on, and it's kept, but a new one doesn't`() = runTest {
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         vm.openSettings()
