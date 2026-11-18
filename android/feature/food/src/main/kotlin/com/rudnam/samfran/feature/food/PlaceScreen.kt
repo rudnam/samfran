@@ -96,7 +96,12 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(place.name, style = MaterialTheme.typography.displaySmall)
-            if (place.subtitle.isNotEmpty()) Text(place.subtitle, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
+            // Its category, then its kind and area, as the website's page says them.
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                CategoryTile(place.category, size = 32.dp)
+                val line = listOf(stringResource(place.category.title), place.subtitle).filter { it.isNotBlank() }.joinToString(" · ")
+                Text(line, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SecondaryButton(stringResource(R.string.open_in_maps), onMap, icon = SamFranIcons.map)
                 SecondaryButton(stringResource(R.string.edit), onEdit, icon = SamFranIcons.edit)

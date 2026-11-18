@@ -4,7 +4,8 @@ package restaurant
 // GOOGLE_PLACES_API_KEY is set: GET /api/restaurants/suggest?q=… answers as
 // it's typed (Autocomplete), and GET /api/restaurants/place/{id} gives the
 // picked one's details (Place Details): where it is, its Google Maps link,
-// and what kind of food it serves, for the form's Area, map link and Food.
+// what kind of place it is and its category, for the form's Area, map link,
+// Kind and category.
 // Google matches romaji and readings ("ishimatsu" finds 石松), which
 // OpenStreetMap can't. Without a key, or when Google fails, suggest answers
 // from Photon instead (search.go).
@@ -31,13 +32,22 @@ import (
 
 const googlePlacesBase = "https://places.googleapis.com/v1/"
 
-// googleFood are the place types Google suggests: places to eat and drink.
-// Autocomplete takes at most five, and matches the place's primary type
-// exactly, so "restaurant" doesn't cover "ramen_restaurant"; "food" is the
-// group that does.
-var googleFood = []string{"food", "restaurant", "cafe", "bar", "bakery"}
+// placeTypes say a suggestion is a place you could go to, not an address,
+// a street or a town: Autocomplete is asked for any type (it takes at most
+// five, too few for every kind of place), and these are kept.
+var placeTypes = []string{"establishment", "point_of_interest", "natural_feature", "tourist_attraction"}
 
-// plainTypes say nothing about the food: Food stays empty for them.
+// isPlace reports whether a suggestion with these types is a place to go.
+func isPlace(types []string) bool {
+	for _, t := range types {
+		if slices.Contains(placeTypes, t) {
+			return true
+		}
+	}
+	return googleCategory(types) != CategoryOther
+}
+
+// plainTypes say nothing about the kind of place: Food stays empty for them.
 var plainTypes = []string{"restaurant", "food", "meal_takeaway", "meal_delivery", "point_of_interest", "establishment", "store", "food_store"}
 
 // validPlaceID and validSession keep what's sent to Google to what it gave.
@@ -95,13 +105,12 @@ func (g *googlePlaces) do(ctx context.Context, method, path string, body any, fi
 	return json.NewDecoder(http.MaxBytesReader(nil, res.Body, 1<<20)).Decode(out)
 }
 
-// suggest is what Autocomplete suggests for q: places to eat with their
-// place IDs, a name and an address line, but no position yet.
+// suggest is what Autocomplete suggests for q: places with their place IDs,
+// a name, an address line and a category, but no position yet.
 func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, lang, session string) ([]FoundPlace, error) {
 	body := map[string]any{
-		"input":                q,
-		"includedPrimaryTypes": googleFood,
-		"includedRegionCodes":  []string{"jp"},
+		"input":               q,
+		"includedRegionCodes": []string{"jp"},
 		// Names in Japanese, as on the shop's sign, whatever the app's language.
 		"languageCode": "ja",
 		"regionCode":   "jp",
@@ -137,14 +146,15 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 	found := []FoundPlace{}
 	for _, s := range out.Suggestions {
 		p := s.PlacePrediction
-		if p == nil || p.PlaceID == "" || p.StructuredFormat.MainText.Text == "" {
+		if p == nil || p.PlaceID == "" || p.StructuredFormat.MainText.Text == "" || !isPlace(p.Types) {
 			continue
 		}
 		found = append(found, FoundPlace{
-			Name:    p.StructuredFormat.MainText.Text,
-			Street:  shortAddress(p.StructuredFormat.SecondaryText.Text),
-			Kind:    suggestedKind(p.Types),
-			PlaceID: p.PlaceID,
+			Name:     p.StructuredFormat.MainText.Text,
+			Street:   shortAddress(p.StructuredFormat.SecondaryText.Text),
+			Kind:     suggestedKind(p.Types),
+			Category: googleCategory(p.Types),
+			PlaceID:  p.PlaceID,
 		})
 		if len(found) == maxFound {
 			break
@@ -153,13 +163,15 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 	return found, nil
 }
 
-// iconKinds are the types the add form has an icon for, most telling first.
+// iconKinds are the types an older Android app has an icon for, most
+// telling first. The app now shows the category's icon instead.
 var iconKinds = []string{"ramen_restaurant", "sushi_restaurant", "hamburger_restaurant", "fast_food_restaurant",
 	"coffee_shop", "cafe", "ice_cream_shop", "dessert_shop", "bakery", "izakaya_restaurant", "bar"}
 
 // suggestedKind is the kind for a suggestion's icon. A suggestion's types
 // come in no particular order (Sukiya's listed "cafe" first), so the most
-// telling one is chosen: one with an icon, else any kind of restaurant.
+// telling one is chosen: one with an icon, else any kind of restaurant,
+// else the first that isn't a group like "establishment".
 func suggestedKind(types []string) string {
 	for _, k := range iconKinds {
 		if slices.Contains(types, k) {
@@ -168,6 +180,11 @@ func suggestedKind(types []string) string {
 	}
 	for _, t := range types {
 		if strings.HasSuffix(t, "_restaurant") {
+			return t
+		}
+	}
+	for _, t := range types {
+		if !slices.Contains(placeTypes, t) && !slices.Contains(plainTypes, t) {
 			return t
 		}
 	}
@@ -218,7 +235,7 @@ func shortAddress(s string) string {
 }
 
 // details is the picked place: name, area, street, position, Google Maps
-// link and, when its type says something about the food, Food. The name and
+// link, category and, when its type says what kind of place it is, Food. The name and
 // address are always in Japanese, as on the shop's sign and in Maps; Food is
 // in lang: Google's own words in Japanese, or the type spelled out in English
 // ("ramen_restaurant" → "Ramen restaurant", as Google words it), so one
@@ -241,13 +258,14 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 			Latitude  float64 `json:"latitude"`
 			Longitude float64 `json:"longitude"`
 		} `json:"location"`
-		PrimaryType            string `json:"primaryType"`
+		Types                  []string `json:"types"`
+		PrimaryType            string   `json:"primaryType"`
 		PrimaryTypeDisplayName struct {
 			Text string `json:"text"`
 		} `json:"primaryTypeDisplayName"`
 		GoogleMapsURI string `json:"googleMapsUri"`
 	}
-	mask := "id,displayName,addressComponents,location,primaryType,primaryTypeDisplayName,googleMapsUri"
+	mask := "id,displayName,addressComponents,location,types,primaryType,primaryTypeDisplayName,googleMapsUri"
 	if err := g.do(ctx, http.MethodGet, "places/"+id+"?"+v.Encode(), nil, mask, &p); err != nil {
 		return FoundPlace{}, err
 	}
@@ -281,16 +299,25 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 			food = typeInEnglish(p.PrimaryType)
 		}
 	}
+	// The primary type first: a café whose types also say "store" is a café.
+	category := CategoryOther
+	if p.PrimaryType != "" {
+		category = googleCategory([]string{p.PrimaryType})
+	}
+	if category == CategoryOther {
+		category = googleCategory(p.Types)
+	}
 	return FoundPlace{
-		Name:    p.DisplayName.Text,
-		Area:    strings.Join(area, " "),
-		Street:  street,
-		Kind:    p.PrimaryType,
-		Lat:     p.Location.Latitude,
-		Lng:     p.Location.Longitude,
-		PlaceID: p.ID,
-		Food:    food,
-		MapURL:  mapLink(p.GoogleMapsURI),
+		Category: category,
+		Name:     p.DisplayName.Text,
+		Area:     strings.Join(area, " "),
+		Street:   street,
+		Kind:     p.PrimaryType,
+		Lat:      p.Location.Latitude,
+		Lng:      p.Location.Longitude,
+		PlaceID:  p.ID,
+		Food:     food,
+		MapURL:   mapLink(p.GoogleMapsURI),
 	}, nil
 }
 

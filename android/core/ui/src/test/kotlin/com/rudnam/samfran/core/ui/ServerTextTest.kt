@@ -12,7 +12,7 @@ class ServerTextTest {
 
     @Test
     fun `known messages are translated, patterns too, and English starts with a capital`() {
-        assertEquals("お店が見つかりません", ServerText.translate("no such restaurant", ja))
+        assertEquals("場所が見つかりません", ServerText.translate("no such restaurant", ja))
         assertEquals("パスワードは10〜72文字にしてください", ServerText.translate("password must be 10 to 72 characters", ja))
         assertEquals("勤務表にオトル サマンタが見つかりませんでした。設定の名前を確認してください", ServerText.translate("couldn't find オトル サマンタ on the sheet; check the name in settings", ja))
         assertEquals("something new", ServerText.translate("something new", ja))

@@ -54,11 +54,15 @@ export interface Visit {
   added_by: string;
 }
 
+/** A place to go: a restaurant, park, shrine… (it began as a list of restaurants). */
 export interface Restaurant {
   id: number;
   name: string;
   area: string;
+  /** The kind of place: "Ramen", "公園". */
   cuisine: string;
+  /** Why you'd go: eat, nature, culture, fun, relax, shopping or other (features/restaurants/categories.tsx). */
+  category: string;
   map_url: string;
   notes: string;
   /** Who added it; empty if they've left. */
@@ -75,11 +79,12 @@ export interface Restaurant {
   visit_notes?: { visited_on: string; note: string }[];
 }
 
-/** What a person types in about a restaurant. */
+/** What a person types in about a place. */
 export interface RestaurantFields {
   name: string;
   area: string;
   cuisine: string;
+  category: string;
   map_url: string;
   notes: string;
 }
@@ -337,20 +342,22 @@ export interface MCPClientInfo {
   redirect_host: string;
 }
 
-/** A place to eat found by name, for the add-a-place form. */
+/** A place found by name, for the add-a-place form. */
 export interface FoundPlace {
   name: string;
   /** City and district. */
   area: string;
   /** Street or neighbourhood, to tell branches apart. */
   street: string;
-  /** OpenStreetMap's (restaurant, fast_food, cafe, bar, pub, bakery…) or Google's (ramen_restaurant, cafe…). */
+  /** OpenStreetMap's (restaurant, cafe, park, museum…) or Google's (ramen_restaurant, park…). */
   kind: string;
+  /** The category the kind of place is in. */
+  category?: string;
   lat: number;
   lng: number;
   /** Google's, for a place Google suggested: until placeDetails, only name and street (an address line) are set. */
   place_id?: string;
-  /** From placeDetails: the kind of restaurant, for the Food field, when it says one. */
+  /** From placeDetails: the kind of place, for the Kind field, when it says one. */
   food?: string;
   /** From placeDetails: the place's own Google Maps link. */
   map_url?: string;

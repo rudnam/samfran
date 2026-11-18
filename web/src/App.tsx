@@ -139,8 +139,8 @@ export function App() {
             </a>
             <nav className="tabbar" aria-label={t('Sections')}>
               <a href={href('home')} className={tab === 'food' ? 'active' : ''} aria-current={tab === 'food' ? 'page' : undefined}>
-                <FoodIcon />
-                {t('Food')}
+                <PlacesIcon />
+                {t('Places')}
               </a>
               <a href={href('shifts')} className={tab === 'shifts' ? 'active' : ''} aria-current={tab === 'shifts' ? 'page' : undefined}>
                 <ShiftsIcon />
@@ -273,10 +273,10 @@ function UnseenDot() {
   return <span className="tab-dot" role="img" aria-label={tn(n, '{n} new change', '{n} new changes')} />;
 }
 
-function FoodIcon() {
+function PlacesIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9" />
+      <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM14.5 9.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z" />
     </svg>
   );
 }

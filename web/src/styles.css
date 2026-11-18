@@ -33,6 +33,8 @@
   --tile-green: #e0f2e2; --tile-green-ink: #23653a;
   --tile-red: #ffe1dc; --tile-red-ink: #a8291a;
   --tile-orange: #fbe6cc; --tile-orange-ink: #85490f;
+  --tile-blue: #e3e8fb; --tile-blue-ink: #2f4aa0;
+  --tile-purple: #f1e3f6; --tile-purple-ink: #7a2f8f;
   --radius: 12px;
   --radius-lg: 20px;
   --space: 16px;
@@ -76,6 +78,8 @@
     --tile-green: #183424; --tile-green-ink: #8fdcab;
     --tile-red: #44201a; --tile-red-ink: #ffab9b;
     --tile-orange: #3e2a14; --tile-orange-ink: #f0c48e;
+    --tile-blue: #1d2747; --tile-blue-ink: #a9bbff;
+    --tile-purple: #34203b; --tile-purple-ink: #e2b4f0;
     --shadow: 0 0 0 1px var(--border);
     --shadow-lift: 0 0 0 1px var(--border), 0 16px 40px rgba(0, 0, 0, 0.5);
     color-scheme: dark;
@@ -103,6 +107,8 @@
   --tile-green: #183424; --tile-green-ink: #8fdcab;
   --tile-red: #44201a; --tile-red-ink: #ffab9b;
   --tile-orange: #3e2a14; --tile-orange-ink: #f0c48e;
+  --tile-blue: #1d2747; --tile-blue-ink: #a9bbff;
+  --tile-purple: #34203b; --tile-purple-ink: #e2b4f0;
   --shadow: 0 0 0 1px var(--border);
   --shadow-lift: 0 0 0 1px var(--border), 0 16px 40px rgba(0, 0, 0, 0.5);
   color-scheme: dark;
@@ -281,6 +287,38 @@ select.language { width: auto; padding: 6px 10px; }
 .tile.green { background: var(--tile-green); color: var(--tile-green-ink); }
 .tile.red { background: var(--tile-red); color: var(--tile-red-ink); }
 .tile.orange { background: var(--tile-orange); color: var(--tile-orange-ink); }
+/* A place's category (features/restaurants/categories.tsx). */
+.tile.cat-eat { background: var(--tile-orange); color: var(--tile-orange-ink); }
+.tile.cat-nature { background: var(--tile-green); color: var(--tile-green-ink); }
+.tile.cat-culture { background: var(--tile-red); color: var(--tile-red-ink); }
+.tile.cat-fun { background: var(--tile-blue); color: var(--tile-blue-ink); }
+.tile.cat-relax { background: var(--tile-purple); color: var(--tile-purple-ink); }
+.tile.cat-shopping { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
+.tile.cat-other { background: var(--sunken); color: var(--muted); }
+.tile.sm { width: 32px; height: 32px; border-radius: 10px; }
+.place-kind { display: flex; align-items: center; gap: 10px; }
+
+/* Filtering the list by category: a row of chips that scrolls sideways on a phone. */
+.cat-filter {
+  display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  margin: 0 calc(-1 * var(--space)); padding: 2px var(--space);
+}
+.cat-filter::-webkit-scrollbar { display: none; }
+.cat-filter button {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+  background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; font-size: 0.8125rem;
+}
+.cat-filter button .count { color: var(--muted); font-weight: 500; }
+.cat-filter button.on { background: var(--text); color: var(--bg); box-shadow: none; }
+.cat-filter button.on .count { color: inherit; opacity: 0.7; }
+
+/* Picking a category in the form. */
+.cat-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-picker button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; white-space: nowrap;
+  background: var(--sunken); color: var(--text); font-weight: 600; font-size: 0.8125rem;
+}
+.cat-picker button.on { background: var(--accent); color: var(--accent-text); }
 .spot-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .spot-name { font-weight: 700; font-size: 0.97rem; overflow-wrap: anywhere; }
 .spot-line { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.75rem; }

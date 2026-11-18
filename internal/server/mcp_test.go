@@ -128,7 +128,15 @@ func TestMCPTools(t *testing.T) {
 	}
 	tool(t, ts.URL, token, "add_restaurant", map[string]any{"name": "Blue Sky Café"})
 	want, _ := tool(t, ts.URL, token, "list_restaurants", map[string]any{"list": "want"})
-	if l := want["restaurants"].([]any); len(l) != 1 || l[0].(map[string]any)["name"] != "Blue Sky Café" {
+	if l := want["restaurants"].([]any); len(l) != 1 || l[0].(map[string]any)["name"] != "Blue Sky Café" || l[0].(map[string]any)["category"] != "eat" {
 		t.Errorf("want list: %v", want)
+	}
+	// Any place to go, in a category, and the list by category.
+	if r, _ := tool(t, ts.URL, token, "add_restaurant", map[string]any{"name": "Castle Park", "category": "nature"}); r["category"] != "nature" {
+		t.Errorf("add a park: %v", r)
+	}
+	parks, _ := tool(t, ts.URL, token, "list_restaurants", map[string]any{"category": "nature"})
+	if l := parks["restaurants"].([]any); len(l) != 1 || l[0].(map[string]any)["name"] != "Castle Park" {
+		t.Errorf("nature list: %v", parks)
 	}
 }
