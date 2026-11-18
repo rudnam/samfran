@@ -254,7 +254,6 @@ export const ja = {
   'edited {name}': '{name}を編集',
   'deleted {name}': '{name}を削除',
   'logged a visit to {name}': '{name}の訪問を記録',
-  'started the bus alarm to {name}': '{name}までのバスアラームを開始',
   'removed a visit to {name}': '{name}の訪問を削除',
   'rated {name} ★{stars}': '{name}を★{stars}で評価',
   'cleared their rating of {name}': '{name}の評価を消去',

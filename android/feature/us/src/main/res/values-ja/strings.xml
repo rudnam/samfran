@@ -66,7 +66,6 @@
     <string name="change_edited">%sを編集</string>
     <string name="change_deleted">%sを削除</string>
     <string name="change_visit">%sの訪問を記録</string>
-    <string name="change_bus_started">%sまでのバスアラームを開始</string>
     <string name="change_visit_removed">%sの訪問を削除</string>
     <string name="change_rated">%1$sを★%2$dで評価</string>
     <string name="change_unrated">%sの評価を消去</string>

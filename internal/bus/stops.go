@@ -15,6 +15,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/rudnam/samfran/internal/account"
+	"github.com/rudnam/samfran/internal/activity"
 	"github.com/rudnam/samfran/internal/httpx"
 )
 
@@ -332,7 +333,7 @@ func (h *Handler) logStarted(r *http.Request, stop string) {
 		slog.WarnContext(r.Context(), "bus_started: find space", "err", err) // the trip has started; don't fail it
 		return
 	}
-	h.Log(r.Context(), spaceID, user, "app", "bus_started", map[string]any{"name": stop})
+	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
 }
 
 func (h *Handler) setBuzz(w http.ResponseWriter, r *http.Request) error {

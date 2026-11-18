@@ -64,7 +64,7 @@ class ActivityJob : JobService() {
     private suspend fun check() {
         val p = ShiftPrompt.prefs(this)
         if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return
-        val list = (activity.refresh() as? Outcome.Done)?.value ?: return
+        val list = (activity.forNotifications() as? Outcome.Done)?.value ?: return
         val seen = p.getLong(SEEN, 0)
         val fresh = list.filter { it.id > seen }
         if (fresh.isEmpty()) return

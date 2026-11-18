@@ -66,7 +66,6 @@
     <string name="change_edited">edited %s</string>
     <string name="change_deleted">deleted %s</string>
     <string name="change_visit">logged a visit to %s</string>
-    <string name="change_bus_started">started the bus alarm to %s</string>
     <string name="change_visit_removed">removed a visit to %s</string>
     <string name="change_rated">rated %1$s ★%2$d</string>
     <string name="change_unrated">cleared their rating of %s</string>

@@ -340,6 +340,7 @@ class FakeActivityRepository(entries: List<ActivityEntry>? = Samples.activity, s
     override suspend fun markSeen(entries: List<ActivityEntry>) {
         seenFlow.value = maxOf(seenFlow.value ?: 0, entries.newestId())
     }
+    override suspend fun forNotifications(): Outcome<List<ActivityEntry>> = Outcome.Done(list.value.orEmpty())
 }
 
 class FakeReminders : Reminders {

@@ -39,7 +39,7 @@ func TestActivity(t *testing.T) {
 	for _, e := range list {
 		kinds = append(kinds, e.Kind)
 	}
-	want := []string{"shift_settings", "bus_started", "rated", "restaurant_added", "shifts_saved", "shift_settings", "invited"}
+	want := []string{"shift_settings", "rated", "restaurant_added", "shifts_saved", "shift_settings", "invited"}
 	if len(list) != len(want) {
 		t.Fatalf("kinds %v, want %v", kinds, want)
 	}
@@ -54,14 +54,16 @@ func TestActivity(t *testing.T) {
 	if f := list[0].Details["lengths"].(map[string]any)["F"].([]any); f[0] != 10.0 || f[1] != 9.0 {
 		t.Errorf("F change: %v", list[0].Details)
 	}
-	if e := list[5]; e.Who != "Sam" || !e.Me || e.Via != "app" || e.Details["person_name"] == nil {
+	if e := list[4]; e.Who != "Sam" || !e.Me || e.Via != "app" || e.Details["person_name"] == nil {
 		t.Errorf("settings by sam: %+v", e)
 	}
-	if e := list[1]; e.Who != "Sam" || e.Details["name"] != "Aoi" {
-		t.Errorf("bus started: %+v", e)
-	}
-	if e := list[2]; e.Details["name"] != "Taco Loco" || e.Details["stars"] != 5.0 {
+	if e := list[1]; e.Details["name"] != "Taco Loco" || e.Details["stars"] != 5.0 {
 		t.Errorf("rating: %+v", e)
+	}
+	// The bus alarm started isn't listed, but the phone's notification check gets it.
+	var withBus []activityJSON
+	if fran.do("GET", "/api/activity?bus=1", nil, &withBus); len(withBus) != len(want)+1 || withBus[1].Kind != "bus_started" || withBus[1].Who != "Sam" || withBus[1].Details["name"] != "Aoi" {
+		t.Errorf("with bus: %+v", withBus)
 	}
 	// Another space sees none of it.
 	other := newClient(t, newTestServer(t))
