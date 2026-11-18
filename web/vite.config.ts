@@ -20,11 +20,13 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     // index.html is the app, which the server serves at /app/; landing.html
-    // is the introduction at /.
+    // is the introduction at /; map.html is the places' map, at /map.html.
     rollupOptions: {
       input: {
         app: resolve(import.meta.dirname, 'index.html'),
         landing: resolve(import.meta.dirname, 'landing.html'),
+        // The places' map, in a sandboxed frame (internal/server/mappage.go).
+        map: resolve(import.meta.dirname, 'map.html'),
       },
     },
   },

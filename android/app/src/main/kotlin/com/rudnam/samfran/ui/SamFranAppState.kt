@@ -20,7 +20,7 @@ import com.rudnam.samfran.feature.us.navigation.UsRoute
 
 /** The four tabs, as on the website. */
 enum class TopLevelDestination(@StringRes val label: Int, val icon: String, val route: Any) {
-    Food(R.string.tab_food, SamFranIcons.food, FoodRoute),
+    Food(R.string.tab_food, SamFranIcons.places, FoodRoute),
     Shifts(R.string.tab_shifts, SamFranIcons.shifts, ShiftsRoute()),
     Bus(R.string.tab_bus, SamFranIcons.bus, BusRoute()),
     Us(R.string.tab_us, SamFranIcons.us, UsRoute),

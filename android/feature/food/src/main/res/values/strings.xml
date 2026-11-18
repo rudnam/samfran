@@ -8,12 +8,12 @@
     <string name="n_this_month">%d this month</string>
     <string name="been_there">Been there</string>
     <string name="want_to_go">Want to go</string>
-    <string name="search_hint">Search by name, area, food or notes</string>
+    <string name="search_hint">Search by name, area, kind or notes</string>
     <string name="nothing_matches">Nothing matches “%s”.</string>
     <string name="no_places_yet">No places yet</string>
-    <string name="add_first_place">Add the first place you ate together.</string>
+    <string name="add_first_place">Add the first place you went to together.</string>
     <string name="nothing_on_list">Nothing on the list</string>
-    <string name="save_places_to_try">Save places you’d like to try, so you have ideas for next time.</string>
+    <string name="save_places_to_try">Save places you’d like to go, so you have ideas for next time.</string>
     <string name="added_by">Added by %s</string>
     <plurals name="n_visits">
         <item quantity="one">%d visit</item>
@@ -25,7 +25,7 @@
     <string name="name">Name</string>
     <string name="area">Area</string>
     <string name="area_hint">e.g. Station East</string>
-    <string name="food">Food</string>
+    <string name="food">Kind</string>
     <string name="food_hint">e.g. Ramen</string>
     <string name="visited_when">When</string>
     <string name="your_rating">Your rating</string>
@@ -36,7 +36,7 @@
     <string name="looking_up">Looking up the place…</string>
     <string name="share_hint">Share a place from Google Maps to SamFran to add it in one tap.</string>
     <string name="notes">Notes</string>
-    <string name="notes_hint">What to order, when to book…</string>
+    <string name="notes_hint">What to order, when to go, what to bring…</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
     <string name="add">Add</string>
@@ -49,7 +49,7 @@
     <string name="not_yet">Not yet</string>
     <string name="date">Date</string>
     <string name="visit_note">Note about this visit</string>
-    <string name="visit_note_hint">What did you have? (optional)</string>
+    <string name="visit_note_hint">How was it? (optional)</string>
     <string name="log_visit">Log visit</string>
     <string name="we_went">We went!</string>
     <string name="logged_by">Logged by %s</string>
@@ -61,7 +61,7 @@
     <string name="delete_place_body">Its visits and ratings go with it. This can’t be undone.</string>
     <string name="delete">Delete</string>
     <string name="place_gone">This place isn’t here any more.</string>
-    <string name="name_search_hint">Type to search, e.g. すき家</string>
+    <string name="name_search_hint">Type to search, e.g. すき家, 浜松城</string>
     <string name="tap_the_place">Tap the place, or keep typing your own name for it.</string>
     <string name="places_osm">Places from OpenStreetMap.</string>
     <string name="place_not_found">Not found? Just type its name.</string>
@@ -71,7 +71,39 @@
     <string name="not_this_one">Not this one</string>
     <string name="check_on_map">Check on the map</string>
     <string name="maps_link_hint_picked">Optional. The place you picked is already on the map.</string>
-    <!-- The Food field, filled in from the kind of place picked from the search -->
+    <string name="category">Category</string>
+    <string name="category_all">All</string>
+    <string name="show_all">Show all</string>
+    <string name="nothing_in_category">Nothing in %s here.</string>
+    <string name="category_hint_tie">Two fit? Pick what you’d go there for.</string>
+    <!-- Categories: why you'd go (web/src/features/restaurants/categories.tsx) -->
+    <string name="cat_eat">Eat &amp; drink</string>
+    <string name="cat_nature">Nature &amp; parks</string>
+    <string name="cat_culture">History &amp; culture</string>
+    <string name="cat_fun">Fun &amp; activities</string>
+    <string name="cat_relax">Onsen &amp; relaxing</string>
+    <string name="cat_shopping">Shopping</string>
+    <string name="cat_other">Other</string>
+    <string name="cat_eat_short">Eat</string>
+    <string name="cat_nature_short">Nature</string>
+    <string name="cat_culture_short">Culture</string>
+    <string name="cat_fun_short">Fun</string>
+    <string name="cat_relax_short">Relax</string>
+    <string name="cat_shopping_short">Shopping</string>
+    <string name="cat_other_short">Other</string>
+    <string name="cat_eat_hint">Restaurants, cafés, bars, bakeries, sweets</string>
+    <string name="cat_nature_hint">Parks, gardens, beaches, mountains, hikes</string>
+    <string name="cat_culture_hint">Shrines, temples, castles, museums, galleries</string>
+    <string name="cat_fun_hint">Theme parks, aquariums, zoos, arcades, sports, shows</string>
+    <string name="cat_relax_hint">Onsen, sentō, saunas, spas</string>
+    <string name="cat_shopping_hint">Malls, markets, outlets, shops</string>
+    <string name="cat_other_hint">Anything that doesn’t fit</string>
+    <string name="kind_hint_nature">e.g. Park</string>
+    <string name="kind_hint_culture">e.g. Shrine</string>
+    <string name="kind_hint_fun">e.g. Aquarium</string>
+    <string name="kind_hint_relax">e.g. Onsen</string>
+    <string name="kind_hint_shopping">e.g. Outlet</string>
+    <!-- The Kind field, filled in from the kind of place picked from the search -->
     <string name="food_cafe">Café</string>
     <string name="food_bar">Bar</string>
     <string name="food_pub">Pub</string>
@@ -82,4 +114,39 @@
     <string name="food_bakery">Bakery</string>
     <string name="food_pastries">Pastries</string>
     <string name="food_sweets">Sweets</string>
+    <string name="kind_park">Park</string>
+    <string name="kind_garden">Garden</string>
+    <string name="kind_nature_reserve">Nature reserve</string>
+    <string name="kind_beach">Beach</string>
+    <string name="kind_peak">Mountain</string>
+    <string name="kind_viewpoint">Viewpoint</string>
+    <string name="kind_museum">Museum</string>
+    <string name="kind_gallery">Gallery</string>
+    <string name="kind_castle">Castle</string>
+    <string name="kind_zoo">Zoo</string>
+    <string name="kind_aquarium">Aquarium</string>
+    <string name="kind_theme_park">Theme park</string>
+    <string name="kind_cinema">Cinema</string>
+    <string name="kind_public_bath">Bathhouse</string>
+    <string name="kind_hot_spring">Onsen</string>
+    <string name="kind_mall">Shopping mall</string>
+    <string name="kind_marketplace">Market</string>
+    <!-- Nearby and the map -->
+    <string name="order">Order</string>
+    <string name="sort_latest">Latest</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_nearby">Nearby</string>
+    <string name="view">View</string>
+    <string name="view_list">List</string>
+    <string name="view_map">Map</string>
+    <string name="finding_location">Finding where you are…</string>
+    <string name="location_off">Couldn’t find where you are (is location allowed for SamFran?), so the list is newest first.</string>
+    <string name="map_of_places">Map of the places</string>
+    <plurals name="n_not_on_map">
+        <item quantity="one">%d not on the map yet: its place is still being looked up, or wasn’t found.</item>
+        <item quantity="other">%d not on the map yet: their place is still being looked up, or wasn’t found.</item>
+    </plurals>
+    <string name="search">Search</string>
+    <string name="all_places">All places</string>
+    <string name="category_is">Category: %s</string>
 </resources>

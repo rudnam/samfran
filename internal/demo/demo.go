@@ -26,6 +26,9 @@ var samples = map[string][]sample{
 		{Fields: restaurant.Fields{Name: "Ramen Tsubaki", Area: "Old Town", Cuisine: "Ramen"}, daysAgo: []int{20}, stars: 3},
 		{Fields: restaurant.Fields{Name: "Blue Sky Café", Area: "Riverside", Cuisine: "Café", Notes: "Their pancakes are supposed to be great."}},
 		{Fields: restaurant.Fields{Name: "Taco Loco", Area: "Station East", Cuisine: "Mexican"}},
+		{Fields: restaurant.Fields{Name: "Castle Park", Area: "Old Town", Cuisine: "Park", Category: restaurant.CategoryNature, Notes: "The cherry trees, in early April."}, daysAgo: []int{30}, stars: 4},
+		{Fields: restaurant.Fields{Name: "Hilltop Shrine", Area: "North Hills", Cuisine: "Shrine", Category: restaurant.CategoryCulture}},
+		{Fields: restaurant.Fields{Name: "Lakeside Onsen", Area: "Lakeside", Cuisine: "Hot spring", Category: restaurant.CategoryRelax, Notes: "Open until midnight."}},
 	},
 	"ja": {
 		{Fields: restaurant.Fields{Name: "はなび亭", Area: "駅東", Cuisine: "ハンバーグ", Notes: "週末は2時間待ち。早めに行く。"}, daysAgo: []int{3, 40}, stars: 5},
@@ -34,6 +37,9 @@ var samples = map[string][]sample{
 		{Fields: restaurant.Fields{Name: "ラーメン椿", Area: "旧市街", Cuisine: "ラーメン"}, daysAgo: []int{20}, stars: 3},
 		{Fields: restaurant.Fields{Name: "ブルースカイカフェ", Area: "川沿い", Cuisine: "カフェ", Notes: "パンケーキがおいしいらしい。"}},
 		{Fields: restaurant.Fields{Name: "タコロコ", Area: "駅東", Cuisine: "メキシコ料理"}},
+		{Fields: restaurant.Fields{Name: "城山公園", Area: "旧市街", Cuisine: "公園", Category: restaurant.CategoryNature, Notes: "桜は4月の初め。"}, daysAgo: []int{30}, stars: 4},
+		{Fields: restaurant.Fields{Name: "丘の上神社", Area: "北の丘", Cuisine: "神社", Category: restaurant.CategoryCulture}},
+		{Fields: restaurant.Fields{Name: "湖畔温泉", Area: "湖畔", Cuisine: "温泉", Category: restaurant.CategoryRelax, Notes: "夜12時まで。"}},
 	},
 }
 

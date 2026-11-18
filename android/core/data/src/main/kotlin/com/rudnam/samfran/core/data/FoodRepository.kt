@@ -141,5 +141,5 @@ internal class OfflineFirstFoodRepository @Inject constructor(
     }
 
     private fun RestaurantFields.input() =
-        NetworkRestaurantInput(name.trim(), area.trim(), cuisine.trim(), mapUrl.trim(), notes.trim())
+        NetworkRestaurantInput(name.trim(), area.trim(), cuisine.trim(), category.key, mapUrl.trim(), notes.trim(), lat = lat, lng = lng)
 }

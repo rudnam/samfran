@@ -8,6 +8,7 @@ import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.model.FoundPlace
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.RestaurantFields
 import com.rudnam.samfran.core.model.named
@@ -35,6 +36,8 @@ data class PlaceFormUiState(
     val been: Boolean = true,
     val visitedOn: LocalDate = LocalDate.now(),
     val stars: Int = 0,
+    /** A category picked by hand stays; until then, a place picked from the search sets it. */
+    val categoryPicked: Boolean = false,
     val lookingUp: Boolean = false,
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
@@ -64,11 +67,12 @@ interface PlaceFormActions {
     fun setBeen(been: Boolean)
     fun setVisitedOn(date: LocalDate)
     fun setStars(stars: Int)
+    fun setCategory(category: PlaceCategory)
     /** A link however it came (typed and left, pasted, the Paste button): its name is looked up. */
     fun takeLink(text: String)
     /** The name as typed: it's also searched for, when adding. */
     fun setName(name: String)
-    /** [food] is what the Food field says for its kind, in the person's language (foodFor); empty for none. A place Google suggested gets its own from its details. */
+    /** [food] is what the Kind field says for its kind, in the person's language (foodFor); empty for none. A place Google suggested gets its own from its details. */
     fun pick(place: FoundPlace, food: String)
     /** "Not this one": forget the picked place, keep the name. */
     fun unpick()
@@ -101,7 +105,9 @@ class PlaceFormViewModel @Inject constructor(
         route.id?.let { id ->
             viewModelScope.launch {
                 val r = food.restaurant(id).first { it != null } ?: return@launch
-                _state.update { it.copy(fields = RestaurantFields(r.name, r.area, r.cuisine, r.mapUrl, r.notes)) }
+                _state.update {
+                    it.copy(fields = RestaurantFields(name = r.name, area = r.area, cuisine = r.cuisine, category = r.category, mapUrl = r.mapUrl, notes = r.notes))
+                }
             }
         }
         if (route.id == null) {
@@ -159,10 +165,11 @@ class PlaceFormViewModel @Inject constructor(
         }
     }
 
-    /** Fills in the form from a place with its details. Area and Food only when empty: what they typed stays. */
+    /** Fills in the form from a place with its details. Area and Kind only when empty, the category unless picked by hand: what they chose stays. */
     private fun fill(place: FoundPlace, food: String) = _state.update { s ->
         val f = s.fields ?: return@update s
-        val fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }, cuisine = f.cuisine.ifBlank { food })
+        val category = place.category?.takeUnless { s.categoryPicked } ?: f.category
+        val fields = f.copy(name = place.name, area = f.area.ifBlank { place.area }, cuisine = f.cuisine.ifBlank { food }, category = category)
         s.copy(fields = fields, picked = place, query = "", found = null)
     }
 
@@ -173,6 +180,9 @@ class PlaceFormViewModel @Inject constructor(
     override fun setVisitedOn(date: LocalDate) = _state.update { it.copy(visitedOn = minOf(date, it.today)) }
 
     override fun setStars(stars: Int) = _state.update { it.copy(stars = stars) }
+
+    override fun setCategory(category: PlaceCategory) =
+        _state.update { s -> s.copy(fields = s.fields?.copy(category = category), categoryPicked = true) }
 
     override fun takeLink(text: String) {
         val f = _state.value.fields ?: return
@@ -209,7 +219,9 @@ class PlaceFormViewModel @Inject constructor(
         viewModelScope.launch {
             // A picked place without a link of its own opens on that branch in Maps.
             val withLink = if (fields.mapUrl.isBlank() && s.picked != null) fields.copy(mapUrl = s.picked.mapUrl) else fields
-            val result = if (s.id != null) food.update(s.id, fields) else food.create(withLink, s.visitedOn.takeIf { s.been }, s.stars)
+            // Where the picked place is (a Google suggestion has it only after its details).
+            val placed = s.picked?.takeIf { it.lat != 0.0 || it.lng != 0.0 }?.let { withLink.copy(lat = it.lat, lng = it.lng) } ?: withLink
+            val result = if (s.id != null) food.update(s.id, fields) else food.create(placed, s.visitedOn.takeIf { s.been }, s.stars)
             _state.update {
                 when (result) {
                     is Outcome.Done -> it.copy(busy = false, savedId = result.value.id)

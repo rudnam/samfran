@@ -1,6 +1,8 @@
-// Package restaurant keeps the restaurants you've been to together, or want
-// to go to: when you went, what you thought, and each person's own rating.
-// A restaurant with no visits is on the want-to-go list. Everything belongs
+// Package restaurant keeps the places you've been to together, or want to go
+// to: restaurants, parks, shrines, onsen… each in a category (category.go),
+// with when you went, what you thought, and each person's own rating. It
+// began as a list of restaurants, which is why it, its table and its API
+// are named so. A place with no visits is on the want-to-go list. Everything belongs
 // to the space (internal/space), so both of you see and change the same list.
 package restaurant
 
@@ -10,6 +12,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -54,10 +57,14 @@ type VisitNote struct {
 }
 
 type Restaurant struct {
-	ID         int64     `json:"id"`
-	Name       string    `json:"name"`
-	Area       string    `json:"area"`
-	Cuisine    string    `json:"cuisine"`
+	ID       int64  `json:"id"`
+	Name     string `json:"name"`
+	Area     string `json:"area"`
+	Cuisine  string `json:"cuisine"` // the kind of place: "Ramen", "公園"
+	Category string `json:"category"`
+	// Lat and Lng are where it is; null until known (locate.go).
+	Lat        *float64  `json:"lat"`
+	Lng        *float64  `json:"lng"`
 	MapURL     string    `json:"map_url"`
 	Notes      string    `json:"notes"`
 	AddedBy    string    `json:"added_by"`
@@ -77,8 +84,15 @@ type Fields struct {
 	Name    string `json:"name"`
 	Area    string `json:"area"`
 	Cuisine string `json:"cuisine"`
-	MapURL  string `json:"map_url"`
-	Notes   string `json:"notes"`
+	// Category is one of Categories; empty is eat, what every place was
+	// before there were categories.
+	Category string `json:"category"`
+	MapURL   string `json:"map_url"`
+	Notes    string `json:"notes"`
+	// Lat and Lng, both or neither: where it is, when the person picked it
+	// from the search. Without them, it's looked up (locate.go).
+	Lat *float64 `json:"lat"`
+	Lng *float64 `json:"lng"`
 }
 
 // ---------- Store: every query is scoped by space ----------
@@ -90,7 +104,7 @@ func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 // list's query: restaurants with their visit count and latest visit. The
 // caller adds the WHERE.
 const selectRestaurants = `
-	SELECT r.id, r.name, r.area, r.cuisine, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
+	SELECT r.id, r.name, r.area, r.cuisine, r.category, r.lat, r.lng, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
 		(SELECT count(*) FROM restaurant_visits v WHERE v.restaurant_id = r.id),
 		(SELECT to_char(max(v.visited_on), 'YYYY-MM-DD') FROM restaurant_visits v WHERE v.restaurant_id = r.id)
 	FROM restaurants r
@@ -108,7 +122,7 @@ func (s *Store) query(ctx context.Context, me int64, where string, args ...any) 
 	for rows.Next() {
 		var r Restaurant
 		var addedName, addedEmail string
-		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.Cuisine, &r.MapURL, &r.Notes, &addedName, &addedEmail,
+		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.Cuisine, &r.Category, &r.Lat, &r.Lng, &r.MapURL, &r.Notes, &addedName, &addedEmail,
 			&r.CreatedAt, &r.VisitCount, &r.LastVisit); err != nil {
 			return nil, err
 		}
@@ -211,19 +225,59 @@ func (s *Store) Get(ctx context.Context, spaceID, me, id int64) (Restaurant, err
 }
 
 func (s *Store) Create(ctx context.Context, spaceID, by int64, f Fields) (int64, error) {
+	if f.Category == "" {
+		f.Category = CategoryEat
+	}
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO restaurants (space_id, name, area, cuisine, map_url, notes, added_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		spaceID, f.Name, f.Area, f.Cuisine, f.MapURL, f.Notes, by).Scan(&id)
+		INSERT INTO restaurants (space_id, name, area, cuisine, category, map_url, notes, added_by, lat, lng, located)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::float8, $10::float8, $9::float8 IS NOT NULL) RETURNING id`,
+		spaceID, f.Name, f.Area, f.Cuisine, f.Category, f.MapURL, f.Notes, by, f.Lat, f.Lng).Scan(&id)
 	return id, err
 }
 
+// Update saves f. A position in f replaces the one saved; without one, a
+// changed map link clears it, to be looked up again from the new link.
 func (s *Store) Update(ctx context.Context, spaceID, id int64, f Fields) error {
 	res, err := s.db.ExecContext(ctx, `
-		UPDATE restaurants SET name = $3, area = $4, cuisine = $5, map_url = $6, notes = $7, updated_at = now()
-		WHERE id = $1 AND space_id = $2`, id, spaceID, f.Name, f.Area, f.Cuisine, f.MapURL, f.Notes)
+		UPDATE restaurants SET name = $3, area = $4, cuisine = $5, category = $6, notes = $8, updated_at = now(),
+			lat = CASE WHEN $9::float8 IS NOT NULL THEN $9 WHEN map_url <> $7 THEN NULL ELSE lat END,
+			lng = CASE WHEN $10::float8 IS NOT NULL THEN $10 WHEN map_url <> $7 THEN NULL ELSE lng END,
+			located = CASE WHEN $9::float8 IS NOT NULL THEN true WHEN map_url <> $7 THEN false ELSE located END,
+			map_url = $7
+		WHERE id = $1 AND space_id = $2`, id, spaceID, f.Name, f.Area, f.Cuisine, f.Category, f.MapURL, f.Notes, f.Lat, f.Lng)
 	return oneRow(res, err)
+}
+
+// Unlocated are up to limit of the space's places whose position hasn't
+// been looked up yet.
+func (s *Store) Unlocated(ctx context.Context, spaceID int64, limit int) ([]Restaurant, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, name, area, map_url FROM restaurants
+		WHERE space_id = $1 AND NOT located ORDER BY id DESC LIMIT $2`, spaceID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Restaurant
+	for rows.Next() {
+		var r Restaurant
+		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.MapURL); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// Located saves where a place is (nil when it couldn't be found), and that
+// it was looked up. A place whose link changed since it was read keeps
+// waiting for the new link's turn.
+func (s *Store) Located(ctx context.Context, spaceID, id int64, mapURL string, lat, lng *float64) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE restaurants SET lat = $4, lng = $5, located = true
+		WHERE id = $1 AND space_id = $2 AND map_url = $3 AND NOT located`, id, spaceID, mapURL, lat, lng)
+	return err
 }
 
 func (s *Store) Delete(ctx context.Context, spaceID, id int64) error {
@@ -289,11 +343,18 @@ type Handler struct {
 	maps *http.Client
 	// places finds a place's position by name when its link has none (geocode.go).
 	places *geocoder
-	// search finds places to eat by name as it's typed (search.go).
+	// search finds places by name as it's typed (search.go).
 	search *placeSearch
 	// google finds places with Google Places when it has a key (google.go);
 	// nil without one.
 	google *googlePlaces
+	// Locate turns on the background lookup of places' positions
+	// (locate.go); locating is its state.
+	Locate   bool
+	locating locating
+	// MapKey is the Google Maps JavaScript API key the web page's map uses
+	// (GOOGLE_MAPS_BROWSER_KEY); empty for no map.
+	MapKey string
 }
 
 // UseGoogle makes suggestions come from Google Places, with this API key
@@ -324,6 +385,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("GET /api/restaurants/search", h.searchHandler)
 	route("GET /api/restaurants/suggest", h.suggestHandler)
 	route("GET /api/restaurants/place/{id}", h.placeHandler)
+	route("GET /api/restaurants/map", h.mapHandler)
 	route("GET /api/restaurants/{id}", h.get)
 	route("PATCH /api/restaurants/{id}", h.update)
 	route("DELETE /api/restaurants/{id}", h.delete)
@@ -332,7 +394,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("PUT /api/restaurants/{id}/rating", h.rate)
 }
 
-var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant")
+var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant") // the words installed apps translate
 
 func pathID(r *http.Request, name string) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
@@ -373,7 +435,17 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if slices.ContainsFunc(list, func(x Restaurant) bool { return x.Lat == nil }) {
+		h.locateSoon(space.SpaceFrom(r), false)
+	}
 	httpx.WriteJSON(w, http.StatusOK, list)
+	return nil
+}
+
+// mapHandler is GET /api/restaurants/map: the key the web page's map loads
+// Google Maps with; empty without one, and the page shows no map.
+func (h *Handler) mapHandler(w http.ResponseWriter, r *http.Request) error {
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"key": h.MapKey})
 	return nil
 }
 
@@ -390,6 +462,13 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
 func Clean(f Fields) (Fields, error) {
 	f.Name, f.Area, f.Cuisine = strings.TrimSpace(f.Name), strings.TrimSpace(f.Area), strings.TrimSpace(f.Cuisine)
 	f.MapURL, f.Notes = strings.TrimSpace(f.MapURL), strings.TrimSpace(f.Notes)
+	f.Category = strings.TrimSpace(f.Category)
+	if (f.Lat == nil) != (f.Lng == nil) || f.Lat != nil && (*f.Lat < -90 || *f.Lat > 90 || *f.Lng < -180 || *f.Lng > 180) {
+		return f, httpx.Errorf(http.StatusBadRequest, "a position needs lat (-90 to 90) and lng (-180 to 180)")
+	}
+	if f.Category == "" {
+		f.Category = CategoryEat
+	}
 	switch {
 	case f.Name == "" || utf8.RuneCountInString(f.Name) > maxName:
 		return f, httpx.Errorf(http.StatusBadRequest, "a name must be 1 to %d characters", maxName)
@@ -397,6 +476,8 @@ func Clean(f Fields) (Fields, error) {
 		return f, httpx.Errorf(http.StatusBadRequest, "an area must be at most %d characters", maxArea)
 	case utf8.RuneCountInString(f.Cuisine) > maxCuisine:
 		return f, httpx.Errorf(http.StatusBadRequest, "a cuisine must be at most %d characters", maxCuisine)
+	case !validCategory(f.Category):
+		return f, httpx.Errorf(http.StatusBadRequest, "a category must be one of %s", strings.Join(Categories, ", "))
 	case utf8.RuneCountInString(f.Notes) > maxNotes:
 		return f, httpx.Errorf(http.StatusBadRequest, "notes must be at most %d characters", maxNotes)
 	}
@@ -477,6 +558,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	h.log(r, "restaurant_added", id, map[string]any{"name": f.Name, "been": in.Visit != nil, "stars": in.Stars})
+	if f.Lat == nil {
+		h.locateSoon(sp, true)
+	}
 	return h.respond(w, r, http.StatusCreated, id)
 }
 
@@ -488,11 +572,14 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 	// Fields left out keep their value, so an older app that doesn't know a
 	// newer field can't clear it.
 	var in struct {
-		Name    *string `json:"name"`
-		Area    *string `json:"area"`
-		Cuisine *string `json:"cuisine"`
-		MapURL  *string `json:"map_url"`
-		Notes   *string `json:"notes"`
+		Name     *string  `json:"name"`
+		Area     *string  `json:"area"`
+		Cuisine  *string  `json:"cuisine"`
+		Category *string  `json:"category"`
+		MapURL   *string  `json:"map_url"`
+		Notes    *string  `json:"notes"`
+		Lat      *float64 `json:"lat"`
+		Lng      *float64 `json:"lng"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -504,15 +591,16 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f := Fields{Name: cur.Name, Area: cur.Area, Cuisine: cur.Cuisine, MapURL: cur.MapURL, Notes: cur.Notes}
+	f := Fields{Name: cur.Name, Area: cur.Area, Cuisine: cur.Cuisine, Category: cur.Category, MapURL: cur.MapURL, Notes: cur.Notes}
 	for _, p := range []struct {
 		dst *string
 		src *string
-	}{{&f.Name, in.Name}, {&f.Area, in.Area}, {&f.Cuisine, in.Cuisine}, {&f.MapURL, in.MapURL}, {&f.Notes, in.Notes}} {
+	}{{&f.Name, in.Name}, {&f.Area, in.Area}, {&f.Cuisine, in.Cuisine}, {&f.Category, in.Category}, {&f.MapURL, in.MapURL}, {&f.Notes, in.Notes}} {
 		if p.src != nil {
 			*p.dst = *p.src
 		}
 	}
+	f.Lat, f.Lng = in.Lat, in.Lng // only a new position; the saved one stays unless the link changes
 	if f, err = Clean(f); err != nil {
 		return err
 	}
@@ -522,6 +610,7 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	h.log(r, "restaurant_edited", id, nil)
+	h.locateSoon(space.SpaceFrom(r), true)
 	return h.respond(w, r, http.StatusOK, id)
 }
 

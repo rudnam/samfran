@@ -8,13 +8,16 @@ import (
 )
 
 type restaurantJSON struct {
-	ID         int64   `json:"id"`
-	Name       string  `json:"name"`
-	Area       string  `json:"area"`
-	MapURL     string  `json:"map_url"`
-	Notes      string  `json:"notes"`
-	VisitCount int     `json:"visit_count"`
-	LastVisit  *string `json:"last_visit"`
+	ID         int64    `json:"id"`
+	Name       string   `json:"name"`
+	Area       string   `json:"area"`
+	Category   string   `json:"category"`
+	Lat        *float64 `json:"lat"`
+	Lng        *float64 `json:"lng"`
+	MapURL     string   `json:"map_url"`
+	Notes      string   `json:"notes"`
+	VisitCount int      `json:"visit_count"`
+	LastVisit  *string  `json:"last_visit"`
 	Ratings    []struct {
 		Name  string `json:"name"`
 		Me    bool   `json:"me"`
@@ -54,8 +57,55 @@ func TestRestaurants(t *testing.T) {
 	// One to go to: no visits.
 	var want restaurantJSON
 	alice.do("POST", "/api/restaurants", map[string]string{"name": "Blue Sky Café"}, &want)
-	if want.VisitCount != 0 || want.LastVisit != nil || len(want.Ratings) != 0 {
+	if want.VisitCount != 0 || want.LastVisit != nil || len(want.Ratings) != 0 || want.Category != "eat" {
 		t.Errorf("want-to-go: %+v", want)
+	}
+
+	// Any place to go: a park, in its category. An edit that leaves the
+	// category out (an older app's) keeps it.
+	var park restaurantJSON
+	if code := alice.do("POST", "/api/restaurants", map[string]string{"name": "Castle Park", "category": "nature"}, &park); code != 201 || park.Category != "nature" {
+		t.Fatalf("park: %d %+v", code, park)
+	}
+	parkPath := "/api/restaurants/" + itoa(park.ID)
+	if alice.do("PATCH", parkPath, map[string]string{"notes": "cherry trees"}, &park); park.Category != "nature" || park.Notes != "cherry trees" {
+		t.Errorf("patch without a category: %+v", park)
+	}
+	if alice.do("PATCH", parkPath, map[string]string{"category": "culture"}, &park); park.Category != "culture" {
+		t.Errorf("change the category: %+v", park)
+	}
+	if park.Lat != nil {
+		t.Errorf("a park with no position has one: %+v", park)
+	}
+
+	// A position: given when it's picked from the search; kept by other
+	// edits, replaced by a new one, cleared by a new map link.
+	alice.do("PATCH", parkPath, map[string]any{"lat": 34.711, "lng": 137.725}, &park)
+	if park.Lat == nil || *park.Lat != 34.711 || *park.Lng != 137.725 {
+		t.Fatalf("set position: %+v", park)
+	}
+	if alice.do("PATCH", parkPath, map[string]string{"notes": "sakura"}, &park); park.Lat == nil {
+		t.Errorf("an edit dropped the position: %+v", park)
+	}
+	if alice.do("PATCH", parkPath, map[string]string{"map_url": "https://maps.app.goo.gl/other"}, &park); park.Lat != nil {
+		t.Errorf("a new link kept the old position: %+v", park)
+	}
+	if code := alice.do("PATCH", parkPath, map[string]any{"lat": 34.7}, nil); code != 400 {
+		t.Errorf("lat without lng: %d, want 400", code)
+	}
+	var placed restaurantJSON
+	alice.do("POST", "/api/restaurants", map[string]any{"name": "Dunes", "category": "nature", "lat": 34.656, "lng": 137.731}, &placed)
+	if placed.Lat == nil || *placed.Lng != 137.731 {
+		t.Errorf("created with a position: %+v", placed)
+	}
+	alice.do("DELETE", "/api/restaurants/"+itoa(placed.ID), nil, nil)
+	var mapKey struct{ Key *string }
+	if code := alice.do("GET", "/api/restaurants/map", nil, &mapKey); code != 200 || mapKey.Key == nil || *mapKey.Key != "" {
+		t.Errorf("map key without one: %d %+v", code, mapKey)
+	}
+
+	if code := alice.do("DELETE", parkPath, nil, nil); code != 204 {
+		t.Fatalf("delete park: %d", code)
 	}
 
 	// Another visit, newest first.
@@ -133,6 +183,7 @@ func TestRestaurantValidation(t *testing.T) {
 		{"name": "x", "visit": map[string]string{"visited_on": "yesterday"}},
 		{"name": "x", "visit": map[string]string{"visited_on": tomorrow2}},
 		{"name": "x", "colour": "red"},
+		{"name": "x", "category": "food"},
 	} {
 		if code := c.do("POST", "/api/restaurants", body, nil); code != 400 {
 			t.Errorf("%v: %d, want 400", body, code)
@@ -144,6 +195,9 @@ func TestRestaurantValidation(t *testing.T) {
 	}
 	if code := c.do("PATCH", "/api/restaurants/"+itoa(r.ID), map[string]string{"name": ""}, nil); code != 400 {
 		t.Errorf("patch to empty name: %d, want 400", code)
+	}
+	if code := c.do("PATCH", "/api/restaurants/"+itoa(r.ID), map[string]string{"category": "parks"}, nil); code != 400 {
+		t.Errorf("patch to an unknown category: %d, want 400", code)
 	}
 	if code := c.do("GET", "/api/restaurants/abc", nil, nil); code != 404 {
 		t.Errorf("bad id: %d, want 404", code)

@@ -22,10 +22,3 @@ export function mapLink(r: Restaurant): string {
   const q = [r.name, r.area].filter(Boolean).join(' ');
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
 }
-
-const tiles = ['yellow', 'green', 'red', 'orange'] as const;
-
-/** Each restaurant keeps one of the four colours for its letter tile. */
-export function tileColor(id: number): (typeof tiles)[number] {
-  return tiles[id % tiles.length];
-}

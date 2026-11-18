@@ -6,6 +6,7 @@ import { StarPicker } from '../../components/Stars';
 import { t } from '../../i18n';
 import { href, navigate, replaceRoute } from '../../router';
 import { isMapsLink, parseShared } from '../../share';
+import { categories, categoryHint, categoryName, categoryOf, CategoryTile, Icon, kindPlaceholder } from './categories';
 import { today } from './format';
 
 /**
@@ -39,25 +40,12 @@ function usePlaceSearch(query: string, session: string, near: { lat: number; lng
   return { found, failed };
 }
 
-/** An emoji for OpenStreetMap's kind of place. */
-function kindIcon(kind: string): string {
-  if (kind === 'cafe' || kind === 'coffee_shop') return '☕';
-  if (kind === 'bar' || kind === 'pub' || kind === 'biergarten' || kind === 'izakaya_restaurant') return '🍺';
-  if (kind === 'fast_food' || kind === 'fast_food_restaurant' || kind === 'hamburger_restaurant') return '🍔';
-  if (kind === 'ice_cream' || kind === 'ice_cream_shop') return '🍦';
-  if (kind === 'bakery' || kind === 'pastry' || kind === 'confectionery' || kind === 'dessert_shop') return '🥐';
-  if (kind === 'ramen_restaurant') return '🍜';
-  if (kind === 'sushi_restaurant') return '🍣';
-  return '🍽️';
-}
-
 /**
- * What the Food field says for OpenStreetMap's kind of place, when the kind
- * says something about the food. Empty for a plain restaurant: OpenStreetMap
- * doesn't say which kind of food it serves, and the search doesn't return
- * that.
+ * What the Kind field says for OpenStreetMap's kind of place, when the kind
+ * says something. Empty for a plain restaurant: OpenStreetMap doesn't say
+ * which kind of food it serves, and the search doesn't return that.
  */
-function kindFood(kind: string): string {
+function kindName(kind: string): string {
   switch (kind) {
     case 'cafe':
       return t('Café');
@@ -79,6 +67,40 @@ function kindFood(kind: string): string {
       return t('Pastries');
     case 'confectionery':
       return t('Sweets');
+    case 'park':
+      return t('Park');
+    case 'garden':
+      return t('Garden');
+    case 'nature_reserve':
+      return t('Nature reserve');
+    case 'beach':
+      return t('Beach');
+    case 'peak':
+      return t('Mountain');
+    case 'viewpoint':
+      return t('Viewpoint');
+    case 'museum':
+      return t('Museum');
+    case 'gallery':
+      return t('Gallery');
+    case 'castle':
+      return t('Castle');
+    case 'zoo':
+      return t('Zoo');
+    case 'aquarium':
+      return t('Aquarium');
+    case 'theme_park':
+      return t('Theme park');
+    case 'cinema':
+      return t('Cinema');
+    case 'public_bath':
+      return t('Bathhouse');
+    case 'hot_spring':
+      return t('Onsen');
+    case 'mall':
+      return t('Shopping mall');
+    case 'marketplace':
+      return t('Market');
     default:
       return '';
   }
@@ -100,7 +122,7 @@ function newSession(): string {
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
-const empty: RestaurantFields = { name: '', area: '', cuisine: '', map_url: '', notes: '' };
+const empty: RestaurantFields = { name: '', area: '', cuisine: '', category: 'eat', map_url: '', notes: '' };
 
 /**
  * id edits that restaurant; without it, adds one. want starts on the
@@ -117,6 +139,8 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const [been, setBeen] = useState(!want);
   const [visitedOn, setVisitedOn] = useState(today());
   const [stars, setStars] = useState(0);
+  // A category picked by hand stays; until then, the picked place sets it.
+  const [categoryPicked, setCategoryPicked] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // Searching by name, when adding: what's typed, until a place is picked.
@@ -150,6 +174,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             name: p.name,
             area: f.area.trim() ? f.area : p.area,
             cuisine: f.cuisine.trim() ? f.cuisine : food,
+            category: categoryPicked || !p.category ? f.category : categoryOf(p.category),
           }
         : f,
     );
@@ -159,7 +184,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   async function pick(p: FoundPlace) {
     setQuery('');
     if (!p.place_id) {
-      fillFrom(p, kindFood(p.kind));
+      fillFrom(p, kindName(p.kind));
       return;
     }
     // Google's suggestion has only a name: ask for the rest.
@@ -178,7 +203,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   useEffect(() => {
     if (!id) return;
     api.restaurant(id).then(
-      (r) => setFields({ name: r.name, area: r.area, cuisine: r.cuisine, map_url: r.map_url, notes: r.notes }),
+      (r) => setFields({ name: r.name, area: r.area, cuisine: r.cuisine, category: categoryOf(r.category), map_url: r.map_url, notes: r.notes }),
       (err) => setError(errorMessage(err)),
     );
   }, [id]);
@@ -225,6 +250,8 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
         : await api.createRestaurant({
             ...fields,
             map_url: fields.map_url.trim() || (picked ? pickedMapURL(picked) : ''),
+            // Where the picked place is (Google's suggestions have it only after their details).
+            ...(picked && (picked.lat || picked.lng) ? { lat: picked.lat, lng: picked.lng } : {}),
             ...(been ? { visit: { visited_on: visitedOn }, stars: stars || undefined } : {}),
           });
       // Back goes to the list, not to this form.
@@ -315,7 +342,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               autoComplete="off"
               value={fields.name}
               aria-describedby={id ? undefined : 'place-search-hint'}
-              placeholder={lookingUp ? t('Looking up the place…') : id ? undefined : t('Type to search, e.g. すき家')}
+              placeholder={lookingUp ? t('Looking up the place…') : id ? undefined : t('Type to search, e.g. すき家, 浜松城')}
               onChange={(e) => {
                 set('name', e.target.value);
                 if (!id) setQuery(e.target.value);
@@ -330,9 +357,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                     <li key={`${p.name}${p.lat}${p.lng}`}>
                       {already ? (
                         <a className="suggest-row" href={href('restaurant', { id: already.id })}>
-                          <span className="suggest-icon" aria-hidden="true">
-                            {kindIcon(p.kind)}
-                          </span>
+                          <CategoryTile category={categoryOf(p.category)} size="sm" />
                           <span className="suggest-text">
                             <strong>{p.name}</strong>
                             <span className="hint">{t('Already on your list')}</span>
@@ -340,9 +365,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                         </a>
                       ) : (
                         <button type="button" className="suggest-row" onClick={() => pick(p)}>
-                          <span className="suggest-icon" aria-hidden="true">
-                            {kindIcon(p.kind)}
-                          </span>
+                          <CategoryTile category={categoryOf(p.category)} size="sm" />
                           <span className="suggest-text">
                             <strong>{p.name}</strong>
                             {(p.street || p.area) && <span className="hint">{[p.street, p.area].filter(Boolean).join(' · ')}</span>}
@@ -395,14 +418,43 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               </span>
             )}
           </div>
+          <div className="field">
+            <span id="place-category">{t('Category')}</span>
+            <div className="cat-picker" role="radiogroup" aria-labelledby="place-category">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={fields.category === c}
+                  className={fields.category === c ? 'on' : ''}
+                  onClick={() => {
+                    set('category', c);
+                    setCategoryPicked(true);
+                  }}
+                >
+                  <Icon name={c} size={18} />
+                  {categoryName(c)}
+                </button>
+              ))}
+            </div>
+            <span className="hint">
+              {categoryHint(categoryOf(fields.category))}. {t('Two fit? Pick what you’d go there for.')}
+            </span>
+          </div>
           <div className="two">
             <label className="field">
               {t('Area')}
               <input maxLength={100} placeholder={t('e.g. Station East')} value={fields.area} onChange={(e) => set('area', e.target.value)} />
             </label>
             <label className="field">
-              {t('Food')}
-              <input maxLength={60} placeholder={t('e.g. Ramen')} value={fields.cuisine} onChange={(e) => set('cuisine', e.target.value)} />
+              {t('Kind')}
+              <input
+                maxLength={60}
+                placeholder={kindPlaceholder(categoryOf(fields.category))}
+                value={fields.cuisine}
+                onChange={(e) => set('cuisine', e.target.value)}
+              />
             </label>
           </div>
           {!id && been && (
@@ -423,7 +475,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             <textarea
               rows={3}
               maxLength={5000}
-              placeholder={t('What to order, when to book…')}
+              placeholder={t('What to order, when to go, what to bring…')}
               value={fields.notes}
               onChange={(e) => set('notes', e.target.value)}
             />

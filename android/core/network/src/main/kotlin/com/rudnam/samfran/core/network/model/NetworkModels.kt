@@ -1,6 +1,7 @@
 package com.rudnam.samfran.core.network.model
 
 import com.rudnam.samfran.core.model.ActivityDetails
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
@@ -120,8 +121,11 @@ data class NetworkRestaurant(
     val name: String,
     val area: String = "",
     val cuisine: String = "",
+    val category: String = "",
     @SerialName("map_url") val mapUrl: String = "",
     val notes: String = "",
+    val lat: Double? = null,
+    val lng: Double? = null,
     @SerialName("added_by") val addedBy: String = "",
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("visit_count") val visitCount: Int = 0,
@@ -136,8 +140,11 @@ fun NetworkRestaurant.asModel() = Restaurant(
     name = name,
     area = area,
     cuisine = cuisine,
+    category = PlaceCategory.of(category),
     mapUrl = mapUrl,
     notes = notes,
+    lat = lat,
+    lng = lng,
     addedBy = addedBy,
     createdAt = createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: Instant.EPOCH,
     visitCount = visitCount,
@@ -153,8 +160,12 @@ data class NetworkRestaurantInput(
     val name: String,
     val area: String,
     val cuisine: String,
+    val category: String,
     @SerialName("map_url") val mapUrl: String,
     val notes: String,
+    /** Left out unless known: an edit without them keeps the place's. */
+    val lat: Double? = null,
+    val lng: Double? = null,
     val visit: NetworkNewVisit? = null,
     val stars: Int? = null,
 )
@@ -188,9 +199,13 @@ data class NetworkFoundPlace(
     @SerialName("place_id") val placeId: String = "",
     val food: String = "",
     @SerialName("map_url") val mapUrl: String = "",
+    val category: String = "",
 )
 
-fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(name, area, street, kind, lat, lng, placeId, food, mapUrl)
+fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(
+    name, area, street, kind, lat, lng, placeId, food, mapUrl,
+    category = category.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of),
+)
 
 @Serializable
 data class NetworkShiftDay(

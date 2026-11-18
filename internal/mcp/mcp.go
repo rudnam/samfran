@@ -221,11 +221,11 @@ func writeRPC(w http.ResponseWriter, res rpcResponse) {
 	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
-const instructions = `SamFran is an app for two people, who share everything in it. It keeps the restaurants they've been to (with visits and each person's 1-5 star rating) and want to go to, and one person's work shifts.
+const instructions = `SamFran is an app for two people, who share everything in it. It keeps the places they've been to (with visits and each person's 1-5 star rating) and want to go to: restaurants, and also parks, shrines, onsen and other places to go, each in a category. It also keeps one person's work shifts.
 
 Shifts: when the user shares a photo of a monthly shift sheet (勤務表), call get_shift_settings first, read only the row of the person named there (name_on_sheet), then show the user the whole month as a table (day, weekday, code, and the times worked out from the code) and ask them to check it against the sheet. Only after they confirm, call save_month_shifts. Never repeat anyone else's name or shifts from the sheet.
 
-Restaurants: ratings are the signed-in user's own. Check list_restaurants before adding a place, so it isn't added twice.`
+Places (the tools still say "restaurant", from when they were only restaurants): ratings are the signed-in user's own. Check list_restaurants before adding a place, so it isn't added twice. Give each place the category for why you'd go there: a café in a mall is eat, a shrine in a park is culture.`
 
 func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, *rpcError) {
 	switch req.Method {

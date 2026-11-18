@@ -7,6 +7,7 @@ import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.Member
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.Rating
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.ShiftCodes
@@ -39,7 +40,7 @@ object Samples {
 
     val restaurants = listOf(
         Restaurant(
-            12, "Hanabi Grill", "Station East", "Yakiniku", "https://maps.app.goo.gl/hanabi", "Book the window seats. The harami is the one.",
+            12, "Hanabi Grill", "Station East", "Yakiniku", mapUrl = "https://maps.app.goo.gl/hanabi", notes = "Book the window seats. The harami is the one.",
             addedBy = "Sam", visitCount = 4, lastVisit = d("2026-11-14"),
             ratings = listOf(Rating("Fran", true, 5), Rating("Sam", false, 4)),
             visits = listOf(
@@ -57,14 +58,23 @@ object Samples {
         ),
         Restaurant(7, "Cafe Lune", "Shichiken-cho", "Cafe", visitCount = 1, lastVisit = d("2026-09-18"), addedBy = "Sam", ratings = listOf(Rating("Sam", false, 3))),
         Restaurant(5, "Trattoria Sole", "Kusanagi", "Italian", visitCount = 3, lastVisit = d("2025-12-24"), addedBy = "Fran", ratings = listOf(Rating("Fran", true, 4))),
-        Restaurant(15, "Sushi Kiyo", "Shimizu port", "Sushi", addedBy = "Sam", notes = "Closed Wednesdays"),
+        Restaurant(15, "Sushi Kiyo", "Shimizu port", "Sushi", addedBy = "Sam", notes = "Closed Wednesdays", lat = 35.0141, lng = 138.4895),
         Restaurant(14, "Bistro Ume", "Station North", "French", addedBy = "Fran"),
+        Restaurant(
+            20, "Sumpu Castle Park", "Aoi", "Park", category = PlaceCategory.Nature, visitCount = 1, lastVisit = d("2026-10-25"), addedBy = "Fran",
+            ratings = listOf(Rating("Fran", true, 4)),
+        ),
+        Restaurant(21, "Kunozan Toshogu", "Suruga", "Shrine", category = PlaceCategory.Culture, addedBy = "Sam", notes = "1,159 steps up from the sea", lat = 34.9658, lng = 138.4683),
+        Restaurant(22, "Nihondaira Yume Terrace", "Shimizu", "Viewpoint", category = PlaceCategory.Nature, addedBy = "Fran", lat = 34.9958, lng = 138.4618),
+        Restaurant(23, "Umegashima Onsen", "Aoi", "Onsen", category = PlaceCategory.Relax, addedBy = "Sam"),
     )
 
     val places = listOf(
-        com.rudnam.samfran.core.model.FoundPlace("すき家 静岡駅南店", "静岡市駿河区", "南町", "fast_food", 34.968, 138.389),
-        com.rudnam.samfran.core.model.FoundPlace("すき家 葵区役所前店", "静岡市葵区", "追手町", "fast_food", 34.976, 138.383),
-        com.rudnam.samfran.core.model.FoundPlace("Hanabi Grill", "静岡市葵区", "紺屋町", "restaurant", 34.972, 138.387),
+        com.rudnam.samfran.core.model.FoundPlace("すき家 静岡駅南店", "静岡市駿河区", "南町", "fast_food", 34.968, 138.389, category = PlaceCategory.Eat),
+        com.rudnam.samfran.core.model.FoundPlace("すき家 葵区役所前店", "静岡市葵区", "追手町", "fast_food", 34.976, 138.383, category = PlaceCategory.Eat),
+        com.rudnam.samfran.core.model.FoundPlace("Hanabi Grill", "静岡市葵区", "紺屋町", "restaurant", 34.972, 138.387, category = PlaceCategory.Eat),
+        com.rudnam.samfran.core.model.FoundPlace("駿府城公園", "静岡市葵区", "駿府城公園", "park", 34.979, 138.383, category = PlaceCategory.Nature),
+        com.rudnam.samfran.core.model.FoundPlace("静岡浅間神社", "静岡市葵区", "宮ケ崎町", "place_of_worship", 34.983, 138.375, category = PlaceCategory.Culture),
     )
 
     val settings = ShiftSettings(
