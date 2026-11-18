@@ -65,11 +65,6 @@
     <string name="copied">Copied</string>
     <string name="share">Share</string>
     <string name="calendar_link_private">Anyone with the link can see the shifts.</string>
-    <string name="new_link">Make a new link</string>
-    <string name="turn_off">Turn off</string>
-    <string name="turn_on_link">Turn on the calendar link</string>
-    <string name="made_new_link">Made a new link. Add it again where you used the old one.</string>
-    <string name="link_off">The calendar link is off.</string>
     <string name="with_names">With %s</string>
     <string name="done">Done</string>
     <string name="use_usual_days">Use the usual days</string>

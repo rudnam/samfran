@@ -65,11 +65,6 @@
     <string name="copied">コピーしました</string>
     <string name="share">共有</string>
     <string name="calendar_link_private">リンクを知っている人は誰でもシフトを見られます。</string>
-    <string name="new_link">新しいリンクを作る</string>
-    <string name="turn_off">オフにする</string>
-    <string name="turn_on_link">カレンダーのリンクをオンにする</string>
-    <string name="made_new_link">新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。</string>
-    <string name="link_off">カレンダーのリンクをオフにしました。</string>
     <string name="with_names">一緒: %s</string>
     <string name="done">完了</string>
     <string name="use_usual_days">いつもの日に戻す</string>

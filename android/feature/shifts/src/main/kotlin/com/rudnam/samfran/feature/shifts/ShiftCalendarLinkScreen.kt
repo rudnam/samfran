@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,7 +31,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.Hint
-import com.rudnam.samfran.core.designsystem.component.LinkButton
 import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
@@ -98,11 +98,9 @@ fun ShiftCalendarLinkScreen(
         val who = state.settings.personName
         val name = if (who.isNotBlank()) stringResource(R.string.whose_shifts, who) else stringResource(R.string.shifts)
         if (state.feedUrl.isEmpty()) {
-            SamFranCard {
-                PrimaryButton(stringResource(R.string.turn_on_link), { actions.feed(true) }, Modifier.fillMaxWidth(), enabled = !state.busy)
-                state.problem?.problem()?.let { ErrorText(it) }
-                if (state.done == SettingsDone.LinkOff) Hint(stringResource(R.string.link_off))
-            }
+            // The link is always on: it's made the first time this page is opened.
+            LaunchedEffect(Unit) { if (!state.busy) actions.feed(true) }
+            state.problem?.problem()?.let { ErrorText(it) } ?: Skeleton(rows = 3)
             return@SubPage
         }
         var copied by rememberSaveable(state.feedUrl) { mutableStateOf(false) }
@@ -122,15 +120,7 @@ fun ShiftCalendarLinkScreen(
                 }
             }
             Hint(stringResource(R.string.sync_hint, name))
-        }
-        SamFranCard(Modifier.fillMaxWidth()) {
             Hint(stringResource(R.string.calendar_link_private))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                SecondaryButton(stringResource(R.string.new_link), { actions.feed(true) }, enabled = !state.busy)
-                LinkButton(stringResource(R.string.turn_off), { actions.feed(false) }, enabled = !state.busy, quiet = true)
-            }
-            state.problem?.problem()?.let { ErrorText(it) }
-            if (state.done == SettingsDone.NewLink) Hint(stringResource(R.string.made_new_link))
         }
     }
 }

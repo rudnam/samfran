@@ -75,7 +75,8 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   // The calendar link, from the Shifts page, with the way into Google Calendar.
   await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
   await expect(page.getByRole('heading', { name: 'Add to Google Calendar' })).toBeVisible();
-  await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
+  // The link is on as soon as the page opens; it can't be turned off or replaced here.
+  await expect(page.getByRole('button', { name: 'Turn off' })).toHaveCount(0);
   const link = page.getByLabel('Calendar link');
   await expect(link).toHaveValue(/\/api\/shifts\/feed\/[\w-]+\.ics$/);
   const webcal = (await link.inputValue()).replace(/^https?:/, 'webcal:');
@@ -238,7 +239,6 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
 
   // The calendar feed leaves out who: it can be shared.
   await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
-  await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
   const ics = await feed.text();
   expect(ics).toContain('SUMMARY:');

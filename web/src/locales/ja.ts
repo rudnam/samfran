@@ -248,10 +248,6 @@ export const ja = {
   Copy: 'コピー',
   'Anyone with this link can see the shifts. If it gets out, make a new one.': 'このリンクを知っている人は誰でもシフトを見られます。漏れたら新しいリンクを作ってください。',
   'Make a new link': '新しいリンクを作る',
-  'Made a new link. Add it again where you used the old one.': '新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。',
-  'The calendar link is off.': 'カレンダーのリンクをオフにしました。',
-  'Turn off': 'オフにする',
-  'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
   // The calendar link
   'Add to Google Calendar': 'Googleカレンダーに追加',

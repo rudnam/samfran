@@ -161,9 +161,16 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
     await shot('7a-shift-edit-closing');
     await page.goto('/app/#/shifts/calendar');
-    await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
     await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
     await shot('7a2-google-calendar');
+    // Back on Shifts with the link on: a month with shifts, then an empty one.
+    await page.goto('/app/#/shifts');
+    await expect(page.getByRole('link', { name: 'Calendar link is on' })).toBeVisible();
+    await shot('6d-shifts-calendar-on');
+    await page.getByRole('link', { name: 'Next month' }).click();
+    await page.getByRole('link', { name: 'Next month' }).click();
+    await expect(page.getByText('No shifts for this month')).toBeVisible();
+    await shot('6e-shifts-empty-month');
 
     // The bus alarm: first time, then with a stop chosen.
     await page.getByRole('link', { name: 'Bus', exact: true }).click();
