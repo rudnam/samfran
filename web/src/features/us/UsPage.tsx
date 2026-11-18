@@ -7,6 +7,16 @@ import { ThemePicker } from '../../components/ThemePicker';
 import { t } from '../../i18n';
 import { Avatar, useSpace } from '../../space';
 
+// What there is to download only changes with the server's settings, so it's
+// asked for once, when the app opens: by the time Us is opened it's known,
+// and the Android app's card is there from the start instead of dropping in
+// and pushing the cards below it down.
+let android: Downloads['android'] = null;
+const downloadsLoaded = api.downloads().then(
+  (d) => (android = d.android),
+  () => null,
+);
+
 export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
   const self = space?.members.find((m) => m.me);
@@ -14,10 +24,14 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [apk, setApk] = useState<Downloads['android']>(null);
+  const [apk, setApk] = useState(android);
 
   useEffect(() => {
-    api.downloads().then((d) => setApk(d.android), () => {});
+    let alive = true;
+    downloadsLoaded.then((a) => alive && setApk(a));
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
