@@ -12,6 +12,7 @@ import { RestaurantForm } from './features/restaurants/RestaurantForm';
 import { RestaurantsPage } from './features/restaurants/RestaurantsPage';
 import { ShiftEditor } from './features/shifts/ShiftEditor';
 import { ShiftSettingsPage } from './features/shifts/ShiftSettingsPage';
+import { ShiftCalendarLinkPage } from './features/shifts/ShiftCalendarLinkPage';
 import { ShiftsPage } from './features/shifts/ShiftsPage';
 import { UsPage } from './features/us/UsPage';
 import { useUnseen } from './features/us/unseen';
@@ -246,6 +247,8 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     }
     case 'shifts/settings':
       return <ShiftSettingsPage />;
+    case 'shifts/calendar':
+      return <ShiftCalendarLinkPage />;
     case 'bus':
       return <BusPage />;
     case 'connect':
