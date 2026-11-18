@@ -172,6 +172,10 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
+    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await shot('7d-bus-settings');
+    await page.getByRole('button', { name: '‹ Bus alarm' }).click();
 
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();

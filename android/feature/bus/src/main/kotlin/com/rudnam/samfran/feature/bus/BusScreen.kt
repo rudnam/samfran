@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -105,7 +106,8 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
     val askForHere = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) viewModel.useHere() else viewModel.locationDenied()
     }
-    val askForPrompts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setPrompts(true) }
+    // Switching a stop's question on: ask for notifications first (Android 13+), then switch it either way.
+    val askForAsk = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.toggleAsk() }
     // The practice run's buzz shows a notification too: ask for that first (Android 13+), then practise either way.
     val askForPractice = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.practice() }
     // Opened from "Start bus alarm?": start once the stop is known.
@@ -129,11 +131,11 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
             if (granted(context, Manifest.permission.ACCESS_COARSE_LOCATION)) viewModel.useHere()
             else askForHere.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         },
-        onPrompts = { on ->
-            if (on && Build.VERSION.SDK_INT >= 33 && !granted(context, Manifest.permission.POST_NOTIFICATIONS)) {
-                askForPrompts.launch(Manifest.permission.POST_NOTIFICATIONS)
+        onAsk = {
+            if (!state.form.ask && Build.VERSION.SDK_INT >= 33 && !granted(context, Manifest.permission.POST_NOTIFICATIONS)) {
+                askForAsk.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                viewModel.setPrompts(on)
+                viewModel.toggleAsk()
             }
         },
         onMap = { context.openWeb(it) },
@@ -146,6 +148,10 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
  * before the stop until "Stop". The phone does the watching; this page
  * explains it, sets it up, starts it, shows it and stops it. "Try it now" is
  * a practice run that really buzzes.
+ *
+ * Three pages, so each shows only a little: the ride (where to get off, and
+ * starting); Settings (the stops, and how it buzzes); and a stop's own page
+ * (where it is, and when it's used).
  */
 @Composable
 fun BusScreen(
@@ -154,42 +160,88 @@ fun BusScreen(
     onStartTrip: () -> Unit,
     onPractice: () -> Unit,
     onHere: () -> Unit,
-    onPrompts: (Boolean) -> Unit,
+    onAsk: () -> Unit,
     onMap: (String) -> Unit,
     map: @Composable (lat: Double, lng: Double, name: String) -> Unit = { lat, lng, name -> StopMap(lat, lng, name) },
 ) {
     val all = state.stops
+    // Back goes from a stop to Settings (or the ride), and from Settings to the ride.
+    BackHandler(enabled = state.ready && state.isEditing) { actions.cancelEdit() }
+    BackHandler(enabled = state.ready && !state.isEditing && state.settings) { actions.closeSettings() }
     TabPage {
-        item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
-        if (state.locationDenied) item(key = "denied") { ErrorText(stringResource(R.string.location_denied)) }
-        state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
-        if (all == null) {
-            item(key = "loading") { Skeleton(rows = 3) }
-            return@TabPage
-        }
-        val stop = state.stop
         when {
-            state.buzzing -> item(key = "buzz") { BuzzCard(stop ?: BusStop(set = false), practice = state.practice != null, onStop = actions::stopBuzz) }
-            stop != null && !state.isEditing && state.choosing && !state.trip.running ->
-                item(key = "choose") { ChooseCard(all, stop, actions, onStartTrip) }
-            stop != null && !state.isEditing -> item(key = "ride") { RideCard(state, all, stop, actions, onStartTrip, onPractice, map) }
-        }
-        if (!state.ready) item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
-        if (state.isEditing) {
-            item(key = "form") { StopFormCard(state, all, actions, onHere, onMap, map) }
-        } else if (state.ready) {
-            item(key = "settings") { AlarmSettings(state, all, actions, onPrompts) }
-            item(key = "fold") {
-                var open by rememberSaveable { mutableStateOf(false) }
-                SamFranCard(onClick = { open = !open }, spacing = 10) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CardTitle(stringResource(R.string.how_it_works), Modifier.weight(1f))
-                        LineIcon(if (open) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = SamFranTheme.colors.muted)
-                    }
-                    AnimatedVisibility(open) { Steps() }
-                }
+            all == null -> {
+                item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                item(key = "loading") { Skeleton(rows = 3) }
+                return@TabPage
+            }
+            // The first stop: how it works, then choosing it.
+            !state.ready -> {
+                item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                problems(state)
+                item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
+                item(key = "form") { StopPage(state, all, actions, onHere, onAsk, onMap, map) }
+                return@TabPage
+            }
+            state.isEditing -> {
+                item(key = "back") { BackLink(stringResource(if (state.settings) R.string.settings else R.string.bus_alarm), actions::cancelEdit) }
+                problems(state)
+                item(key = "form") { StopPage(state, all, actions, onHere, onAsk, onMap, map) }
+                return@TabPage
+            }
+            state.settings -> {
+                item(key = "back") { BackLink(stringResource(R.string.bus_alarm), actions::closeSettings) }
+                item(key = "head") { PageTitle(stringResource(R.string.settings)) }
+                problems(state)
+                item(key = "stops") { StopsCard(all, actions) }
+                item(key = "buzz") { SamFranCard { BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings) } }
+                item(key = "fold") { HowItWorksFold() }
+                return@TabPage
             }
         }
+        item(key = "head") {
+            Row(verticalAlignment = Alignment.Top) {
+                PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f), subtitle = stringResource(R.string.bus_subtitle))
+                if (!state.trip.running && !state.buzzing) SecondaryButton(stringResource(R.string.settings), actions::openSettings, icon = SamFranIcons.settings)
+            }
+        }
+        problems(state)
+        val stop = state.stop ?: return@TabPage
+        when {
+            state.buzzing -> item(key = "buzz") { BuzzCard(stop, practice = state.practice != null, onStop = actions::stopBuzz) }
+            state.choosing && !state.trip.running -> item(key = "choose") { ChooseCard(all!!, stop, actions, onStartTrip) }
+            else -> item(key = "ride") { RideCard(state, all!!, stop, actions, onStartTrip, onPractice, map) }
+        }
+    }
+}
+
+private fun androidx.compose.foundation.lazy.LazyListScope.problems(state: BusUiState) {
+    if (state.locationDenied) item(key = "denied") { ErrorText(stringResource(R.string.location_denied)) }
+    state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
+}
+
+/** "‹ Settings": back a page. */
+@Composable
+private fun BackLink(to: String, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(MaterialTheme.shapes.small).clickable(role = Role.Button, onClick = onClick).padding(vertical = 6.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        LineIcon(SamFranIcons.chevronLeft, null, size = 18.dp, tint = SamFranTheme.colors.accentInk)
+        Text(to, color = SamFranTheme.colors.accentInk, style = MaterialTheme.typography.titleSmall)
+    }
+}
+
+@Composable
+private fun HowItWorksFold() {
+    var open by rememberSaveable { mutableStateOf(false) }
+    SamFranCard(onClick = { open = !open }, spacing = 10) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            CardTitle(stringResource(R.string.how_it_works), Modifier.weight(1f))
+            LineIcon(if (open) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = SamFranTheme.colors.muted)
+        }
+        AnimatedVisibility(open) { Steps() }
     }
 }
 
@@ -462,47 +514,33 @@ private fun ChooseCard(all: BusStops, stop: BusStop, actions: BusActions, onStar
     }
 }
 
-/** The stops (each changed in its own form), how it buzzes (saved as it's picked) and the question at the end of a shift. */
+/** The stops: one line each, saying which shifts it's for; a tap opens it. */
 @Composable
-private fun AlarmSettings(state: BusUiState, all: BusStops, actions: BusActions, onPrompts: (Boolean) -> Unit) {
+private fun StopsCard(all: BusStops, actions: BusActions) {
     val colors = SamFranTheme.colors
-    SamFranCard(spacing = 14) {
-        CardTitle(stringResource(R.string.alarm_settings))
-        Column {
-            Eyebrow(stringResource(R.string.your_stops))
-            for ((i, s) in all.stops.withIndex()) {
-                if (i > 0) HorizontalDivider(color = colors.divider)
-                Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
-                        val when_ = if (s.shifts.isEmpty()) stringResource(R.string.when_picked) else stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) })
-                        Hint(listOfNotNull(when_, Distances.format(s.alertMeters.toFloat()), stringResource(R.string.no_question).takeIf { !s.ask }).joinToString(" · "))
-                    }
-                    SecondaryButton(stringResource(R.string.change), { actions.edit(s.id) })
+    SamFranCard(spacing = 0) {
+        Eyebrow(stringResource(R.string.your_stops), Modifier.padding(bottom = 4.dp))
+        for ((i, s) in all.stops.withIndex()) {
+            if (i > 0) HorizontalDivider(color = colors.divider)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Button) { actions.edit(s.id) }.padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
+                    if (s.shifts.isNotEmpty()) Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
                 }
+                LineIcon(SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
             }
-            if (all.stops.size < BusStops.MAX) SecondaryButton(stringResource(R.string.add_a_stop_short), actions::add, Modifier.fillMaxWidth().padding(top = 4.dp))
         }
-        BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings)
-        HorizontalDivider(color = colors.divider)
-        Row(
-            Modifier.fillMaxWidth().clickable(role = Role.Switch) { onPrompts(!state.prompts) },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.ask_when_shift_ends), style = MaterialTheme.typography.titleSmall)
-                Hint(stringResource(R.string.ask_when_shift_ends_hint))
-            }
-            Switch(state.prompts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
-        }
-        if (state.promptsBlocked) ErrorText(stringResource(R.string.allow_notifications))
+        if (all.stops.size < BusStops.MAX) LinkButton(stringResource(R.string.add_a_stop_short), actions::add, Modifier.padding(top = 4.dp))
     }
 }
 
-/** Whether to ask "Start bus alarm?" when a shift whose stop this is ends; says so when the question is off on this phone. */
+/** Whether to ask "Start bus alarm?" when a shift whose stop this is ends. */
 @Composable
-private fun AskRow(ask: Boolean, prompts: Boolean, onToggle: () -> Unit) {
+private fun AskRow(f: StopForm, onToggle: () -> Unit) {
     val colors = SamFranTheme.colors
     Row(
         Modifier.fillMaxWidth().clickable(role = Role.Switch, onClick = onToggle),
@@ -510,14 +548,12 @@ private fun AskRow(ask: Boolean, prompts: Boolean, onToggle: () -> Unit) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stringResource(R.string.ask_for_stop), style = MaterialTheme.typography.titleSmall)
-            Hint(
-                stringResource(if (ask) R.string.ask_for_stop_on else R.string.ask_for_stop_off) +
-                    if (ask && !prompts) " " + stringResource(R.string.ask_for_stop_phone_off) else "",
-            )
+            Text(stringResource(R.string.ask_when_these_end), style = MaterialTheme.typography.titleSmall)
+            Hint(stringResource(R.string.ask_when_these_end_hint))
         }
-        Switch(ask, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
+        Switch(f.ask, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
     }
+    if (f.ask && f.askBlocked) ErrorText(stringResource(R.string.allow_notifications))
 }
 
 /** Which kinds of shift a stop is for: four toggles, saying what they mean. */
@@ -550,97 +586,121 @@ private fun ShiftToggles(all: BusStops, editing: Long?, f: StopForm, actions: Bu
     }
 }
 
-/** Choosing the stop: search by name, or (folded away) a Google Maps link to it or where the phone is now. */
+/**
+ * A stop's page, in two parts. Where: search by name, or (folded away) a
+ * Google Maps link to it or where the phone is now; the map shows once it's
+ * found, then folds away. When: the shifts it's for, and whether to ask when
+ * they end. The first stop is only where.
+ */
 @Composable
-private fun StopFormCard(state: BusUiState, all: BusStops, actions: BusActions, onHere: () -> Unit, onMap: (String) -> Unit, map: @Composable (Double, Double, String) -> Unit) {
+private fun StopPage(
+    state: BusUiState,
+    all: BusStops,
+    actions: BusActions,
+    onHere: () -> Unit,
+    onAsk: () -> Unit,
+    onMap: (String) -> Unit,
+    map: @Composable (Double, Double, String) -> Unit,
+) {
     val colors = SamFranTheme.colors
     val f = state.form
     val first = !state.ready
     val editing = all.byId(state.editing ?: BusUiState.NEW)
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
-    SamFranCard(spacing = 14) {
-        if (first) Eyebrow(stringResource(R.string.step_1_of_2), color = colors.accentInk)
-        CardTitle(
-            when {
-                editing != null -> editing.name.ifBlank { stringResource(R.string.unnamed_stop) }
-                first -> stringResource(R.string.where_get_off)
-                else -> stringResource(R.string.add_a_stop)
-            },
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            OutlinedTextField(
-                value = f.name,
-                onValueChange = actions::setName,
-                label = { Text(stringResource(R.string.stop_name)) },
-                placeholder = { Text(stringResource(R.string.stop_name_hint)) },
-                leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { actions.saveStop() }),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            val found = f.found
-            if (f.query.isNotEmpty() && !found.isNullOrEmpty()) {
-                Column {
-                    found.forEachIndexed { i, s ->
-                        if (i > 0) HorizontalDivider(color = colors.divider)
-                        Row(
-                            Modifier.fillMaxWidth().clickable { actions.pick(s) }.padding(vertical = 10.dp, horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Text(if (s.train) "🚉" else "🚏")
-                            Column(Modifier.weight(1f)) {
-                                Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                if (s.area.isNotBlank()) Hint(s.area)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (!first) PageTitle(editing?.name?.ifBlank { stringResource(R.string.unnamed_stop) } ?: stringResource(R.string.add_a_stop))
+        SamFranCard(spacing = 14) {
+            if (first) {
+                Eyebrow(stringResource(R.string.step_1_of_2), color = colors.accentInk)
+                CardTitle(stringResource(R.string.where_get_off))
+            } else {
+                Eyebrow(stringResource(R.string.stop_where))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = f.name,
+                    onValueChange = actions::setName,
+                    label = { Text(stringResource(R.string.stop_name)) },
+                    placeholder = { Text(stringResource(R.string.stop_name_hint)) },
+                    leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { actions.saveStop() }),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val found = f.found
+                if (f.query.isNotEmpty() && !found.isNullOrEmpty()) {
+                    Column {
+                        found.forEachIndexed { i, s ->
+                            if (i > 0) HorizontalDivider(color = colors.divider)
+                            Row(
+                                Modifier.fillMaxWidth().clickable { actions.pick(s) }.padding(vertical = 10.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Text(if (s.train) "🚉" else "🚏")
+                                Column(Modifier.weight(1f)) {
+                                    Text(s.name, style = MaterialTheme.typography.titleSmall)
+                                    if (s.area.isNotBlank()) Hint(s.area)
+                                }
                             }
                         }
                     }
                 }
-            }
-            val hint = when {
-                f.query.isNotEmpty() && f.searchFailed -> stringResource(R.string.search_failed)
-                f.query.isNotEmpty() && found?.isEmpty() == true -> stringResource(R.string.no_stops)
-                f.query.isNotEmpty() && !found.isNullOrEmpty() -> stringResource(R.string.tap_your_stop) + " " + stringResource(R.string.osm)
-                else -> ""
-            }
-            if (hint.isNotEmpty()) Hint(hint)
-            val pos = f.position
-            if (pos != null && f.query.isEmpty()) {
-                map(pos.first, pos.second, f.name)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Hint("✓ " + stringResource(if (f.byName) R.string.found_by_name else R.string.found_it), Modifier.weight(1f, fill = false))
-                    LinkButton(stringResource(R.string.check_on_map), { onMap(mapLink(pos.first, pos.second)) })
+                val hint = when {
+                    f.query.isNotEmpty() && f.searchFailed -> stringResource(R.string.search_failed)
+                    f.query.isNotEmpty() && found?.isEmpty() == true -> stringResource(R.string.no_stops)
+                    f.query.isNotEmpty() && !found.isNullOrEmpty() -> stringResource(R.string.tap_your_stop) + " " + stringResource(R.string.osm)
+                    else -> ""
                 }
-            }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth().clickable { actions.setOtherWays(!f.otherWays) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.other_ways), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                LineIcon(if (f.otherWays) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
-            }
-            AnimatedVisibility(f.otherWays) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = f.link,
-                            onValueChange = actions::setLink,
-                            placeholder = { Text(stringResource(R.string.paste_stop_link)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                            keyboardActions = KeyboardActions(onGo = { actions.useLink() }),
-                            modifier = Modifier.weight(1f),
-                        )
-                        SecondaryButton(stringResource(R.string.use_link), actions::useLink, enabled = !f.busy && f.link.isNotBlank())
+                if (hint.isNotEmpty()) Hint(hint)
+                val pos = f.position
+                if (pos != null && f.query.isEmpty()) {
+                    if (f.showMap || first) map(pos.first, pos.second, f.name)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Hint("✓ " + stringResource(if (f.byName) R.string.found_by_name else R.string.found_it), Modifier.weight(1f, fill = false))
+                        if (f.showMap || first) {
+                            LinkButton(stringResource(R.string.check_on_map), { onMap(mapLink(pos.first, pos.second)) })
+                        } else {
+                            LinkButton(stringResource(R.string.see_on_map), actions::toggleMap)
+                        }
                     }
-                    SecondaryButton(stringResource(R.string.use_here), onHere, Modifier.fillMaxWidth(), enabled = !f.busy, icon = SamFranIcons.location)
                 }
             }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(Modifier.fillMaxWidth().clickable { actions.setOtherWays(!f.otherWays) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.other_ways), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                    LineIcon(if (f.otherWays) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
+                }
+                AnimatedVisibility(f.otherWays) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = f.link,
+                                onValueChange = actions::setLink,
+                                placeholder = { Text(stringResource(R.string.paste_stop_link)) },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                                keyboardActions = KeyboardActions(onGo = { actions.useLink() }),
+                                modifier = Modifier.weight(1f),
+                            )
+                            SecondaryButton(stringResource(R.string.use_link), actions::useLink, enabled = !f.busy && f.link.isNotBlank())
+                        }
+                        SecondaryButton(stringResource(R.string.use_here), onHere, Modifier.fillMaxWidth(), enabled = !f.busy, icon = SamFranIcons.location)
+                    }
+                }
+            }
+            if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
+            DistanceChips(f.meters, actions::setMeters)
         }
-        if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
-        DistanceChips(f.meters, actions::setMeters)
-        if (!first) ShiftToggles(all, state.editing, f, actions)
-        if (!first) AskRow(f.ask, state.prompts, actions::toggleAsk)
+        if (!first) {
+            SamFranCard(spacing = 14) {
+                Eyebrow(stringResource(R.string.stop_when))
+                ShiftToggles(all, state.editing, f, actions)
+                HorizontalDivider(color = colors.divider)
+                AskRow(f, onAsk)
+            }
+        }
         when (val p = f.problem) {
             null -> {}
             StopProblem.NoPosition -> ErrorText(stringResource(R.string.no_position))
@@ -650,7 +710,6 @@ private fun StopFormCard(state: BusUiState, all: BusStops, actions: BusActions, 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
             if (editing != null) LinkButton(stringResource(R.string.remove_stop), { confirmRemove = true }, enabled = !f.busy, danger = true)
             Spacer(Modifier.weight(1f))
-            if (state.ready) SecondaryButton(stringResource(R.string.cancel), actions::cancelEdit)
             PrimaryButton(stringResource(R.string.save), actions::saveStop, enabled = !f.busy && f.position != null)
         }
     }

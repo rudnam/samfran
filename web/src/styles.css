@@ -736,3 +736,11 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 .chips.four { grid-template-columns: repeat(4, 1fr); }
 .row.end .push-start { margin-right: auto; }
 .chips.two { grid-template-columns: repeat(2, 1fr); }
+
+/* The bus alarm's pages: a header with Settings beside it, the way back, and the stops as rows. */
+.page-head.with-action { flex-direction: row; justify-content: space-between; align-items: flex-start; }
+button.link.back { align-self: flex-start; padding-left: 0; }
+button.link.start { align-self: flex-start; padding-left: 0; }
+button.link.inline { padding: 0; }
+.stop-list li { padding: 0; }
+.stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }

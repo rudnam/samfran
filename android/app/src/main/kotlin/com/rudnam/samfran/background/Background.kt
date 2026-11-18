@@ -20,6 +20,7 @@ import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
+import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.newestId
@@ -115,19 +116,26 @@ class AndroidReminders @Inject constructor(
         }
     }
 
-    private val prompts = MutableStateFlow(prefs.getBoolean(ShiftPrompt.PROMPTS, false))
     private val alerts = MutableStateFlow(prefs.getBoolean(ActivityJob.ALERTS, false))
-    override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
 
     private val allowed: Boolean get() = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
-    override suspend fun setShiftPrompts(on: Boolean): Boolean {
-        val now = on && allowed && sendShiftEnds()
-        prefs.edit { putBoolean(ShiftPrompt.PROMPTS, now) }
-        if (!now) ShiftPrompt.save(context, emptyList(), 0)
-        prompts.value = now
-        return now
+    override fun notificationsAllowed() = allowed
+
+    /**
+     * The question used to be switched on for the phone ([ShiftPrompt.PROMPTS]);
+     * now it's each stop's, off for all until switched on (the server's
+     * migration 023). A phone that had it on switches it on for its person's
+     * stops, once.
+     */
+    private suspend fun movePhoneSwitch() {
+        if (!prefs.getBoolean(ShiftPrompt.PROMPTS, false)) return
+        val all = (bus.refresh() as? Outcome.Done)?.value ?: return
+        for (s in all.stops.filter { !it.ask }) {
+            if (bus.change(s.id, StopInput(s.name, s.lat, s.lng, s.alertMeters, ask = true)) !is Outcome.Done) return
+        }
+        prefs.edit { remove(ShiftPrompt.PROMPTS) }
     }
 
     override suspend fun setActivityAlerts(on: Boolean): Boolean {
@@ -151,6 +159,10 @@ class AndroidReminders @Inject constructor(
      */
     private suspend fun sendShiftEnds(): Boolean {
         val all = (bus.refresh() as? Outcome.Done)?.value ?: return false
+        if (all.stops.none { it.ask }) {
+            ShiftPrompt.save(context, emptyList(), all.stops.size)
+            return true
+        }
         val upcoming = (shifts.upcomingShifts(clock.instant()) as? Outcome.Done)?.value ?: return false
         val ends = upcoming.mapNotNull { day ->
             val stop = all.pick(day)?.takeIf { it.ask } ?: return@mapNotNull null
@@ -165,7 +177,8 @@ class AndroidReminders @Inject constructor(
     override suspend fun sync(now: Boolean) {
         if (!now && clock.millis() - last < 5 * 60 * 1000) return
         last = clock.millis()
-        if (prompts.value) sendShiftEnds()
+        movePhoneSwitch()
+        if (allowed) sendShiftEnds() else ShiftPrompt.save(context, emptyList(), 0)
         if (alerts.value) {
             ActivityJob.schedule(context, true)
             (activity.refresh() as? Outcome.Done)?.value?.newestId()?.let { newest ->
@@ -183,13 +196,12 @@ class AndroidReminders @Inject constructor(
 
     override fun turnOff() {
         prefs.edit {
-            putBoolean(ShiftPrompt.PROMPTS, false)
+            remove(ShiftPrompt.PROMPTS)
             putBoolean(ActivityJob.ALERTS, false)
             putLong(ActivityJob.SEEN, 0)
         }
         ShiftPrompt.save(context, emptyList(), 0)
         ActivityJob.schedule(context, false)
-        prompts.value = false
         alerts.value = false
     }
 }

@@ -30,7 +30,7 @@ type SavedStop struct {
 	// kind is on at most one of a person's stops.
 	Shifts []string `json:"shifts"`
 	// Ask is whether the Android app asks "Start bus alarm?" when a shift
-	// whose stop this is ends (if the question is switched on, on the phone).
+	// whose stop this is ends. Off until switched on.
 	Ask bool `json:"ask"`
 }
 
@@ -181,7 +181,7 @@ type savedInput struct {
 	stopInput
 	// Left out, a changed stop keeps the ones it had (a new one has none).
 	Shifts *[]string `json:"shifts"`
-	// Left out, a changed stop keeps it as it was (a new one asks).
+	// Left out, a changed stop keeps it as it was (a new one doesn't ask).
 	Ask *bool `json:"ask"`
 }
 
@@ -242,7 +242,7 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
 			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, true)) RETURNING id`,
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false)) RETURNING id`,
 			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask).Scan(&id); err != nil {
 			return err
 		}

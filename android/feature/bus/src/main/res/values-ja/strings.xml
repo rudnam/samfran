@@ -38,7 +38,6 @@
     <string name="try_it_now">今すぐ試す</string>
     <string name="on_bus_hint">乗ったら「バスに乗った」をタップ。「今すぐ試す」は6秒の練習です。</string>
     <string name="buzz_how_far">バス停のどれくらい手前で振動させるか</string>
-    <string name="alarm_settings">アラームの設定</string>
     <string name="buzz_how">振動の強さ</string>
     <string name="buzz_gentle">弱め</string>
     <string name="buzz_strong">強め</string>
@@ -49,9 +48,6 @@
     <string name="buzz_try">「今すぐ試す」で確かめられます。</string>
     <string name="unnamed_stop">名前のないバス停</string>
     <string name="see_on_map">地図で見る</string>
-    <string name="change">変更</string>
-    <string name="ask_when_shift_ends">シフトが終わったら聞く</string>
-    <string name="ask_when_shift_ends_hint">シフトタブのシフトが終わると、このスマホが「バスアラームを開始しますか？」と聞きます。タップひとつで始まります。</string>
     <string name="allow_notifications">スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。</string>
     <string name="step_1_of_2">ステップ 1/2</string>
     <string name="step_2_of_2">ステップ 2/2</string>
@@ -84,7 +80,6 @@
     <string name="after_shifts">%1$sのあと</string>
     <string name="start_to">%1$sまでスタート</string>
     <string name="your_stops">登録したバス停</string>
-    <string name="when_picked">選んだときだけ</string>
     <string name="use_after">このバス停を使うシフト</string>
     <string name="this_stop">このバス停</string>
     <string name="use_after_none">なし: 選んだときだけ使います。</string>
@@ -93,10 +88,10 @@
     <string name="remove_stop">このバス停を削除</string>
     <string name="remove_stop_title">%1$sを削除しますか？</string>
     <string name="remove">削除</string>
-    <!-- The question at the end of a shift, for each stop -->
-    <string name="ask_for_stop">シフトが終わったら確認</string>
-    <string name="ask_for_stop_on">このバス停のシフトが終わると「バスアラームを開始しますか？」と聞きます。</string>
-    <string name="ask_for_stop_off">オフ: このバス停のシフトのあとは聞きません。</string>
-    <string name="ask_for_stop_phone_off">今はこのスマホでオフです。アラームの設定で「シフトが終わったら確認」をオンにしてください。</string>
-    <string name="no_question">確認なし</string>
+    <!-- Settings and a stop's page -->
+    <string name="settings">設定</string>
+    <string name="stop_where">場所</string>
+    <string name="stop_when">使うとき</string>
+    <string name="ask_when_these_end">シフトが終わったら確認</string>
+    <string name="ask_when_these_end_hint">このバス停のシフトが終わると「バスアラームを開始しますか？」と聞きます。</string>
 </resources>
