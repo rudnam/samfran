@@ -58,11 +58,12 @@ object ServerText {
         "this email already has an account of its own" to "このメールアドレスはすでに別のアカウントで使われています",
         "this email is already invited by someone else" to "このメールアドレスはすでにほかの人から招待されています",
         "no such invitation" to "招待が見つかりません",
-        "no such restaurant" to "お店が見つかりません",
+        "no such restaurant" to "場所が見つかりません",
         "no such visit" to "訪問の記録が見つかりません",
         "a name must be 1 to {max} characters" to "店名は1〜{max}文字にしてください",
         "an area must be at most {max} characters" to "エリアは{max}文字以内にしてください",
-        "a cuisine must be at most {max} characters" to "料理は{max}文字以内にしてください",
+        "a cuisine must be at most {max} characters" to "種類は{max}文字以内にしてください",
+        "a category must be one of {list}" to "カテゴリが正しくありません",
         "notes must be at most {max} characters" to "メモは{max}文字以内にしてください",
         "a map link must be a web address starting with https://" to "地図のリンクは https:// で始まるアドレスにしてください",
         "enter the date you went, no later than today" to "行った日付（今日まで）を入力してください",
@@ -103,7 +104,7 @@ object ServerText {
         "this server doesn't send email" to "このサーバーはメールを送信しません",
         "type your email address to confirm" to "確認のためメールアドレスを入力してください",
         "your email is already confirmed" to "メールアドレスはすでに確認済みです",
-        "the place search isn’t answering; try again in a moment" to "お店の検索が応答しません。少し待ってからもう一度お試しください",
+        "the place search isn’t answering; try again in a moment" to "場所の検索が応答しません。少し待ってからもう一度お試しください",
         "the stop search isn’t answering; try again in a moment" to "バス停の検索が応答しません。少し待ってからもう一度お試しください",
     )
 }

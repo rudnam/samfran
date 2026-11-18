@@ -1,6 +1,7 @@
 package com.rudnam.samfran.core.network.model
 
 import com.rudnam.samfran.core.model.ActivityDetails
+import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
@@ -121,6 +122,7 @@ data class NetworkRestaurant(
     val name: String,
     val area: String = "",
     val cuisine: String = "",
+    val category: String = "",
     @SerialName("map_url") val mapUrl: String = "",
     val notes: String = "",
     @SerialName("added_by") val addedBy: String = "",
@@ -137,6 +139,7 @@ fun NetworkRestaurant.asModel() = Restaurant(
     name = name,
     area = area,
     cuisine = cuisine,
+    category = PlaceCategory.of(category),
     mapUrl = mapUrl,
     notes = notes,
     addedBy = addedBy,
@@ -154,6 +157,7 @@ data class NetworkRestaurantInput(
     val name: String,
     val area: String,
     val cuisine: String,
+    val category: String,
     @SerialName("map_url") val mapUrl: String,
     val notes: String,
     val visit: NetworkNewVisit? = null,
@@ -189,9 +193,13 @@ data class NetworkFoundPlace(
     @SerialName("place_id") val placeId: String = "",
     val food: String = "",
     @SerialName("map_url") val mapUrl: String = "",
+    val category: String = "",
 )
 
-fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(name, area, street, kind, lat, lng, placeId, food, mapUrl)
+fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(
+    name, area, street, kind, lat, lng, placeId, food, mapUrl,
+    category = category.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of),
+)
 
 @Serializable
 data class NetworkShiftDay(

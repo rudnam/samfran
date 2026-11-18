@@ -29,7 +29,7 @@
         <item quantity="one">and %d more change</item>
         <item quantity="other">and %d more changes</item>
     </plurals>
-    <string name="tab_food">Food</string>
+    <string name="tab_food">Places</string>
     <string name="tab_shifts">Shifts</string>
     <string name="tab_bus">Bus</string>
     <string name="tab_us">Us</string>

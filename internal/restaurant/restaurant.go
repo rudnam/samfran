@@ -1,6 +1,8 @@
-// Package restaurant keeps the restaurants you've been to together, or want
-// to go to: when you went, what you thought, and each person's own rating.
-// A restaurant with no visits is on the want-to-go list. Everything belongs
+// Package restaurant keeps the places you've been to together, or want to go
+// to: restaurants, parks, shrines, onsen… each in a category (category.go),
+// with when you went, what you thought, and each person's own rating. It
+// began as a list of restaurants, which is why it, its table and its API
+// are named so. A place with no visits is on the want-to-go list. Everything belongs
 // to the space (internal/space), so both of you see and change the same list.
 package restaurant
 
@@ -57,7 +59,8 @@ type Restaurant struct {
 	ID         int64     `json:"id"`
 	Name       string    `json:"name"`
 	Area       string    `json:"area"`
-	Cuisine    string    `json:"cuisine"`
+	Cuisine    string    `json:"cuisine"` // the kind of place: "Ramen", "公園"
+	Category   string    `json:"category"`
 	MapURL     string    `json:"map_url"`
 	Notes      string    `json:"notes"`
 	AddedBy    string    `json:"added_by"`
@@ -77,8 +80,11 @@ type Fields struct {
 	Name    string `json:"name"`
 	Area    string `json:"area"`
 	Cuisine string `json:"cuisine"`
-	MapURL  string `json:"map_url"`
-	Notes   string `json:"notes"`
+	// Category is one of Categories; empty is eat, what every place was
+	// before there were categories.
+	Category string `json:"category"`
+	MapURL   string `json:"map_url"`
+	Notes    string `json:"notes"`
 }
 
 // ---------- Store: every query is scoped by space ----------
@@ -90,7 +96,7 @@ func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 // list's query: restaurants with their visit count and latest visit. The
 // caller adds the WHERE.
 const selectRestaurants = `
-	SELECT r.id, r.name, r.area, r.cuisine, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
+	SELECT r.id, r.name, r.area, r.cuisine, r.category, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
 		(SELECT count(*) FROM restaurant_visits v WHERE v.restaurant_id = r.id),
 		(SELECT to_char(max(v.visited_on), 'YYYY-MM-DD') FROM restaurant_visits v WHERE v.restaurant_id = r.id)
 	FROM restaurants r
@@ -108,7 +114,7 @@ func (s *Store) query(ctx context.Context, me int64, where string, args ...any) 
 	for rows.Next() {
 		var r Restaurant
 		var addedName, addedEmail string
-		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.Cuisine, &r.MapURL, &r.Notes, &addedName, &addedEmail,
+		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.Cuisine, &r.Category, &r.MapURL, &r.Notes, &addedName, &addedEmail,
 			&r.CreatedAt, &r.VisitCount, &r.LastVisit); err != nil {
 			return nil, err
 		}
@@ -211,18 +217,21 @@ func (s *Store) Get(ctx context.Context, spaceID, me, id int64) (Restaurant, err
 }
 
 func (s *Store) Create(ctx context.Context, spaceID, by int64, f Fields) (int64, error) {
+	if f.Category == "" {
+		f.Category = CategoryEat
+	}
 	var id int64
 	err := s.db.QueryRowContext(ctx, `
-		INSERT INTO restaurants (space_id, name, area, cuisine, map_url, notes, added_by)
-		VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-		spaceID, f.Name, f.Area, f.Cuisine, f.MapURL, f.Notes, by).Scan(&id)
+		INSERT INTO restaurants (space_id, name, area, cuisine, category, map_url, notes, added_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+		spaceID, f.Name, f.Area, f.Cuisine, f.Category, f.MapURL, f.Notes, by).Scan(&id)
 	return id, err
 }
 
 func (s *Store) Update(ctx context.Context, spaceID, id int64, f Fields) error {
 	res, err := s.db.ExecContext(ctx, `
-		UPDATE restaurants SET name = $3, area = $4, cuisine = $5, map_url = $6, notes = $7, updated_at = now()
-		WHERE id = $1 AND space_id = $2`, id, spaceID, f.Name, f.Area, f.Cuisine, f.MapURL, f.Notes)
+		UPDATE restaurants SET name = $3, area = $4, cuisine = $5, category = $6, map_url = $7, notes = $8, updated_at = now()
+		WHERE id = $1 AND space_id = $2`, id, spaceID, f.Name, f.Area, f.Cuisine, f.Category, f.MapURL, f.Notes)
 	return oneRow(res, err)
 }
 
@@ -289,7 +298,7 @@ type Handler struct {
 	maps *http.Client
 	// places finds a place's position by name when its link has none (geocode.go).
 	places *geocoder
-	// search finds places to eat by name as it's typed (search.go).
+	// search finds places by name as it's typed (search.go).
 	search *placeSearch
 	// google finds places with Google Places when it has a key (google.go);
 	// nil without one.
@@ -332,7 +341,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("PUT /api/restaurants/{id}/rating", h.rate)
 }
 
-var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant")
+var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant") // the words installed apps translate
 
 func pathID(r *http.Request, name string) (int64, bool) {
 	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
@@ -390,6 +399,10 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
 func Clean(f Fields) (Fields, error) {
 	f.Name, f.Area, f.Cuisine = strings.TrimSpace(f.Name), strings.TrimSpace(f.Area), strings.TrimSpace(f.Cuisine)
 	f.MapURL, f.Notes = strings.TrimSpace(f.MapURL), strings.TrimSpace(f.Notes)
+	f.Category = strings.TrimSpace(f.Category)
+	if f.Category == "" {
+		f.Category = CategoryEat
+	}
 	switch {
 	case f.Name == "" || utf8.RuneCountInString(f.Name) > maxName:
 		return f, httpx.Errorf(http.StatusBadRequest, "a name must be 1 to %d characters", maxName)
@@ -397,6 +410,8 @@ func Clean(f Fields) (Fields, error) {
 		return f, httpx.Errorf(http.StatusBadRequest, "an area must be at most %d characters", maxArea)
 	case utf8.RuneCountInString(f.Cuisine) > maxCuisine:
 		return f, httpx.Errorf(http.StatusBadRequest, "a cuisine must be at most %d characters", maxCuisine)
+	case !validCategory(f.Category):
+		return f, httpx.Errorf(http.StatusBadRequest, "a category must be one of %s", strings.Join(Categories, ", "))
 	case utf8.RuneCountInString(f.Notes) > maxNotes:
 		return f, httpx.Errorf(http.StatusBadRequest, "notes must be at most %d characters", maxNotes)
 	}
@@ -488,11 +503,12 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 	// Fields left out keep their value, so an older app that doesn't know a
 	// newer field can't clear it.
 	var in struct {
-		Name    *string `json:"name"`
-		Area    *string `json:"area"`
-		Cuisine *string `json:"cuisine"`
-		MapURL  *string `json:"map_url"`
-		Notes   *string `json:"notes"`
+		Name     *string `json:"name"`
+		Area     *string `json:"area"`
+		Cuisine  *string `json:"cuisine"`
+		Category *string `json:"category"`
+		MapURL   *string `json:"map_url"`
+		Notes    *string `json:"notes"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -504,11 +520,11 @@ func (h *Handler) update(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	f := Fields{Name: cur.Name, Area: cur.Area, Cuisine: cur.Cuisine, MapURL: cur.MapURL, Notes: cur.Notes}
+	f := Fields{Name: cur.Name, Area: cur.Area, Cuisine: cur.Cuisine, Category: cur.Category, MapURL: cur.MapURL, Notes: cur.Notes}
 	for _, p := range []struct {
 		dst *string
 		src *string
-	}{{&f.Name, in.Name}, {&f.Area, in.Area}, {&f.Cuisine, in.Cuisine}, {&f.MapURL, in.MapURL}, {&f.Notes, in.Notes}} {
+	}{{&f.Name, in.Name}, {&f.Area, in.Area}, {&f.Cuisine, in.Cuisine}, {&f.Category, in.Category}, {&f.MapURL, in.MapURL}, {&f.Notes, in.Notes}} {
 		if p.src != nil {
 			*p.dst = *p.src
 		}

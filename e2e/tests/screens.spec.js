@@ -26,20 +26,33 @@ for (const [name, viewport] of [
     await page.reload();
     await shot('2-empty');
     // Sample places through the API, with visits and a rating.
-    for (const [name, area, cuisine, days, stars] of [
-      ['Hanabi Grill', 'Station East', 'Hamburg steak', 3, 5],
-      ['Gyoza Komachi', 'Station East', 'Gyoza', 12, 4],
-      ['Ramen Tsubaki', 'Old Town', 'Ramen', 20, 3],
-      ['A restaurant with a very long name that has to wrap somewhere', 'Lakeside', 'Eel', 75, 5],
-      ['Blue Sky Café', 'Riverside', 'Café', null, 0],
+    for (const [name, area, cuisine, category, days, stars] of [
+      ['Hanabi Grill', 'Station East', 'Hamburg steak', 'eat', 3, 5],
+      ['Gyoza Komachi', 'Station East', 'Gyoza', 'eat', 12, 4],
+      ['Ramen Tsubaki', 'Old Town', 'Ramen', 'eat', 20, 3],
+      ['A restaurant with a very long name that has to wrap somewhere', 'Lakeside', 'Eel', 'eat', 75, 5],
+      ['Castle Park', 'Old Town', 'Park', 'nature', 30, 4],
+      ['Blue Sky Café', 'Riverside', 'Café', 'eat', null, 0],
+      ['Hilltop Shrine', 'North Hills', 'Shrine', 'culture', null, 0],
+      ['Sand Dunes', 'South Coast', 'Dunes', 'nature', null, 0],
+      ['Lakeside Onsen', 'Lakeside', 'Onsen', 'relax', null, 0],
+      ['City Aquarium', 'Harbour', 'Aquarium', 'fun', null, 0],
     ]) {
       const visit = days === null ? undefined : { visited_on: new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) };
-      const res = await page.request.post('/api/restaurants', { data: { name, area, cuisine, visit, stars } });
+      const res = await page.request.post('/api/restaurants', { data: { name, area, cuisine, category, visit, stars } });
       expect(res.status()).toBe(201);
     }
     await page.reload();
-    await expect(page.getByRole('list', { name: 'Been there' }).getByRole('listitem')).toHaveCount(4);
+    await expect(page.getByRole('list', { name: 'Been there' }).getByRole('listitem')).toHaveCount(5);
     await shot('3-restaurants');
+    // Want to go, filtered to one category.
+    await page.getByRole('link', { name: /Want to go/ }).click();
+    await page.getByRole('radio', { name: /Nature/ }).click();
+    await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
+    await shot('3b-want-nature');
+    await page.getByRole('radio', { name: /All/ }).click();
+    await shot('3c-want-all');
+    await page.getByRole('link', { name: /Been there/ }).click();
 
     await page.getByRole('link', { name: /Hanabi Grill/ }).click();
     await expect(page.getByRole('heading', { name: 'Hanabi Grill' })).toBeVisible();
@@ -59,17 +72,20 @@ for (const [name, viewport] of [
     await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
-          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', lat: 34.704, lng: 137.734 },
-          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', lat: 34.703, lng: 137.73 },
-          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', lat: 34.71, lng: 137.72 },
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', category: 'eat', lat: 34.704, lng: 137.734 },
+          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', category: 'eat', lat: 34.703, lng: 137.73 },
+          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', category: 'eat', lat: 34.71, lng: 137.72 },
+          { name: 'Gyoza Park', area: 'Hamamatsu Naka', street: '', kind: 'park', category: 'nature', lat: 34.72, lng: 137.72 },
+          { name: 'Gyoza Shrine', area: 'Hamamatsu Kita', street: '', kind: 'place_of_worship', category: 'culture', lat: 34.8, lng: 137.7 },
         ],
       }),
     );
     await page.getByLabel('Name', { exact: true }).fill('Gyoza');
-    await expect(page.getByRole('list', { name: 'Matching places' }).getByRole('listitem')).toHaveCount(3);
+    await expect(page.getByRole('list', { name: 'Matching places' }).getByRole('listitem')).toHaveCount(5);
     await shot('5b-add-search');
-    await page.getByRole('button', { name: /Gyoza Café/ }).click();
-    await expect(page.getByLabel('Food')).toHaveValue('Café');
+    await page.getByRole('button', { name: /Gyoza Park/ }).click();
+    await expect(page.getByLabel('Kind')).toHaveValue('Park');
+    await expect(page.getByRole('radio', { name: 'Nature & parks' })).toHaveAttribute('aria-checked', 'true');
     await shot('5c-add-picked');
 
     // Shifts, with a few days of this month.
@@ -150,7 +166,7 @@ for (const [name, viewport] of [
     // The same screens in dark, picked on Us.
     await page.getByLabel('Appearance').selectOption('dark');
     await shot('9-us-dark');
-    await page.getByRole('link', { name: 'Food' }).click();
+    await page.getByRole('link', { name: 'Places' }).click();
     await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
     await shot('10-food-dark');
     await page.getByRole('link', { name: 'Bus', exact: true }).click();

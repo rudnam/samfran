@@ -36,11 +36,11 @@ test('the introduction switches to Japanese and back', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible();
 });
 
-test('the restaurant list is in Japanese too', async ({ page }) => {
+test('the list of places is in Japanese too', async ({ page }) => {
   await signUp(page);
   await page.getByRole('link', { name: 'Us', exact: true }).click();
   await page.getByLabel('Language').selectOption('ja');
-  await page.getByRole('link', { name: 'ごはん' }).click();
-  await expect(page.getByRole('heading', { name: 'ふたりのお店' })).toBeVisible();
-  await expect(page.getByText('まだお店がありません')).toBeVisible();
+  await page.getByRole('link', { name: 'おでかけ' }).click();
+  await expect(page.getByRole('heading', { name: 'ふたりのスポット' })).toBeVisible();
+  await expect(page.getByText('まだ場所がありません')).toBeVisible();
 });
