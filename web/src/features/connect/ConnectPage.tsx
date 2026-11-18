@@ -75,7 +75,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
             <li>{t('see restaurants, add them, log visits, and set your rating')}</li>
           </ul>
           <p className="muted small">
-            {t('It can’t delete anything or see your password. You can disconnect it at any time in Us → Claude.')}
+            {t('It can’t delete anything or see your password.')}
           </p>
           <p className="muted small">{tx('You’ll go back to {host}.', { host: <strong>{client.redirect_host}</strong> })}</p>
           <div className="row end">

@@ -261,7 +261,7 @@ export const ja = {
   '{app} is asking to reach SamFran, signed in as {email}. It will be able to:': '{app}が、{email}としてSamFranへのアクセスを求めています。できること:',
   'see and save the shifts, e.g. from a photo of the sheet you share with it': 'シフトを見て保存する（共有した勤務表の写真からなど）',
   'see restaurants, add them, log visits, and set your rating': 'お店を見る・追加する・訪問を記録する・あなたの評価をつける',
-  'It can’t delete anything or see your password. You can disconnect it at any time in Us → Claude.': '削除やパスワードの閲覧はできません。「ふたり → Claude」からいつでも接続を解除できます。',
+  'It can’t delete anything or see your password.': '削除やパスワードの閲覧はできません。',
   'You’ll go back to {host}.': '{host}に戻ります。',
   Deny: '拒否',
   Allow: '許可',
