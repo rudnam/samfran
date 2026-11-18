@@ -93,11 +93,12 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
   await page.locator('a.back').click();
   // Once it's on, the Shifts page has a quiet line that copies the Google Calendar address.
-  // Headless Chromium's clipboard is unreliable, so catch what's written instead.
+  // The tests' plain-http address has no clipboard (it needs https), so catch what's written instead.
   await page.evaluate(() => {
-    navigator.clipboard.writeText = async (text) => {
-      window.copiedText = text;
-    };
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text) => void (window.copiedText = text) },
+    });
   });
   await page.getByRole('button', { name: 'Share via Google Calendar' }).click();
   await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
