@@ -42,9 +42,6 @@ data class UsUiState(
     val mcpAddress: String = "",
     val alerts: Boolean = false,
     val alertsBlocked: Boolean = false,
-    /** Told when the other one starts a bus alarm. */
-    val busAlerts: Boolean = false,
-    val busAlertsBlocked: Boolean = false,
     val appearance: Appearance = Appearance.System,
 ) {
     val myName: String? get() = space?.members?.firstOrNull { it.me }?.name
@@ -60,8 +57,6 @@ interface UsActions {
     fun disconnect(token: Long)
     /** The screen has asked for notification permission first. */
     fun setAlerts(on: Boolean)
-    /** The screen has asked for notification permission first. */
-    fun setBusAlerts(on: Boolean)
     fun setAppearance(appearance: Appearance)
     fun signOut()
 }
@@ -79,16 +74,15 @@ class UsViewModel @Inject constructor(
     val state: StateFlow<UsUiState> = combine(
         local,
         combine(user.me, spaces.space, activity.entries) { me, space, entries -> Triple(me, space, entries) },
-        combine(reminders.activityAlerts, reminders.busAlerts) { alerts, bus -> alerts to bus },
+        reminders.activityAlerts,
         preferences.preferences,
-    ) { s, (me, space, entries), (alerts, bus), prefs ->
+    ) { s, (me, space, entries), alerts, prefs ->
         s.copy(
             me = me,
             space = space,
             name = s.name ?: space?.members?.firstOrNull { it.me }?.name,
             activity = entries,
             alerts = alerts,
-            busAlerts = bus,
             appearance = prefs.appearance,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
@@ -144,14 +138,6 @@ class UsViewModel @Inject constructor(
         viewModelScope.launch {
             val now = reminders.setActivityAlerts(on)
             local.update { it.copy(alertsBlocked = on && !now) }
-        }
-    }
-
-    override fun setBusAlerts(on: Boolean) {
-        local.update { it.copy(busAlertsBlocked = false) }
-        viewModelScope.launch {
-            val now = reminders.setBusAlerts(on)
-            local.update { it.copy(busAlertsBlocked = on && !now) }
         }
     }
 

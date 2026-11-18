@@ -52,7 +52,6 @@ class UsScreenshotTest {
         override fun showAll() {}
         override fun disconnect(token: Long) {}
         override fun setAlerts(on: Boolean) {}
-        override fun setBusAlerts(on: Boolean) {}
         override fun setAppearance(appearance: Appearance) {}
         override fun signOut() {}
     }
@@ -66,10 +65,9 @@ class UsScreenshotTest {
         tokens = FakeUserRepository().tokens,
         mcpAddress = "https://samfran.rudnam.com/mcp",
         alerts = true,
-        busAlerts = true,
     )
 
-    private fun screen(state: UsUiState): @Composable () -> Unit = { UsScreen(state, actions, {}, {}, {}, {}, {}) }
+    private fun screen(state: UsUiState): @Composable () -> Unit = { UsScreen(state, actions, {}, {}, {}, {}) }
 
     @Test
     fun us() = shot("us", content = screen(us))
@@ -126,18 +124,5 @@ class UsViewModelTest {
         vm.signOut()
         assertTrue(user.signedOut)
         assertEquals(false, reminders.alerts.value)
-    }
-
-    @Test
-    fun `being told about bus alarms is its own switch`() = runTest {
-        val reminders = FakeReminders()
-        val vm = UsViewModel(FakeUserRepository(), FakeSpaceRepository(), FakeActivityRepository(), reminders, TestPreferences.repository())
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
-        vm.setBusAlerts(true)
-        assertTrue(vm.state.first { it.busAlerts }.busAlerts)
-        assertEquals(false, vm.state.value.alerts)
-        reminders.allowed = false
-        vm.setBusAlerts(true)
-        assertTrue(vm.state.first { it.busAlertsBlocked }.busAlertsBlocked)
     }
 }
