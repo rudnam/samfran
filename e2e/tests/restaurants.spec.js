@@ -82,7 +82,7 @@ test('not been yet moves a place back to want to go, with Undo for a few seconds
   await expect(page.getByRole('list', { name: 'Want to go' })).toContainText('Taco Loco');
 });
 
-test('a place logged several times before shows one date, and keeps its visits', async ({ page }) => {
+test('a place logged several times before shows one date, keeps its visits, and its notes show', async ({ page }) => {
   await signUp(page);
   // As an older app (or Claude) left it: two visits, with notes.
   const res = await page.request.post('/api/restaurants', { data: { name: 'Ramen Tsubaki', visit: { visited_on: '2026-10-01', note: 'The tantanmen, extra spicy' } } });
@@ -99,19 +99,22 @@ test('a place logged several times before shows one date, and keeps its visits',
   await expect(cards.first()).toContainText('Ramen Tsubaki'); // latest date first
   await expect(cards.first()).toContainText('Nov 2');
   await expect(cards.first()).not.toContainText('visits');
-  // Search is a button until it's wanted; it no longer looks in old visits' notes.
+  // Search is a button until it's wanted; what was written about a visit is in the place's notes, so it finds it.
   await expect(page.getByRole('searchbox')).toHaveCount(0);
   await page.getByRole('button', { name: 'Search' }).click();
   await page.getByRole('searchbox', { name: 'Search' }).fill('tantan');
-  await expect(cards).toHaveCount(0);
+  await expect(cards).toHaveCount(1);
+  await expect(cards).toContainText('Ramen Tsubaki');
   await page.getByRole('searchbox', { name: 'Search' }).fill('gyoza');
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Gyoza Komachi');
 
   await page.goto(`/app/#/restaurant?id=${id}`);
   await expect(page.getByText(/^Been · Nov 2/)).toBeVisible();
-  await expect(page.getByText('Shio this time')).toHaveCount(0);
-  await expect(page.getByText('The tantanmen, extra spicy')).toHaveCount(0);
+  // No list of visits, but what was written about them is in the place's notes.
+  await expect(page.getByRole('list', { name: 'Visits' })).toHaveCount(0);
+  await expect(page.getByText('2026-10-01 · The tantanmen, extra spicy')).toBeVisible();
+  await expect(page.getByText('2026-11-02 · Shio this time')).toBeVisible();
   // Changing the date moves the newest visit; the older one stays in the API.
   await page.getByRole('button', { name: 'Change' }).click();
   await page.getByLabel('When did you go?').fill('2026-11-10');

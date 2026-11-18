@@ -121,12 +121,12 @@ func TestMCPTools(t *testing.T) {
 	}
 	// Going again moves the one date; it doesn't add a visit. The note goes in the place's notes.
 	r, _ = tool(t, ts.URL, token, "log_visit", map[string]any{"restaurant_id": id, "visited_on": today, "note": "green salsa"})
-	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != "green salsa" {
+	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != today+" · green salsa" {
 		t.Errorf("visit: %v", r)
 	}
 	// An earlier date than the one it has changes nothing but the notes.
 	r, _ = tool(t, ts.URL, token, "log_visit", map[string]any{"restaurant_id": id, "visited_on": "2026-01-02", "note": "tacos al pastor"})
-	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != "green salsa\ntacos al pastor" {
+	if r["visit_count"] != 1.0 || r["last_visit"] != today || r["notes"] != today+" · green salsa\n2026-01-02 · tacos al pastor" {
 		t.Errorf("earlier visit: %v", r)
 	}
 	if _, msg := tool(t, ts.URL, token, "rate_restaurant", map[string]any{"restaurant_id": 999999, "stars": 3}); msg != `{"error":"no such restaurant"}` {

@@ -367,10 +367,8 @@ var toolList = []*tool{
 				}
 				c.log(kind, map[string]any{"name": cur.Name, "date": on})
 			}
-			if strings.TrimSpace(note) != "" {
-				if err := c.h.restaurants.AddToNotes(ctx, sp, in.RestaurantID, strings.TrimSpace(note)); err != nil {
-					return nil, asToolError(err, "restaurant")
-				}
+			if err := c.h.restaurants.NoteVisit(ctx, sp, in.RestaurantID, on, note); err != nil {
+				return nil, asToolError(err, "restaurant")
 			}
 			return c.h.restaurants.Get(ctx, sp, c.userID, in.RestaurantID)
 		},

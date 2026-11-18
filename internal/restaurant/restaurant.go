@@ -330,6 +330,16 @@ func (s *Store) AddToNotes(ctx context.Context, spaceID, id int64, line string) 
 	return oneRow(res, err)
 }
 
+// NoteVisit adds what was written about a visit (if anything) to its place's
+// notes, as "2026-11-14 · note": the apps show the place's notes, not the
+// visits' (migration 024 did the same for the notes written before).
+func (s *Store) NoteVisit(ctx context.Context, spaceID, id int64, on, note string) error {
+	if note = strings.TrimSpace(note); note == "" {
+		return nil
+	}
+	return s.AddToNotes(ctx, spaceID, id, on+" · "+note)
+}
+
 // ClearBeen puts one of the space's restaurants back on the want-to-go list:
 // its visits go.
 func (s *Store) ClearBeen(ctx context.Context, spaceID, id int64) error {
@@ -599,6 +609,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 		if err := h.store.AddVisit(r.Context(), sp, me, id, visit.VisitedOn, visit.Note); err != nil {
 			return err
 		}
+		if err := h.store.NoteVisit(r.Context(), sp, id, visit.VisitedOn, visit.Note); err != nil {
+			return err
+		}
 	}
 	if in.Stars > 0 {
 		if err := h.store.Rate(r.Context(), sp, me, id, in.Stars); err != nil {
@@ -698,6 +711,9 @@ func (h *Handler) addVisit(w http.ResponseWriter, r *http.Request) error {
 	if errors.Is(err, db.ErrNotFound) {
 		return errNoSuch
 	} else if err != nil {
+		return err
+	}
+	if err := h.store.NoteVisit(r.Context(), space.SpaceFrom(r), id, v.VisitedOn, v.Note); err != nil {
 		return err
 	}
 	h.log(r, "visit_logged", id, map[string]any{"date": v.VisitedOn})

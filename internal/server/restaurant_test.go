@@ -49,7 +49,8 @@ func TestRestaurants(t *testing.T) {
 		"visit": map[string]string{"visited_on": "2026-10-01", "note": "great salsa"}, "stars": 4,
 	}, &r)
 	if code != 201 || r.Name != "Taco Loco" || r.VisitCount != 1 || r.LastVisit == nil || *r.LastVisit != "2026-10-01" ||
-		len(r.Ratings) != 1 || r.Ratings[0].Stars != 4 || !r.Ratings[0].Me || len(r.Visits) != 1 || r.Visits[0].Note != "great salsa" {
+		len(r.Ratings) != 1 || r.Ratings[0].Stars != 4 || !r.Ratings[0].Me || len(r.Visits) != 1 || r.Visits[0].Note != "great salsa" ||
+		r.Notes != "2026-10-01 · great salsa" { // what's written about a visit shows in the place's notes
 		t.Fatalf("create: %d %+v", code, r)
 	}
 	path := "/api/restaurants/" + itoa(r.ID)
@@ -110,7 +111,8 @@ func TestRestaurants(t *testing.T) {
 
 	// Another visit, newest first.
 	if code := alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-02", "note": "tantanmen"}, &r); code != 201 ||
-		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" {
+		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" ||
+		r.Notes != "2026-10-01 · great salsa\n2026-11-02 · tantanmen" {
 		t.Fatalf("add visit: %d %+v", code, r)
 	}
 	if code := alice.do("DELETE", path+"/visits/"+itoa(r.Visits[1].ID), nil, &r); code != 200 || r.VisitCount != 1 {
