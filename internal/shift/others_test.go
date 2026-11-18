@@ -72,3 +72,30 @@ func TestProgressOf(t *testing.T) {
 		t.Errorf("three days in: %+v", p)
 	}
 }
+
+func TestRegistered(t *testing.T) {
+	zone, _ := time.LoadLocation("Asia/Tokyo")
+	lengths := DefaultLengths
+	sam := Explain("2026-11-18", "13F", lengths, zone) // 13:00–22:00
+	people := []Coworker{
+		{Name: "タナカ ユイ", Code: "13F"},                // the same shift: kept
+		{Name: "ヤマダ ハナ", Code: "9F"},                 // 9–18: kept
+		{Name: "コバヤシ リク", Code: "7D"},                // 7–13: not there, dropped
+		{Name: "ヨル タロウ", Code: "22F", DayOffset: -1}, // gone by 13: dropped
+		{Name: "ナゾ", Code: "9Z"},                     // unknown length: kept
+	}
+	var names []string
+	for _, p := range registered(sam, people, lengths, zone) {
+		names = append(names, p.Name)
+	}
+	if strings.Join(names, "|") != "タナカ ユイ|ヤマダ ハナ|ナゾ" {
+		t.Errorf("kept for 13F: %v", names)
+	}
+	// A shift with no length yet keeps everyone; a day off, nobody.
+	if got := registered(Explain("2026-11-18", "13Z", lengths, zone), people, lengths, zone); len(got) != len(people) {
+		t.Errorf("13Z: %+v", got)
+	}
+	if got := registered(Explain("2026-11-18", "普", lengths, zone), people, lengths, zone); got != nil {
+		t.Errorf("a day off: %+v", got)
+	}
+}

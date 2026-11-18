@@ -370,10 +370,31 @@ test('see everyone there during a shift, not only those on the same one', async 
   await page.reload();
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
-  // Checking or fixing the month keeps everyone, there during the shift or not.
+  // Saved, a day keeps only those there during its shift: the ones on 7D
+  // and the night before were dropped.
   await page.getByRole('link', { name: 'Edit by hand' }).click();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
   const count = days.nth(0).getByRole('button', { name: /^Who’s there on / });
+  await expect(count).toHaveText('2');
+  await count.click();
+  const sheet = page.getByRole('dialog', { name: /^Who’s there on / });
+  const everyone = sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem');
+  await expect(everyone).toHaveCount(2);
+  await expect(everyone.nth(0)).not.toHaveClass('away');
+  await expect(everyone.nth(1)).not.toHaveClass('away');
+  await expect(sheet).not.toContainText('コバヤシ');
+  await expect(sheet).not.toContainText('ヨル');
+  await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
+  await sheet.getByRole('button', { name: 'Done' }).click();
+  // A 9F: the one on 13F is still there, now on another shift.
+  await days.nth(0).getByRole('combobox').fill('9F');
+  await expect(count).toHaveText('2');
+  const saving = page.waitForRequest((r) => r.method() === 'PUT' && r.url().endsWith('/api/shifts/month'));
+  await page.getByRole('button', { name: /^Save / }).click();
+  const sent = (await saving).postDataJSON();
+  expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['タナカ ユイ', 'ヤマダ ハナ']);
+  expect(sent.days[1].people).toEqual([{ name: 'ヨル タロウ', code: '22F', day_offset: -1 }]);
+});
   await expect(count).toHaveText('2');
   await count.click();
   const sheet = page.getByRole('dialog', { name: /^Who’s there on / });

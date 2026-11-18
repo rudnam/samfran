@@ -134,9 +134,10 @@ func TestShifts(t *testing.T) {
 		t.Fatalf("others for 5A: %+v", saved.Days)
 	}
 
-	// Everyone around a day is kept (people), and who's shown follows the code.
+	// Everyone read around a day is sent (people); only those on the shift or
+	// there during it are kept, and who's shown follows the code.
 	people := []map[string]any{{"name": "タナカ ユイ", "code": "13F"}, {"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "コバヤシ リク", "code": "7D"}}
-	shown := func(code string, people any) (string, string) {
+	shown := func(code string, people any, kept int) (string, string) {
 		t.Helper()
 		var m monthJSON
 		if status := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": code, "people": people}}}, &m); status != 200 {
@@ -147,25 +148,26 @@ func TestShifts(t *testing.T) {
 		for _, o := range m.Days[0].Others {
 			others = append(others, o.Name)
 		}
-		if len(m.Days[0].People) != 4 {
+		if len(m.Days[0].People) != kept {
 			t.Errorf("%s: people kept: %+v", code, m.Days[0].People)
 		}
 		return strings.Join(m.Days[0].With, "|"), strings.Join(others, "|")
 	}
-	if with, others := shown("13F", people); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
+	if with, others := shown("13F", people, 2); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
 		t.Errorf("13F: with %q, others %q", with, others)
 	}
-	// A corrected code: the one on 13F is still there, now on another shift.
-	if with, others := shown("9F", people); with != "ヤマダ ハナ" || others != "コバヤシ リク|タナカ ユイ" {
+	// A corrected code (as while checking a read, which sends everyone): the
+	// one on 13F is still there, now on another shift.
+	if with, others := shown("9F", people, 3); with != "ヤマダ ハナ" || others != "コバヤシ リク|タナカ ユイ" {
 		t.Errorf("9F: with %q, others %q", with, others)
 	}
-	// Back to 13F: nobody was lost.
-	if with, others := shown("13F", people); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
+	// Back to 13F: those who aren't there any more are dropped.
+	if with, others := shown("13F", people, 2); with != "タナカ ユイ" || others != "ヤマダ ハナ" {
 		t.Errorf("13F again: with %q, others %q", with, others)
 	}
 	// Anyone's name can be fixed, not only those on the same shift.
 	people[1]["name"] = "ヤマダ ハル"
-	if _, others := shown("13F", people); others != "ヤマダ ハル" {
+	if _, others := shown("13F", people, 2); others != "ヤマダ ハル" {
 		t.Errorf("a fixed name: others %q", others)
 	}
 

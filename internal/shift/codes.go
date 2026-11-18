@@ -53,8 +53,9 @@ type Day struct {
 	// by when they start (others.go). Only for working days with times.
 	Others []There `json:"others,omitempty"`
 	// People are everyone kept for the day (others.go): With and Others
-	// are worked out from them, so they follow a corrected code. Only for
-	// working days.
+	// are worked out from them. A read lists everyone around the day, so
+	// they follow a code corrected while checking it; a saved day keeps only
+	// those on its shift or there during it. Only for working days.
 	People []Coworker `json:"people,omitempty"`
 }
 

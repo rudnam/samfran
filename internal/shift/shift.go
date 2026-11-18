@@ -508,7 +508,8 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 			return MonthView{}, err
 		}
 		if code != "" {
-			day := withPeople(Explain(d.Date, code, st.Lengths, zone), people, st.Lengths, zone)
+			explained := Explain(d.Date, code, st.Lengths, zone)
+			day := withPeople(explained, registered(explained, people, st.Lengths, zone), st.Lengths, zone)
 			codes[d.Date] = DayCode{Date: d.Date, Code: code, People: day.People, With: day.With}
 		}
 	}
