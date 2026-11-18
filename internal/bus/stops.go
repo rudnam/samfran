@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/lib/pq"
 
 	"github.com/rudnam/samfran/internal/account"
+	"github.com/rudnam/samfran/internal/activity"
 	"github.com/rudnam/samfran/internal/httpx"
 )
 
@@ -305,12 +307,33 @@ func (h *Handler) deleteStop(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-// useStop says a trip to the stop has started: it's the one used last.
+// useStop says a trip to the stop has started: it's the one used last, and
+// the history says so ("bus_started", with the stop's name).
 func (h *Handler) useStop(w http.ResponseWriter, r *http.Request) error {
-	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
-		_, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET used_at = now() WHERE user_id = $1 AND id = $2`, user, id)
-		return err
+	var name string
+	err := h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
+		if err := tx.QueryRowContext(r.Context(), `UPDATE bus_saved_stops SET used_at = now() WHERE user_id = $1 AND id = $2 RETURNING name`, user, id).Scan(&name); err != nil {
+			return err
+		}
+		return nil
 	})
+	if err == nil {
+		h.logStarted(r, name)
+	}
+	return err
+}
+
+func (h *Handler) logStarted(r *http.Request, stop string) {
+	if h.Log == nil || h.SpaceOf == nil {
+		return
+	}
+	user := account.UserFrom(r).ID
+	spaceID, err := h.SpaceOf(r.Context(), user)
+	if err != nil {
+		slog.WarnContext(r.Context(), "bus_started: find space", "err", err) // the trip has started; don't fail it
+		return
+	}
+	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
 }
 
 func (h *Handler) setBuzz(w http.ResponseWriter, r *http.Request) error {

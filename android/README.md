@@ -136,7 +136,7 @@ Off until switched on, on the **Bus** tab ("Ask when a shift ends"), on the phon
 
 ## Notifications about the other person's changes
 
-Off until switched on, on the **Us** tab ("Tell me about changes"). About every half hour, while the phone is online, `ActivityJob` (a `JobService`) asks the server for the recent changes (`GET /api/activity`, with the app's session) and shows a notification for the other person's new places, visits, ratings and saved shifts. Android runs the job when it suits the battery, so it can be later than that. The phone asks rather than being pushed to, which needs no Firebase project or Google services; real push would be faster and would need both.
+Off until switched on, on the **Us** tab ("Tell me about changes"). About every half hour, while the phone is online, `ActivityJob` (a `JobService`) asks the server for the recent changes (`GET /api/activity`, with the app's session) and shows a notification for the other person's new places, visits, ratings and saved shifts. It tells about the other person starting a bus alarm too: the job asks with `?bus=1`, which includes those (`bus_started`), though Recent changes on the Us tab leaves them out. Android runs the job when it suits the battery, so it can be later than that. The phone asks rather than being pushed to, which needs no Firebase project or Google services; real push would be faster and would need both.
 
 Both need notification permission (asked when one is switched on), and `RECEIVE_BOOT_COMPLETED` to carry on after a restart. Opening SamFran clears their notifications. Their settings live in the `reminders` preferences, under the names the Capacitor build used, and the classes keep its names, so what a phone had switched on keeps working after the update.
 
