@@ -133,8 +133,9 @@ class OfflineFirstRepositoryTest {
         answer(body = month("2026-11", """{"date":"2026-11-30","code":"13F","kind":"work","label":"Late","start":"2026-11-30T13:00:00+09:00","end":"2026-11-30T22:00:00+09:00"}"""))
         answer(body = month("2026-10", ""))
         answer(body = month("2026-12", """{"date":"2026-12-01","code":"普","kind":"off","label":"Day off"}"""))
-        val ends = shifts.upcomingEnds(java.time.Instant.parse("2026-11-16T00:00:00Z"))
-        assertEquals(listOf(java.time.Instant.parse("2026-11-30T13:00:00Z")), (ends as Outcome.Done).value)
+        val ends = shifts.upcomingShifts(java.time.Instant.parse("2026-11-16T00:00:00Z"))
+        assertEquals(listOf(java.time.Instant.parse("2026-11-30T13:00:00Z")), (ends as Outcome.Done).value.map { it.end!!.toInstant() })
+        assertEquals("Late", ends.value.single().label)
         assertEquals("Sam", shifts.month(java.time.YearMonth.of(2026, 11)).first()?.settings?.personName)
         assertEquals("22:00", shifts.month(null).first()?.days?.single()?.end?.let { "${it.hour}:%02d".format(it.minute) })
     }

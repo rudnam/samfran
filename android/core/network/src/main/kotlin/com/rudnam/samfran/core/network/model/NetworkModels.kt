@@ -3,6 +3,7 @@ package com.rudnam.samfran.core.network.model
 import com.rudnam.samfran.core.model.ActivityDetails
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
@@ -280,15 +281,25 @@ data class NetworkShiftSettingsInput(
 
 @Serializable
 data class NetworkBusStop(
-    val set: Boolean = false,
+    val id: Long = 0,
     val name: String = "",
     val lat: Double = 0.0,
     val lng: Double = 0.0,
     @SerialName("alert_meters") val alertMeters: Int = 800,
+    val shifts: List<String> = emptyList(),
+)
+
+@Serializable
+data class NetworkBusStops(
+    val stops: List<NetworkBusStop> = emptyList(),
+    @SerialName("last_id") val lastId: Long = 0,
     val buzz: String = "strong",
 )
 
-fun NetworkBusStop.asModel() = BusStop(set, name, lat, lng, alertMeters, Buzz.from(buzz))
+fun NetworkBusStops.asModel(): BusStops {
+    val b = Buzz.from(buzz)
+    return BusStops(stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts) }, lastId, b)
+}
 
 @Serializable
 data class NetworkBusStopInput(
@@ -296,9 +307,12 @@ data class NetworkBusStopInput(
     val lat: Double,
     val lng: Double,
     @SerialName("alert_meters") val alertMeters: Int,
-    /** Left out (null), the server keeps the buzz as it was. */
-    val buzz: String? = null,
+    /** Left out (null), a changed stop keeps its own. */
+    val shifts: List<String>? = null,
 )
+
+@Serializable
+data class NetworkBuzz(val buzz: String)
 
 @Serializable
 data class NetworkFoundStop(

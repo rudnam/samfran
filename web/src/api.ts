@@ -231,8 +231,11 @@ export const api = {
   /** Stops and stations whose names match q (2+ characters); near ones first when near is given. */
   searchStops: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundStop[]>('GET', `/api/bus/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
-  /** Without buzz, the buzz stays as it was. */
-  saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number; buzz?: Buzz }) => request<BusStop>('PUT', '/api/bus/stop', s),
+  busStops: () => request<BusStops>('GET', '/api/bus/stops'),
+  addBusStop: (s: BusStopInput) => request<BusStops>('POST', '/api/bus/stops', s),
+  changeBusStop: (id: number, s: BusStopInput) => request<BusStops>('PUT', `/api/bus/stops/${id}`, s),
+  deleteBusStop: (id: number) => request<BusStops>('DELETE', `/api/bus/stops/${id}`),
+  setBuzz: (buzz: Buzz) => request<BusStops>('PUT', '/api/bus/buzz', { buzz }),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
@@ -340,6 +343,39 @@ export interface BusStop {
   alert_meters: number;
   /** How the phone buzzes at the stop. */
   buzz: Buzz;
+}
+
+/** The kinds of shift a stop can be for, as the server labels shifts. */
+export type ShiftLabel = 'Early' | 'Middle' | 'Late' | 'Night';
+
+/** One of the signed-in person's stops. */
+export interface SavedStop {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Ring this many metres before the stop. */
+  alert_meters: number;
+  /** The kinds of shift it's the stop for; each is on one stop at most. */
+  shifts: ShiftLabel[];
+}
+
+export interface BusStops {
+  /** Oldest first. */
+  stops: SavedStop[];
+  /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
+  last_id: number;
+  /** How the phone buzzes, at any stop. */
+  buzz: Buzz;
+}
+
+export interface BusStopInput {
+  name: string;
+  lat: number;
+  lng: number;
+  alert_meters: number;
+  /** Taken from the person's other stops. Left out, a changed stop keeps its own. */
+  shifts?: ShiftLabel[];
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */

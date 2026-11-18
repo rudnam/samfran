@@ -17,6 +17,7 @@
     <string name="shift_end_text">The shift is over. It buzzes before your stop.</string>
     <string name="shift_end_text_named">The shift is over. It buzzes before %1$s.</string>
     <string name="shift_end_start">Start bus alarm</string>
+    <string name="shift_end_other">Other stop</string>
     <string name="channel_changes">Changes by the other one of you</string>
     <string name="notify_change_someone">Someone</string>
     <string name="notify_change_added_been">%1$s added %2$s</string>

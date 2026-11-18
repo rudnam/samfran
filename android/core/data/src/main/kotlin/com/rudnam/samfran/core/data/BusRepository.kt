@@ -3,11 +3,12 @@ package com.rudnam.samfran.core.data
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.network.SamFranNetwork
-import com.rudnam.samfran.core.network.model.NetworkBusStop
+import com.rudnam.samfran.core.network.model.NetworkBusStops
 import com.rudnam.samfran.core.network.model.NetworkBusStopInput
 import com.rudnam.samfran.core.network.model.asModel
 import kotlinx.coroutines.CoroutineDispatcher
@@ -16,14 +17,25 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Where the signed-in person gets off the bus; the server only ever knows the stop, never the phone's position. */
+/** A stop as it's saved: [shifts] null keeps a changed stop's own. */
+data class StopInput(val name: String, val lat: Double, val lng: Double, val alertMeters: Int, val shifts: List<String>? = null)
+
+/** Where the signed-in person gets off the bus; the server only ever knows the stops, never the phone's position. */
 interface BusRepository {
-    val stop: Flow<BusStop?>
+    val stops: Flow<BusStops?>
 
-    suspend fun refresh(): Outcome<BusStop>
+    suspend fun refresh(): Outcome<BusStops>
 
-    /** Without [buzz], it stays as it was. */
-    suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz? = null): Outcome<BusStop>
+    suspend fun add(stop: StopInput): Outcome<BusStops>
+
+    suspend fun change(id: Long, stop: StopInput): Outcome<BusStops>
+
+    suspend fun remove(id: Long): Outcome<BusStops>
+
+    /** A trip to it has started: it's the one used last. */
+    suspend fun use(id: Long): Outcome<BusStops>
+
+    suspend fun setBuzz(buzz: Buzz): Outcome<BusStops>
 
     /** Stops and stations whose names match [query] (2+ characters); near ones first when [near] is given. */
     suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>>
@@ -35,16 +47,25 @@ internal class OfflineFirstBusRepository @Inject constructor(
     private val documents: Documents,
     @Dispatcher(SamFranDispatchers.IO) private val io: CoroutineDispatcher,
 ) : BusRepository {
-    override val stop: Flow<BusStop?> = documents.observe(Keys.BUS_STOP, NetworkBusStop.serializer()) { it.asModel() }
+    private val serializer = NetworkBusStops.serializer()
 
-    override suspend fun refresh() = outcome(io) {
-        network.busStop().also { documents.put(Keys.BUS_STOP, NetworkBusStop.serializer(), it) }.asModel()
-    }
+    override val stops: Flow<BusStops?> = documents.observe(Keys.BUS_STOPS, serializer) { it.asModel() }
 
-    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz?) = outcome(io) {
-        network.saveBusStop(NetworkBusStopInput(name.trim(), lat, lng, alertMeters, buzz?.api))
-            .also { documents.put(Keys.BUS_STOP, NetworkBusStop.serializer(), it) }.asModel()
-    }
+    private suspend fun keep(f: suspend () -> NetworkBusStops) = outcome(io) { f().also { documents.put(Keys.BUS_STOPS, serializer, it) }.asModel() }
+
+    private fun StopInput.body() = NetworkBusStopInput(name.trim(), lat, lng, alertMeters, shifts)
+
+    override suspend fun refresh() = keep { network.busStops() }
+
+    override suspend fun add(stop: StopInput) = keep { network.addBusStop(stop.body()) }
+
+    override suspend fun change(id: Long, stop: StopInput) = keep { network.changeBusStop(id, stop.body()) }
+
+    override suspend fun remove(id: Long) = keep { network.deleteBusStop(id) }
+
+    override suspend fun use(id: Long) = keep { network.useBusStop(id) }
+
+    override suspend fun setBuzz(buzz: Buzz) = keep { network.setBuzz(buzz.api) }
 
     override suspend fun search(query: String, near: Pair<Double, Double>?) = outcome(io) {
         network.searchStops(query.trim(), near?.first, near?.second).map { it.asModel() }
