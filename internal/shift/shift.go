@@ -123,7 +123,7 @@ func (s *Store) spaceByFeed(ctx context.Context, token string) (int64, error) {
 // codes returns the days from..to (inclusive), by date.
 func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]DayCode, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT to_char(day, 'YYYY-MM-DD'), code, coworkers FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
+		SELECT to_char(day, 'YYYY-MM-DD'), code, coworkers, others FROM shifts WHERE space_id = $1 AND day BETWEEN $2 AND $3 ORDER BY day`,
 		spaceID, from, to)
 	if err != nil {
 		return nil, err
@@ -132,7 +132,11 @@ func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]Da
 	var out []DayCode
 	for rows.Next() {
 		var d DayCode
-		if err := rows.Scan(&d.Date, &d.Code, (*pq.StringArray)(&d.With)); err != nil {
+		var others []byte
+		if err := rows.Scan(&d.Date, &d.Code, (*pq.StringArray)(&d.With), &others); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(others, &d.Others); err != nil {
 			return nil, err
 		}
 		out = append(out, d)
@@ -140,12 +144,14 @@ func (s *Store) codes(ctx context.Context, spaceID int64, from, to string) ([]Da
 	return out, rows.Err()
 }
 
-// explain works out a stored day, with who's on the same shift.
+// explain works out a stored day, with who's on the same shift and who
+// else is there.
 func explain(d DayCode, lengths map[string]float64, zone *time.Location) Day {
 	day := Explain(d.Date, d.Code, lengths, zone)
 	if day.Kind == Work && len(d.With) > 0 {
 		day.With = d.With
 	}
+	day.Others = overlapping(day, d.With, d.Others, lengths, zone)
 	return day
 }
 
@@ -160,12 +166,72 @@ func (s *Store) replaceMonth(ctx context.Context, spaceID int64, first, last str
 		return err
 	}
 	for date, d := range days {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code, coworkers) VALUES ($1, $2, $3, $4)`,
-			spaceID, date, d.Code, pq.StringArray(append([]string{}, d.With...))); err != nil { // never NULL
+		others, err := json.Marshal(append([]Coworker{}, d.Others...)) // never null
+		if err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO shifts (space_id, day, code, coworkers, others) VALUES ($1, $2, $3, $4, $5)`,
+			spaceID, date, d.Code, pq.StringArray(append([]string{}, d.With...)), others); err != nil { // never NULL
 			return err
 		}
 	}
 	return tx.Commit()
+}
+
+// closingMonths returns the months from..to ("YYYY-MM-01", inclusive) whose
+// 締め申請通知 days differ from the usual ones, by month ("YYYY-MM").
+func (s *Store) closingMonths(ctx context.Context, spaceID int64, from, to string) (map[string][]int, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT to_char(month, 'YYYY-MM'), days FROM shift_closing_months WHERE space_id = $1 AND month BETWEEN $2 AND $3`,
+		spaceID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string][]int{}
+	for rows.Next() {
+		var month string
+		var days []int64
+		if err := rows.Scan(&month, (*pq.Int64Array)(&days)); err != nil {
+			return nil, err
+		}
+		out[month] = make([]int, len(days))
+		for i, d := range days {
+			out[month][i] = int(d)
+		}
+	}
+	return out, rows.Err()
+}
+
+// setClosingMonth makes a month's 締め申請通知 days days, or the usual ones
+// again with nil.
+func (s *Store) setClosingMonth(ctx context.Context, spaceID int64, first string, days []int) error {
+	if days == nil {
+		_, err := s.db.ExecContext(ctx, `DELETE FROM shift_closing_months WHERE space_id = $1 AND month = $2`, spaceID, first)
+		return err
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO shift_closing_months (space_id, month, days) VALUES ($1, $2, $3)
+		ON CONFLICT (space_id, month) DO UPDATE SET days = $3, updated_at = now()`,
+		spaceID, first, pq.Array(days))
+	return err
+}
+
+// MonthClosing is the usual closing days as they fall in a month: dates in
+// it (a day past its end is its last day), each once, in order.
+func MonthClosing(usual []int, first time.Time) []int {
+	last := first.AddDate(0, 1, -1).Day()
+	out := []int{}
+	seen := map[int]bool{}
+	for _, d := range usual {
+		d = min(d, last)
+		if d >= 1 && !seen[d] {
+			seen[d] = true
+			out = append(out, d)
+		}
+	}
+	sort.Ints(out)
+	return out
 }
 
 // ---------- HTTP ----------
@@ -270,6 +336,11 @@ type MonthView struct {
 	Month    string   `json:"month"`
 	Settings Settings `json:"settings"`
 	Days     []Day    `json:"days"`
+	// ClosingDays are this month's 締め申請通知 days, as dates in the month;
+	// ClosingCustom says they were set for this month only, not the usual
+	// days from the settings.
+	ClosingDays   []int `json:"closing_days"`
+	ClosingCustom bool  `json:"closing_custom"`
 }
 
 func (h *Handler) month(w http.ResponseWriter, r *http.Request) error {
@@ -295,12 +366,14 @@ func (e *InvalidError) Error() string { return e.Msg }
 
 func invalidf(format string, args ...any) error { return &InvalidError{fmt.Sprintf(format, args...)} }
 
-// DayCode is a day and its code, as typed or read, and who else is on the
-// same shift (optional).
+// DayCode is a day and its code, as typed or read, who else is on the
+// same shift, and others at work around it (both optional). Only the others
+// whose hours overlap the day's shift are kept.
 type DayCode struct {
-	Date string   `json:"date"`
-	Code string   `json:"code"`
-	With []string `json:"with,omitempty"`
+	Date   string     `json:"date"`
+	Code   string     `json:"code"`
+	With   []string   `json:"with,omitempty"`
+	Others []Coworker `json:"others,omitempty"`
 }
 
 // Limits on the coworkers kept for a day.
@@ -384,7 +457,14 @@ func (s *Store) Month(ctx context.Context, spaceID int64, month string, now time
 	if err != nil {
 		return MonthView{}, err
 	}
-	view := MonthView{Month: month, Settings: st, Days: []Day{}}
+	custom, err := s.closingMonths(ctx, spaceID, first.Format(time.DateOnly), first.Format(time.DateOnly))
+	if err != nil {
+		return MonthView{}, err
+	}
+	view := MonthView{Month: month, Settings: st, Days: []Day{}, ClosingDays: MonthClosing(st.ClosingDays, first)}
+	if days, ok := custom[month]; ok {
+		view.ClosingDays, view.ClosingCustom = days, true
+	}
 	for _, c := range codes {
 		view.Days = append(view.Days, explain(c, st.Lengths, zone))
 	}
@@ -392,11 +472,17 @@ func (s *Store) Month(ctx context.Context, spaceID int64, month string, now time
 }
 
 // SaveMonth makes a month's days exactly days (an empty code clears a day),
-// and returns the month as saved.
-func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days []DayCode) (MonthView, error) {
+// and returns the month as saved. closing, if not nil, are the month's
+// 締め申請通知 days (dates in it); the usual days make it follow the settings
+// again.
+func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days []DayCode, closing *[]int) (MonthView, error) {
 	first, last, ok := monthRange(month)
 	if !ok {
 		return MonthView{}, invalidf("month must be YYYY-MM")
+	}
+	st, zone, err := s.Settings(ctx, spaceID)
+	if err != nil {
+		return MonthView{}, err
 	}
 	codes := map[string]DayCode{}
 	for _, d := range days {
@@ -412,12 +498,48 @@ func (s *Store) SaveMonth(ctx context.Context, spaceID int64, month string, days
 		if err != nil {
 			return MonthView{}, err
 		}
-		if code != "" {
-			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with}
+		others, err := cleanOthers(d.Others)
+		if err != nil {
+			return MonthView{}, err
 		}
+		if code != "" {
+			day := Explain(d.Date, code, st.Lengths, zone)
+			there := othersOf(overlapping(day, with, others, st.Lengths, zone))
+			codes[d.Date] = DayCode{Date: d.Date, Code: code, With: with, Others: there}
+		}
+	}
+	var closingDays []int
+	if closing != nil {
+		closingDays = []int{}
+		seen := map[int]bool{}
+		for _, d := range *closing {
+			if d < 1 || d > last.Day() {
+				return MonthView{}, invalidf("a closing day must be a day in %s", month)
+			}
+			if !seen[d] {
+				seen[d] = true
+				closingDays = append(closingDays, d)
+			}
+		}
+		if len(closingDays) > maxClosing {
+			return MonthView{}, invalidf("at most %d closing days", maxClosing)
+		}
+		sort.Ints(closingDays)
 	}
 	if err := s.replaceMonth(ctx, spaceID, first.Format(time.DateOnly), last.Format(time.DateOnly), codes); err != nil {
 		return MonthView{}, err
+	}
+	if closing != nil {
+		st, err := s.settings(ctx, spaceID)
+		if err != nil {
+			return MonthView{}, err
+		}
+		if daysText(closingDays) == daysText(MonthClosing(st.ClosingDays, first)) {
+			closingDays = nil // the usual days: follow the settings again
+		}
+		if err := s.setClosingMonth(ctx, spaceID, first.Format(time.DateOnly), closingDays); err != nil {
+			return MonthView{}, err
+		}
 	}
 	return s.Month(ctx, spaceID, month, time.Time{})
 }
@@ -429,6 +551,9 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 		// Corrections are names the photo reader got wrong, as fixed while
 		// checking a scan; later scans use them.
 		Corrections []NameFix `json:"corrections"`
+		// ClosingDays, if sent, are this month's 締め申請通知 days (dates in
+		// the month); the usual days go back to following the settings.
+		ClosingDays *[]int `json:"closing_days"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -438,7 +563,11 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 	if errors.As(err, &inv) {
 		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
 	}
-	view, err := h.store.SaveMonth(r.Context(), space.SpaceFrom(r), in.Month, in.Days)
+	var before MonthView
+	if in.ClosingDays != nil {
+		before, _ = h.store.Month(r.Context(), space.SpaceFrom(r), in.Month, h.now()) // for the history only
+	}
+	view, err := h.store.SaveMonth(r.Context(), space.SpaceFrom(r), in.Month, in.Days, in.ClosingDays)
 	if errors.As(err, &inv) {
 		return httpx.Errorf(http.StatusBadRequest, "%s", inv.Msg)
 	}
@@ -448,7 +577,11 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 	if err := h.store.saveNameFixes(r.Context(), space.SpaceFrom(r), fixes); err != nil {
 		slog.ErrorContext(r.Context(), "save name corrections", "err", err) // the month is saved; don't fail it
 	}
-	h.log(r, "shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
+	details := map[string]any{"month": view.Month, "days": len(view.Days)}
+	if in.ClosingDays != nil && daysText(before.ClosingDays) != daysText(view.ClosingDays) {
+		details["closing_days"] = []string{daysText(before.ClosingDays), daysText(view.ClosingDays)}
+	}
+	h.log(r, "shifts_saved", details)
 	view.Settings.Reader = h.reader != nil
 	httpx.WriteJSON(w, http.StatusOK, view)
 	return nil
@@ -470,7 +603,7 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
-	view, err := run(ctx)
+	view, err := run(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -486,8 +619,8 @@ const uploadTimeout = 3 * time.Minute
 
 // prepareRead checks a request to read a photo and takes the photo from it.
 // The read itself is the returned func: it answers with the month found, or
-// an *httpx.Error to show.
-func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(context.Context) (any, error), error) {
+// an *httpx.Error to show, and tells progress (if not nil) how it's going.
+func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(context.Context, func(Progress)) (any, error), error) {
 	if h.reader == nil {
 		return nil, httpx.Errorf(http.StatusServiceUnavailable, "reading photos isn't set up on this server; enter the shifts by hand")
 	}
@@ -537,7 +670,9 @@ func (h *Handler) prepareRead(w http.ResponseWriter, r *http.Request) (func(cont
 		slog.ErrorContext(r.Context(), "load name corrections", "err", err)
 	}
 	hint.Names = known
-	return func(ctx context.Context) (any, error) {
+	return func(ctx context.Context, progress func(Progress)) (any, error) {
+		hint := hint
+		hint.Progress = progress
 		sheet, err := h.reader.Read(ctx, image, mediaType, st.NameOnSheet, hint)
 		if errors.Is(err, ErrRefused) {
 			return nil, httpx.Errorf(http.StatusUnprocessableEntity, "the photo couldn't be read; try a clearer one, or enter the shifts by hand")
@@ -582,6 +717,9 @@ func sheetView(sheet Sheet, st stored, zone *time.Location) (any, error) {
 		if with, err := cleanNames(d.With); err == nil && day.Kind == Work && code == d.Code {
 			day.With = with
 		}
+		if others, err := cleanOthers(d.Others); err == nil && code == d.Code {
+			day.Others = overlapping(day, day.With, others, st.Lengths, zone)
+		}
 		view.Days = append(view.Days, day)
 	}
 	if len(leave) > 0 {
@@ -611,6 +749,9 @@ func daysText(days []int) string {
 	return strings.Join(parts, ", ")
 }
 
+// maxClosing is the most closing days in a month.
+const maxClosing = 10
+
 // closingDays checks and tidies closing days: 1 to 31, each once, in order.
 func closingDays(in []int) ([]int, error) {
 	seen := map[int]bool{}
@@ -624,7 +765,7 @@ func closingDays(in []int) ([]int, error) {
 			out = append(out, d)
 		}
 	}
-	if len(out) > 10 {
+	if len(out) > maxClosing {
 		return nil, httpx.Errorf(http.StatusBadRequest, "at most 10 closing days")
 	}
 	sort.Ints(out)
@@ -743,8 +884,13 @@ func (h *Handler) feed(w http.ResponseWriter, r *http.Request) error {
 	for _, c := range codes {
 		days = append(days, explain(c, st.Lengths, zone))
 	}
+	custom, err := h.store.closingMonths(r.Context(), spaceID,
+		time.Date(from.Year(), from.Month(), 1, 0, 0, 0, 0, time.UTC).Format(time.DateOnly), to.Format(time.DateOnly))
+	if err != nil {
+		return err
+	}
 	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
 	w.Header().Set("Content-Disposition", `inline; filename="shifts.ics"`)
-	_, err = io.WriteString(w, ICS(days, ClosingDates(from, to, st.ClosingDays), st.PersonName, now))
+	_, err = io.WriteString(w, ICS(days, ClosingDates(from, to, st.ClosingDays, custom), st.PersonName, now))
 	return err
 }

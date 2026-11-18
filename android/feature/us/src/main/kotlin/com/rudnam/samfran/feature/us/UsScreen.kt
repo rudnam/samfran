@@ -85,7 +85,7 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
     )
 }
 
-/** The two of you (web/src/features/us/UsPage.tsx): names, inviting your partner, recent changes, Claude, and this phone. */
+/** The two of you (web/src/features/us/UsPage.tsx): names, inviting your partner, recent changes, and this phone. */
 @Composable
 fun UsScreen(
     state: UsUiState,
@@ -184,44 +184,6 @@ fun UsScreen(
                     }
                 }
                 if (!state.showAll && shown.size > 8) LinkButton(stringResource(R.string.show_more), actions::showAll)
-            }
-        }
-
-        if (!demo) {
-            item(key = "claude") {
-                SamFranCard {
-                    CardTitle(stringResource(R.string.claude))
-                    Text(stringResource(R.string.claude_intro), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                    Text("1. " + stringResource(R.string.claude_step1), style = MaterialTheme.typography.bodySmall)
-                    Text("2. " + stringResource(R.string.claude_step2), style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = state.mcpAddress,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text(stringResource(R.string.connector_address)) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    var copied by rememberSaveable { mutableStateOf(false) }
-                    SecondaryButton(stringResource(if (copied) R.string.copied else R.string.copy), {
-                        onCopy(state.mcpAddress)
-                        copied = true
-                    }, icon = SamFranIcons.copy)
-                    Hint(stringResource(R.string.claude_then))
-                    state.tokens?.takeIf { it.isNotEmpty() }?.let { tokens ->
-                        Column {
-                            tokens.forEach { t ->
-                                Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(t.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                        Hint(t.lastUsedAt?.let { stringResource(R.string.last_used, Dates.medium(it, locale)) } ?: stringResource(R.string.not_used))
-                                    }
-                                    LinkButton(stringResource(R.string.disconnect), { actions.disconnect(t.id) }, quiet = true)
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
 

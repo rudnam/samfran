@@ -21,7 +21,15 @@
     <string name="nothing_entered">未入力</string>
     <string name="read_photo">勤務表の写真を読み込む</string>
     <string name="reading_sheet">勤務表を読んでいます…</string>
-    <string name="reading_hint">1分ほどかかることがあります。写真は保存されません。</string>
+    <string name="reading_hint">ふつう1分ほどかかります。</string>
+    <string name="sending_photo">写真を送っています</string>
+    <string name="finding_row">勤務表から行を探しています</string>
+    <string name="found_on_sheet">勤務表で%sを見つけました</string>
+    <string name="reading_days">日ごとに読んでいます</string>
+    <string name="reading_days_of">日ごとに読んでいます: %1$d/%2$d日</string>
+    <string name="everyone_there">同じ時間帯の人</string>
+    <string name="n_there">ほか%d人</string>
+    <string name="you">あなた</string>
     <string name="take_photo">写真を撮る</string>
     <string name="choose_photo">写真を選ぶ</string>
     <string name="edit_by_hand">手で編集</string>
@@ -44,12 +52,16 @@
     <string name="save">保存</string>
     <string name="saved">保存しました。</string>
     <string name="in_your_calendar">カレンダーに表示</string>
-    <string name="calendar_intro">カレンダーのリンクをオンにして、パソコンのGoogleカレンダーで「他のカレンダー › + › URLで追加」から登録してください。ほかのカレンダーアプリでも使えます。Googleがリンクを確認するのは1日1回ほどなので、変更の反映に最大1日かかります。</string>
+    <string name="step_send_title">リンクをパソコンに送る</string>
+    <string name="step_add_title">Googleカレンダーを開く：他のカレンダー › + › URLで追加</string>
+    <string name="step_paste_title">リンクを貼り付けて「カレンダーを追加」</string>
+    <string name="sync_hint">スマホに出ないときは、アプリの設定で「%s」の同期をオンに。</string>
+    <string name="add_to_google_calendar">Googleカレンダーに追加</string>
     <string name="calendar_link">カレンダーのリンク</string>
     <string name="copy">コピー</string>
     <string name="copied">コピーしました</string>
     <string name="share">共有</string>
-    <string name="calendar_link_private">このリンクを知っている人は誰でもシフトを見られます。漏れたら新しいリンクを作ってください。</string>
+    <string name="calendar_link_private">リンクを知っている人は誰でもシフトを見られます。</string>
     <string name="new_link">新しいリンクを作る</string>
     <string name="turn_off">オフにする</string>
     <string name="turn_on_link">カレンダーのリンクをオンにする</string>
@@ -62,4 +74,8 @@
     <string name="who_with_on">%sに一緒の人</string>
     <string name="who_with_hint">「、」か「,」で区切る。下の名前をタップしても入る</string>
     <string name="done">完了</string>
+    <string name="use_usual_days">いつもの日に戻す</string>
+    <string name="closing_usual_hint">設定のいつもの日です。ここで変えると%1$sだけ変わります。</string>
+    <string name="closing_own_hint">%1$sだけの日です。ほかの月はいつもの日のままです。</string>
+    <string name="no_closing_this_month">今月は締め申請通知なし</string>
 </resources>

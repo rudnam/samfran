@@ -180,9 +180,11 @@ export const api = {
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (
     month: string,
-    days: { date: string; code: string; with?: string[] }[],
+    days: { date: string; code: string; with?: string[]; others?: ShiftCoworker[] }[],
     corrections?: { from: string; to: string }[],
-  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections }),
+    /** This month's 締め申請通知 days (dates in it); left out, they stay as they are. */
+    closing_days?: number[],
+  ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections, closing_days }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
   saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone' | 'closing_days'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
@@ -190,18 +192,26 @@ export const api = {
   /**
    * Reads a photo of the sheet; nothing is saved until saveShifts. Reading
    * takes about a minute, longer than one request may last, so this starts
-   * the read and asks after it until it's done.
+   * the read and asks after it until it's done, telling onProgress how far
+   * it's got: the photo going up, then the days as they're read.
    */
-  readShiftPhoto: async (photo: Blob) => {
+  readShiftPhoto: async (photo: Blob, onProgress?: (p: ReadProgress) => void) => {
     const form = new FormData();
     form.append('photo', photo, 'sheet.jpg');
-    const res = await fetch('/api/shifts/reads', {
-      method: 'POST',
-      headers: { 'Accept-Language': language() },
-      body: form,
+    onProgress?.({ stage: 'sending', sent: 0 });
+    // XMLHttpRequest, not fetch: only it says how much of the photo has gone.
+    const started = await new Promise<{ id: string }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/shifts/reads');
+      xhr.setRequestHeader('Accept-Language', language());
+      xhr.responseType = 'json';
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.({ stage: 'sending', sent: e.loaded / e.total });
+      xhr.onload = () =>
+        xhr.status >= 200 && xhr.status < 300 ? resolve(xhr.response) : reject(new ApiError(xhr.response?.error ?? xhr.statusText, xhr.status));
+      xhr.onerror = () => reject(new TypeError('Failed to fetch'));
+      xhr.send(form);
     });
-    const started = await res.json().catch(() => null);
-    if (!res.ok) throw new ApiError(started?.error ?? res.statusText, res.status);
+    onProgress?.({ stage: 'reading', days_read: 0, days_in_month: 0 });
     const until = Date.now() + readGiveUpMs;
     let failures = 0;
     while (Date.now() < until) {
@@ -216,7 +226,11 @@ export const api = {
         if (++failures > 3) throw err;
         continue;
       }
-      if (res.status === 202) continue;
+      if (res.status === 202) {
+        const p = await res.json().catch(() => null);
+        if (p) onProgress?.({ stage: 'reading', name_as_read: p.name_as_read, days_read: p.days_read ?? 0, days_in_month: p.days_in_month ?? 0 });
+        continue;
+      }
       const data = await res.json().catch(() => null);
       if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
       return data as ShiftMonth;
@@ -234,8 +248,11 @@ export const api = {
   /** Stops and stations whose names match q (2+ characters); near ones first when near is given. */
   searchStops: (q: string, near?: { lat: number; lng: number }) =>
     request<FoundStop[]>('GET', `/api/bus/search?${new URLSearchParams({ q, ...(near ? { lat: String(near.lat), lng: String(near.lng) } : {}) })}`),
-  /** Without buzz, the buzz stays as it was. */
-  saveBusStop: (s: { name: string; lat: number; lng: number; alert_meters: number; buzz?: Buzz }) => request<BusStop>('PUT', '/api/bus/stop', s),
+  busStops: () => request<BusStops>('GET', '/api/bus/stops'),
+  addBusStop: (s: BusStopInput) => request<BusStops>('POST', '/api/bus/stops', s),
+  changeBusStop: (id: number, s: BusStopInput) => request<BusStops>('PUT', `/api/bus/stops/${id}`, s),
+  deleteBusStop: (id: number) => request<BusStops>('DELETE', `/api/bus/stops/${id}`),
+  setBuzz: (buzz: Buzz) => request<BusStops>('PUT', '/api/bus/buzz', { buzz }),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
@@ -258,7 +275,28 @@ export interface ShiftDay {
   problem?: string;
   /** Others on the same shift (same code that day), names as on the sheet. */
   with?: string[];
+  /** Others on other shifts whose hours overlap this one, by when they start. */
+  others?: ShiftThere[];
 }
+
+/** Someone else at work around a day, as read off the sheet. */
+export interface ShiftCoworker {
+  name: string;
+  code: string;
+  /** -1: a night shift from the day before; 1: an early shift the next day. */
+  day_offset?: number;
+}
+
+/** Someone else there during a shift, and when (ISO, with offset). */
+export interface ShiftThere extends ShiftCoworker {
+  start?: string;
+  end?: string;
+}
+
+/** How far reading a photo has got. */
+export type ReadProgress =
+  | { stage: 'sending'; sent: number }
+  | { stage: 'reading'; name_as_read?: string; days_read: number; days_in_month: number };
 
 export interface ShiftSettings {
   person_name: string;
@@ -279,6 +317,9 @@ export interface ShiftMonth {
   month: string;
   settings: ShiftSettings;
   days: ShiftDay[];
+  /** 締め申請通知 this month, as dates in it; custom: set for this month only. (Not on a photo read.) */
+  closing_days?: number[];
+  closing_custom?: boolean;
   /** From a photo: the name on the row that was read, and the reader's doubts. */
   name_as_read?: string;
   notes?: string;
@@ -342,6 +383,39 @@ export interface BusStop {
   alert_meters: number;
   /** How the phone buzzes at the stop. */
   buzz: Buzz;
+}
+
+/** The kinds of shift a stop can be for, as the server labels shifts. */
+export type ShiftLabel = 'Early' | 'Middle' | 'Late' | 'Night';
+
+/** One of the signed-in person's stops. */
+export interface SavedStop {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Ring this many metres before the stop. */
+  alert_meters: number;
+  /** The kinds of shift it's the stop for; each is on one stop at most. */
+  shifts: ShiftLabel[];
+}
+
+export interface BusStops {
+  /** Oldest first. */
+  stops: SavedStop[];
+  /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
+  last_id: number;
+  /** How the phone buzzes, at any stop. */
+  buzz: Buzz;
+}
+
+export interface BusStopInput {
+  name: string;
+  lat: number;
+  lng: number;
+  alert_meters: number;
+  /** Taken from the person's other stops. Left out, a changed stop keeps its own. */
+  shifts?: ShiftLabel[];
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */

@@ -20,6 +20,8 @@ data class ShiftDay(
     val problem: String? = null,
     /** Others on the same shift (the same code that day), by their names as printed on the sheet. */
     val with: List<String> = emptyList(),
+    /** Others on other shifts whose hours overlap this one, by when they start. */
+    val others: List<ShiftThere> = emptyList(),
 ) {
     /** The colour it's drawn in. */
     val tone: ShiftTone
@@ -52,6 +54,41 @@ data class ShiftDay(
     val mark: String get() = workplaceLabel.let { if (it == label) code else it.take(1) }
 }
 
+/** Someone else at work around a day, as read off the sheet (internal/shift/others.go). */
+data class ShiftCoworker(
+    val name: String,
+    val code: String,
+    /** -1: a night shift from the day before; 1: an early shift the next day; 0: the same day. */
+    val dayOffset: Int = 0,
+)
+
+/** Someone else there during a shift, and when. */
+data class ShiftThere(
+    val name: String,
+    val code: String,
+    val dayOffset: Int = 0,
+    val start: OffsetDateTime? = null,
+    val end: OffsetDateTime? = null,
+) {
+    val coworker: ShiftCoworker get() = ShiftCoworker(name, code, dayOffset)
+
+    /** e.g. "9:00–18:00". */
+    val times: String
+        get() {
+            val s = start ?: return ""
+            val e = end ?: return ""
+            return "${s.hour}:%02d–${e.hour}:%02d".format(s.minute, e.minute)
+        }
+}
+
+/** How far reading a photo of the sheet has got. */
+sealed interface ReadProgress {
+    data object Sending : ReadProgress
+
+    /** [nameAsRead] once the row's found, then [daysRead] of [daysInMonth] (both 0 until the days start). */
+    data class Reading(val nameAsRead: String? = null, val daysRead: Int = 0, val daysInMonth: Int = 0) : ReadProgress
+}
+
 /** The shift colours (web/src/styles.css, .shift-dot and .cal-day). */
 enum class ShiftTone { Early, Middle, Late, Night, Off, Leave, Training, Other }
 
@@ -77,8 +114,16 @@ data class ShiftMonth(
     val nameAsRead: String? = null,
     /** From a photo: the reader's doubts. */
     val notes: String = "",
+    /** This month's 締め申請通知 days, if the server said (it can set them per month). */
+    val closingDays: List<Int>? = null,
 ) {
     val fromPhoto: Boolean get() = nameAsRead != null
+
+    /** The days this month's hours are sent in: its own, else the usual ones. */
+    val closing: List<Int> get() = closingDays ?: usualClosing
+
+    /** The usual days (from the settings) as they fall in this month: a day past its end is its last day. */
+    val usualClosing: List<Int> get() = settings.closingDays.map { minOf(it, month.lengthOfMonth()) }.distinct().sorted()
 }
 
 /**

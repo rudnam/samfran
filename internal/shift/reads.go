@@ -18,8 +18,8 @@ import (
 // every few seconds until it's done:
 //
 //	POST /api/shifts/reads      202 {"id": "…"}, or the error POST /api/shifts/read gives
-//	GET  /api/shifts/reads/{id} 202 {"status": "reading"}, then exactly what
-//	                            POST /api/shifts/read answers (the month, or its error)
+//	GET  /api/shifts/reads/{id} 202 {"status": "reading", …Progress}, then exactly
+//	                            what POST /api/shifts/read answers (the month, or its error)
 //
 // Reads live in this process's memory, like the photo while it's read: a
 // finished one is forgotten after keepRead, and a restart forgets them all
@@ -38,6 +38,7 @@ type reads struct {
 
 type pendingRead struct {
 	spaceID  int64
+	progress Progress
 	done     bool
 	view     any
 	err      error
@@ -86,7 +87,11 @@ func (h *Handler) startRead(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), readTimeout)
 	go func() {
 		defer cancel()
-		view, err := run(ctx)
+		view, err := run(ctx, func(pr Progress) {
+			h.reads.mu.Lock()
+			defer h.reads.mu.Unlock()
+			p.progress = pr
+		})
 		h.reads.mu.Lock()
 		defer h.reads.mu.Unlock()
 		p.done, p.view, p.err, p.finished = true, view, err, h.now()
@@ -104,11 +109,14 @@ func (h *Handler) readStatus(w http.ResponseWriter, r *http.Request) error {
 		h.reads.mu.Unlock()
 		return httpx.Errorf(http.StatusNotFound, "that photo isn't being read any more; send it again")
 	}
-	done, view, err := p.done, p.view, p.err
+	done, view, err, progress := p.done, p.view, p.err, p.progress
 	h.reads.mu.Unlock()
 
 	if !done {
-		httpx.WriteJSON(w, http.StatusAccepted, map[string]string{"status": "reading"})
+		httpx.WriteJSON(w, http.StatusAccepted, struct {
+			Status string `json:"status"`
+			Progress
+		}{"reading", progress})
 		return nil
 	}
 	if err != nil {

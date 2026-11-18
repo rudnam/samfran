@@ -13,18 +13,22 @@ import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.data.SpaceRepository
+import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.data.UpdateRepository
 import com.rudnam.samfran.core.data.UserRepository
 import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.AppUpdate
 import com.rudnam.samfran.core.model.AuthOptions
 import com.rudnam.samfran.core.model.BusStop
+import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
+import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.RestaurantFields
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
@@ -173,6 +177,8 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     var saved: Map<LocalDate, String>? = null
     var savedWith: Map<LocalDate, List<String>>? = null
     var savedCorrections: Map<String, String>? = null
+    var savedOthers: Map<LocalDate, List<ShiftCoworker>>? = null
+    var savedClosing: List<Int>? = null
     private var pending: ShiftMonth? = null
 
     override fun month(month: YearMonth?): Flow<ShiftMonth?> = this.months.map { it[month ?: current] }
@@ -180,18 +186,30 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         next ?: months.value[month ?: current]?.let { Outcome.Done(it) } ?: Outcome.Done(ShiftMonth(month ?: current, settingsFlow.value ?: ShiftSettings(), emptyList()))
     override suspend fun nextShift(now: Instant): ShiftDay? =
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
-    override suspend fun upcomingEnds(now: Instant): Outcome<List<Instant>> =
-        Outcome.Done(months.value.values.flatMap { it.days }.mapNotNull { it.end?.toInstant() }.filter { it.isAfter(now) }.sorted())
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>): Outcome<ShiftMonth> {
+    override suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>> =
+        Outcome.Done(months.value.values.flatMap { it.days }.filter { it.end?.toInstant()?.isAfter(now) == true }.sortedBy { it.end!!.toInstant() })
+    /** The shift [homeShift] answers; by default, worked out from the months. */
+    var home: ShiftDay? = null
+    override suspend fun homeShift(now: Instant): ShiftDay? = home ?: com.rudnam.samfran.core.model.homeShift(months.value.values.flatMap { it.days }, now)
+    override suspend fun save(
+        month: YearMonth,
+        codes: Map<LocalDate, String>,
+        with: Map<LocalDate, List<String>>,
+        corrections: Map<String, String>,
+        closingDays: List<Int>?,
+        others: Map<LocalDate, List<ShiftCoworker>>,
+    ): Outcome<ShiftMonth> {
         next?.let { return it }
         saved = codes
         savedWith = with
         savedCorrections = corrections
-        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty())
+        savedOthers = others
+        savedClosing = closingDays
+        val m = ShiftMonth(month, settingsFlow.value ?: ShiftSettings(), months.value[month]?.days.orEmpty(), closingDays = closingDays ?: months.value[month]?.closingDays)
         months.value = months.value + (month to m)
         return Outcome.Done(m)
     }
-    override suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth> = next ?: read?.let { pending = it; Outcome.Done(it) } ?: Outcome.Refused("the photo couldn't be read; try a clearer one, or enter the shifts by hand")
+    override suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit): Outcome<ShiftMonth> = next ?: read?.let { pending = it; Outcome.Done(it) } ?: Outcome.Refused("the photo couldn't be read; try a clearer one, or enter the shifts by hand")
     override fun takePendingRead(month: YearMonth): ShiftMonth? = pending?.takeIf { it.month == month }.also { pending = null }
     override val settings: Flow<ShiftSettings?> = settingsFlow
     override suspend fun refreshSettings(): Outcome<ShiftSettings> = next ?: Outcome.Done(settingsFlow.value ?: ShiftSettings())
@@ -210,17 +228,61 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     override fun address(path: String) = "https://samfran.example$path"
 }
 
-class FakeBusRepository(stop: BusStop? = Samples.stop) : BusRepository {
-    val stopFlow = MutableStateFlow(stop)
+class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
+    val stopsFlow = MutableStateFlow(stops)
     var found: List<FoundStop> = Samples.found
     var next: Outcome<Nothing>? = null
+    val used = mutableListOf<Long>()
 
-    override val stop: Flow<BusStop?> = stopFlow
-    override suspend fun refresh(): Outcome<BusStop> = next ?: Outcome.Done(stopFlow.value ?: BusStop(set = false))
-    override suspend fun save(name: String, lat: Double, lng: Double, alertMeters: Int, buzz: Buzz?): Outcome<BusStop> {
-        next?.let { return it }
-        return BusStop(true, name, lat, lng, alertMeters, buzz ?: stopFlow.value?.buzz ?: Buzz.Strong).also { stopFlow.value = it }.let { Outcome.Done(it) }
+    override val stops: Flow<BusStops?> = stopsFlow
+    override suspend fun refresh(): Outcome<BusStops> = next ?: Outcome.Done(stopsFlow.value ?: BusStops())
+
+    private fun now(): BusStops = stopsFlow.value ?: BusStops()
+
+    private fun set(all: BusStops): Outcome<BusStops> {
+        val b = all.copy(stops = all.stops.map { it.copy(buzz = all.buzz) })
+        stopsFlow.value = b
+        return Outcome.Done(b)
     }
+
+    /** Each kind of shift on one stop at most: [id] takes [kinds] from the others. */
+    private fun take(all: BusStops, id: Long, kinds: List<String>?) =
+        if (kinds == null) all else all.copy(stops = all.stops.map { if (it.id == id) it else it.copy(shifts = it.shifts - kinds.toSet()) })
+
+    override suspend fun add(stop: StopInput): Outcome<BusStops> {
+        next?.let { return it }
+        val all = now()
+        val id = (all.stops.maxOfOrNull { it.id } ?: 0) + 1
+        val s = BusStop(true, stop.name.trim(), stop.lat, stop.lng, stop.alertMeters, all.buzz, id, stop.shifts.orEmpty())
+        return set(take(all.copy(stops = all.stops + s, lastId = if (all.stops.isEmpty()) id else all.lastId), id, stop.shifts))
+    }
+
+    override suspend fun change(id: Long, stop: StopInput): Outcome<BusStops> {
+        next?.let { return it }
+        val all = now()
+        val changed = all.copy(
+            stops = all.stops.map {
+                if (it.id != id) it else it.copy(name = stop.name.trim(), lat = stop.lat, lng = stop.lng, alertMeters = stop.alertMeters, shifts = stop.shifts ?: it.shifts)
+            },
+        )
+        return set(take(changed, id, stop.shifts))
+    }
+
+    override suspend fun remove(id: Long): Outcome<BusStops> {
+        next?.let { return it }
+        val all = now()
+        val left = all.stops.filter { it.id != id }
+        return set(all.copy(stops = left, lastId = if (all.lastId == id) left.firstOrNull()?.id ?: 0 else all.lastId))
+    }
+
+    override suspend fun use(id: Long): Outcome<BusStops> {
+        next?.let { return it }
+        used += id
+        return set(now().copy(lastId = id))
+    }
+
+    override suspend fun setBuzz(buzz: Buzz): Outcome<BusStops> = next ?: set(now().copy(buzz = buzz))
+
     override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>> =
         next ?: Outcome.Done(found.filter { it.name.contains(query) })
 }

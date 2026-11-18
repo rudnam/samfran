@@ -15,6 +15,7 @@ import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.datastore.UserPreferencesRepository
+import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute
@@ -49,9 +50,12 @@ data class ShiftsUiState(
     val data: ShiftMonth? = null,
     val next: ShiftDay? = null,
     val asList: Boolean = false,
+    /** Everyone there during a shift, not only those on the same one. */
+    val everyone: Boolean = false,
     /** The day tapped on the calendar. */
     val picked: LocalDate? = null,
-    val reading: Boolean = false,
+    /** A photo being read: how far it's got; null when none is. */
+    val progress: ReadProgress? = null,
     val problem: Outcome<Any>? = null,
     val today: LocalDate = LocalDate.now(),
 ) {
@@ -61,11 +65,14 @@ data class ShiftsUiState(
     /** Photos can be read here, once the name on the sheet is known. */
     val canRead: Boolean get() = data?.settings?.reader == true
     val needsName: Boolean get() = data != null && data.settings.nameOnSheet.isBlank()
+
+    val reading: Boolean get() = progress != null
 }
 
 interface ShiftsActions {
     fun showMonth(month: YearMonth)
     fun setList(list: Boolean)
+    fun setEveryone(on: Boolean)
     fun pick(date: LocalDate)
     /** A photo of the sheet (from the camera or the picker): read, then checked in the editor. */
     fun readPhoto(uri: Uri)
@@ -109,9 +116,9 @@ class ShiftsViewModel @Inject constructor(
     val state: StateFlow<ShiftsUiState> = combine(
         local,
         local.map { it.asked }.flatMapLatest { shifts.month(it) },
-        preferences.preferences.map { it.shiftsAsList },
+        preferences.preferences,
         savedNext,
-    ) { s, data, list, next -> s.copy(data = data, asList = list, next = next ?: s.next) }
+    ) { s, data, prefs, next -> s.copy(data = data, asList = prefs.shiftsAsList, everyone = prefs.shiftsEveryone, next = next ?: s.next) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
@@ -142,15 +149,23 @@ class ShiftsViewModel @Inject constructor(
         viewModelScope.launch { preferences.setShiftsAsList(list) }
     }
 
+    override fun setEveryone(on: Boolean) {
+        viewModelScope.launch { preferences.setShiftsEveryone(on) }
+    }
+
     override fun pick(date: LocalDate) = local.update { it.copy(picked = date) }
 
     override fun readPhoto(uri: Uri) {
         if (local.value.reading) return
-        local.update { it.copy(reading = true, problem = null) }
+        local.update { it.copy(progress = ReadProgress.Sending, problem = null) }
         viewModelScope.launch {
             val jpeg = withContext(io) { runCatching { shrink(uri) }.getOrNull() }
-            val result: Outcome<ShiftMonth> = if (jpeg == null) Outcome.Refused(PHOTO_UNREADABLE) else shifts.readPhoto(jpeg)
-            local.update { it.copy(reading = false, problem = result.takeIf { r -> r !is Outcome.Done }) }
+            val result: Outcome<ShiftMonth> = if (jpeg == null) {
+                Outcome.Refused(PHOTO_UNREADABLE)
+            } else {
+                shifts.readPhoto(jpeg) { p -> local.update { s -> if (s.progress != null) s.copy(progress = p) else s } }
+            }
+            local.update { it.copy(progress = null, problem = result.takeIf { r -> r !is Outcome.Done }) }
             if (result is Outcome.Done) readMonth.value = result.value.month
         }
     }

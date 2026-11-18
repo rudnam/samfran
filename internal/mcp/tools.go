@@ -225,7 +225,7 @@ var toolList = []*tool{
 			if err != nil {
 				return nil, err
 			}
-			view, err := c.h.shifts.SaveMonth(c.r.Context(), sp, in.Month, in.Days)
+			view, err := c.h.shifts.SaveMonth(c.r.Context(), sp, in.Month, in.Days, nil)
 			if err != nil {
 				return nil, asToolError(err, "month")
 			}

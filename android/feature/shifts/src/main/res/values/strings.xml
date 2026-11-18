@@ -21,7 +21,15 @@
     <string name="nothing_entered">Nothing entered</string>
     <string name="read_photo">Read a photo of the sheet</string>
     <string name="reading_sheet">Reading the sheet…</string>
-    <string name="reading_hint">This takes up to a minute. The photo isn’t kept.</string>
+    <string name="reading_hint">Usually about a minute.</string>
+    <string name="sending_photo">Sending the photo</string>
+    <string name="finding_row">Finding the row on the sheet</string>
+    <string name="found_on_sheet">Found %s on the sheet</string>
+    <string name="reading_days">Reading the days</string>
+    <string name="reading_days_of">Reading the days: %1$d of %2$d</string>
+    <string name="everyone_there">Everyone there</string>
+    <string name="n_there">+%d there</string>
+    <string name="you">You</string>
     <string name="take_photo">Take a photo</string>
     <string name="choose_photo">Choose a photo</string>
     <string name="edit_by_hand">Edit by hand</string>
@@ -44,12 +52,16 @@
     <string name="save">Save</string>
     <string name="saved">Saved.</string>
     <string name="in_your_calendar">In your calendar</string>
-    <string name="calendar_intro">Turn on the calendar link, then add it in Google Calendar on a computer: Other calendars › + › From URL. It works in other calendar apps too. Google checks the link about once a day, so changes can take up to a day to show.</string>
+    <string name="step_send_title">Send the link to a computer</string>
+    <string name="step_add_title">Open Google Calendar: Other calendars › + › From URL</string>
+    <string name="step_paste_title">Paste the link and click Add calendar</string>
+    <string name="sync_hint">Not on your phone? Turn on Sync for “%s” in the app’s settings.</string>
+    <string name="add_to_google_calendar">Add to Google Calendar</string>
     <string name="calendar_link">Calendar link</string>
     <string name="copy">Copy</string>
     <string name="copied">Copied</string>
     <string name="share">Share</string>
-    <string name="calendar_link_private">Anyone with this link can see the shifts. If it gets out, make a new one.</string>
+    <string name="calendar_link_private">Anyone with the link can see the shifts.</string>
     <string name="new_link">Make a new link</string>
     <string name="turn_off">Turn off</string>
     <string name="turn_on_link">Turn on the calendar link</string>
@@ -62,4 +74,8 @@
     <string name="who_with_on">Who’s with you on %s</string>
     <string name="who_with_hint">Separate names with commas, or tap them below</string>
     <string name="done">Done</string>
+    <string name="use_usual_days">Use the usual days</string>
+    <string name="closing_usual_hint">The usual days, from Settings. Change them here for %1$s only.</string>
+    <string name="closing_own_hint">Only for %1$s. Other months keep the usual days.</string>
+    <string name="no_closing_this_month">No 締め申請通知 this month.</string>
 </resources>

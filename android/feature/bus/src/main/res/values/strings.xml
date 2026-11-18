@@ -74,4 +74,24 @@
     <string name="no_here">Couldn’t tell where you are. Check that location is on, and allowed for SamFran.</string>
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
+    <!-- Several stops, picked by the shift -->
+    <string name="get_off_at">Get off at</string>
+    <string name="because_shift">%1$s until %2$s, so it’s %3$s.</string>
+    <string name="just_this_ride">Just for this ride. Next time it goes by the shift again.</string>
+    <string name="add_a_stop_short">+ Add a stop</string>
+    <string name="add_a_stop">Add a stop</string>
+    <string name="where_today">Where are you getting off?</string>
+    <string name="after_shifts">After %1$s</string>
+    <string name="start_to">Start to %1$s</string>
+    <string name="your_stops">Your stops</string>
+    <string name="when_picked">When you pick it</string>
+    <string name="add_stop_hint">Get off somewhere else after some shifts? Add that stop, and say which shifts it’s for.</string>
+    <string name="use_after">Use this stop after</string>
+    <string name="this_stop">this stop</string>
+    <string name="use_after_none">None: it’s only used when you pick it.</string>
+    <string name="use_after_some">After these shifts, the alarm picks %1$s for you. You can still pick another stop that day.</string>
+    <string name="use_after_taken">%1$s won’t be used for them any more.</string>
+    <string name="remove_stop">Remove this stop</string>
+    <string name="remove_stop_title">Remove %1$s?</string>
+    <string name="remove">Remove</string>
 </resources>

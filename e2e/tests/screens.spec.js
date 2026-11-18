@@ -102,7 +102,17 @@ for (const [name, viewport] of [
           const code = codes[i % codes.length];
           // Who's on the same shift, on working days.
           const together = /^\d/.test(code) ? [['タナカ ユイ', 'スズキ ケン'], ['サトウ ミホ']][i % 2] : undefined;
-          return { date: `${month}-${String(i + 1).padStart(2, '0')}`, code, with: together };
+          // Others on other shifts: the server keeps those whose hours overlap.
+          const others = /^\d/.test(code)
+            ? [
+                { name: 'ヤマダ ハナ', code: '9F' },
+                { name: 'コバヤシ リク', code: '7D' },
+                { name: 'サトウ ミオ', code: '17D' },
+                { name: 'ヨル タロウ', code: '22F', day_offset: -1 },
+                { name: 'アサ ミキ', code: '6D', day_offset: 1 },
+              ]
+            : undefined;
+          return { date: `${month}-${String(i + 1).padStart(2, '0')}`, code, with: together, others };
         }),
       },
     });
@@ -114,15 +124,31 @@ for (const [name, viewport] of [
     await page.getByRole('radio', { name: 'List' }).click();
     await expect(page.getByRole('list', { name: 'Shifts' })).toBeVisible();
     await shot('6b-shifts-list');
+    // Everyone there, not only on the same shift: a late shift's day.
+    await page.getByRole('radio', { name: 'Calendar' }).click();
+    await page.getByRole('button', { name: 'Everyone there' }).click();
+    await page.getByRole('group', { name: 'Calendar' }).getByRole('button', { name: /^3 / }).click();
+    await expect(page.locator('.cal-detail').getByRole('list', { name: 'Everyone there' })).toBeVisible();
+    await shot('6c-shifts-everyone');
+    await page.getByRole('button', { name: 'Everyone there' }).click();
     await page.getByRole('link', { name: 'Edit by hand' }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
+    // This month's 締め申請通知 changed: only the last day.
+    await page.getByRole('button', { name: 'Remove closing day 1' }).click();
+    await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
+    await shot('7a-shift-edit-closing');
+    await page.goto('/app/#/shifts/calendar');
+    await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
+    await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
+    await shot('7a2-google-calendar');
 
     // The bus alarm: first time, then with a stop chosen.
     await page.getByRole('link', { name: 'Bus', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
     await shot('7b-bus-setup');
     expect((await page.request.put('/api/bus/stop', { data: { name: '葵西小学校入口', lat: 34.76966, lng: 137.71207, alert_meters: 800 } })).status()).toBe(200);
+    expect((await page.request.post('/api/bus/stops', { data: { name: '静岡駅', lat: 34.9717, lng: 138.3889, shifts: ['Early', 'Middle'] } })).status()).toBe(201);
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');

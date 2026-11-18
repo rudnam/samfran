@@ -3,9 +3,12 @@ package com.rudnam.samfran.feature.shifts
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.testing.Samples
 import org.junit.Rule
 import org.junit.Test
@@ -34,6 +37,7 @@ class ShiftsScreenshotTest {
     private val actions = object : ShiftsActions {
         override fun showMonth(month: YearMonth) {}
         override fun setList(list: Boolean) {}
+        override fun setEveryone(on: Boolean) {}
         override fun pick(date: LocalDate) {}
         override fun readPhoto(uri: Uri) {}
         override fun refresh() {}
@@ -45,6 +49,10 @@ class ShiftsScreenshotTest {
         override fun editWith(date: LocalDate?) {}
         override fun setWith(date: LocalDate, text: String) {}
         override fun toggleName(name: String) {}
+        override fun setClosing(index: Int, day: Int) {}
+        override fun addClosing() {}
+        override fun removeClosing(index: Int) {}
+        override fun usualClosing() {}
         override fun save() {}
     }
     private val settings = object : ShiftSettingsActions {
@@ -86,7 +94,23 @@ class ShiftsScreenshotTest {
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
 
     @Test
-    fun reading() = shot("reading") { ShiftsScreen(month.copy(reading = true), actions, {}, {}, {}, {}) }
+    fun reading() = shot("reading") {
+        ShiftsScreen(month.copy(progress = ReadProgress.Reading("オトル サマンタ", daysRead = 12, daysInMonth = 30)), actions, {}, {}, {}, {})
+    }
+
+    /** Everyone there during the picked shift (a 13F), not only those on the same one. */
+    @Test
+    fun everyone() = shot("everyone") { ShiftsScreen(month.copy(everyone = true), actions, {}, {}, {}, {}) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun everyoneJapanese() = shot("everyone-ja") { ShiftsScreen(month.copy(everyone = true), actions, {}, {}, {}, {}) }
+
+    /** An early shift: the night shift from the day before is still there. */
+    @Test
+    fun everyoneNightBefore() = shot("everyone-night-before") {
+        ShiftsScreen(month.copy(everyone = true, picked = LocalDate.of(2026, 11, 15)), actions, {}, {}, {}, {})
+    }
 
     @Test
     fun emptyMonth() = shot("empty") {
@@ -101,6 +125,21 @@ class ShiftsScreenshotTest {
             ShiftEditorUiState(read.month, base = read, codes = read.days.associate { it.date to it.code }, focused = LocalDate.of(2026, 11, 3)),
             editor, {},
         )
+    }
+
+    /** This month's own 締め申請通知 days, at the bottom of the editor. */
+    @Test
+    fun closingDaysForTheMonth() {
+        compose.setContent {
+            SamFranTheme {
+                ShiftEditorScreen(
+                    ShiftEditorUiState(read.month, base = read.copy(nameAsRead = null), codes = read.days.associate { it.date to it.code }, closing = listOf(20, 30), closingChanged = true),
+                    editor, {},
+                )
+            }
+        }
+        compose.onNodeWithText("+ Day").performScrollTo()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/shifts-edit-closing.png")
     }
 
     @Test
@@ -170,9 +209,21 @@ class ShiftsScreenshotTest {
     )
 
     @Test
-    fun shiftSettings() = shot("settings") { ShiftSettingsScreen(settingsState, settings, {}, {}, {}) }
+    fun shiftSettings() = shot("settings") { ShiftSettingsScreen(settingsState, settings, {}, {}) }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
-    fun shiftSettingsJapanese() = shot("settings-ja") { ShiftSettingsScreen(settingsState, settings, {}, {}, {}) }
+    fun shiftSettingsJapanese() = shot("settings-ja") { ShiftSettingsScreen(settingsState, settings, {}, {}) }
+
+    @Test
+    fun googleCalendar() = shot("google-calendar") { ShiftCalendarLinkScreen(settingsState, settings, {}, {}, {}) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun googleCalendarJapanese() = shot("google-calendar-ja") { ShiftCalendarLinkScreen(settingsState, settings, {}, {}, {}) }
+
+    @Test
+    fun googleCalendarOff() = shot("google-calendar-off") {
+        ShiftCalendarLinkScreen(settingsState.copy(settings = Samples.settings, feedUrl = ""), settings, {}, {}, {})
+    }
 }

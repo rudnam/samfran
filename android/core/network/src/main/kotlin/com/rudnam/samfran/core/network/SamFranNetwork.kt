@@ -3,8 +3,9 @@ package com.rudnam.samfran.core.network
 import com.rudnam.samfran.core.network.model.NetworkActivity
 import com.rudnam.samfran.core.network.model.NetworkAppCode
 import com.rudnam.samfran.core.network.model.NetworkAuthOptions
-import com.rudnam.samfran.core.network.model.NetworkBusStop
+import com.rudnam.samfran.core.network.model.NetworkBusStops
 import com.rudnam.samfran.core.network.model.NetworkBusStopInput
+import com.rudnam.samfran.core.network.model.NetworkBuzz
 import com.rudnam.samfran.core.network.model.NetworkCredentials
 import com.rudnam.samfran.core.network.model.NetworkDemo
 import com.rudnam.samfran.core.network.model.NetworkDownloads
@@ -17,6 +18,7 @@ import com.rudnam.samfran.core.network.model.NetworkLookupResult
 import com.rudnam.samfran.core.network.model.NetworkMcpToken
 import com.rudnam.samfran.core.network.model.NetworkMe
 import com.rudnam.samfran.core.network.model.NetworkName
+import com.rudnam.samfran.core.network.model.NetworkReadProgress
 import com.rudnam.samfran.core.network.model.NetworkReadStarted
 import com.rudnam.samfran.core.network.model.NetworkNewVisit
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
@@ -104,8 +106,12 @@ internal interface SamFranApi {
     suspend fun startRead(@Part photo: MultipartBody.Part): NetworkReadStarted
     @GET("api/shifts/reads/{id}") suspend fun readStatus(@Path("id") id: String): Response<ResponseBody>
 
-    @GET("api/bus/stop") suspend fun busStop(): NetworkBusStop
-    @PUT("api/bus/stop") suspend fun saveBusStop(@Body body: NetworkBusStopInput): NetworkBusStop
+    @GET("api/bus/stops") suspend fun busStops(): NetworkBusStops
+    @POST("api/bus/stops") suspend fun addBusStop(@Body body: NetworkBusStopInput): NetworkBusStops
+    @PUT("api/bus/stops/{id}") suspend fun changeBusStop(@Path("id") id: Long, @Body body: NetworkBusStopInput): NetworkBusStops
+    @DELETE("api/bus/stops/{id}") suspend fun deleteBusStop(@Path("id") id: Long): NetworkBusStops
+    @POST("api/bus/stops/{id}/use") suspend fun useBusStop(@Path("id") id: Long): NetworkBusStops
+    @PUT("api/bus/buzz") suspend fun setBuzz(@Body body: NetworkBuzz): NetworkBusStops
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
 
     @GET("api/activity") suspend fun activity(): List<NetworkActivity>
@@ -165,9 +171,10 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     /**
      * Reads a photo of the sheet (a JPEG); nothing is saved until [saveShifts].
      * Reading takes about a minute, longer than one request may last behind
-     * the CDN, so this starts the read and asks after it until it's done.
+     * the CDN, so this starts the read and asks after it until it's done,
+     * telling [onProgress] how far it's got.
      */
-    suspend fun readPhoto(jpeg: ByteArray): NetworkShiftMonth = call {
+    suspend fun readPhoto(jpeg: ByteArray, onProgress: (NetworkReadProgress) -> Unit = {}): NetworkShiftMonth = call {
         val id = api.startRead(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType()))).id
         // The server gives up after 3 minutes; this waits a little longer.
         val until = System.currentTimeMillis() + 5 * 60_000
@@ -182,7 +189,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
                 continue
             }
             if (res.code() == 202) {
-                res.body()?.close()
+                val body = res.body()?.use { it.string() }
+                body?.let { runCatching { json.decodeFromString<NetworkReadProgress>(it) }.getOrNull() }?.let(onProgress)
                 continue
             }
             if (!res.isSuccessful) throw HttpException(res)
@@ -191,8 +199,12 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
         throw ApiException(504, "the photo couldn't be read just now; try again, or enter the shifts by hand")
     }
 
-    suspend fun busStop() = call { api.busStop() }
-    suspend fun saveBusStop(body: NetworkBusStopInput) = call { api.saveBusStop(body) }
+    suspend fun busStops() = call { api.busStops() }
+    suspend fun addBusStop(body: NetworkBusStopInput) = call { api.addBusStop(body) }
+    suspend fun changeBusStop(id: Long, body: NetworkBusStopInput) = call { api.changeBusStop(id, body) }
+    suspend fun deleteBusStop(id: Long) = call { api.deleteBusStop(id) }
+    suspend fun useBusStop(id: Long) = call { api.useBusStop(id) }
+    suspend fun setBuzz(buzz: String) = call { api.setBuzz(NetworkBuzz(buzz)) }
     suspend fun searchStops(q: String, lat: Double?, lng: Double?) = call { api.searchStops(q, lat, lng) }
 
     suspend fun activity() = call { api.activity() }
