@@ -13,18 +13,6 @@ else {
     translate();
   });
   offerDownload();
-  offerDemo();
-}
-
-// "Try the demo" shows while the server offers one (DEMO).
-function offerDemo() {
-  fetch('/api/auth/options')
-    .then((r) => (r.ok ? r.json() : null))
-    .then((o: { demo?: boolean } | null) => {
-      if (!o?.demo) return;
-      document.querySelectorAll<HTMLAnchorElement>('[data-demo]').forEach((a) => (a.hidden = false));
-    })
-    .catch(() => {}); // without it, the page simply has no demo button
 }
 
 // "Download for Android" shows while the server offers the APK (ANDROID_APK).
@@ -48,10 +36,6 @@ function translate() {
   document.querySelectorAll<HTMLElement>('[data-ja]').forEach((el) => {
     el.dataset.en ??= el.innerHTML;
     el.innerHTML = ja ? el.dataset.ja! : el.dataset.en;
-  });
-  document.querySelectorAll<HTMLElement>('[data-ja-label]').forEach((el) => {
-    el.dataset.enLabel ??= el.getAttribute('aria-label') ?? '';
-    el.setAttribute('aria-label', ja ? el.dataset.jaLabel! : el.dataset.enLabel);
   });
   document.documentElement.lang = ja ? 'ja' : 'en';
   const description = document.querySelector<HTMLMetaElement>('meta[data-ja-content]');

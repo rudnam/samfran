@@ -1,105 +1,63 @@
-/* The introduction page (landing.html), in the app's colours, type and
-   icons: a top bar, the hero with a drawn preview of the app, what's in
-   it, and a footer. One column on a phone, two from a tablet up. */
+/* The introduction page (landing.html): just the mark, the name, and the
+   way in, centred on a warm page in the app's colours and type. */
 .landing {
-  background:
-    radial-gradient(60rem 36rem at 85% -10%, color-mix(in srgb, var(--highlight) 75%, transparent), transparent 70%),
-    radial-gradient(40rem 30rem at -10% 110%, color-mix(in srgb, var(--a-bg) 60%, transparent), transparent 70%),
-    var(--bg);
   min-height: 100vh;
   min-height: 100dvh;
-}
-.landing .lp-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
-.landing svg:not(.lp-sprite) { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.landing main, .lp-top, .lp-foot { max-width: 1080px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
-
-/* Top bar */
-.lp-top { display: flex; align-items: center; justify-content: space-between; padding-top: 18px; padding-top: max(18px, env(safe-area-inset-top)); }
-.lp-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: -0.02em; }
-.lp-brand img { border-radius: 10px; }
-button.lp-lang {
-  background: color-mix(in srgb, var(--surface) 70%, transparent); color: var(--text); box-shadow: var(--shadow);
-  padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 0.875rem;
-}
-@media (hover: hover) { button.lp-lang:hover:not(:disabled) { background: var(--surface); filter: none; } }
-
-/* Hero */
-.lp-hero { display: grid; gap: 40px; padding: 36px 0 24px; align-items: center; }
-.lp-kicker {
-  display: inline-block; margin: 0 0 14px; padding: 5px 12px; border-radius: 999px;
-  background: var(--highlight); color: var(--accent-ink); font-weight: 700; font-size: 0.8125rem; letter-spacing: 0.01em;
-}
-.lp-hero h1 {
-  font-family: var(--display); font-weight: 800; font-size: clamp(2.1rem, 7.5vw, 3.4rem); line-height: 1.06;
-  letter-spacing: -0.035em; margin: 0; text-wrap: balance;
-}
-.lp-accent { color: var(--accent-ink); }
-.lp-lead { color: var(--muted); font-size: 1.0625rem; line-height: 1.6; margin: 18px 0 0; max-width: 34rem; text-wrap: pretty; }
-.lp-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-.lp-actions .button { padding: 14px 22px; border-radius: 14px; font-size: 1rem; }
-.lp-actions .lp-primary { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent); }
-@media (max-width: 480px) { .lp-actions .button { flex: 1 1 100%; } }
-
-/* The drawn preview: the places list, with the next shift and the bus alarm laid over it. */
-.lp-preview { position: relative; padding: 44px 0 52px; max-width: 420px; width: 100%; justify-self: center; }
-.lp-card { background: var(--surface); border-radius: 22px; box-shadow: var(--shadow-lift); }
-.lp-places { padding: 16px 16px 8px; transform: rotate(-1.5deg); }
-.lp-card-head { display: flex; align-items: center; justify-content: space-between; font-weight: 800; font-size: 0.95rem; padding: 0 4px 10px; }
-.lp-places ul { list-style: none; margin: 0; padding: 0; }
-.lp-places li { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid var(--divider); }
-.lp-places li:first-child { border-top: 0; }
-.lp-places em { font-style: normal; font-weight: 700; font-size: 0.8125rem; color: var(--accent-ink); white-space: nowrap; }
-.lp-row { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
-.lp-row b { font-size: 0.95rem; }
-.lp-row small { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lp-star { color: var(--star); font-weight: 700; }
-.lp-shift, .lp-bus { position: absolute; display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 12px; }
-.lp-shift { right: -6px; top: 0; transform: rotate(2.5deg); }
-.lp-bus { left: -6px; bottom: 0; transform: rotate(-1.5deg); }
-@media (max-width: 480px) { .lp-shift { right: 0; } .lp-bus { left: 0; } }
-.lp-shift b, .lp-bus b { font-size: 0.9rem; white-space: nowrap; }
-
-/* The app's category tiles (styles.css .tile.cat-*), and the other features' colours. */
-.lp-tile { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex: none; }
-.t-eat { background: var(--tile-orange); color: var(--tile-orange-ink); }
-.t-nature { background: var(--tile-green); color: var(--tile-green-ink); }
-.t-culture { background: var(--tile-red); color: var(--tile-red-ink); }
-.t-relax { background: var(--b-bg); color: var(--b-text); }
-.t-shift { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
-.t-bus { background: var(--a-bg); color: var(--a-text); }
-
-/* What's in it */
-.lp-features { display: grid; gap: 14px; padding: 56px 0 24px; }
-.lp-features article { background: color-mix(in srgb, var(--surface) 80%, transparent); border-radius: 22px; box-shadow: var(--shadow); padding: 22px; }
-.lp-features h2 { font-family: var(--display); font-weight: 800; font-size: 1.2rem; letter-spacing: -0.02em; margin: 16px 0 6px; }
-.lp-features p { color: var(--muted); line-height: 1.6; margin: 0; font-size: 0.95rem; }
-
-/* Footer */
-.lp-foot {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 0.875rem; color: var(--muted);
-  padding-top: 28px; padding-bottom: 40px; padding-bottom: max(40px, env(safe-area-inset-bottom));
-}
-.lp-foot a { color: var(--muted); }
-.lp-foot-brand { display: inline-flex; align-items: center; gap: 8px; }
-.lp-heart { width: 18px !important; height: 18px !important; color: var(--accent-ink); }
-
-/* Wider: the copy beside the preview, and the features in a row. */
-@media (min-width: 840px) {
-  .lp-hero { grid-template-columns: 1.1fr 1fr; gap: 56px; padding: 72px 0 40px; }
-  .lp-preview { justify-self: end; }
-  .lp-features { grid-template-columns: repeat(3, 1fr); padding-top: 72px; }
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(42rem 30rem at 50% 38%, color-mix(in srgb, var(--highlight) 70%, transparent), transparent 70%),
+    var(--bg);
 }
 
-/* Coming in */
-.lp-copy > *, .lp-preview > *, .lp-features article { animation: rise-in 0.6s var(--ease-out) both; }
-.lp-copy > :nth-child(2) { animation-delay: 60ms; }
-.lp-copy > :nth-child(3) { animation-delay: 120ms; }
-.lp-copy > :nth-child(4) { animation-delay: 180ms; }
-.lp-preview > :nth-child(1) { animation-delay: 120ms; }
-.lp-preview > :nth-child(2) { animation-delay: 300ms; }
-.lp-preview > :nth-child(3) { animation-delay: 420ms; }
-.lp-features article:nth-child(2) { animation-delay: 80ms; }
-.lp-features article:nth-child(3) { animation-delay: 160ms; }
-@media (prefers-reduced-motion: reduce) {
-  .lp-copy > *, .lp-preview > *, .lp-features article { animation: none; }
+.intro {
+  flex: 1;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: 48px 24px 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
+
+/* The icon, on a soft halo. */
+.intro-mark { position: relative; margin-bottom: 26px; }
+.intro-mark::before {
+  content: ''; position: absolute; inset: -18px; border-radius: 40px;
+  background: color-mix(in srgb, var(--accent) 14%, transparent); filter: blur(18px);
+}
+.intro-mark img {
+  position: relative; display: block; width: 88px; height: 88px; border-radius: 24px;
+  box-shadow: 0 1px 2px rgba(74, 46, 16, 0.08), 0 12px 32px rgba(74, 46, 16, 0.18);
+}
+
+.intro h1 {
+  font-family: var(--display); font-weight: 800; font-size: 2.5rem; line-height: 1.05;
+  letter-spacing: -0.04em; margin: 0;
+}
+.intro-line { color: var(--muted); font-size: 1.0625rem; margin: 10px 0 0; }
+
+.intro-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 36px; }
+.intro-actions .button { padding: 14px 22px; border-radius: 14px; font-size: 1rem; }
+.intro-primary { box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 28%, transparent); }
+
+.intro-foot {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 24px 24px 32px; padding-bottom: max(32px, env(safe-area-inset-bottom));
+  font-size: 0.875rem; color: var(--muted);
+}
+.intro-foot a { color: var(--muted); text-decoration: none; }
+.intro-foot a:hover { color: var(--text); }
+button.intro-lang { background: none; color: var(--muted); padding: 4px 6px; border-radius: 8px; font-weight: 500; font-size: 0.875rem; }
+@media (hover: hover) { button.intro-lang:hover:not(:disabled) { background: none; color: var(--text); filter: none; } }
+
+/* Coming in, one after another. */
+.intro > *, .intro-foot { animation: rise-in 0.6s var(--ease-out) both; }
+.intro > :nth-child(2) { animation-delay: 70ms; }
+.intro > :nth-child(3) { animation-delay: 140ms; }
+.intro > :nth-child(4) { animation-delay: 210ms; }
+.intro-foot { animation-delay: 300ms; }
