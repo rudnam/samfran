@@ -2,6 +2,8 @@ package com.rudnam.samfran.core.data
 
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
+import com.rudnam.samfran.core.model.ReadProgress
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
@@ -9,6 +11,7 @@ import com.rudnam.samfran.core.model.ShiftSettings
 import com.rudnam.samfran.core.model.homeShift
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.Server
+import com.rudnam.samfran.core.network.model.NetworkCoworker
 import com.rudnam.samfran.core.network.model.NetworkNameFix
 import com.rudnam.samfran.core.network.model.NetworkSaveShifts
 import com.rudnam.samfran.core.network.model.NetworkShiftCode
@@ -54,10 +57,12 @@ interface ShiftsRepository {
         with: Map<LocalDate, List<String>> = emptyMap(),
         corrections: Map<String, String> = emptyMap(),
         closingDays: List<Int>? = null,
+        /** Others at work around each day, as read or saved; the server keeps those who overlap. */
+        others: Map<LocalDate, List<ShiftCoworker>> = emptyMap(),
     ): Outcome<ShiftMonth>
 
-    /** Reads a photo of the sheet; nothing is saved. The answer waits in [pendingRead] for the editor. */
-    suspend fun readPhoto(jpeg: ByteArray): Outcome<ShiftMonth>
+    /** Reads a photo of the sheet, telling [onProgress] how far it's got; nothing is saved. The answer waits in [pendingRead] for the editor. */
+    suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit = {}): Outcome<ShiftMonth>
 
     /** The photo reader's answer, taken once by the editor. */
     fun takePendingRead(month: YearMonth): ShiftMonth?
@@ -124,9 +129,23 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         return homeShift(current.days, now)
     }
 
-    override suspend fun save(month: YearMonth, codes: Map<LocalDate, String>, with: Map<LocalDate, List<String>>, corrections: Map<String, String>, closingDays: List<Int>?) = outcome(io) {
+    override suspend fun save(
+        month: YearMonth,
+        codes: Map<LocalDate, String>,
+        with: Map<LocalDate, List<String>>,
+        corrections: Map<String, String>,
+        closingDays: List<Int>?,
+        others: Map<LocalDate, List<ShiftCoworker>>,
+    ) = outcome(io) {
         val days = codes.entries.sortedBy { it.key }.mapNotNull { (date, code) ->
-            code.takeIf { it.isNotBlank() }?.let { NetworkShiftCode(date.toString(), it, with[date]?.takeIf(List<String>::isNotEmpty)) }
+            code.takeIf { it.isNotBlank() }?.let {
+                NetworkShiftCode(
+                    date.toString(),
+                    it,
+                    with[date]?.takeIf(List<String>::isNotEmpty),
+                    others[date]?.takeIf(List<ShiftCoworker>::isNotEmpty)?.map { o -> NetworkCoworker(o.name, o.code, o.dayOffset) },
+                )
+            }
         }
         val fixes = corrections.map { (from, to) -> NetworkNameFix(from, to) }.takeIf { it.isNotEmpty() }
         val saved = network.saveShifts(NetworkSaveShifts(month.toString(), days, fixes, closingDays))
@@ -136,7 +155,10 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
         saved.asModel()
     }
 
-    override suspend fun readPhoto(jpeg: ByteArray) = outcome(io) { network.readPhoto(jpeg).asModel() }.also {
+    override suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit) = outcome(io) {
+        onProgress(ReadProgress.Sending)
+        network.readPhoto(jpeg) { p -> onProgress(ReadProgress.Reading(p.nameAsRead, p.daysRead, p.daysInMonth)) }.asModel()
+    }.also {
         pending = (it as? Outcome.Done)?.value
     }
 

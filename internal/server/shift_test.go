@@ -27,6 +27,12 @@ func (f *fakeReader) Read(_ context.Context, image []byte, mediaType, name strin
 	}
 	s.Days[1].With = []string{" タナカ  ユイ ", "スズキ ケン", "スズキ ケン", ""} // tidied: one space, no repeats or blanks
 	s.Days[2].With = []string{"サトウ ミホ"}                            // a day off: nobody kept
+	// Others around 13:00–22:00 on the 2nd: one there, one gone by then, one
+	// night shift from the day before that's over, and one also in With.
+	s.Days[1].Others = []shift.Coworker{{Name: "ヤマダ ハナ", Code: "9F"}, {Name: "コバヤシ リク", Code: "7D"},
+		{Name: "ヨル タロウ", Code: "22F", DayOffset: -1}, {Name: "スズキ ケン", Code: "9F"}}
+	// The night shift on the 4th runs into the 5th's early morning.
+	s.Days[3].Others = []shift.Coworker{{Name: "アサ ミキ", Code: "6D", DayOffset: 1}, {Name: "ナカ", Code: "17D"}}
 	// A shift with a small 有休 under it: taken as leave, so nobody's with her.
 	s.Days = append(s.Days, shift.SheetDay{Day: 5, Code: "9D", Note: "有休", With: []string{"サトウ ミホ"}})
 	return s, nil
@@ -45,6 +51,11 @@ type monthJSON struct {
 		Date, Code, Kind, Label, Problem string
 		Start, End                       string
 		With                             []string
+		Others                           []struct {
+			Name, Code string
+			DayOffset  int `json:"day_offset"`
+			Start, End string
+		}
 	}
 	ClosingDays   []int  `json:"closing_days"`
 	ClosingCustom bool   `json:"closing_custom"`
@@ -94,12 +105,32 @@ func TestShifts(t *testing.T) {
 	if w := m.Days[1].With; len(w) != 2 || w[0] != "タナカ ユイ" || w[1] != "スズキ ケン" || m.Days[2].With != nil {
 		t.Errorf("who's on the same shift: %+v", m.Days)
 	}
+	if o := m.Days[1].Others; len(o) != 1 || o[0].Name != "ヤマダ ハナ" || !strings.HasPrefix(o[0].Start, "2026-11-02T09:00:00+09:00") {
+		t.Errorf("others there on the 2nd: %+v", o)
+	}
+	if o := m.Days[3].Others; len(o) != 2 || o[0].Name != "ナカ" || o[1].Name != "アサ ミキ" || o[1].DayOffset != 1 || !strings.HasPrefix(o[1].Start, "2026-11-05T06:00:00+09:00") {
+		t.Errorf("others there on the night of the 4th: %+v", o)
+	}
 	if d := m.Days[4]; d.Code != "有休" || d.Kind != "leave" || d.Start != "" || d.With != nil || !strings.Contains(m.Notes, "5 (9D)") {
 		t.Errorf("9D with 有休 under it: %+v, notes %q", d, m.Notes)
 	}
 	var saved monthJSON
 	if c.do("GET", "/api/shifts?month=2026-11", nil, &saved); len(saved.Days) != 0 {
 		t.Fatalf("reading stored days: %+v", saved.Days)
+	}
+
+	// Others sent back are kept if they overlap the day's shift as saved.
+	others := []map[string]any{{"name": "ヤマダ ハナ", "code": "9F"}, {"name": "ヨル", "code": "22F", "day_offset": -1}, {"name": "ヤスミ", "code": "普"}}
+	if code := c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": "13F", "others": others}}}, &saved); code != 200 ||
+		len(saved.Days[0].Others) != 1 || saved.Days[0].Others[0].Name != "ヤマダ ハナ" {
+		t.Fatalf("save with others: %d %+v", code, saved)
+	}
+	if c.do("GET", "/api/shifts?month=2026-11", nil, &saved); len(saved.Days[0].Others) != 1 {
+		t.Fatalf("others as stored: %+v", saved.Days)
+	}
+	// Changed to an early shift, the same others aren't there any more but the night before is.
+	if c.do("PUT", "/api/shifts/month", map[string]any{"month": "2026-11", "days": []map[string]any{{"date": "2026-11-02", "code": "5A", "others": others}}}, &saved); len(saved.Days[0].Others) != 1 || saved.Days[0].Others[0].Name != "ヨル" {
+		t.Fatalf("others for 5A: %+v", saved.Days)
 	}
 
 	// Saving, with a fix, replaces the month.
@@ -208,6 +239,9 @@ type slowReader struct {
 }
 
 func (s *slowReader) Read(ctx context.Context, image []byte, mediaType, name string, m shift.Month) (shift.Sheet, error) {
+	if m.Progress != nil {
+		m.Progress(shift.Progress{NameAsRead: name, DaysRead: 12, DaysInMonth: 30})
+	}
 	<-s.letGo
 	return s.fakeReader.Read(ctx, image, mediaType, name, m)
 }
@@ -230,9 +264,24 @@ func TestShiftReadInBackground(t *testing.T) {
 	if code := uploadTo(t, c, "/api/shifts/reads", &started); code != 202 || started.ID == "" {
 		t.Fatalf("start: %d %+v", code, started)
 	}
-	var status struct{ Status string }
-	if code := c.do("GET", "/api/shifts/reads/"+started.ID, nil, &status); code != 202 || status.Status != "reading" {
-		t.Fatalf("while reading: %d %+v", code, status)
+	// While it's read, it says how far it's got.
+	var status struct {
+		Status      string
+		NameAsRead  string `json:"name_as_read"`
+		DaysRead    int    `json:"days_read"`
+		DaysInMonth int    `json:"days_in_month"`
+	}
+	for range 100 {
+		if code := c.do("GET", "/api/shifts/reads/"+started.ID, nil, &status); code != 202 || status.Status != "reading" {
+			t.Fatalf("while reading: %d %+v", code, status)
+		}
+		if status.DaysRead > 0 {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if status.NameAsRead != "オトル サマンタ" || status.DaysRead != 12 || status.DaysInMonth != 30 {
+		t.Errorf("progress: %+v", status)
 	}
 	// Another space can't see it.
 	other := newClient(t, ts)

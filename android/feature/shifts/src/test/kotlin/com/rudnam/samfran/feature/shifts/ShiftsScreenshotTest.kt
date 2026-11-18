@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.testing.Samples
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +37,7 @@ class ShiftsScreenshotTest {
     private val actions = object : ShiftsActions {
         override fun showMonth(month: YearMonth) {}
         override fun setList(list: Boolean) {}
+        override fun setEveryone(on: Boolean) {}
         override fun pick(date: LocalDate) {}
         override fun readPhoto(uri: Uri) {}
         override fun refresh() {}
@@ -92,7 +94,23 @@ class ShiftsScreenshotTest {
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
 
     @Test
-    fun reading() = shot("reading") { ShiftsScreen(month.copy(reading = true), actions, {}, {}, {}, {}) }
+    fun reading() = shot("reading") {
+        ShiftsScreen(month.copy(progress = ReadProgress.Reading("オトル サマンタ", daysRead = 12, daysInMonth = 30)), actions, {}, {}, {}, {})
+    }
+
+    /** Everyone there during the picked shift (a 13F), not only those on the same one. */
+    @Test
+    fun everyone() = shot("everyone") { ShiftsScreen(month.copy(everyone = true), actions, {}, {}, {}, {}) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun everyoneJapanese() = shot("everyone-ja") { ShiftsScreen(month.copy(everyone = true), actions, {}, {}, {}, {}) }
+
+    /** An early shift: the night shift from the day before is still there. */
+    @Test
+    fun everyoneNightBefore() = shot("everyone-night-before") {
+        ShiftsScreen(month.copy(everyone = true, picked = LocalDate.of(2026, 11, 15)), actions, {}, {}, {}, {})
+    }
 
     @Test
     fun emptyMonth() = shot("empty") {

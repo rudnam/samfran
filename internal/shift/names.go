@@ -88,17 +88,23 @@ func Resolve(name string, fixes map[string]string, known []string) string {
 func applyNames(sheet *Sheet, fixes map[string]string, known []string) []string {
 	var changes []string
 	seen := map[string]bool{}
+	resolve := func(n string) string {
+		to := Resolve(n, fixes, known)
+		if nameKey(to) == nameKey(n) && to == strings.Join(strings.Fields(n), " ") {
+			return n
+		}
+		if c := n + " → " + to; !seen[c] && nameKey(to) != nameKey(n) {
+			seen[c] = true
+			changes = append(changes, c)
+		}
+		return to
+	}
 	for i := range sheet.Days {
 		for j, n := range sheet.Days[i].With {
-			to := Resolve(n, fixes, known)
-			if nameKey(to) == nameKey(n) && to == strings.Join(strings.Fields(n), " ") {
-				continue
-			}
-			sheet.Days[i].With[j] = to
-			if c := n + " → " + to; !seen[c] && nameKey(to) != nameKey(n) {
-				seen[c] = true
-				changes = append(changes, c)
-			}
+			sheet.Days[i].With[j] = resolve(n)
+		}
+		for j, o := range sheet.Days[i].Others {
+			sheet.Days[i].Others[j].Name = resolve(o.Name)
 		}
 	}
 	return changes
@@ -151,6 +157,8 @@ func (s *Store) knownNames(ctx context.Context, spaceID int64) ([]string, error)
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT name FROM (
 			SELECT unnest(coworkers) AS name, max(day)::timestamptz AS at FROM shifts WHERE space_id = $1 GROUP BY 1
+			UNION ALL
+			SELECT o->>'name', max(day)::timestamptz FROM shifts, jsonb_array_elements(others) o WHERE space_id = $1 GROUP BY 1
 			UNION ALL
 			SELECT name, updated_at FROM shift_name_fixes WHERE space_id = $1
 		) n GROUP BY name ORDER BY max(at) DESC LIMIT $2`, spaceID, maxKnown)

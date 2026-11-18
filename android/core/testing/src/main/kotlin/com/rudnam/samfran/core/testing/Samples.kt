@@ -13,6 +13,7 @@ import com.rudnam.samfran.core.model.ShiftCodes
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
+import com.rudnam.samfran.core.model.ShiftThere
 import com.rudnam.samfran.core.model.Space
 import com.rudnam.samfran.core.model.Visit
 import com.rudnam.samfran.core.model.VisitNote
@@ -86,6 +87,12 @@ object Samples {
         return ShiftDay(day, code, m.kind, m.label, start, end, m.problem)
     }
 
+    /** Someone else there around [date], on [code] that day or the day before/after ([offset]). */
+    fun there(name: String, code: String, date: String, offset: Int = 0): ShiftThere {
+        val d = day(d(date).plusDays(offset.toLong()).toString(), code)
+        return ShiftThere(name, code, offset, d.start, d.end)
+    }
+
     val november = ShiftMonth(
         YearMonth.of(2026, 11),
         settings,
@@ -99,8 +106,13 @@ object Samples {
             day("2026-11-$dd", code).let { d ->
                 // Others with the same code that day, as the photo reader lists them.
                 when (code) {
-                    "13F" -> d.copy(with = listOf("タナカ ユイ"))
-                    "22F" -> d.copy(with = listOf("スズキ ケン", "ヤマモト アオイ"))
+                    // And others on other shifts whose hours overlap it.
+                    "13F" -> d.copy(
+                        with = listOf("タナカ ユイ"),
+                        others = listOf(there("ヤマダ ハナ", "9F", "2026-11-$dd"), there("サトウ ミオ", "17F", "2026-11-$dd")),
+                    )
+                    "22F" -> d.copy(with = listOf("スズキ ケン", "ヤマモト アオイ"), others = listOf(there("アサ ミキ", "6F", "2026-11-$dd", offset = 1)))
+                    "7F" -> d.copy(others = listOf(there("ヨル タロウ", "23F", "2026-11-$dd", offset = -1)))
                     else -> d
                 }
             }

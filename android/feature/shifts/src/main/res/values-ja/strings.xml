@@ -21,7 +21,15 @@
     <string name="nothing_entered">未入力</string>
     <string name="read_photo">勤務表の写真を読み込む</string>
     <string name="reading_sheet">勤務表を読んでいます…</string>
-    <string name="reading_hint">1分ほどかかることがあります。写真は保存されません。</string>
+    <string name="reading_hint">ふつう1分ほどかかります。</string>
+    <string name="sending_photo">写真を送っています</string>
+    <string name="finding_row">勤務表から行を探しています</string>
+    <string name="found_on_sheet">勤務表で%sを見つけました</string>
+    <string name="reading_days">日ごとに読んでいます</string>
+    <string name="reading_days_of">日ごとに読んでいます: %1$d/%2$d日</string>
+    <string name="everyone_there">同じ時間帯の人</string>
+    <string name="n_there">ほか%d人</string>
+    <string name="you">あなた</string>
     <string name="take_photo">写真を撮る</string>
     <string name="choose_photo">写真を選ぶ</string>
     <string name="edit_by_hand">手で編集</string>
