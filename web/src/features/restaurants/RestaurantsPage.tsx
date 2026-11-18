@@ -1,10 +1,12 @@
 // The list: places you've been (latest visit first) and places you want to go,
-// all of them or one category's, newest or nearest first, as a list or on a map.
-import { useEffect, useMemo, useRef, useState } from 'react';
+// all of them or one category's, newest, nearest, best rated or A–Z first, as a
+// list or on a map.
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
 import { t, tn } from '../../i18n';
+import { locale } from '../../language';
 import { href } from '../../router';
 import { personTone, useSpace } from '../../space';
 import { categories, categoryName, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
@@ -17,6 +19,40 @@ export type Tab = 'been' | 'want';
 const filterKey = 'places.category';
 const sortKey = 'places.sort';
 const viewKey = 'places.view';
+
+/** The ways to order the list, in the menu's order. */
+const sorts = ['newest', 'nearby', 'rated', 'name'] as const;
+type Sort = (typeof sorts)[number];
+
+function sortName(s: Sort): string {
+  switch (s) {
+    case 'newest':
+      return t('Newest');
+    case 'nearby':
+      return t('Nearby');
+    case 'rated':
+      return t('Top rated');
+    case 'name':
+      return t('A–Z');
+  }
+}
+
+/** The average of everyone's stars; null when nobody has rated it. */
+function averageStars(r: Restaurant): number | null {
+  if (r.ratings.length === 0) return null;
+  return r.ratings.reduce((sum, x) => sum + x.stars, 0) / r.ratings.length;
+}
+
+/** Best rated first, the unrated last; ties keep the newest-first order they came in. */
+function byRating(places: Restaurant[]): Restaurant[] {
+  return [...places].sort((a, b) => (averageStars(b) ?? -1) - (averageStars(a) ?? -1));
+}
+
+/** By name, as the language sorts them (Japanese names by their reading order). */
+function byName(places: Restaurant[]): Restaurant[] {
+  const collator = new Intl.Collator(locale(), { numeric: true, sensitivity: 'base' });
+  return [...places].sort((a, b) => collator.compare(a.name, b.name));
+}
 
 /** A choice remembered on this device; def when there's none, or storage is off. */
 function remembered<T extends string>(key: string, options: readonly T[], def: T): T {
@@ -65,13 +101,13 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
     setFilterState(c);
     saveFilter(c);
   };
-  // Newest or nearest first; a list or a map. Both remembered on this device.
-  const [sort, setSortState] = useState(() => remembered(sortKey, ['newest', 'nearby'] as const, 'newest'));
+  // How the list is ordered; a list or a map. Both remembered on this device.
+  const [sort, setSortState] = useState<Sort>(() => remembered(sortKey, sorts, 'newest'));
   const [view, setViewState] = useState(() => remembered(viewKey, ['list', 'map'] as const, 'list'));
   const location = useLocation();
   const { data: map } = useCached('map-key', api.mapKey, errorMessage);
   const mapKey = map?.key ?? '';
-  const setSort = (s: 'newest' | 'nearby') => {
+  const setSort = (s: Sort) => {
     setSortState(s);
     remember(sortKey, s);
     if (s === 'nearby') location.ask();
@@ -105,7 +141,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
   const filtered = onTab.filter((r) => (activeFilter === 'all' || categoryOf(r.category) === activeFilter) && matches(r, query));
   // Where they are, when the list is nearest first.
   const near = sort === 'nearby' ? here : null;
-  const shown = near ? byDistance(near, filtered) : filtered;
+  const shown = near ? byDistance(near, filtered) : sort === 'rated' ? byRating(filtered) : sort === 'name' ? byName(filtered) : filtered;
   const onMap = view === 'map' && mapKey !== '';
   // Search is a button until it's wanted; open while there's something typed.
   const searchable = (list?.length ?? 0) > 4;
@@ -150,15 +186,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                   <Icon name="search" size={20} />
                 </button>
               )}
-              <button
-                type="button"
-                className={`icon-toggle${sort === 'nearby' ? ' on' : ''}`}
-                aria-label={t('Nearby')}
-                aria-pressed={sort === 'nearby'}
-                onClick={() => setSort(sort === 'nearby' ? 'newest' : 'nearby')}
-              >
-                <Icon name="nearby" size={20} />
-              </button>
+              <SortMenu value={sort} onChange={setSort} />
               {mapKey && (
                 <button
                   type="button"
@@ -301,6 +329,60 @@ function noteMatch(r: Restaurant, query: string) {
   return r.visit_notes?.find((v) => v.note.toLowerCase().includes(q));
 }
 
+/** How to order the list: an icon button (filled unless newest first) opening a menu of the ways. */
+function SortMenu({ value, onChange }: { value: Sort; onChange: (s: Sort) => void }) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useDismiss(open, box, () => setOpen(false));
+  return (
+    <div className="cat-menu" ref={box}>
+      <button
+        type="button"
+        className={`icon-toggle${value !== 'newest' ? ' on' : ''}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={t('Order: {name}', { name: sortName(value) })}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name={value === 'nearby' ? 'nearby' : 'sort'} size={20} />
+      </button>
+      {open && (
+        <div className="cat-menu-list end" role="radiogroup" aria-label={t('Order')}>
+          {sorts.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="radio"
+              aria-checked={value === s}
+              onClick={() => {
+                onChange(s);
+                setOpen(false);
+              }}
+            >
+              <span className="grow">{sortName(s)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** While open, a tap outside box or Escape calls close. */
+function useDismiss(open: boolean, box: RefObject<HTMLDivElement | null>, close: () => void) {
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => box.current && !box.current.contains(e.target as Node) && close();
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 /**
  * The category to show (.cat-menu): a button saying which ("All places 5",
  * "Nature 1"), opening a menu of the categories with places on this list.
@@ -319,17 +401,7 @@ function CategoryMenu({
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   // Closes on a tap elsewhere, or Escape.
-  useEffect(() => {
-    if (!open) return;
-    const away = (e: Event) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    document.addEventListener('pointerdown', away);
-    document.addEventListener('keydown', esc);
-    return () => {
-      document.removeEventListener('pointerdown', away);
-      document.removeEventListener('keydown', esc);
-    };
-  }, [open]);
+  useDismiss(open, box, () => setOpen(false));
   const pick = (c: Category | 'all') => {
     onChange(c);
     setOpen(false);
