@@ -437,6 +437,7 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
                 <strong className="block">{s.name || t('Unnamed stop')}</strong>
                 <span className="muted small">
                   {s.shifts.length > 0 ? t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') }) : t('When you pick it')} · {km(s.alert_meters)}
+                  {!s.ask && ` · ${t('No question')}`}
                 </span>
               </div>
               <button type="button" className="secondary" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onChange(s)}>
@@ -538,6 +539,7 @@ function StopForm({
   const [name, setName] = useState(stop?.name ?? '');
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop ? { lat: stop.lat, lng: stop.lng } : null);
   const [shifts, setShifts] = useState<ShiftLabel[]>(stop?.shifts ?? []);
+  const [ask, setAsk] = useState(stop?.ask ?? true);
   const [link, setLink] = useState('');
   const [byName, setByName] = useState(false);
   // What's being searched for: the name as typed, until a stop is picked.
@@ -590,7 +592,7 @@ function StopForm({
     setBusy(true);
     setError('');
     try {
-      const input = { name, lat: pos.lat, lng: pos.lng, alert_meters: meters, shifts };
+      const input = { name, lat: pos.lat, lng: pos.lng, alert_meters: meters, shifts, ask };
       if (stop) {
         onSaved(await api.changeBusStop(stop.id, input));
       } else {
@@ -699,6 +701,21 @@ function StopForm({
       {first && <span className="eyebrow">{t('Step 2 of 2')}</span>}
       <DistancePicker value={meters} onPick={setMeters} />
       {!first && <ShiftPicker value={shifts} onPick={setShifts} name={name} all={all} id={stop?.id} />}
+      {!first && (
+        <div className="field">
+          <span id="stop-ask">{t('Ask when a shift ends')}</span>
+          <div className="chips two" role="radiogroup" aria-labelledby="stop-ask">
+            {[true, false].map((v) => (
+              <button key={String(v)} type="button" role="radio" aria-checked={ask === v} className={ask === v ? 'on' : ''} onClick={() => setAsk(v)}>
+                {v ? t('Ask') : t('Don’t ask')}
+              </button>
+            ))}
+          </div>
+          <span className="hint">
+            {ask ? t('After a shift whose stop this is, the Android app asks “Start bus alarm?”.') : t('Off: no question after shifts whose stop this is.')}
+          </span>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="error">

@@ -476,7 +476,7 @@ private fun AlarmSettings(state: BusUiState, all: BusStops, actions: BusActions,
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
                         val when_ = if (s.shifts.isEmpty()) stringResource(R.string.when_picked) else stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) })
-                        Hint(when_ + " · " + Distances.format(s.alertMeters.toFloat()))
+                        Hint(listOfNotNull(when_, Distances.format(s.alertMeters.toFloat()), stringResource(R.string.no_question).takeIf { !s.ask }).joinToString(" · "))
                     }
                     SecondaryButton(stringResource(R.string.change), { actions.edit(s.id) })
                 }
@@ -497,6 +497,26 @@ private fun AlarmSettings(state: BusUiState, all: BusStops, actions: BusActions,
             Switch(state.prompts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
         }
         if (state.promptsBlocked) ErrorText(stringResource(R.string.allow_notifications))
+    }
+}
+
+/** Whether to ask "Start bus alarm?" when a shift whose stop this is ends; says so when the question is off on this phone. */
+@Composable
+private fun AskRow(ask: Boolean, prompts: Boolean, onToggle: () -> Unit) {
+    val colors = SamFranTheme.colors
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Switch, onClick = onToggle),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(stringResource(R.string.ask_for_stop), style = MaterialTheme.typography.titleSmall)
+            Hint(
+                stringResource(if (ask) R.string.ask_for_stop_on else R.string.ask_for_stop_off) +
+                    if (ask && !prompts) " " + stringResource(R.string.ask_for_stop_phone_off) else "",
+            )
+        }
+        Switch(ask, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
     }
 }
 
@@ -620,6 +640,7 @@ private fun StopFormCard(state: BusUiState, all: BusStops, actions: BusActions, 
         if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
         DistanceChips(f.meters, actions::setMeters)
         if (!first) ShiftToggles(all, state.editing, f, actions)
+        if (!first) AskRow(f.ask, state.prompts, actions::toggleAsk)
         when (val p = f.problem) {
             null -> {}
             StopProblem.NoPosition -> ErrorText(stringResource(R.string.no_position))

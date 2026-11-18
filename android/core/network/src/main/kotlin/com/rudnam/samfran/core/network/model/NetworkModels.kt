@@ -337,6 +337,7 @@ data class NetworkBusStop(
     val lng: Double = 0.0,
     @SerialName("alert_meters") val alertMeters: Int = 800,
     val shifts: List<String> = emptyList(),
+    val ask: Boolean = true,
 )
 
 @Serializable
@@ -348,7 +349,7 @@ data class NetworkBusStops(
 
 fun NetworkBusStops.asModel(): BusStops {
     val b = Buzz.from(buzz)
-    return BusStops(stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts) }, lastId, b)
+    return BusStops(stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts, it.ask) }, lastId, b)
 }
 
 @Serializable
@@ -359,6 +360,8 @@ data class NetworkBusStopInput(
     @SerialName("alert_meters") val alertMeters: Int,
     /** Left out (null), a changed stop keeps its own. */
     val shifts: List<String>? = null,
+    /** Left out (null), a changed stop keeps its own; a new one asks. */
+    val ask: Boolean? = null,
 )
 
 @Serializable
