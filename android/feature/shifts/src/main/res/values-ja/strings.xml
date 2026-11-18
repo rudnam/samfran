@@ -86,4 +86,6 @@
     <string name="remove_person">%sを削除</string>
     <string name="the_day_before">前日</string>
     <string name="the_next_day">翌日</string>
+    <string name="the_same_day">当日</string>
+    <string name="which_day_works">%1$sの勤務日：%2$s</string>
 </resources>

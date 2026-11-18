@@ -350,12 +350,27 @@ private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
             modifier = Modifier.width(72.dp).semantics { contentDescription = codeLabel },
         )
-        Column(Modifier.width(58.dp), horizontalAlignment = Alignment.End) {
+        // Which day their cell is on: tapping it goes the same day, the day before, the next day.
+        val dayWord = stringResource(if (p.dayOffset < 0) R.string.the_day_before else if (p.dayOffset > 0) R.string.the_next_day else R.string.the_same_day)
+        val dayLabel = stringResource(R.string.which_day_works, label, dayWord)
+        Column(
+            Modifier
+                .width(64.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button) { actions.nextPersonDay(p.key) }
+                .semantics(mergeDescendants = true) { contentDescription = dayLabel }
+                .padding(vertical = 4.dp, horizontal = 2.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
             val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
-            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
-            if (p.dayOffset != 0) {
-                Text(stringResource(if (p.dayOffset < 0) R.string.the_day_before else R.string.the_next_day), style = MaterialTheme.typography.labelSmall, color = colors.muted)
-            }
+            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, maxLines = 1)
+            Text(
+                dayWord,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (p.dayOffset == 0) colors.muted else colors.accentInk,
+                fontWeight = if (p.dayOffset == 0) null else FontWeight.Bold,
+                maxLines = 1,
+            )
         }
         IconButton(onClick = { actions.removePerson(p.key) }, modifier = Modifier.size(32.dp)) {
             LineIcon(SamFranIcons.close, stringResource(R.string.remove_person, label), tint = colors.muted, size = 18.dp)

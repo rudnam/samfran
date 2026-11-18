@@ -86,4 +86,6 @@
     <string name="remove_person">Remove %s</string>
     <string name="the_day_before">the day before</string>
     <string name="the_next_day">the next day</string>
+    <string name="the_same_day">the same day</string>
+    <string name="which_day_works">Which day %1$s works: %2$s</string>
 </resources>

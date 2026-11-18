@@ -107,6 +107,11 @@ class ShiftsViewModelTest {
         assertEquals("13F", added.code) // on the day's own code
         assertTrue(added.key in vm.state.value.shown)
         vm.setPersonName(added.key, "サトウ ハナ")
+        vm.nextPersonDay(rows[2].key) // サトウ ミオ's 17F: the day before (17:00–2:00), so gone by 13:00
+        assertEquals(-1, vm.state.value.people.getValue(day)[2].dayOffset)
+        vm.nextPersonDay(rows[2].key)
+        vm.nextPersonDay(rows[2].key) // and back to the same day
+        assertEquals(0, vm.state.value.people.getValue(day)[2].dayOffset)
         assertEquals(listOf("タナカ ユイ", "ヤマダ ハル", "サトウ ミオ", "コバヤシ リク", "サトウ ハナ"), vm.state.value.there(day).map { it.name })
         vm.openPeople(null)
         vm.save()

@@ -414,6 +414,8 @@ export const ja = {
   'the day before': '前日',
   'the next day': '翌日',
   'Their name': '名前',
+  'the same day': '当日',
+  'Which day {name} works: {day}': '{name}の勤務日：{day}',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -479,18 +481,4 @@ export const jaServer = {
   'you can keep up to 10 stops': 'バス停は10か所まで登録できます',
   'choose a stop first': '先にバス停を選んでください',
   'no such stop': 'そのバス停はありません',
-  'Who’s there on {day}': '{day}にいる人',
-  'Names and codes as on the sheet.': '名前とコードは勤務表のとおりに。',
-  'There during this shift': 'このシフトの時間にいる人',
-  'Not there during this shift': 'このシフトの時間にはいない人',
-  '{count} more that day, not there during this shift': 'ほか{count}人（この日にいるが、このシフトの時間にはいない）',
-  'Nobody yet.': 'まだいません。',
-  '+ Add someone': '＋ 人を追加',
-  'Person {n}': '{n}人目',
-  'Name of person {n}': '{n}人目の名前',
-  'Code of {name}': '{name}のコード',
-  'Remove {name}': '{name}を削除',
-  'the day before': '前日',
-  'the next day': '翌日',
-  'Their name': '名前',
 } as const;

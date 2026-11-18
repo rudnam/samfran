@@ -213,14 +213,25 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByLabel('Name of person 3').fill('ヤマダ ハナ');
   await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–23:00: there as the night starts
   await expect(sheet.getByRole('list', { name: 'There during this shift' }).getByRole('listitem').nth(2)).toContainText('17:00–23:00');
+  // Someone on the next morning's early shift: their day is changed by tapping it.
+  await sheet.getByRole('button', { name: '+ Add someone' }).click();
+  await sheet.getByLabel('Name of person 4').fill('アサ ミキ');
+  await sheet.getByLabel('Code of アサ ミキ').fill('6D');
+  const day = sheet.getByRole('button', { name: /^Which day アサ ミキ works/ });
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the same day');
+  await day.click();
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the day before');
+  await day.click();
+  await expect(day).toHaveAccessibleName('Which day アサ ミキ works: the next day');
   await sheet.getByRole('button', { name: 'Done' }).click();
   await expect(sheet).toBeHidden();
-  await expect(count).toHaveText('3');
+  await expect(count).toHaveText('4');
   await page.getByRole('button', { name: /^Save / }).click();
   await page.getByRole('radio', { name: 'List' }).click();
   await page.getByRole('button', { name: 'Everyone there' }).click();
   await expect(list.nth(0)).toContainText('サトウ ミキ');
   await expect(list.nth(0)).toContainText('ヤマダ ハナ');
+  await expect(list.nth(0)).toContainText('アサ ミキ');
   await expect(list.nth(0)).not.toContainText('スズキ');
 
   // The calendar feed leaves out who: it can be shared.

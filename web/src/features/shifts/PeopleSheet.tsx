@@ -28,6 +28,10 @@ export function isThere(p: PersonRow, code: string, hours: [number, number] | un
   return !!theirs && overlaps(theirs, hours);
 }
 
+/** The same day → the day before → the next day → the same day. */
+const nextOffset = (o: number) => (o === 0 ? -1 : o < 0 ? 1 : 0);
+const dayWord = (o: number) => (o < 0 ? t('the day before') : o > 0 ? t('the next day') : t('the same day'));
+
 export function PeopleSheet({
   date,
   code,
@@ -88,10 +92,16 @@ export function PeopleSheet({
           aria-label={t('Code of {name}', { name: label })}
           onChange={(e) => update(r.key, { code: e.target.value })}
         />
-        <span className="person-when small muted">
+        {/* Which day their cell is on: the same day, the day before (a night shift), the next day. */}
+        <button
+          type="button"
+          className="person-when small"
+          aria-label={t('Which day {name} works: {day}', { name: label, day: dayWord(r.day_offset) })}
+          onClick={() => update(r.key, { day_offset: nextOffset(r.day_offset) })}
+        >
           {theirs ? `${clock(theirs[0])}–${clock(theirs[1])}` : '–'}
-          {r.day_offset !== 0 && <span className="block">{r.day_offset < 0 ? t('the day before') : t('the next day')}</span>}
-        </span>
+          <span className={`block${r.day_offset === 0 ? ' muted' : ''}`}>{dayWord(r.day_offset)}</span>
+        </button>
         <button type="button" className="link quiet" aria-label={t('Remove {name}', { name: label })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))}>
           ×
         </button>
