@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.semantics.Role
-import androidx.compose.runtime.saveable.rememberSaveable
 import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
@@ -276,9 +275,9 @@ private fun PeopleCount(count: Int, day: String, onClick: () -> Unit) {
 
 /**
  * Who's at work around one day (web: PeopleSheet.tsx): everyone read off the
- * sheet or added, each with the code in their cell, all of it fixable. Those
- * there during the shift come first; the rest of that day's people wait,
- * folded away, in case the day's code is corrected.
+ * sheet or added, each with the code in their cell, all of it fixable, in one
+ * list. Those there during the shift come first; the rest of that day's people
+ * follow in grey, in case the day's code is corrected.
  */
 @Composable
 private fun PeoplePage(state: ShiftEditorUiState, date: LocalDate, actions: ShiftEditorActions) {
@@ -287,9 +286,8 @@ private fun PeoplePage(state: ShiftEditorUiState, date: LocalDate, actions: Shif
     val close = { actions.openPeople(null) }
     BackHandler(onBack = close)
     val rows = state.people[date].orEmpty()
-    val shown = rows.filter { it.key in state.shown }
-    val rest = rows.filter { it.key !in state.shown }
-    var restOpen by rememberSaveable(date) { mutableStateOf(false) }
+    // Those there first, as when the page opened, so nobody jumps away while being edited.
+    val ordered = rows.filter { it.key in state.shown } + rows.filter { it.key !in state.shown }
     SubPage(
         onBack = close,
         bottomBar = {
@@ -309,18 +307,9 @@ private fun PeoplePage(state: ShiftEditorUiState, date: LocalDate, actions: Shif
             ).joinToString(" · "),
         )
         SamFranCard(spacing = 8) {
-            if (shown.isEmpty()) Hint(stringResource(R.string.nobody_yet))
-            shown.forEach { PersonLine(state, date, it, rows.indexOf(it), actions) }
+            if (ordered.isEmpty()) Hint(stringResource(R.string.nobody_yet))
+            ordered.forEach { PersonLine(state, date, it, rows.indexOf(it), actions) }
             SecondaryButton(stringResource(R.string.add_someone), actions::addPerson, Modifier.fillMaxWidth().padding(top = 4.dp))
-        }
-        if (rest.isNotEmpty()) {
-            LinkButton(
-                if (restOpen) stringResource(R.string.hide_not_there) else stringResource(R.string.n_more_not_there, rest.size),
-                { restOpen = !restOpen },
-            )
-            if (restOpen) {
-                SamFranCard(spacing = 8) { rest.forEach { PersonLine(state, date, it, rows.indexOf(it), actions) } }
-            }
         }
     }
 }

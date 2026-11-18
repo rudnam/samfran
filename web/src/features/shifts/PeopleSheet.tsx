@@ -1,7 +1,8 @@
 // Who's at work around one day, while a month is checked or fixed: everyone
-// read off the sheet (or added), each with the code in their cell. Those there
-// during the day's shift come first; the rest of that day's people wait, folded
-// away, in case the shift's code is corrected. Names and codes can all be fixed.
+// read off the sheet (or added), each with the code in their cell, in one list.
+// Those there during the day's shift come first; the rest of that day's people
+// follow in grey, in case the shift's code is corrected. Names, codes and days
+// can all be fixed.
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
 import { clock, dayName, hoursAround, normalize, overlaps } from './codes';
@@ -63,8 +64,8 @@ export function PeopleSheet({
     dialog.current?.showModal();
   }, []);
 
-  const shown = rows.filter((r) => shownKeys.has(r.key));
-  const rest = rows.filter((r) => !shownKeys.has(r.key));
+  // Those there first, as when the sheet opened, so nobody jumps away while being edited.
+  const ordered = [...rows.filter((r) => shownKeys.has(r.key)), ...rows.filter((r) => !shownKeys.has(r.key))];
   const update = (key: number, change: Partial<PersonRow>) => onChange(rows.map((r) => (r.key === key ? { ...r, ...change } : r)));
   const listId = `names-${date}`;
 
@@ -135,9 +136,9 @@ export function PeopleSheet({
             <option key={n} value={n} />
           ))}
         </datalist>
-        {shown.length > 0 ? (
-          <ul className="people-edit" aria-label={t('There during this shift')}>
-            {shown.map((r) => row(r, rows.indexOf(r)))}
+        {ordered.length > 0 ? (
+          <ul className="people-edit" aria-label={t('Everyone that day')}>
+            {ordered.map((r) => row(r, rows.indexOf(r)))}
           </ul>
         ) : (
           <p className="muted small">{t('Nobody yet.')}</p>
@@ -145,14 +146,6 @@ export function PeopleSheet({
         <button type="button" className="secondary" onClick={onAdd}>
           {t('+ Add someone')}
         </button>
-        {rest.length > 0 && (
-          <details className="people-rest">
-            <summary>{t('{count} more that day, not there during this shift', { count: rest.length })}</summary>
-            <ul className="people-edit" aria-label={t('Not there during this shift')}>
-              {rest.map((r) => row(r, rows.indexOf(r)))}
-            </ul>
-          </details>
-        )}
         <div className="row end">
           <button type="button" onClick={onClose}>
             {t('Done')}

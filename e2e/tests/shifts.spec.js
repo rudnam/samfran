@@ -212,7 +212,7 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   await sheet.getByRole('button', { name: '+ Add someone' }).click();
   await sheet.getByLabel('Name of person 3').fill('ヤマダ ハナ');
   await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–23:00: there as the night starts
-  await expect(sheet.getByRole('list', { name: 'There during this shift' }).getByRole('listitem').nth(2)).toContainText('17:00–23:00');
+  await expect(sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem').nth(2)).toContainText('17:00–23:00');
   // Someone on the next morning's early shift: their day is changed by tapping it.
   await sheet.getByRole('button', { name: '+ Add someone' }).click();
   await sheet.getByLabel('Name of person 4').fill('アサ ミキ');
@@ -372,11 +372,14 @@ test('see everyone there during a shift, not only those on the same one', async 
   await expect(count).toHaveText('2');
   await count.click();
   const sheet = page.getByRole('dialog', { name: /^Who’s there on / });
-  await expect(sheet.getByRole('list', { name: 'There during this shift' }).getByRole('listitem')).toHaveCount(2);
-  await sheet.getByText('2 more that day, not there during this shift').click();
-  const away = sheet.getByRole('list', { name: 'Not there during this shift' }).getByRole('listitem');
-  await expect(away).toHaveCount(2);
-  await expect(away.nth(1)).toContainText('day before');
+  // Everyone that day in one list: those there first, then the rest in grey.
+  const everyone = sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem');
+  await expect(everyone).toHaveCount(4);
+  await expect(everyone.nth(0)).not.toHaveClass('away');
+  await expect(everyone.nth(1)).not.toHaveClass('away');
+  await expect(everyone.nth(2)).toHaveClass('away');
+  await expect(everyone.nth(3)).toHaveClass('away');
+  await expect(everyone.nth(3)).toContainText('day before');
   await page.screenshot({ path: test.info().outputPath('people-sheet.png'), animations: 'disabled' });
   await sheet.getByRole('button', { name: 'Done' }).click();
   // A 9F: the one on 7D is there now, and so is the one on 13F.

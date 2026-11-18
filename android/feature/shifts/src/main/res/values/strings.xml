@@ -77,8 +77,6 @@
     <string name="names_as_on_sheet">Names and codes as on the sheet.</string>
     <string name="nobody_yet">Nobody yet.</string>
     <string name="add_someone">+ Add someone</string>
-    <string name="n_more_not_there">%d more that day, not there during this shift</string>
-    <string name="hide_not_there">Hide those not there during this shift</string>
     <string name="person_n">Person %d</string>
     <string name="name_of_person">Name of person %d</string>
     <string name="code_of">Code of %s</string>

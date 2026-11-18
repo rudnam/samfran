@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
@@ -163,13 +162,9 @@ class ShiftsScreenshotTest {
         return if (open == null) s else s.copy(openDay = open, shown = s.there(open).map { it.key }.toSet())
     }
 
-    /** A day's people (the 4th, a 13F): those there first, then the rest of the day's, unfolded. */
+    /** A day's people (the 4th, a 13F): those there first, then the rest of the day's in grey. */
     @Test
-    fun aDaysPeople() {
-        compose.setContent { SamFranTheme { ShiftEditorScreen(editing(read, LocalDate.of(2026, 11, 4)), editor, {}) } }
-        compose.onNodeWithText("2 more that day, not there during this shift").performClick()
-        compose.onRoot().captureRoboImage("build/outputs/roborazzi/shifts-check-people.png")
-    }
+    fun aDaysPeople() = shot("check-people") { ShiftEditorScreen(editing(read, LocalDate.of(2026, 11, 4)), editor, {}) }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")

@@ -77,8 +77,6 @@
     <string name="names_as_on_sheet">名前とコードは勤務表のとおりに。</string>
     <string name="nobody_yet">まだいません。</string>
     <string name="add_someone">＋ 人を追加</string>
-    <string name="n_more_not_there">ほか%d人（この日にいるが、このシフトの時間にはいない）</string>
-    <string name="hide_not_there">このシフトの時間にいない人を隠す</string>
     <string name="person_n">%d人目</string>
     <string name="name_of_person">%d人目の名前</string>
     <string name="code_of">%sのコード</string>
