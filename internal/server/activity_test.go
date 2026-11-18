@@ -24,6 +24,9 @@ func TestActivity(t *testing.T) {
 	var r struct{ ID int64 }
 	sam.do("POST", "/api/restaurants", map[string]any{"name": "Taco Loco", "visit": map[string]string{"visited_on": "2026-11-01"}, "stars": 4}, &r)
 	fran.do("PUT", "/api/restaurants/"+itoa(r.ID)+"/rating", map[string]int{"stars": 5}, nil)
+	var stops struct{ Stops []struct{ ID int64 } }
+	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Aoi", "lat": 34.98, "lng": 138.38}, &stops)
+	sam.do("POST", "/api/bus/stops/"+itoa(stops.Stops[0].ID)+"/use", nil, nil)
 	// Through Claude.
 	token := connect(t, ts.URL, fran)
 	tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"F": 9}})
@@ -56,6 +59,11 @@ func TestActivity(t *testing.T) {
 	}
 	if e := list[1]; e.Details["name"] != "Taco Loco" || e.Details["stars"] != 5.0 {
 		t.Errorf("rating: %+v", e)
+	}
+	// The bus alarm started isn't listed, but the phone's notification check gets it.
+	var withBus []activityJSON
+	if fran.do("GET", "/api/activity?bus=1", nil, &withBus); len(withBus) != len(want)+1 || withBus[1].Kind != "bus_started" || withBus[1].Who != "Sam" || withBus[1].Details["name"] != "Aoi" {
+		t.Errorf("with bus: %+v", withBus)
 	}
 	// Another space sees none of it.
 	other := newClient(t, newTestServer(t))

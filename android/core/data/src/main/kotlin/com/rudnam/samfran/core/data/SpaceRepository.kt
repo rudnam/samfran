@@ -90,6 +90,9 @@ interface ActivityRepository {
 
     /** Recent changes has shown the list: nothing in it is new any more. */
     suspend fun markSeen(entries: List<ActivityEntry>)
+
+    /** The latest changes with the bus alarms started, which Recent changes leaves out; not kept. */
+    suspend fun forNotifications(): Outcome<List<ActivityEntry>>
 }
 
 @Singleton
@@ -122,4 +125,6 @@ internal class OfflineFirstActivityRepository @Inject constructor(
         val newest = entries.newestId()
         if (newest > (seenUpTo() ?: 0)) preferences.setActivitySeen(newest)
     }
+
+    override suspend fun forNotifications() = outcome(io) { network.activityWithBus().map { it.asModel() } }
 }
