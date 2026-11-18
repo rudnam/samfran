@@ -100,7 +100,8 @@ class ShiftsScreenshotTest {
     /** With the calendar link on: a quiet line that copies it for Google Calendar or any other calendar. */
     @Test
     fun calendarLinkOn() = shot("list-calendar-on") {
-        val on = Samples.november.copy(settings = Samples.november.settings.copy(feedPath = "/calendar/abc123.ics"))
+        // A few days, so the line is on screen.
+        val on = Samples.november.copy(settings = Samples.november.settings.copy(feedPath = "/calendar/abc123.ics"), days = Samples.november.days.take(3))
         ShiftsScreen(month.copy(data = on, asList = true), actions, {}, {}, {}, {})
     }
 
