@@ -9,17 +9,16 @@ import kotlinx.coroutines.flow.Flow
 /**
  * What the phone does while the app is closed (the app's ShiftPrompt and
  * ActivityJob): asking "Start bus alarm?" when a shift ends, and telling one
- * of you when the other changes something. Both are off until switched on,
- * on this phone, and need notifications: the screen asks for that permission
- * before switching one on.
+ * of you when the other changes something. Both need notifications: the
+ * screen asks for that permission before switching one on. The question is
+ * on for the stops it's switched on for (BusStop.ask); the alerts are
+ * switched on for this phone.
  */
 interface Reminders {
-    val shiftPrompts: Flow<Boolean>
-
     val activityAlerts: Flow<Boolean>
 
-    /** Answers whether it's on now (off when notifications aren't allowed). */
-    suspend fun setShiftPrompts(on: Boolean): Boolean
+    /** Notifications are allowed for the app. */
+    fun notificationsAllowed(): Boolean
 
     suspend fun setActivityAlerts(on: Boolean): Boolean
 

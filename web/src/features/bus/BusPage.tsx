@@ -82,6 +82,8 @@ export function BusPage() {
   const [all, setAll] = useState<BusStops | null>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Editing>(null);
+  // Settings are open: the stops, and how it buzzes. A stop opened from there goes back there.
+  const [settings, setSettings] = useState(false);
   const [apk, setApk] = useState<Downloads['android']>(null);
   const [shift, setShift] = useState<ShiftDay | null>(null);
   // A stop picked on this visit, instead of the one for the shift.
@@ -138,12 +140,24 @@ export function BusPage() {
 
   return (
     <section className="stack">
-      <header className="page-head">
-        <div>
-          <h1 className="display">{t('Bus alarm')}</h1>
-          <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
-        </div>
-      </header>
+      {ready && (editing || settings) && (
+        <button type="button" className="link back" onClick={() => (editing ? setEditing(null) : setSettings(false))}>
+          ‹ {editing && settings ? t('Settings') : t('Bus alarm')}
+        </button>
+      )}
+      {(!ready || !editing) && (
+        <header className="page-head with-action">
+          <div>
+            <h1 className="display">{settings && ready ? t('Settings') : t('Bus alarm')}</h1>
+            {!(settings && ready) && <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>}
+          </div>
+          {ready && !settings && !buzzing && (
+            <button type="button" className="secondary" onClick={() => setSettings(true)}>
+              ⚙ {t('Settings')}
+            </button>
+          )}
+        </header>
+      )}
 
       {error && (
         <p role="alert" className="error">
@@ -163,7 +177,7 @@ export function BusPage() {
         </div>
       )}
 
-      {all && stop && !buzzing && !editing && (
+      {all && stop && !buzzing && !editing && !settings && (
         <RideCard
           all={all}
           stop={stop}
@@ -195,17 +209,20 @@ export function BusPage() {
           onSaved={(s, id) => {
             setAll(s);
             setEditing(null);
+            if (s.stops.length === 0) {
+              setSettings(false);
+              setEditing('new');
+            }
             // A stop just added is the one to look at.
             if (id) setPicked(id);
             else if (picked && !s.stops.some((x) => x.id === picked)) setPicked(null);
           }}
-          onCancel={ready ? () => setEditing(null) : undefined}
         />
       )}
 
-      {all && ready && !editing && <AlarmSettings all={all} onChange={setEditing} onSaved={setAll} />}
+      {all && ready && !editing && settings && <AlarmSettings all={all} onChange={setEditing} onSaved={setAll} />}
 
-      {all && ready && !editing && (
+      {all && ready && !editing && settings && (
         <details className="card how-fold">
           <summary>{t('How it works')}</summary>
           <Steps />
@@ -426,39 +443,37 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
   }
 
   return (
-    <div className="card stack">
-      <h2>{t('Alarm settings')}</h2>
-      <div className="stack tight">
+    <>
+      <div className="card stack tight">
         <span className="eyebrow">{t('Your stops')}</span>
         <ul className="stop-list">
           {all.stops.map((s) => (
             <li key={s.id}>
-              <div className="grow">
-                <strong className="block">{s.name || t('Unnamed stop')}</strong>
-                <span className="muted small">
-                  {s.shifts.length > 0 ? t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') }) : t('When you pick it')} · {km(s.alert_meters)}
-                  {!s.ask && ` · ${t('No question')}`}
+              <button type="button" className="stop-row" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onChange(s)}>
+                <span className="grow">
+                  <strong className="block">{s.name || t('Unnamed stop')}</strong>
+                  {s.shifts.length > 0 && <span className="muted small">{t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>}
                 </span>
-              </div>
-              <button type="button" className="secondary" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onChange(s)}>
-                {t('Change')}
+                <span aria-hidden="true" className="muted">›</span>
               </button>
             </li>
           ))}
         </ul>
         {all.stops.length < maxStops && (
-          <button type="button" className="secondary" onClick={() => p.onChange('new')}>
+          <button type="button" className="link start" onClick={() => p.onChange('new')}>
             {t('+ Add a stop')}
           </button>
         )}
       </div>
-      <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setBuzz(b)} disabled={busy} />
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-    </div>
+      <div className="card stack">
+        <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setBuzz(b)} disabled={busy} />
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -526,7 +541,6 @@ function StopForm({
   all,
   first,
   onSaved,
-  onCancel,
 }: {
   /** null for a new one. */
   stop: SavedStop | null;
@@ -534,12 +548,13 @@ function StopForm({
   first: boolean;
   /** id: the stop just added. */
   onSaved: (s: BusStops, id?: number) => void;
-  onCancel?: () => void;
 }) {
   const [name, setName] = useState(stop?.name ?? '');
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop ? { lat: stop.lat, lng: stop.lng } : null);
   const [shifts, setShifts] = useState<ShiftLabel[]>(stop?.shifts ?? []);
-  const [ask, setAsk] = useState(stop?.ask ?? true);
+  const [ask, setAsk] = useState(stop?.ask ?? false);
+  // The map shows once a stop is found, until it's saved; or when asked for.
+  const [showMap, setShowMap] = useState(false);
   const [link, setLink] = useState('');
   const [byName, setByName] = useState(false);
   // What's being searched for: the name as typed, until a stop is picked.
@@ -551,6 +566,7 @@ function StopForm({
     setName(f.name);
     setPos({ lat: f.lat, lng: f.lng });
     setByName(false);
+    setShowMap(true);
     setQuery('');
     setError('');
   }
@@ -571,6 +587,7 @@ function StopForm({
       } else {
         setPos({ lat: p.lat, lng: p.lng });
         setByName(!!p.found_by_name);
+        setShowMap(true);
         // Google Maps calls a stop "Name（バス）".
         if (!name.trim() && p.name) setName(p.name.replace(/\s*[（(](バス|Bus)[）)]$/, ''));
       }
@@ -618,9 +635,11 @@ function StopForm({
   }
 
   return (
-    <form className="card stack" onSubmit={save}>
+    <form className="stack" onSubmit={save}>
+      {!first && <h1 className="display">{stop ? stop.name || t('Unnamed stop') : t('Add a stop')}</h1>}
+      <div className="card stack">
       {first && <span className="eyebrow">{t('Step 1 of 2')}</span>}
-      <h2>{stop ? stop.name || t('Unnamed stop') : first ? t('Where do you get off?') : t('Add a stop')}</h2>
+      {first ? <h2>{t('Where do you get off?')}</h2> : <span className="eyebrow">{t('Where')}</span>}
       <div className="field">
         <label htmlFor="stop-name">{t('Stop name')}</label>
         <input
@@ -668,13 +687,19 @@ function StopForm({
                   )
                 : null}
         </span>
-        {pos && !query && <StopMap lat={pos.lat} lng={pos.lng} name={name} />}
+        {pos && !query && (showMap || first) && <StopMap lat={pos.lat} lng={pos.lng} name={name} />}
         {pos && !query && (
           <span className="found">
             ✓ {byName ? t('Found it on OpenStreetMap, by its name.') : t('Found it.')}{' '}
-            <a href={`https://www.google.com/maps/search/?api=1&query=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer">
-              {t('Check on the map')}
-            </a>
+            {showMap || first ? (
+              <a href={`https://www.google.com/maps/search/?api=1&query=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer">
+                {t('Check on the map')}
+              </a>
+            ) : (
+              <button type="button" className="link inline" onClick={() => setShowMap(true)}>
+                {t('See it on the map')}
+              </button>
+            )}
           </span>
         )}
       </div>
@@ -700,20 +725,24 @@ function StopForm({
 
       {first && <span className="eyebrow">{t('Step 2 of 2')}</span>}
       <DistancePicker value={meters} onPick={setMeters} />
-      {!first && <ShiftPicker value={shifts} onPick={setShifts} name={name} all={all} id={stop?.id} />}
+      </div>
       {!first && (
-        <div className="field">
-          <span id="stop-ask">{t('Ask when a shift ends')}</span>
-          <div className="chips two" role="radiogroup" aria-labelledby="stop-ask">
-            {[true, false].map((v) => (
-              <button key={String(v)} type="button" role="radio" aria-checked={ask === v} className={ask === v ? 'on' : ''} onClick={() => setAsk(v)}>
-                {v ? t('Ask') : t('Don’t ask')}
-              </button>
-            ))}
+        <div className="card stack">
+          <span className="eyebrow">{t('When it’s used')}</span>
+          <ShiftPicker value={shifts} onPick={setShifts} name={name} all={all} id={stop?.id} />
+          <div className="field">
+            <span id="stop-ask">{t('Ask when these end')}</span>
+            <div className="chips two" role="radiogroup" aria-labelledby="stop-ask">
+              {[true, false].map((v) => (
+                <button key={String(v)} type="button" role="radio" aria-checked={ask === v} className={ask === v ? 'on' : ''} onClick={() => setAsk(v)}>
+                  {v ? t('Ask') : t('Don’t ask')}
+                </button>
+              ))}
+            </div>
+            <span className="hint">
+              {ask ? t('After a shift whose stop this is, the Android app asks “Start bus alarm?”.') : t('Off: no question after shifts whose stop this is.')}
+            </span>
           </div>
-          <span className="hint">
-            {ask ? t('After a shift whose stop this is, the Android app asks “Start bus alarm?”.') : t('Off: no question after shifts whose stop this is.')}
-          </span>
         </div>
       )}
 
@@ -726,11 +755,6 @@ function StopForm({
         {stop && (
           <button type="button" className="link danger push-start" disabled={busy} onClick={remove}>
             {t('Remove this stop')}
-          </button>
-        )}
-        {onCancel && (
-          <button type="button" className="secondary" onClick={onCancel}>
-            {t('Cancel')}
           </button>
         )}
         <button type="submit" disabled={busy || !pos}>

@@ -61,7 +61,9 @@ class BusScreenshotTest {
         override fun stopBuzz() {}
         override fun practice() {}
         override fun endPractice() {}
-        override fun setPrompts(on: Boolean) {}
+        override fun openSettings() {}
+        override fun closeSettings() {}
+        override fun toggleMap() {}
         override fun setBuzz(buzz: Buzz) {}
         override fun pickStop(id: Long) {}
         override fun endChoosing() {}
@@ -82,10 +84,10 @@ class BusScreenshotTest {
     }
 
     /** One stop, as before there could be several. */
-    private val ready = BusUiState(stops = Samples.oneStop, prompts = true)
+    private val ready = BusUiState(stops = Samples.oneStop)
 
     /** Three stops, and a late shift today: its stop is picked. */
-    private val several = BusUiState(stops = Samples.stops, shift = Samples.day("2026-11-17", "13F"), prompts = true)
+    private val several = BusUiState(stops = Samples.stops, shift = Samples.day("2026-11-17", "13F"))
 
     private val none = BusUiState(stops = BusStops(), editing = BusUiState.NEW)
 
@@ -118,10 +120,13 @@ class BusScreenshotTest {
     @Test
     fun choosingFromTheQuestion() = shot("stops-choose", content = screen(several.copy(choosing = true, picked = 2)))
 
-    // A tall screen, to see the whole of Alarm settings: the stops, how it buzzes, and the question.
+    // Settings: the stops, and how it buzzes.
     @Test
-    @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
-    fun settings() = shot("settings", content = screen(several.copy(stops = Samples.stops.copy(buzz = Buzz.Strongest))))
+    fun settings() = shot("settings", content = screen(several.copy(settings = true, stops = Samples.stops.copy(buzz = Buzz.Strongest))))
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun settingsJapanese() = shot("settings-ja", content = screen(several.copy(settings = true)))
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
@@ -157,25 +162,29 @@ class BusScreenshotTest {
     @Test
     fun otherWays() = shot("other-ways", content = screen(none.copy(form = StopForm(otherWays = true))))
 
-    // Changing a stop, with the shifts it's for: early is another stop's now.
+    // A stop's page, opened from Settings: where (the map folded away), then when.
+    @Test
+    fun stopPage() = shot("stop", content = screen(
+        several.copy(settings = true, editing = 2, form = StopForm(name = "静岡駅", position = 34.97 to 138.39, meters = 600, shifts = listOf("Early", "Middle"))),
+    ))
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun stopPageJapanese() = shot("stop-ja", content = screen(
+        several.copy(settings = true, editing = 1, form = StopForm(name = "葵西", position = 34.97 to 138.38, meters = 800, shifts = listOf("Late"), ask = true)),
+    ))
+
+    // Changing a stop, just found again (so the map shows), with the shifts it's for: early is another stop's now.
     @Test
     @Config(qualifiers = "w411dp-h1400dp-xxhdpi")
     fun stopFound() = shot("found", content = screen(
-        several.copy(editing = 1, form = StopForm(name = "葵西", position = 34.97 to 138.38, meters = 600, shifts = listOf("Early", "Late"))),
+        several.copy(settings = true, editing = 1, form = StopForm(name = "葵西", position = 34.97 to 138.38, meters = 600, shifts = listOf("Early", "Late"), ask = true, showMap = true)),
     ))
 
-    // A stop that doesn't ask when its shifts end.
+    // Asking, with notifications off for the app.
     @Test
-    @Config(qualifiers = "w411dp-h1400dp-xxhdpi")
-    fun stopNotAsking() = shot("no-question", content = screen(
-        several.copy(editing = 2, form = StopForm(name = "静岡駅", position = 34.97 to 138.39, meters = 600, shifts = listOf("Early", "Middle"), ask = false)),
-    ))
-
-    // Settings with a stop that doesn't ask.
-    @Test
-    @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
-    fun settingsNotAsking() = shot("settings-no-question", content = screen(
-        several.copy(stops = Samples.stops.copy(stops = Samples.stops.stops.map { if (it.id == 2L) it.copy(ask = false) else it })),
+    fun askBlocked() = shot("ask-blocked", content = screen(
+        several.copy(settings = true, editing = 3, form = StopForm(name = "実家", position = 34.95 to 138.40, ask = true, askBlocked = true)),
     ))
 
     @Test
@@ -299,17 +308,33 @@ class BusViewModelTest {
     }
 
     @Test
-    fun `a stop can stop asking when its shifts end, and it's kept`() = runTest {
+    fun `a stop asks once switched on, and it's kept, but a new one doesn't`() = runTest {
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
-        vm.edit(2)
-        assertTrue(vm.state.value.form.ask)
-        vm.toggleAsk()
-        vm.saveStop()
-        assertFalse(bus.stopsFlow.value!!.byId(2)!!.ask)
-        assertTrue(bus.stopsFlow.value!!.byId(1)!!.ask)
-        vm.edit(2)
+        vm.openSettings()
+        vm.edit(3)
         assertFalse(vm.state.value.form.ask)
+        assertFalse(vm.state.value.form.showMap) // folded away until asked for
+        vm.toggleMap()
+        assertTrue(vm.state.value.form.showMap)
+        vm.toggleAsk()
+        assertFalse(vm.state.value.form.askBlocked)
+        vm.saveStop()
+        assertTrue(bus.stopsFlow.value!!.byId(3)!!.ask)
+        // Back in Settings, where it was opened from.
+        assertTrue(vm.state.value.settings)
+        assertFalse(vm.state.value.isEditing)
+        vm.edit(3)
+        assertTrue(vm.state.value.form.ask)
+        vm.cancelEdit()
+        vm.add()
+        assertFalse(vm.state.value.form.ask)
+        // Notifications off for the app: it says so.
+        reminders.allowed = false
+        vm.toggleAsk()
+        assertTrue(vm.state.value.form.askBlocked)
+        vm.closeSettings()
+        assertFalse(vm.state.value.settings)
     }
 
     @Test
@@ -329,17 +354,12 @@ class BusViewModelTest {
     }
 
     @Test
-    fun `where I am now, and the question at the end of a shift`() = runTest {
+    fun `where I am now`() = runTest {
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         vm.edit(1)
         alarm.here = null
         vm.useHere()
         assertEquals(StopProblem.NoHere, vm.state.value.form.problem)
-        vm.setPrompts(true)
-        assertTrue(vm.state.value.prompts)
-        reminders.allowed = false
-        vm.setPrompts(true)
-        assertTrue(vm.state.value.promptsBlocked)
     }
 }
