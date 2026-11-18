@@ -141,4 +141,7 @@
     <plurals name="n_not_on_map">
         <item quantity="other">%dか所はまだ地図にありません（場所を調べている途中か、見つかりませんでした）。</item>
     </plurals>
+    <string name="search">検索</string>
+    <string name="all_places">すべての場所</string>
+    <string name="category_is">カテゴリ: %s</string>
 </resources>

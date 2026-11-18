@@ -146,4 +146,7 @@
         <item quantity="one">%d not on the map yet: its place is still being looked up, or wasn’t found.</item>
         <item quantity="other">%d not on the map yet: their place is still being looked up, or wasn’t found.</item>
     </plurals>
+    <string name="search">Search</string>
+    <string name="all_places">All places</string>
+    <string name="category_is">Category: %s</string>
 </resources>

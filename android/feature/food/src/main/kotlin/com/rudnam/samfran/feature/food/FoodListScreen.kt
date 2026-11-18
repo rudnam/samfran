@@ -1,6 +1,19 @@
 package com.rudnam.samfran.feature.food
 
 import android.Manifest
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.rudnam.samfran.core.model.PlaceCategory
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,7 +54,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -88,6 +100,9 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     // The map needs this build's Google Maps key; without one, it's a list.
     val canMap = remember { hasMapsKey(context) }
     val onMap = state.onMap && canMap
+    // Search is a button until it's wanted; open while there's something typed.
+    var searchOpen by rememberSaveable { mutableStateOf(false) }
+    val searching = state.searchable && (searchOpen || state.query.isNotEmpty())
     // Nearby asks for the phone's location first; turned down, it says so and stays newest first.
     val askLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { actions.setNearby(true) }
     fun nearby() {
@@ -100,17 +115,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     Box(Modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
             TabPage(bottomSpace = 96) {
-                item(key = "head") {
-                    Row(verticalAlignment = Alignment.Top) {
-                        val all = state.all
-                        val subtitle = if (all.isNullOrEmpty()) null else buildString {
-                            append(pluralStringResource(R.plurals.n_places, all.size, all.size))
-                            if (state.thisMonth > 0) append(" · ").append(stringResource(R.string.n_this_month, state.thisMonth))
-                        }
-                        PageTitle(stringResource(R.string.our_spots), Modifier.weight(1f), subtitle)
-                        state.space?.let { Avatars(it, Modifier.padding(top = 6.dp)) }
-                    }
-                }
+                item(key = "head") { PageTitle(stringResource(R.string.our_spots)) }
                 item(key = "tabs") {
                     Segmented(
                         options = listOf(stringResource(R.string.been_there), stringResource(R.string.want_to_go)),
@@ -119,52 +124,51 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                         counts = if (state.all == null) null else listOf(state.been.size.toString(), state.want.size.toString()),
                     )
                 }
-                if (state.filterable && state.all != null) {
-                    item(key = "filter") { CategoryFilter(state, actions) }
-                }
                 if (!state.all.isNullOrEmpty()) {
+                    // One toolbar (.toolbar): the category menu, then search, Nearby and Map as icon toggles.
                     item(key = "tools") {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            PillSeg(
-                                listOf(
-                                    null to stringResource(if (state.tab == FoodTab.Been) R.string.sort_latest else R.string.sort_newest),
-                                    SamFranIcons.nearby to stringResource(R.string.sort_nearby),
-                                ),
-                                selected = if (state.nearby) 1 else 0,
-                                label = stringResource(R.string.order),
-                            ) { if (it == 1) nearby() else actions.setNearby(false) }
-                            if (canMap) {
-                                PillSeg(
-                                    listOf(SamFranIcons.list to stringResource(R.string.view_list), SamFranIcons.map to stringResource(R.string.view_map)),
-                                    selected = if (onMap) 1 else 0,
-                                    label = stringResource(R.string.view),
-                                ) { actions.setOnMap(it == 1) }
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) { if (state.filterable) CategoryMenu(state, actions) }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                if (state.searchable) {
+                                    IconToggle(SamFranIcons.search, stringResource(R.string.search), searching) {
+                                        if (searching) actions.setQuery("")
+                                        searchOpen = !searching
+                                    }
+                                }
+                                IconToggle(SamFranIcons.nearby, stringResource(R.string.sort_nearby), state.nearby) {
+                                    if (state.nearby) actions.setNearby(false) else nearby()
+                                }
+                                if (canMap) IconToggle(SamFranIcons.map, stringResource(R.string.view_map), onMap) { actions.setOnMap(!onMap) }
                             }
+                        }
+                    }
+                    if (searching) {
+                        item(key = "search") {
+                            val focus = remember { FocusRequester() }
+                            OutlinedTextField(
+                                value = state.query,
+                                onValueChange = actions::setQuery,
+                                placeholder = { Text(stringResource(R.string.search_hint)) },
+                                leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
+                                singleLine = true,
+                                shape = MaterialTheme.shapes.small,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = SamFranTheme.colors.surface,
+                                    focusedContainerColor = SamFranTheme.colors.surface,
+                                    unfocusedBorderColor = SamFranTheme.colors.border,
+                                ),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                            )
+                            // Opened by its button: ready to type.
+                            LaunchedEffect(Unit) { if (searchOpen) runCatching { focus.requestFocus() } }
                         }
                     }
                     if (state.nearby && state.locating != Locating.No) {
                         item(key = "locating") {
                             Hint(stringResource(if (state.locating == Locating.Asking) R.string.finding_location else R.string.location_off))
                         }
-                    }
-                }
-                if (state.searchable) {
-                    item(key = "search") {
-                        OutlinedTextField(
-                            value = state.query,
-                            onValueChange = actions::setQuery,
-                            placeholder = { Text(stringResource(R.string.search_hint)) },
-                            leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
-                            singleLine = true,
-                            shape = MaterialTheme.shapes.small,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = SamFranTheme.colors.surface,
-                                focusedContainerColor = SamFranTheme.colors.surface,
-                                unfocusedBorderColor = SamFranTheme.colors.border,
-                            ),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
                 }
                 state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
@@ -207,82 +211,72 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     }
 }
 
-/** The two of you, overlapping (.avatars). */
+/** An icon button that's on or off (.icon-toggle): dark when on. */
 @Composable
-private fun Avatars(space: Space, modifier: Modifier = Modifier) {
-    Row(modifier) {
-        space.members.forEachIndexed { i, m ->
-            Avatar(m.name, if (i == 1) Tone.B else Tone.A, Modifier.offset(x = (-8 * i).dp))
-        }
-    }
-}
-
-/** Two or so choices in a small pill (.pill-seg): newest or nearby, list or map. */
-@Composable
-private fun PillSeg(options: List<Pair<String?, String>>, selected: Int, label: String, onSelect: (Int) -> Unit) {
+private fun IconToggle(icon: String, label: String, on: Boolean, onClick: () -> Unit) {
     val colors = SamFranTheme.colors
-    Row(
+    Box(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(colors.sunken)
-            .padding(3.dp)
-            .selectableGroup()
+            .size(44.dp)
+            .clip(RoundedCornerShape(13.dp))
+            .background(if (on) colors.text else colors.surface)
+            .then(if (on) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(13.dp)))
+            .toggleable(value = on, role = Role.Switch, onValueChange = { onClick() })
             .semantics { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        options.forEachIndexed { i, (icon, text) ->
-            val on = i == selected
-            Row(
-                Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(if (on) colors.surface else Color.Transparent)
-                    .selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(i) })
-                    .padding(horizontal = 11.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val ink = if (on) colors.text else colors.muted
-                icon?.let { LineIcon(it, null, tint = ink, size = 15.dp) }
-                Text(text, color = ink, style = MaterialTheme.typography.labelLarge)
-            }
-        }
+        LineIcon(icon, null, tint = if (on) colors.bg else colors.text, size = 21.dp)
     }
 }
 
-/** The category chips (.cat-filter): all, or one category's places; a row that scrolls sideways. */
+/** The category to show (.cat-menu): a button saying which, opening a menu of the categories with places on this tab. */
 @Composable
-private fun CategoryFilter(state: FoodListUiState, actions: FoodListActions) {
+private fun CategoryMenu(state: FoodListUiState, actions: FoodListActions) {
     val colors = SamFranTheme.colors
-    val label = stringResource(R.string.category)
-    @Composable
-    fun Chip(selected: Boolean, icon: String, text: String, count: Int, onClick: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val active = state.activeFilter
+    val name = if (active == null) stringResource(R.string.all_places) else stringResource(active.title)
+    val label = stringResource(R.string.category_is, name)
+    Box {
         Row(
             Modifier
-                .clip(RoundedCornerShape(50))
-                .background(if (selected) colors.text else colors.surface)
-                .then(if (selected) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(50)))
-                .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                .height(44.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.border, RoundedCornerShape(13.dp))
+                .clickable(onClickLabel = label) { open = true }
+                .semantics { contentDescription = label }
+                .padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val ink = if (selected) colors.bg else colors.text
-            LineIcon(icon, null, tint = ink, size = 17.dp)
-            Text(text, color = ink, style = MaterialTheme.typography.labelLarge)
-            Text(count.toString(), color = ink.copy(alpha = 0.65f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Normal)
+            LineIcon(active?.icon ?: SamFranIcons.all, null, size = 17.dp)
+            Text(if (active == null) stringResource(R.string.all_places) else stringResource(active.short), style = MaterialTheme.typography.labelLarge)
+            Text((if (active == null) state.onTab.size else state.counts[active] ?: 0).toString(), style = MaterialTheme.typography.labelLarge, color = colors.muted, fontWeight = FontWeight.Normal)
+            LineIcon(SamFranIcons.chevronDown, null, size = 16.dp)
         }
-    }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState())
-            .selectableGroup()
-            .semantics { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Chip(state.activeFilter == null, SamFranIcons.all, stringResource(R.string.category_all), state.onTab.size) { actions.setFilter(null) }
-        for (c in state.chips) {
-            Chip(state.activeFilter == c, c.icon, stringResource(c.short), state.counts[c] ?: 0) { actions.setFilter(c) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface, shape = RoundedCornerShape(16.dp)) {
+            @Composable
+            fun Option(category: PlaceCategory?, text: String, count: Int) {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (category == null) LineIcon(SamFranIcons.all, null, size = 18.dp) else CategoryTile(category, size = 30.dp)
+                            Text(text, Modifier.weight(1f, fill = false), fontWeight = FontWeight.SemiBold)
+                            Text(count.toString(), color = colors.muted)
+                        }
+                    },
+                    onClick = {
+                        actions.setFilter(category)
+                        open = false
+                    },
+                    modifier = if (category == active) Modifier.background(colors.highlight) else Modifier,
+                )
+            }
+            Option(null, stringResource(R.string.all_places), state.onTab.size)
+            for (c in PlaceCategory.entries.filter { (state.counts[it] ?: 0) > 0 || it == active }) {
+                Option(c, stringResource(c.title), state.counts[c] ?: 0)
+            }
         }
     }
 }

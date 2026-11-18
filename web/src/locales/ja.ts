@@ -176,6 +176,8 @@ export const ja = {
   'Shopping mall': 'ショッピングモール',
   Market: '市場',
   // Nearby and the map
+  'All places': 'すべての場所',
+  'Category: {name}': 'カテゴリ: {name}',
   Order: '並び順',
   Latest: '最近',
   Newest: '新しい順',

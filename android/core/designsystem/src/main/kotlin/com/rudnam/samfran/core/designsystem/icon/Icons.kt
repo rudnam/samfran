@@ -27,6 +27,7 @@ object SamFranIcons {
     const val back = "M15 5l-7 7 7 7"
     const val chevronLeft = "M14 6l-6 6 6 6"
     const val chevronRight = "M10 6l6 6-6 6"
+    const val chevronDown = "M6 9l6 6 6-6"
     const val search = "M16.5 10.5a6 6 0 1 1-12 0a6 6 0 1 1 12 0zM15 15l5 5"
     const val map = "M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"
     const val edit = "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"

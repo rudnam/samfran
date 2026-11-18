@@ -1,14 +1,14 @@
 // The list: places you've been (latest visit first) and places you want to go,
 // all of them or one category's, newest or nearest first, as a list or on a map.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
 import { t, tn } from '../../i18n';
 import { href } from '../../router';
-import { Avatar, personTone, useSpace } from '../../space';
-import { categories, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
-import { shortDate, today } from './format';
+import { personTone, useSpace } from '../../space';
+import { categories, categoryName, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
+import { shortDate } from './format';
 import { byDistance, distanceText, useLocation } from './nearby';
 import { PlacesMap } from './PlacesMap';
 
@@ -58,6 +58,7 @@ function saveFilter(c: Category | 'all') {
 export function RestaurantsPage({ tab }: { tab: Tab }) {
   const { data: list, error } = useCached('restaurants', api.restaurants, errorMessage);
   const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [filter, setFilterState] = useState<Category | 'all'>(savedFilter);
   const { space } = useSpace();
   const setFilter = (c: Category | 'all') => {
@@ -93,8 +94,6 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
     [list],
   );
   const want = useMemo(() => (list ?? []).filter((r) => r.visit_count === 0).sort((a, b) => b.id - a.id), [list]);
-  const month = today().slice(0, 7);
-  const thisMonth = been.filter((r) => r.last_visit?.startsWith(month)).length;
   const addHref = href('add', tab === 'want' ? { want: 1 } : undefined);
   const onTab = tab === 'been' ? been : want;
   // The chips: only once there's more than one category to tell apart.
@@ -108,32 +107,18 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
   const near = sort === 'nearby' ? here : null;
   const shown = near ? byDistance(near, filtered) : filtered;
   const onMap = view === 'map' && mapKey !== '';
+  // Search is a button until it's wanted; open while there's something typed.
+  const searchable = (list?.length ?? 0) > 4;
+  const searching = searchable && (searchOpen || query !== '');
 
   return (
     <section className="stack">
       <header className="page-head">
         <div className="row spread">
-          <div>
-            <h1 className="display">{t('Our spots')}</h1>
-            {list && list.length > 0 && (
-              <p className="subtitle">
-                {tn(list.length, '{n} place', '{n} places')}
-                {thisMonth > 0 && <> · {t('{n} this month', { n: thisMonth })}</>}
-              </p>
-            )}
-          </div>
-          <span className="row">
-            {space && (
-              <span className="avatars">
-                {space.members.map((m, i) => (
-                  <Avatar key={m.email} name={m.name} tone={i === 1 ? 'b' : 'a'} />
-                ))}
-              </span>
-            )}
-            <a className="button add-wide" href={addHref}>
-              + {t('Add a place')}
-            </a>
-          </span>
+          <h1 className="display">{t('Our spots')}</h1>
+          <a className="button add-wide" href={addHref}>
+            + {t('Add a place')}
+          </a>
         </div>
         <nav className="tabs-seg" aria-label={t('Lists')}>
           <a className={tab === 'been' ? 'active' : ''} href={href('home')} aria-current={tab === 'been' ? 'page' : undefined}>
@@ -143,46 +128,67 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
             {t('Want to go')} <span className="count">{list ? want.length : ''}</span>
           </a>
         </nav>
-        {showFilter && (
-          <div className="cat-filter" role="radiogroup" aria-label={t('Category')}>
-            <button type="button" role="radio" aria-checked={activeFilter === 'all'} className={activeFilter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>
-              <Icon name="all" size={17} />
-              {t('All')} <span className="count">{onTab.length}</span>
-            </button>
-            {categories
-              .filter((c) => (counts.get(c) ?? 0) > 0 || c === activeFilter)
-              .map((c) => (
-                <button key={c} type="button" role="radio" aria-checked={activeFilter === c} className={activeFilter === c ? 'on' : ''} onClick={() => setFilter(c)}>
-                  <Icon name={c} size={17} />
-                  {categoryShort(c)} <span className="count">{counts.get(c) ?? 0}</span>
+        {list && list.length > 0 && (
+          <div className="toolbar">
+            {showFilter ? (
+              <CategoryMenu value={activeFilter} total={onTab.length} counts={counts} onChange={setFilter} />
+            ) : (
+              <span />
+            )}
+            <span className="toolbar-icons">
+              {searchable && (
+                <button
+                  type="button"
+                  className={`icon-toggle${searching ? ' on' : ''}`}
+                  aria-label={t('Search')}
+                  aria-pressed={searching}
+                  onClick={() => {
+                    if (searching) setQuery('');
+                    setSearchOpen(!searching);
+                  }}
+                >
+                  <Icon name="search" size={20} />
                 </button>
-              ))}
+              )}
+              <button
+                type="button"
+                className={`icon-toggle${sort === 'nearby' ? ' on' : ''}`}
+                aria-label={t('Nearby')}
+                aria-pressed={sort === 'nearby'}
+                onClick={() => setSort(sort === 'nearby' ? 'newest' : 'nearby')}
+              >
+                <Icon name="nearby" size={20} />
+              </button>
+              {mapKey && (
+                <button
+                  type="button"
+                  className={`icon-toggle${onMap ? ' on' : ''}`}
+                  aria-label={t('Map')}
+                  aria-pressed={onMap}
+                  onClick={() => setView(onMap ? 'list' : 'map')}
+                >
+                  <Icon name="map" size={20} />
+                </button>
+              )}
+            </span>
           </div>
         )}
-        {list && list.length > 0 && (
-          <div className="row spread list-tools">
-            <div className="pill-seg" role="radiogroup" aria-label={t('Order')}>
-              <button type="button" role="radio" aria-checked={sort === 'newest'} className={sort === 'newest' ? 'on' : ''} onClick={() => setSort('newest')}>
-                {tab === 'been' ? t('Latest') : t('Newest')}
-              </button>
-              <button type="button" role="radio" aria-checked={sort === 'nearby'} className={sort === 'nearby' ? 'on' : ''} onClick={() => setSort('nearby')}>
-                <Icon name="nearby" size={15} />
-                {t('Nearby')}
-              </button>
-            </div>
-            {mapKey && (
-              <div className="pill-seg" role="radiogroup" aria-label={t('View')}>
-                <button type="button" role="radio" aria-checked={!onMap} className={!onMap ? 'on' : ''} onClick={() => setView('list')}>
-                  <Icon name="list" size={15} />
-                  {t('List')}
-                </button>
-                <button type="button" role="radio" aria-checked={onMap} className={onMap ? 'on' : ''} onClick={() => setView('map')}>
-                  <Icon name="map" size={15} />
-                  {t('Map')}
-                </button>
-              </div>
-            )}
-          </div>
+        {searching && (
+          <input
+            type="search"
+            className="search"
+            aria-label={t('Search')}
+            placeholder={t('Search by name, area, kind or notes')}
+            value={query}
+            autoFocus
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setQuery('');
+                setSearchOpen(false);
+              }
+            }}
+          />
         )}
         {sort === 'nearby' && location.state.status === 'asking' && <p className="hint">{t('Finding where you are…')}</p>}
         {sort === 'nearby' && location.state.status === 'failed' && (
@@ -191,16 +197,6 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
               ? t('Location is off for this site, so the list is newest first. Allow it in the browser to sort by distance.')
               : t('Couldn’t find where you are, so the list is newest first.')}
           </p>
-        )}
-        {list && list.length > 4 && (
-          <input
-            type="search"
-            className="search"
-            aria-label={t('Search')}
-            placeholder={t('Search by name, area, kind or notes')}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
         )}
       </header>
 
@@ -303,4 +299,75 @@ function noteMatch(r: Restaurant, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return undefined;
   return r.visit_notes?.find((v) => v.note.toLowerCase().includes(q));
+}
+
+/**
+ * The category to show (.cat-menu): a button saying which ("All places 5",
+ * "Nature 1"), opening a menu of the categories with places on this list.
+ */
+function CategoryMenu({
+  value,
+  total,
+  counts,
+  onChange,
+}: {
+  value: Category | 'all';
+  total: number;
+  counts: Map<Category, number>;
+  onChange: (c: Category | 'all') => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // Closes on a tap elsewhere, or Escape.
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+  const pick = (c: Category | 'all') => {
+    onChange(c);
+    setOpen(false);
+  };
+  const label = value === 'all' ? t('All places') : categoryName(value);
+  return (
+    <div className="cat-menu" ref={box}>
+      <button
+        type="button"
+        className={`cat-menu-button${value !== 'all' ? ' on' : ''}`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label={t('Category: {name}', { name: label })}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name={value === 'all' ? 'all' : value} size={17} />
+        {value === 'all' ? t('All places') : categoryShort(value)}
+        <span className="count">{value === 'all' ? total : (counts.get(value) ?? 0)}</span>
+        <Icon name="down" size={16} />
+      </button>
+      {open && (
+        <div className="cat-menu-list" role="radiogroup" aria-label={t('Category')}>
+          <button type="button" role="radio" aria-checked={value === 'all'} onClick={() => pick('all')}>
+            <Icon name="all" size={18} />
+            <span className="grow">{t('All places')}</span>
+            <span className="count">{total}</span>
+          </button>
+          {categories
+            .filter((c) => (counts.get(c) ?? 0) > 0 || c === value)
+            .map((c) => (
+              <button key={c} type="button" role="radio" aria-checked={value === c} onClick={() => pick(c)}>
+                <CategoryTile category={c} size="sm" />
+                <span className="grow">{categoryName(c)}</span>
+                <span className="count">{counts.get(c) ?? 0}</span>
+              </button>
+            ))}
+        </div>
+      )}
+    </div>
+  );
 }

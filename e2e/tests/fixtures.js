@@ -76,6 +76,12 @@ async function standAt(page, lat, lng) {
   }, [lat ?? null, lng ?? null]);
 }
 
+/** Shows one category's places (or 'All places'), from the category menu above the list. */
+async function pickCategory(page, name) {
+  await page.getByRole('button', { name: /^Category:/ }).click();
+  await page.getByRole('radiogroup', { name: 'Category' }).getByRole('radio', { name }).click();
+}
+
 let n = 0;
 /** A unique email per call, so parallel tests never share an account. */
 function uniqueEmail() {
@@ -128,4 +134,4 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-module.exports = { test, expect: base.expect, signUp, standAt, uniqueEmail, PASSWORD, confirmationLink, resetLink };
+module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, uniqueEmail, PASSWORD, confirmationLink, resetLink };
