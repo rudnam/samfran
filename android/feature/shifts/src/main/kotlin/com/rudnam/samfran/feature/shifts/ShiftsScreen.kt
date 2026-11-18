@@ -51,6 +51,7 @@ import com.rudnam.samfran.core.ui.TabPage
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.feature.shifts.navigation.ShiftEditRoute
+import com.rudnam.samfran.feature.shifts.navigation.ShiftCalendarLinkRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftSettingsRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
@@ -71,6 +72,7 @@ internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsVi
         onEdit = { state.shown?.let { navigation.navigate(ShiftEditRoute(it.toString())) } },
         onTakePhoto = { viewModel.askPhoto(SheetPhotos.Source.Camera) },
         onChoosePhoto = { viewModel.askPhoto(SheetPhotos.Source.Picker) },
+        onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
     )
 }
 
@@ -84,6 +86,7 @@ fun ShiftsScreen(
     onEdit: () -> Unit,
     onTakePhoto: () -> Unit,
     onChoosePhoto: () -> Unit,
+    onCalendar: () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
@@ -191,6 +194,7 @@ fun ShiftsScreen(
                             }
                         }
                         SecondaryButton(stringResource(R.string.edit_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = state.shown != null, icon = SamFranIcons.edit)
+                        SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
                     }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

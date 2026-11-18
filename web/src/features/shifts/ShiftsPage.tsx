@@ -1,6 +1,6 @@
 // Sam's shifts: the month, the next shift, reading a photo of the sheet,
-// and fixing days by hand. The calendar feed and settings are on
-// ShiftSettingsPage.
+// and fixing days by hand. Adding them to Google Calendar is on
+// ShiftCalendarLinkPage, the settings on ShiftSettingsPage.
 import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage, type ReadProgress, type ShiftDay, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
@@ -186,6 +186,9 @@ export function ShiftsPage({ month }: { month?: string }) {
         )}
         <a className="button secondary" href={href('shifts/edit', { month: shown })}>
           {t('Edit by hand')}
+        </a>
+        <a className="button secondary" href={href('shifts/calendar')}>
+          {t('Add to Google Calendar')}
         </a>
       </div>
 

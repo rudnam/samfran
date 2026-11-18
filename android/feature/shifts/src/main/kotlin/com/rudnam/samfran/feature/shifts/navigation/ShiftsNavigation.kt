@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.shifts.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.samfran.feature.shifts.ShiftCalendarLinkDestination
 import com.rudnam.samfran.feature.shifts.ShiftEditorDestination
 import com.rudnam.samfran.feature.shifts.ShiftSettingsDestination
 import com.rudnam.samfran.feature.shifts.ShiftsDestination
@@ -16,9 +17,13 @@ data class ShiftsRoute(val month: String? = null)
 @Serializable
 data class ShiftEditRoute(val month: String, val fromPhoto: Boolean = false)
 
-/** Shift settings and the calendar link (the website's shifts/settings). */
+/** Shift settings (the website's shifts/settings). */
 @Serializable
 data object ShiftSettingsRoute
+
+/** Adding the shifts to Google Calendar: the calendar link (the website's shifts/calendar). */
+@Serializable
+data object ShiftCalendarLinkRoute
 
 interface ShiftsNavigation {
     fun navigate(route: Any)
@@ -31,4 +36,5 @@ fun NavGraphBuilder.shiftsScreens(navigation: ShiftsNavigation, @Suppress("UNUSE
     composable<ShiftsRoute> { ShiftsDestination(navigation) }
     composable<ShiftEditRoute> { ShiftEditorDestination(navigation) }
     composable<ShiftSettingsRoute> { ShiftSettingsDestination(navigation) }
+    composable<ShiftCalendarLinkRoute> { ShiftCalendarLinkDestination(navigation) }
 }
