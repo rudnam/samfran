@@ -8,6 +8,8 @@ import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.model.ShiftCodes
+import com.rudnam.samfran.core.model.ShiftCoworker
+import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.feature.shifts.navigation.ShiftEditRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +23,11 @@ import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
 
+/** Someone at work around a day, in the editor. [read] is the name as the photo reader gave it, to learn from a fix. */
+data class PersonRow(val key: Long, val name: String, val code: String, val dayOffset: Int = 0, val read: String? = null) {
+    val coworker: ShiftCoworker get() = ShiftCoworker(name.trim(), ShiftCodes.normalize(code), dayOffset)
+}
+
 data class ShiftEditorUiState(
     val month: YearMonth,
     /** The month as saved, or as the photo reader found it; null while it loads. */
@@ -28,10 +35,11 @@ data class ShiftEditorUiState(
     val codes: Map<LocalDate, String> = emptyMap(),
     /** The day whose code the chips fill in. */
     val focused: LocalDate? = null,
-    /** Who's with you, as typed by hand: the whole line, per day. Typed names stay whatever the code. */
-    val typed: Map<LocalDate, String> = emptyMap(),
-    /** The day whose names are open to edit; the chips then offer this month's names. */
-    val editingWith: LocalDate? = null,
+    /** Everyone at work around each day, as read or saved, and as fixed here. */
+    val people: Map<LocalDate, List<PersonRow>> = emptyMap(),
+    /** The day whose people are open, and who was listed first when it opened (so nobody jumps away while edited). */
+    val openDay: LocalDate? = null,
+    val shown: Set<Long> = emptySet(),
     /** 締め申請通知 this month, as dates in it; null until known. Sent only once [closingChanged]. */
     val closing: List<Int>? = null,
     val closingChanged: Boolean = false,
@@ -44,46 +52,30 @@ data class ShiftEditorUiState(
     /** Checking what the photo reader found, rather than fixing the saved month by hand. */
     val fromPhoto: Boolean get() = base?.fromPhoto == true
 
-    /**
-     * Who's on the same shift: what was typed, else as read or saved. The read
-     * names only stay while the day's code is unchanged (a different code is a
-     * different shift); typed names are the user's call and always stay.
-     */
-    fun withFor(date: LocalDate): List<String> {
-        typed[date]?.let { return splitNames(it) }
-        val d = base?.days?.firstOrNull { it.date == date } ?: return emptyList()
-        return if (d.with.isNotEmpty() && ShiftCodes.normalize(d.code) == ShiftCodes.normalize(codes[date].orEmpty())) d.with else emptyList()
+    private val lengths: Map<String, Double> get() = base?.settings?.lengths.orEmpty()
+
+    /** The day's shift, in hours from its start; null for a day off or an unknown length. */
+    fun hours(date: LocalDate): Pair<Double, Double>? = ShiftCodes.hoursAround(codes[date].orEmpty(), 0, lengths)
+
+    /** Whether someone is there during the day's shift (a shift without hours: on its exact code). */
+    fun isThere(date: LocalDate, p: PersonRow): Boolean {
+        if (p.name.isBlank()) return false
+        val h = hours(date) ?: return p.dayOffset == 0 && ShiftCodes.normalize(p.code) == ShiftCodes.normalize(codes[date].orEmpty())
+        return ShiftCodes.hoursAround(p.code, p.dayOffset, lengths)?.let { ShiftCodes.overlaps(it, h) } == true
     }
 
-    /** How many others on other shifts are there, as read or saved, while the day's code is unchanged. */
-    fun thereCount(date: LocalDate): Int {
-        val d = base?.days?.firstOrNull { it.date == date } ?: return 0
-        return if (ShiftCodes.normalize(d.code) == ShiftCodes.normalize(codes[date].orEmpty())) d.others.size else 0
-    }
+    /** Those there during the day's shift, as the code now is. */
+    fun there(date: LocalDate): List<PersonRow> = people[date].orEmpty().filter { isThere(date, it) }
 
-    /** The line in a day's names box: as typed, else the names joined. */
-    fun withText(date: LocalDate): String = typed[date] ?: withFor(date).joinToString(", ")
+    /** Whether a day is a shift (so it can have people). */
+    fun working(date: LocalDate): Boolean = meaning(date)?.kind == ShiftKind.Work
 
-    /** The names on this month's other days, the most frequent first: the chips while [date]'s names are open. */
-    fun namesBesides(date: LocalDate): List<String> =
-        dates.filter { it != date }.flatMap(::withFor).groupingBy { it }.eachCount().entries
-            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
-            .map { it.key }
-
-    /**
-     * Names fixed while checking a scan, as read to corrected, so the next
-     * scan gets them right. Only where the same number of names went as came,
-     * so each pairs with the one it replaced.
-     */
-    fun corrections(): Map<String, String> {
-        val out = linkedMapOf<String, String>()
-        for (d in base?.days.orEmpty()) {
-            val now = withFor(d.date)
-            val removed = d.with.filter { it !in now }
-            val added = now.filter { it !in d.with }
-            if (removed.size == added.size) removed.zip(added).forEach { (from, to) -> out[from] = to }
+    /** Names fixed while checking a scan, as read to corrected, so the next scan gets them right. */
+    fun corrections(): Map<String, String> = buildMap {
+        for (p in people.values.flatten()) {
+            val to = p.name.trim()
+            if (p.read != null && to.isNotEmpty() && to != p.read) put(p.read, to)
         }
-        return out
     }
 
     /** The usual closing days as they fall in this month. */
@@ -96,19 +88,20 @@ data class ShiftEditorUiState(
         codes[date]?.takeIf { it.isNotBlank() }?.let { ShiftCodes.explain(it, base?.settings?.lengths.orEmpty()) }
 }
 
-/** Names are separated by commas (a name itself has a space in it). */
-internal fun splitNames(text: String): List<String> = text.split(',', '、', '，').map { it.trim() }.filter { it.isNotEmpty() }
-
 interface ShiftEditorActions {
     fun setCode(date: LocalDate, code: String)
     fun focus(date: LocalDate?)
     /** A common code's chip: fills the focused day and moves to the next. */
     fun chip(code: String)
-    /** Opens a day's names to edit, or closes them (null). */
-    fun editWith(date: LocalDate?)
-    fun setWith(date: LocalDate, text: String)
-    /** A name's chip: adds it to the open day, or takes it off if it's there. */
-    fun toggleName(name: String)
+    /** Opens a day's people, or closes them (null). */
+    fun openPeople(date: LocalDate?)
+    fun setPersonName(key: Long, name: String)
+    fun setPersonCode(key: Long, code: String)
+    /** Which day their cell is on: the same day, then the day before (a night shift), then the next day. */
+    fun nextPersonDay(key: Long)
+    fun removePerson(key: Long)
+    /** Adds someone to the open day, on its own code. */
+    fun addPerson()
     /** This month's closing day [index] becomes [day] (a date in the month). */
     fun setClosing(index: Int, day: Int)
     fun addClosing()
@@ -149,10 +142,15 @@ class ShiftEditorViewModel @Inject constructor(
         }
     }
 
+    private var nextKey = 1L
+
     private fun take(m: ShiftMonth) = _state.update {
         it.copy(
             base = m,
             codes = m.days.associate { d -> d.date to d.code },
+            people = m.days.associate { d ->
+                d.date to d.people.map { p -> PersonRow(nextKey++, p.name, p.code, p.dayOffset, read = p.name.takeIf { m.fromPhoto }) }
+            },
             focused = it.focused ?: month.atDay(1),
             closing = if (m.fromPhoto) it.closing else m.closing,
         )
@@ -172,18 +170,30 @@ class ShiftEditorViewModel @Inject constructor(
 
     override fun setCode(date: LocalDate, code: String) = _state.update { it.copy(codes = it.codes + (date to code.take(12))) }
 
-    // A code box taking the focus closes the names.
-    override fun focus(date: LocalDate?) = _state.update { it.copy(focused = date, editingWith = null) }
+    override fun focus(date: LocalDate?) = _state.update { it.copy(focused = date) }
 
-    override fun editWith(date: LocalDate?) = _state.update { it.copy(editingWith = date, focused = date ?: it.focused) }
+    override fun openPeople(date: LocalDate?) = _state.update { s ->
+        s.copy(openDay = date, shown = date?.let { d -> s.there(d).map { it.key }.toSet() }.orEmpty())
+    }
 
-    override fun setWith(date: LocalDate, text: String) = _state.update { it.copy(typed = it.typed + (date to text.take(400))) }
+    /** Changes someone on the open day. */
+    private fun person(key: Long, change: (PersonRow) -> PersonRow?) = _state.update { s ->
+        val day = s.openDay ?: return@update s
+        s.copy(people = s.people + (day to s.people[day].orEmpty().mapNotNull { if (it.key == key) change(it) else it }))
+    }
 
-    override fun toggleName(name: String) = _state.update { s ->
-        val day = s.editingWith ?: return@update s
-        val now = s.withFor(day)
-        val next = if (name in now) now - name else now + name
-        s.copy(typed = s.typed + (day to next.joinToString(", ")))
+    override fun setPersonName(key: Long, name: String) = person(key) { it.copy(name = name.take(40)) }
+
+    override fun setPersonCode(key: Long, code: String) = person(key) { it.copy(code = code.take(12)) }
+
+    override fun nextPersonDay(key: Long) = person(key) { it.copy(dayOffset = if (it.dayOffset == 0) -1 else if (it.dayOffset < 0) 1 else 0) }
+
+    override fun removePerson(key: Long) = person(key) { null }
+
+    override fun addPerson() = _state.update { s ->
+        val day = s.openDay ?: return@update s
+        val added = PersonRow(nextKey++, "", ShiftCodes.normalize(s.codes[day].orEmpty()))
+        s.copy(people = s.people + (day to s.people[day].orEmpty() + added), shown = s.shown + added.key)
     }
 
     override fun chip(code: String) = _state.update { s ->
@@ -198,10 +208,9 @@ class ShiftEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val s = _state.value
             val codes = s.codes.mapValues { ShiftCodes.normalize(it.value) }
-            val with = s.dates.associateWith { s.withFor(it) }.filterValues { it.isNotEmpty() }
-            // Who else was there, as read or saved: the server keeps those who overlap the day's shift as saved.
-            val others = s.base?.days.orEmpty().associate { d -> d.date to d.others.map { it.coworker } }.filterValues { it.isNotEmpty() }
-            val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap(), s.closing.takeIf { s.closingChanged }, others)
+            // Everyone, there during the shift or not: the server works out who's shown.
+            val people = s.people.mapValues { (_, rows) -> rows.filter { it.name.isNotBlank() }.map { it.coworker } }.filterValues { it.isNotEmpty() }
+            val r = shifts.save(month, codes, people, if (s.fromPhoto) s.corrections() else emptyMap(), s.closing.takeIf { s.closingChanged })
             if (r is Outcome.Done) reminders.sync(now = true) // the phone asks "Start bus alarm?" at the new times
             _state.update { it.copy(busy = false, saved = r is Outcome.Done, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }

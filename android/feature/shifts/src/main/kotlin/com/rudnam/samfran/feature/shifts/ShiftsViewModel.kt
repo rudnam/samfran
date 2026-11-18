@@ -50,7 +50,7 @@ data class ShiftsUiState(
     val data: ShiftMonth? = null,
     val next: ShiftDay? = null,
     val asList: Boolean = false,
-    /** Everyone there during a shift, not only those on the same one. */
+    /** Who else is there during a shift; off (nobody shown) until the people button is pressed. */
     val everyone: Boolean = false,
     /** The day tapped on the calendar. */
     val picked: LocalDate? = null,
@@ -118,7 +118,7 @@ class ShiftsViewModel @Inject constructor(
         local.map { it.asked }.flatMapLatest { shifts.month(it) },
         preferences.preferences,
         savedNext,
-    ) { s, data, prefs, next -> s.copy(data = data, asList = prefs.shiftsAsList, everyone = prefs.shiftsEveryone, next = next ?: s.next) }
+    ) { s, data, prefs, next -> s.copy(data = data, asList = prefs.shiftsAsList, next = next ?: s.next) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
 
     init {
@@ -150,7 +150,7 @@ class ShiftsViewModel @Inject constructor(
     }
 
     override fun setEveryone(on: Boolean) {
-        viewModelScope.launch { preferences.setShiftsEveryone(on) }
+        local.update { it.copy(everyone = on) }
     }
 
     override fun pick(date: LocalDate) = local.update { it.copy(picked = date) }

@@ -103,7 +103,6 @@ fun ShiftCalendar(
     closingDays: List<Int> = emptyList(),
     who: String = "",
     everyone: Boolean = false,
-    onEveryone: (Boolean) -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
@@ -172,7 +171,7 @@ fun ShiftCalendar(
             }
         }
         if (picked != null && YearMonth.from(picked) == month) {
-            DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp), who, everyone, onEveryone)
+            DayLine(picked, byDate[picked], Modifier.padding(top = 4.dp), who, everyone)
             if (isClosingDay(picked, closingDays)) {
                 Row(Modifier.padding(start = 74.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     ClosingFlag()
@@ -206,7 +205,6 @@ fun DayLine(
     modifier: Modifier = Modifier,
     who: String = "",
     everyone: Boolean = false,
-    onEveryone: (Boolean) -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     val type = MaterialTheme.typography
@@ -235,7 +233,7 @@ fun DayLine(
                 if (oneLine) Text(day.times, style = type.bodyMedium, color = colors.muted, softWrap = false)
                 CodeChip(day.code)
             }
-            if (day != null) WhoThere(day, who, everyone, onEveryone, Modifier.padding(start = dateWidth + gap))
+            if (day != null) WhoThere(day, who, everyone, Modifier.padding(start = dateWidth + gap))
         }
     }
 }

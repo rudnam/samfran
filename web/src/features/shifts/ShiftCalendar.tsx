@@ -37,14 +37,12 @@ export function ShiftCalendar({
   closing,
   who,
   everyone,
-  onEveryone,
 }: {
   month: string;
   days: ShiftDay[];
   closing: number[];
   who: string;
   everyone: boolean;
-  onEveryone: (on: boolean) => void;
 }) {
   const now = today();
   const [picked, setPicked] = useState(now.startsWith(month) ? now : '');
@@ -102,7 +100,7 @@ export function ShiftCalendar({
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
               <span className="code-chip">{shown.code}</span>
-              <WhoThere day={shown} who={who} everyone={everyone} onEveryone={onEveryone} />
+              <WhoThere day={shown} who={who} everyone={everyone} />
             </>
           ) : (
             <span className="grow muted">{t('Nothing entered')}</span>

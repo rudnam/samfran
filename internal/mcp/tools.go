@@ -193,7 +193,7 @@ var toolList = []*tool{
 				return nil, asToolError(err, "month")
 			}
 			view.Settings.FeedPath = ""
-			return view, nil
+			return withoutPeople(view), nil
 		},
 	},
 	{
@@ -231,7 +231,7 @@ var toolList = []*tool{
 			}
 			c.log("shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
 			view.Settings.FeedPath = ""
-			return view, nil
+			return withoutPeople(view), nil
 		},
 	},
 	{
@@ -402,3 +402,12 @@ var tools = func() map[string]*tool {
 	}
 	return m
 }()
+
+// withoutPeople leaves out everyone kept around each day: those on the same
+// shift and there during it (with, others) are what a client needs.
+func withoutPeople(view shift.MonthView) shift.MonthView {
+	for i := range view.Days {
+		view.Days[i].People = nil
+	}
+	return view
+}

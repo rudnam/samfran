@@ -188,7 +188,7 @@ export const api = {
   shifts: (month?: string) => request<ShiftMonth>('GET', month ? `/api/shifts?month=${month}` : '/api/shifts'),
   saveShifts: (
     month: string,
-    days: { date: string; code: string; with?: string[]; others?: ShiftCoworker[] }[],
+    days: { date: string; code: string; people: ShiftCoworker[] }[],
     corrections?: { from: string; to: string }[],
     /** This month's 締め申請通知 days (dates in it); left out, they stay as they are. */
     closing_days?: number[],
@@ -285,6 +285,8 @@ export interface ShiftDay {
   with?: string[];
   /** Others on other shifts whose hours overlap this one, by when they start. */
   others?: ShiftThere[];
+  /** Everyone kept around the day, there during it or not: with and others are worked out from them. */
+  people?: ShiftCoworker[];
 }
 
 /** Someone else at work around a day, as read off the sheet. */

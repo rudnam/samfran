@@ -85,7 +85,6 @@
     <string name="start_to">%1$sまでスタート</string>
     <string name="your_stops">登録したバス停</string>
     <string name="when_picked">選んだときだけ</string>
-    <string name="add_stop_hint">シフトによって降りるバス停が違うときは、そのバス停を追加して、どのシフトのときに使うか選んでください。</string>
     <string name="use_after">このバス停を使うシフト</string>
     <string name="this_stop">このバス停</string>
     <string name="use_after_none">なし: 選んだときだけ使います。</string>
