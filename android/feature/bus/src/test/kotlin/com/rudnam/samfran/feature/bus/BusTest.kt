@@ -69,6 +69,7 @@ class BusScreenshotTest {
         override fun add() {}
         override fun cancelEdit() {}
         override fun toggleShift(kind: String) {}
+        override fun toggleAsk() {}
         override fun removeStop() {}
         override fun setName(name: String) {}
         override fun pick(stop: FoundStop) {}
@@ -161,6 +162,20 @@ class BusScreenshotTest {
     @Config(qualifiers = "w411dp-h1400dp-xxhdpi")
     fun stopFound() = shot("found", content = screen(
         several.copy(editing = 1, form = StopForm(name = "葵西", position = 34.97 to 138.38, meters = 600, shifts = listOf("Early", "Late"))),
+    ))
+
+    // A stop that doesn't ask when its shifts end.
+    @Test
+    @Config(qualifiers = "w411dp-h1400dp-xxhdpi")
+    fun stopNotAsking() = shot("no-question", content = screen(
+        several.copy(editing = 2, form = StopForm(name = "静岡駅", position = 34.97 to 138.39, meters = 600, shifts = listOf("Early", "Middle"), ask = false)),
+    ))
+
+    // Settings with a stop that doesn't ask.
+    @Test
+    @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
+    fun settingsNotAsking() = shot("settings-no-question", content = screen(
+        several.copy(stops = Samples.stops.copy(stops = Samples.stops.stops.map { if (it.id == 2L) it.copy(ask = false) else it })),
     ))
 
     @Test
@@ -281,6 +296,20 @@ class BusViewModelTest {
         assertEquals(3, bus.stopsFlow.value!!.stops.size)
         assertFalse(vm.state.value.isEditing)
         assertEquals("葵西", vm.state.value.stop?.name) // the one used last
+    }
+
+    @Test
+    fun `a stop can stop asking when its shifts end, and it's kept`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        vm.edit(2)
+        assertTrue(vm.state.value.form.ask)
+        vm.toggleAsk()
+        vm.saveStop()
+        assertFalse(bus.stopsFlow.value!!.byId(2)!!.ask)
+        assertTrue(bus.stopsFlow.value!!.byId(1)!!.ask)
+        vm.edit(2)
+        assertFalse(vm.state.value.form.ask)
     }
 
     @Test

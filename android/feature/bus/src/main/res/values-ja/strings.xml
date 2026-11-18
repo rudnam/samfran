@@ -93,4 +93,10 @@
     <string name="remove_stop">このバス停を削除</string>
     <string name="remove_stop_title">%1$sを削除しますか？</string>
     <string name="remove">削除</string>
+    <!-- The question at the end of a shift, for each stop -->
+    <string name="ask_for_stop">シフトが終わったら確認</string>
+    <string name="ask_for_stop_on">このバス停のシフトが終わると「バスアラームを開始しますか？」と聞きます。</string>
+    <string name="ask_for_stop_off">オフ: このバス停のシフトのあとは聞きません。</string>
+    <string name="ask_for_stop_phone_off">今はこのスマホでオフです。アラームの設定で「シフトが終わったら確認」をオンにしてください。</string>
+    <string name="no_question">確認なし</string>
 </resources>

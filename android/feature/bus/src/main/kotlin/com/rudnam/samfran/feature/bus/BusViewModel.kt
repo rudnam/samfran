@@ -47,6 +47,8 @@ data class StopForm(
     val meters: Int = 800,
     /** The kinds of shift it's the stop for. */
     val shifts: List<String> = emptyList(),
+    /** Ask "Start bus alarm?" when a shift whose stop this is ends. */
+    val ask: Boolean = true,
     /** "Can't find it? Other ways" is open. */
     val otherWays: Boolean = false,
     val busy: Boolean = false,
@@ -130,6 +132,7 @@ interface BusActions {
     fun add()
     fun cancelEdit()
     fun toggleShift(kind: String)
+    fun toggleAsk()
     fun removeStop()
     fun setName(name: String)
     fun pick(stop: FoundStop)
@@ -195,6 +198,7 @@ class BusViewModel @Inject constructor(
         position = stop.lat to stop.lng,
         meters = stop.alertMeters.takeIf { it > 0 } ?: 800,
         shifts = stop.shifts,
+        ask = stop.ask,
     )
 
     /** The trip asked for by "Start bus alarm?" has been handled (started, or not possible). */
@@ -278,6 +282,8 @@ class BusViewModel @Inject constructor(
     override fun cancelEdit() = local.update { it.copy(editing = null) }
 
     override fun toggleShift(kind: String) = form { f -> f.copy(shifts = if (kind in f.shifts) f.shifts - kind else ShiftKinds.filter { it in f.shifts || it == kind }) }
+
+    override fun toggleAsk() = form { it.copy(ask = !it.ask) }
 
     override fun removeStop() {
         val id = local.value.editing?.takeIf { it != BusUiState.NEW } ?: return
@@ -370,7 +376,7 @@ class BusViewModel @Inject constructor(
         val editing = local.value.editing ?: return
         form { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
-            val input = StopInput(f.name, pos.first, pos.second, f.meters, f.shifts)
+            val input = StopInput(f.name, pos.first, pos.second, f.meters, f.shifts, f.ask)
             val before = state.value.stops?.stops.orEmpty().map { it.id }.toSet()
             val r = if (editing == BusUiState.NEW) bus.add(input) else bus.change(editing, input)
             when (r) {

@@ -735,3 +735,4 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 .stop-list li:first-child { border-top: none; }
 .chips.four { grid-template-columns: repeat(4, 1fr); }
 .row.end .push-start { margin-right: auto; }
+.chips.two { grid-template-columns: repeat(2, 1fr); }
