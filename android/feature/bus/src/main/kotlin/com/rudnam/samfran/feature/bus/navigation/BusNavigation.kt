@@ -6,12 +6,9 @@ import androidx.navigation.compose.composable
 import com.rudnam.samfran.feature.bus.BusDestination
 import kotlinx.serialization.Serializable
 
-/**
- * The Bus tab (the website's bus). From "Start bus alarm?": [start] starts
- * the trip, to [stop] when given (its id); [pick] asks which stop first.
- */
+/** The Bus tab (the website's bus). */
 @Serializable
-data class BusRoute(val start: Boolean = false, val stop: Long = 0, val pick: Boolean = false)
+data object BusRoute
 
 fun NavGraphBuilder.busScreen(@Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState) {
     composable<BusRoute> { BusDestination() }

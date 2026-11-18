@@ -22,16 +22,12 @@ import com.rudnam.samfran.feature.us.navigation.UsRoute
 enum class TopLevelDestination(@StringRes val label: Int, val icon: String, val route: Any) {
     Food(R.string.tab_food, SamFranIcons.food, FoodRoute),
     Shifts(R.string.tab_shifts, SamFranIcons.shifts, ShiftsRoute()),
-    Bus(R.string.tab_bus, SamFranIcons.bus, BusRoute()),
+    Bus(R.string.tab_bus, SamFranIcons.bus, BusRoute),
     Us(R.string.tab_us, SamFranIcons.us, UsRoute),
 }
 
 /** What opens a page from outside the app: its notifications, and a place shared from Google Maps. */
 sealed interface AppLink {
-    /** The Bus tab; [start]: from "Start bus alarm?", which starts the trip. */
-    /** [start] the trip (to [stop], by id, when given), or [pick] which stop first. */
-    data class Bus(val start: Boolean, val stop: Long = 0, val pick: Boolean = false) : AppLink
-
     data object Us : AppLink
 
     /** Add a place, filled in with text shared from Maps. */
@@ -62,10 +58,6 @@ class SamFranAppState(val navController: NavHostController) {
 
     fun open(link: AppLink) {
         when (link) {
-            is AppLink.Bus -> navController.navigate(BusRoute(start = link.start, stop = link.stop, pick = link.pick)) {
-                popUpTo<FoodRoute>()
-                launchSingleTop = !link.start && !link.pick
-            }
             AppLink.Us -> navigateToTab(TopLevelDestination.Us)
             is AppLink.AddPlace -> navController.navigate(PlaceFormRoute(shared = link.shared))
         }

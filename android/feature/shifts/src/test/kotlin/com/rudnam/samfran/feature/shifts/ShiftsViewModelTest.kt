@@ -2,7 +2,6 @@ package com.rudnam.samfran.feature.shifts
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
-import com.rudnam.samfran.core.testing.FakeReminders
 import com.rudnam.samfran.core.testing.FakeShiftsRepository
 import com.rudnam.samfran.core.testing.MainDispatcherRule
 import com.rudnam.samfran.core.testing.Samples
@@ -23,11 +22,10 @@ class ShiftsViewModelTest {
     val main = MainDispatcherRule()
 
     private val shifts = FakeShiftsRepository()
-    private val reminders = FakeReminders()
 
     @Test
     fun `the editor starts from the saved month, and a chip fills the day and moves on`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         val s = vm.state.value
         assertEquals(30, s.dates.size)
         assertEquals("7F", s.codes[LocalDate.of(2026, 11, 2)])
@@ -41,24 +39,23 @@ class ShiftsViewModelTest {
     }
 
     @Test
-    fun `saving normalizes the codes and brings the phone's reminders up to date`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+    fun `saving normalizes the codes`() = runTest {
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         vm.setCode(LocalDate.of(2026, 11, 1), "１３ｆ")
         vm.save()
         assertTrue(vm.state.value.saved)
         assertEquals("13F", shifts.saved?.get(LocalDate.of(2026, 11, 1)))
-        assertEquals(1, reminders.syncs)
     }
 
     @Test
     fun `a month's own closing days are saved with its shifts, and only once changed`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         assertEquals(listOf(15, 30), vm.state.value.closing) // the usual 15th and last day, in November
         assertTrue(vm.state.value.closingIsUsual)
         vm.save()
         assertEquals(null, shifts.savedClosing) // untouched: left as it is
 
-        val again = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val again = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         again.setClosing(0, 20)
         again.addClosing()
         assertEquals(listOf(1, 20, 30), again.state.value.closing)
@@ -67,7 +64,7 @@ class ShiftsViewModelTest {
         again.save()
         assertEquals(listOf(20, 30), shifts.savedClosing)
 
-        val back = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val back = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         assertEquals(listOf(20, 30), back.state.value.closing)
         back.usualClosing()
         back.save()
@@ -76,7 +73,7 @@ class ShiftsViewModelTest {
 
     @Test
     fun `who's on the same shift is kept only while the day's code is unchanged`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(LocalDate.of(2026, 11, 4)))
         vm.setCode(LocalDate.of(2026, 11, 5), "7F") // was 13F: a different shift
         assertEquals(emptyList<String>(), vm.state.value.withFor(LocalDate.of(2026, 11, 5)))
@@ -87,7 +84,7 @@ class ShiftsViewModelTest {
 
     @Test
     fun `names typed for a day are saved, and stay when the code changes`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         val day = LocalDate.of(2026, 11, 2)
         vm.editWith(day)
         assertEquals(day, vm.state.value.editingWith)
@@ -103,7 +100,7 @@ class ShiftsViewModelTest {
 
     @Test
     fun `a name's chip adds it to the open day, and takes it off again`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts)
         val day = LocalDate.of(2026, 11, 2)
         val names = vm.state.value.namesBesides(day)
         assertEquals("タナカ ユイ", names.first()) // the most frequent this month
@@ -119,7 +116,7 @@ class ShiftsViewModelTest {
     fun `names fixed while checking a scan are sent as corrections`() = runTest {
         shifts.read = Samples.november.copy(nameAsRead = "オトル サマンタ")
         shifts.readPhoto(ByteArray(1))
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11", fromPhoto = true)), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11", fromPhoto = true)), shifts)
         val day = LocalDate.of(2026, 11, 4) // read as タナカ ユイ
         vm.editWith(day)
         vm.setWith(day, "タナカ ユエ")
@@ -131,7 +128,7 @@ class ShiftsViewModelTest {
     fun `a photo's reading opens in the editor to be checked`() = runTest {
         shifts.read = Samples.november.copy(month = YearMonth.of(2026, 12), nameAsRead = "オトル サマンタ")
         shifts.readPhoto(ByteArray(1))
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-12", fromPhoto = true)), shifts, reminders)
+        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-12", fromPhoto = true)), shifts)
         assertTrue(vm.state.value.fromPhoto)
         assertEquals(YearMonth.of(2026, 12), vm.state.value.base?.month)
     }

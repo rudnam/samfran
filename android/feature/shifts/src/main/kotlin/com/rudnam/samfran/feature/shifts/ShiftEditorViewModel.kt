@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.rudnam.samfran.core.data.Outcome
-import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.model.ShiftCodes
 import com.rudnam.samfran.core.model.ShiftMonth
@@ -122,7 +121,6 @@ interface ShiftEditorActions {
 class ShiftEditorViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val shifts: ShiftsRepository,
-    private val reminders: Reminders,
 ) : ViewModel(), ShiftEditorActions {
     private val route = savedState.toRoute<ShiftEditRoute>()
     private val month = YearMonth.parse(route.month)
@@ -202,7 +200,6 @@ class ShiftEditorViewModel @Inject constructor(
             // Who else was there, as read or saved: the server keeps those who overlap the day's shift as saved.
             val others = s.base?.days.orEmpty().associate { d -> d.date to d.others.map { it.coworker } }.filterValues { it.isNotEmpty() }
             val r = shifts.save(month, codes, with, if (s.fromPhoto) s.corrections() else emptyMap(), s.closing.takeIf { s.closingChanged }, others)
-            if (r is Outcome.Done) reminders.sync(now = true) // the phone asks "Start bus alarm?" at the new times
             _state.update { it.copy(busy = false, saved = r is Outcome.Done, problem = r.takeIf { o -> o !is Outcome.Done }) }
         }
     }
