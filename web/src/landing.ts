@@ -37,6 +37,7 @@ function translate() {
     el.dataset.en ??= el.innerHTML;
     el.innerHTML = ja ? el.dataset.ja! : el.dataset.en;
   });
+  document.documentElement.lang = ja ? 'ja' : 'en';
   const description = document.querySelector<HTMLMetaElement>('meta[data-ja-content]');
   if (description) {
     description.dataset.en ??= description.content;
