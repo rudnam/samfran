@@ -41,6 +41,8 @@
     <string name="this_device">この端末</string>
     <string name="tell_me">変更を知らせる</string>
     <string name="tell_me_hint">相手がお店を追加したり、来店を記録したり、評価したり、シフトを保存したりすると通知が届きます。30分ほどかかることがあります。</string>
+    <string name="tell_me_bus">バスアラームの開始を知らせる</string>
+    <string name="tell_me_bus_hint">相手がバスアラームを開始すると、降りるバス停と一緒に通知が届きます。30分ほどかかることがあります。</string>
     <string name="allow_notifications">スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。</string>
     <string name="language">言語</string>
     <string name="appearance">表示モード</string>
@@ -66,6 +68,7 @@
     <string name="change_edited">%sを編集</string>
     <string name="change_deleted">%sを削除</string>
     <string name="change_visit">%sの訪問を記録</string>
+    <string name="change_bus_started">%sまでのバスアラームを開始</string>
     <string name="change_visit_removed">%sの訪問を削除</string>
     <string name="change_rated">%1$sを★%2$dで評価</string>
     <string name="change_unrated">%sの評価を消去</string>

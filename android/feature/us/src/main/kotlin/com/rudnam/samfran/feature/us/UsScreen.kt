@@ -70,14 +70,14 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val askForAlerts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setAlerts(true) }
+    val askForBusAlerts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setBusAlerts(true) }
+    val allowed = { Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED }
     val join = stringResource(R.string.join_me)
     UsScreen(
         state,
         viewModel,
-        onAlerts = { on ->
-            val allowed = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            if (on && !allowed) askForAlerts.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setAlerts(on)
-        },
+        onAlerts = { on -> if (on && !allowed()) askForAlerts.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setAlerts(on) },
+        onBusAlerts = { on -> if (on && !allowed()) askForBusAlerts.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setBusAlerts(on) },
         onCopy = { context.copyText(it) },
         onShare = { context.shareText("$join\n$it", "SamFran") },
         onLeaveDemo = navigation::leaveDemo,
@@ -91,6 +91,7 @@ fun UsScreen(
     state: UsUiState,
     actions: UsActions,
     onAlerts: (Boolean) -> Unit,
+    onBusAlerts: (Boolean) -> Unit,
     onCopy: (String) -> Unit,
     onShare: (String) -> Unit,
     onLeaveDemo: () -> Unit,
@@ -191,18 +192,10 @@ fun UsScreen(
             SamFranCard {
                 CardTitle(stringResource(R.string.this_device))
                 if (!demo) {
-                    Row(
-                        Modifier.fillMaxWidth().clickable(role = Role.Switch) { onAlerts(!state.alerts) },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(stringResource(R.string.tell_me), style = MaterialTheme.typography.bodyLarge)
-                            Hint(stringResource(R.string.tell_me_hint))
-                        }
-                        Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
-                    }
+                    SwitchRow(stringResource(R.string.tell_me), stringResource(R.string.tell_me_hint), state.alerts, onAlerts)
                     if (state.alertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
+                    SwitchRow(stringResource(R.string.tell_me_bus), stringResource(R.string.tell_me_bus_hint), state.busAlerts, onBusAlerts)
+                    if (state.busAlertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.language), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
@@ -268,5 +261,21 @@ private fun InviteLink(state: UsUiState, actions: UsActions, onCopy: (String) ->
                 Hint(stringResource(R.string.invite_hint))
             }
         }
+    }
+}
+
+/** A setting on this phone: what it is, what it does, and its switch. */
+@Composable
+private fun SwitchRow(title: String, hint: String, on: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Switch) { onChange(!on) },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Hint(hint)
+        }
+        Switch(on, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = SamFranTheme.colors.accentInk))
     }
 }

@@ -51,6 +51,7 @@ fun describe(e: ActivityEntry): String {
         "restaurant_edited" -> stringResource(R.string.change_edited, d.name)
         "restaurant_deleted" -> stringResource(R.string.change_deleted, d.name)
         "visit_logged" -> stringResource(R.string.change_visit, d.name)
+        "bus_started" -> stringResource(R.string.change_bus_started, d.name)
         "visit_removed" -> stringResource(R.string.change_visit_removed, d.name)
         "rated" -> if (d.stars > 0) stringResource(R.string.change_rated, d.name, d.stars) else stringResource(R.string.change_unrated, d.name)
         "invited" -> stringResource(R.string.change_invited, d.email)

@@ -345,13 +345,16 @@ class FakeActivityRepository(entries: List<ActivityEntry>? = Samples.activity, s
 class FakeReminders : Reminders {
     val prompts = MutableStateFlow(false)
     val alerts = MutableStateFlow(false)
+    val bus = MutableStateFlow(false)
     var allowed = true
     var syncs = 0
 
     override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
+    override val busAlerts: StateFlow<Boolean> = bus
     override suspend fun setShiftPrompts(on: Boolean) = (on && allowed).also { prompts.value = it }
     override suspend fun setActivityAlerts(on: Boolean) = (on && allowed).also { alerts.value = it }
+    override suspend fun setBusAlerts(on: Boolean) = (on && allowed).also { bus.value = it }
     override suspend fun sync(now: Boolean) {
         syncs++
     }
@@ -359,5 +362,6 @@ class FakeReminders : Reminders {
     override fun turnOff() {
         prompts.value = false
         alerts.value = false
+        bus.value = false
     }
 }

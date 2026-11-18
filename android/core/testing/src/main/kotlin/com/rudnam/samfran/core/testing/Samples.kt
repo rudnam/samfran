@@ -141,6 +141,7 @@ object Samples {
         ActivityEntry(58, Instant.parse("2026-11-15T09:12:00Z"), "Sam", me = false, viaClaude = true, kind = "shifts_saved", details = ActivityDetails(month = "2026-12")),
         ActivityEntry(57, Instant.parse("2026-11-14T12:40:00Z"), "Sam", me = false, viaClaude = false, kind = "visit_logged", details = ActivityDetails(name = "Hanabi Grill")),
         ActivityEntry(56, Instant.parse("2026-11-14T12:41:00Z"), "Sam", me = false, viaClaude = false, kind = "rated", details = ActivityDetails(name = "Hanabi Grill", stars = 4)),
+        ActivityEntry(55, Instant.parse("2026-11-13T13:05:00Z"), "Sam", me = false, viaClaude = false, kind = "bus_started", details = ActivityDetails(name = "葵西")),
         ActivityEntry(52, Instant.parse("2026-11-10T03:00:00Z"), "Fran", me = true, viaClaude = false, kind = "restaurant_added", details = ActivityDetails(name = "Bistro Ume")),
         ActivityEntry(
             50, Instant.parse("2026-11-08T03:00:00Z"), "Fran", me = true, viaClaude = false, kind = "shift_settings",

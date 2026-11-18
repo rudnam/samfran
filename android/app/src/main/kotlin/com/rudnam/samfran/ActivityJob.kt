@@ -27,9 +27,10 @@ import javax.inject.Inject
  * half hour, while the phone is online, it asks the server for the recent
  * changes (GET /api/activity, signed in as the app is) and shows a
  * notification for the other person's new places, visits, ratings and saved
- * shifts. Android runs it when it suits the battery, so it can be later
- * than that. It asks the server itself rather than being pushed to, which
- * needs no Google services. Switched on from the Us tab.
+ * shifts, and, switched on separately, when they start a bus alarm. Android
+ * runs it when it suits the battery, so it can be later than that. It asks
+ * the server itself rather than being pushed to, which needs no Google
+ * services. Switched on from the Us tab.
  *
  * (The class and its job id keep the Capacitor build's: a job scheduled
  * before the update runs this.)
@@ -63,14 +64,16 @@ class ActivityJob : JobService() {
 
     private suspend fun check() {
         val p = ShiftPrompt.prefs(this)
-        if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return
+        val changes = p.getBoolean(ALERTS, false)
+        val bus = p.getBoolean(BUS_ALERTS, false)
+        if (!(changes || bus) || session.currentToken() == null) return
         val list = (activity.refresh() as? Outcome.Done)?.value ?: return
         val seen = p.getLong(SEEN, 0)
         val fresh = list.filter { it.id > seen }
         if (fresh.isEmpty()) return
         p.edit { putLong(SEEN, fresh.maxOf { it.id }) }
         // Newest first, as the server lists them.
-        val lines = fresh.filter { !it.me }.mapNotNull { describe(this, it) }
+        val lines = fresh.filter { !it.me && (if (it.kind == BUS_STARTED) bus else changes) }.mapNotNull { describe(this, it) }
         if (lines.isNotEmpty()) show(this, lines)
     }
 
@@ -82,6 +85,9 @@ class ActivityJob : JobService() {
 
         /** In ShiftPrompt.prefs: alerts are on, and the newest change already shown or notified. */
         const val ALERTS = "alerts"
+        /** In ShiftPrompt.prefs: tell when the other one starts a bus alarm. */
+        const val BUS_ALERTS = "bus-alerts"
+        private const val BUS_STARTED = "bus_started"
         const val SEEN = "seen"
 
         fun schedule(c: Context, on: Boolean) {
@@ -115,6 +121,7 @@ class ActivityJob : JobService() {
                 "visit_logged" -> c.getString(R.string.notify_change_visit, who, name)
                 "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
                 "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
+                BUS_STARTED -> c.getString(R.string.notify_bus_started, who, name)
                 else -> null
             }
         }

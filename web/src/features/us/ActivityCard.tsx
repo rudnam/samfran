@@ -1,5 +1,6 @@
 // Recent changes: who changed what you share (shifts and their settings,
-// the calendar link, restaurants, invitations), from the app or via Claude.
+// the calendar link, restaurants, invitations) or started a bus alarm, from
+// the app or via Claude.
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type ActivityEntry } from '../../api';
 import { useCached } from '../../cache';
@@ -55,6 +56,8 @@ function describe(e: ActivityEntry): string {
       return t('deleted {name}', { name });
     case 'visit_logged':
       return t('logged a visit to {name}', { name });
+    case 'bus_started':
+      return t('started the bus alarm to {name}', { name });
     case 'visit_removed':
       return t('removed a visit to {name}', { name });
     case 'rated':

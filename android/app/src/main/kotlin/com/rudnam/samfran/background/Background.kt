@@ -117,8 +117,10 @@ class AndroidReminders @Inject constructor(
 
     private val prompts = MutableStateFlow(prefs.getBoolean(ShiftPrompt.PROMPTS, false))
     private val alerts = MutableStateFlow(prefs.getBoolean(ActivityJob.ALERTS, false))
+    private val busOn = MutableStateFlow(prefs.getBoolean(ActivityJob.BUS_ALERTS, false))
     override val shiftPrompts: StateFlow<Boolean> = prompts
     override val activityAlerts: StateFlow<Boolean> = alerts
+    override val busAlerts: StateFlow<Boolean> = busOn
 
     private val allowed: Boolean get() = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
@@ -130,16 +132,21 @@ class AndroidReminders @Inject constructor(
         return now
     }
 
-    override suspend fun setActivityAlerts(on: Boolean): Boolean {
+    override suspend fun setActivityAlerts(on: Boolean) = setJobAlert(ActivityJob.ALERTS, alerts, on)
+
+    override suspend fun setBusAlerts(on: Boolean) = setJobAlert(ActivityJob.BUS_ALERTS, busOn, on)
+
+    /** One of [ActivityJob]'s two switches; the job runs while either is on. */
+    private suspend fun setJobAlert(key: String, flow: MutableStateFlow<Boolean>, on: Boolean): Boolean {
         val now = on && allowed
-        if (now) {
+        if (now && !alerts.value && !busOn.value) {
             // Only changes after this one are news.
             val newest = (activity.refresh() as? Outcome.Done)?.value?.newestId() ?: 0
             prefs.edit { putLong(ActivityJob.SEEN, maxOf(prefs.getLong(ActivityJob.SEEN, 0), newest)) }
         }
-        prefs.edit { putBoolean(ActivityJob.ALERTS, now) }
-        ActivityJob.schedule(context, now)
-        alerts.value = now
+        prefs.edit { putBoolean(key, now) }
+        flow.value = now
+        ActivityJob.schedule(context, alerts.value || busOn.value)
         return now
     }
 
@@ -165,7 +172,7 @@ class AndroidReminders @Inject constructor(
         if (!now && clock.millis() - last < 5 * 60 * 1000) return
         last = clock.millis()
         if (prompts.value) sendShiftEnds()
-        if (alerts.value) {
+        if (alerts.value || busOn.value) {
             ActivityJob.schedule(context, true)
             (activity.refresh() as? Outcome.Done)?.value?.newestId()?.let { newest ->
                 // Never backwards: the job may have notified about newer ones.
@@ -184,12 +191,14 @@ class AndroidReminders @Inject constructor(
         prefs.edit {
             putBoolean(ShiftPrompt.PROMPTS, false)
             putBoolean(ActivityJob.ALERTS, false)
+            putBoolean(ActivityJob.BUS_ALERTS, false)
             putLong(ActivityJob.SEEN, 0)
         }
         ShiftPrompt.save(context, emptyList(), 0)
         ActivityJob.schedule(context, false)
         prompts.value = false
         alerts.value = false
+        busOn.value = false
     }
 }
 
