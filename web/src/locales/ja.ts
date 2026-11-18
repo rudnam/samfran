@@ -347,7 +347,6 @@ export const ja = {
   'After {shifts}': '{shifts}のあと',
   'When you pick it': '選んだときだけ',
   'Change {stop}': '{stop}を変更',
-  'Got off somewhere else after some shifts? Add that stop, and say which shifts it’s for.': 'シフトによって降りるバス停が違うときは、そのバス停を追加して、どのシフトのときに使うか選んでください。',
   'Use this stop after': 'このバス停を使うシフト',
   'After these shifts, the alarm picks {stop} for you. You can still pick another stop that day.': 'このシフトのあとは、アラームが自動で{stop}を選びます。その日に別のバス停を選ぶこともできます。',
   'this stop': 'このバス停',

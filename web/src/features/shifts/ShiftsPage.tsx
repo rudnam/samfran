@@ -8,7 +8,7 @@ import { href, navigate } from '../../router';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
 import { addMonths, dayName, labelOf, monthName, shrinkPhoto, timesOf } from './codes';
-import { EveryoneToggle, saveEveryone, savedEveryone, WhoThere } from './WhoThere';
+import { EveryoneToggle, WhoThere } from './WhoThere';
 import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
 
@@ -30,11 +30,8 @@ export function ShiftsPage({ month }: { month?: string }) {
   const error = readError || loadError;
   const [reading, setReading] = useState<ReadProgress | null>(null);
   const [view, setView] = useState<View>(savedView);
-  const [everyone, setEveryone] = useState(savedEveryone);
-  function showEveryone(on: boolean) {
-    setEveryone(on);
-    saveEveryone(on);
-  }
+  // Who else is at work stays hidden until the people button is pressed.
+  const [everyone, showEveryone] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   function show(v: View) {
@@ -97,11 +94,10 @@ export function ShiftsPage({ month }: { month?: string }) {
             <strong className="block">
               {dayName(next.date)} · {labelOf(next.label)} · {timesOf(next)}
             </strong>
-            {!everyone && <WhoThere day={next} who={me} everyone={false} onEveryone={showEveryone} className="with block" />}
           </span>
           <span className="code-chip">{next.code}</span>
           {/* Everyone there: under the shift, at the card's full width. */}
-          {everyone && <WhoThere day={next} who={me} everyone onEveryone={showEveryone} />}
+          {everyone && <WhoThere day={next} who={me} everyone />}
         </div>
       )}
 
@@ -147,7 +143,7 @@ export function ShiftsPage({ month }: { month?: string }) {
             closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]}
             who={me}
             everyone={everyone}
-            onEveryone={showEveryone}
+           
           />
         )}
         {data && data.days.length > 0 && view === 'list' && (
@@ -162,7 +158,7 @@ export function ShiftsPage({ month }: { month?: string }) {
                 </span>
                 <span className="shift-time">{timesOf(d)}</span>
                 <span className="code-chip">{d.code}</span>
-                <WhoThere day={d} who={me} everyone={everyone} onEveryone={showEveryone} />
+                <WhoThere day={d} who={me} everyone={everyone} />
               </li>
             ))}
           </ul>

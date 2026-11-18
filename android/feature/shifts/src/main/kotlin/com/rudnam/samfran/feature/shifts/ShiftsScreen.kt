@@ -115,12 +115,11 @@ fun ShiftsScreen(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
-                                if (!state.everyone) WhoThere(next, me, false, actions::setEveryone)
                             }
                             CodeChip(next.code)
                         }
                         // Everyone there: under the shift, at the card's full width.
-                        if (state.everyone) WhoThere(next, me, true, actions::setEveryone, Modifier.padding(start = 24.dp, top = 8.dp))
+                        if (state.everyone) WhoThere(next, me, true, Modifier.padding(start = 24.dp, top = 8.dp))
                     }
                 }
             }
@@ -152,10 +151,10 @@ fun ShiftsScreen(
                         state.asList -> Column {
                             data.days.forEachIndexed { i, d ->
                                 if (i > 0) HorizontalDivider(color = colors.divider)
-                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp), me, state.everyone, actions::setEveryone)
+                                DayLine(d.date, d, Modifier.padding(vertical = 8.dp), me, state.everyone)
                             }
                         }
-                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.closing, me, state.everyone, actions::setEveryone)
+                        else -> ShiftCalendar(data.month, data.days, state.today, state.picked, actions::pick, data.closing, me, state.everyone)
                     }
                 }
             }

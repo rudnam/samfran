@@ -176,7 +176,7 @@ func TestShifts(t *testing.T) {
 	c.do("POST", "/api/shifts/feed", nil, &saved.Settings)
 	resp, body := get(t, ts.URL+saved.Settings.FeedPath)
 	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/calendar") ||
-		!strings.Contains(body, "SUMMARY:夜勤") || !strings.Contains(body, "DESCRIPTION:一緒: タナカ ユイ") {
+		!strings.Contains(body, "SUMMARY:夜勤") || strings.Contains(body, "タナカ") {
 		t.Fatalf("feed: %d %s %s", resp.StatusCode, resp.Header.Get("Content-Type"), body)
 	}
 	old := saved.Settings.FeedPath

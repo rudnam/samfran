@@ -2,7 +2,6 @@ package com.rudnam.samfran.feature.shifts
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -67,29 +66,19 @@ fun EveryoneToggle(on: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier 
 }
 
 /**
- * Who's at work with Sam on a day. Normally those on exactly her shift, with
- * a quiet "+3 there" when others on other shifts overlap it (tapping it turns
- * [everyone] on). With [everyone] on, everyone there during her shift, by
- * when they start, each with a bar of when they're there against it.
+ * Who's at work with Sam on a day: nobody until [everyone] (the people button
+ * beside Calendar/List) is on. Then everyone there during her shift, by when
+ * they start, each with a bar of when they're there against it.
  */
 @Composable
-fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean) -> Unit, modifier: Modifier = Modifier, ink: Color? = null) {
+fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, modifier: Modifier = Modifier, ink: Color? = null) {
+    if (!everyone) return
     val start = day.start
     val end = day.end
-    if (!everyone || start == null || end == null) {
-        if (day.with.isEmpty() && day.others.isEmpty()) return
-        val more = @Composable {
-            if (day.others.isNotEmpty()) {
-                Text(
-                    stringResource(R.string.n_there, day.others.size),
-                    Modifier.padding(start = if (day.with.isEmpty()) 0.dp else 8.dp).clickable(role = Role.Button) { onEveryone(true) },
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = SamFranTheme.colors.accentInk,
-                )
-            }
-        }
-        if (day.with.isEmpty()) Box(modifier) { more() } else WithNames(day.with, modifier, trailing = more, color = ink)
+    // No times to draw bars against (an unknown code): just the names.
+    if (start == null || end == null) {
+        val names = day.with + day.others.map { it.name }
+        if (names.isNotEmpty()) WithNames(names, modifier, color = ink)
         return
     }
 

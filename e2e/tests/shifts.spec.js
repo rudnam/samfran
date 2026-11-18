@@ -176,16 +176,20 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   expect(res.status()).toBe(200);
   await page.getByRole('link', { name: 'Shifts', exact: true }).click();
 
-  // On the calendar, a tapped day says who's on it.
+  // Nobody's shown until the people button is pressed; then a tapped day says who's on it.
   const cal = page.getByRole('group', { name: 'Calendar' });
   await cal.getByRole('button', { name: /^1 \S+: 夜勤/ }).click();
-  await expect(page.locator('.cal-detail')).toContainText('With タナカ ユイ, スズキ ケン');
+  await expect(page.locator('.cal-detail')).not.toContainText('タナカ');
+  await page.getByRole('button', { name: 'Everyone there' }).click();
+  await expect(page.locator('.cal-detail')).toContainText('タナカ ユイ');
+  await expect(page.locator('.cal-detail')).toContainText('スズキ ケン');
 
   // And in the list.
   await page.getByRole('radio', { name: 'List' }).click();
   const list = page.getByRole('list', { name: 'Shifts' }).getByRole('listitem');
-  await expect(list.nth(0)).toContainText('With タナカ ユイ, スズキ ケン');
-  await expect(list.nth(1)).not.toContainText('With');
+  await expect(list.nth(0)).toContainText('タナカ ユイ');
+  await expect(list.nth(0)).toContainText('スズキ ケン');
+  await expect(list.nth(1)).not.toContainText('タナカ');
 
   // Editing: still there while the code is the same; a different code is a different shift.
   await page.getByRole('link', { name: 'Edit by hand' }).click();
@@ -204,13 +208,17 @@ test('see who else is on the same shift, and lose them when the shift changes', 
   await who.fill('タナカ ユイ, サトウ ミキ');
   await page.getByRole('button', { name: /^Save / }).click();
   await page.getByRole('radio', { name: 'List' }).click();
-  await expect(list.nth(0)).toContainText('With タナカ ユイ, サトウ ミキ');
+  await page.getByRole('button', { name: 'Everyone there' }).click();
+  await expect(list.nth(0)).toContainText('サトウ ミキ');
+  await expect(list.nth(0)).not.toContainText('スズキ');
 
-  // The calendar feed says who too.
+  // The calendar feed leaves out who: it can be shared.
   await page.getByRole('link', { name: 'Add to Google Calendar' }).click();
   await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
   const feed = await page.request.get(await page.getByLabel('Calendar link').inputValue());
-  expect(await feed.text()).toContain('DESCRIPTION:一緒: タナカ ユイ、サトウ ミキ');
+  const ics = await feed.text();
+  expect(ics).toContain('SUMMARY:');
+  expect(ics).not.toContain('タナカ');
 });
 
 test('read a photo of the sheet: the page waits for the read, then opens the month to check', async ({ page }) => {
@@ -305,15 +313,15 @@ test('see everyone there during a shift, not only those on the same one', async 
   const cal = page.getByRole('group', { name: 'Calendar' });
   const detail = page.locator('.cal-detail');
 
-  // Off by default: those on the same shift, and how many others are there.
+  // Off by default: nobody else is shown, not even those on the same shift.
   const toggle = page.getByRole('button', { name: 'Everyone there' });
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await cal.getByRole('button', { name: /^1 / }).click();
-  await expect(detail).toContainText('With タナカ ユイ');
+  await expect(detail).not.toContainText('タナカ');
   await expect(detail).not.toContainText('ヤマダ');
 
-  // "+1 there" turns it on: everyone there, by when they start.
-  await detail.getByRole('button', { name: '+1 there' }).click();
+  // The people button turns it on: everyone there, by when they start.
+  await toggle.click();
   await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   const there = detail.getByRole('list', { name: 'Everyone there' }).getByRole('listitem');
   await expect(there).toHaveCount(3);
@@ -327,11 +335,11 @@ test('see everyone there during a shift, not only those on the same one', async 
   await expect(there.nth(0)).toContainText('ヨル タロウ');
   await expect(there.nth(0)).toContainText('22:00–7:00');
 
-  // This device remembers it, and the list shows it too.
-  await page.reload();
-  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  // The list shows it too; coming back, it's off again.
   await page.getByRole('radio', { name: 'List' }).click();
   await expect(page.getByRole('list', { name: 'Shifts' }).getByRole('list', { name: 'Everyone there' })).toHaveCount(2);
+  await page.reload();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
   // Checking or fixing the month keeps who's there.
   await page.getByRole('link', { name: 'Edit by hand' }).click();

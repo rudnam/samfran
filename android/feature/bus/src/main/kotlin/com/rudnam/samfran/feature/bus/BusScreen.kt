@@ -8,7 +8,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
@@ -406,7 +405,7 @@ private fun buzzAbout(b: Buzz) = when (b) {
     Buzz.Strongest -> R.string.buzz_strongest_about
 }
 
-/** Where to get off: one chip for each stop, with the shifts it's for, and one to add another. */
+/** Where to get off: one chip for each stop, with the shifts it's for. Stops are added in Alarm settings. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StopChips(all: BusStops, stop: BusStop, actions: BusActions) {
@@ -435,15 +434,6 @@ private fun StopChips(all: BusStops, stop: BusStop, actions: BusActions) {
                     )
                 }
             }
-        }
-        if (all.stops.size < BusStops.MAX) {
-            Box(
-                Modifier
-                    .clip(CircleShape)
-                    .border(1.5.dp, colors.border, CircleShape)
-                    .clickable(role = Role.Button) { actions.add() }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-            ) { Text(stringResource(R.string.add_a_stop_short), color = colors.muted) }
         }
     }
 }
@@ -492,7 +482,6 @@ private fun AlarmSettings(state: BusUiState, all: BusStops, actions: BusActions,
                 }
             }
             if (all.stops.size < BusStops.MAX) SecondaryButton(stringResource(R.string.add_a_stop_short), actions::add, Modifier.fillMaxWidth().padding(top = 4.dp))
-            Hint(stringResource(R.string.add_stop_hint), Modifier.padding(top = 6.dp))
         }
         BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings)
         HorizontalDivider(color = colors.divider)

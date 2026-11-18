@@ -53,6 +53,7 @@ func TestICS(t *testing.T) {
 		Explain("2026-11-06", "22F", DefaultLengths, tokyo),
 		Explain("2026-11-08", "普", DefaultLengths, tokyo),
 	}
+	days[0].With = []string{"タナカ ユイ"}
 	got := ICS(days, []string{"2026-11-15"}, "Sam, the best", time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC))
 	for _, want := range []string{
 		"BEGIN:VCALENDAR\r\n",
@@ -69,6 +70,9 @@ func TestICS(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("feed lacks %q:\n%s", want, got)
 		}
+	}
+	if strings.Contains(got, "タナカ") || strings.Contains(got, "DESCRIPTION") {
+		t.Errorf("feed names who's on the shift:\n%s", got)
 	}
 	for _, l := range strings.Split(got, "\r\n") {
 		if len(l) > 75 {

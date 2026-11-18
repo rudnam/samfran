@@ -9,7 +9,8 @@ import (
 // ICS writes days as an iCalendar feed (RFC 5545). Shifts are timed events
 // in UTC; days off, leave and training are all-day events. Each title is
 // just the workplace's own word for the day (早番, 遅番, 夜勤, 休み…); who
-// ("Sam") names the calendar. Closing days (YYYY-MM-DD, from ClosingDates)
+// ("Sam") names the calendar. Coworkers' names are left out: the calendar
+// can be shared with people who shouldn't see them. Closing days (YYYY-MM-DD, from ClosingDates)
 // are all-day 締め申請通知 events.
 func ICS(days []Day, closing []string, who string, now time.Time) string {
 	name := "シフト"
@@ -37,9 +38,6 @@ func ICS(days []Day, closing []string, who string, now time.Time) string {
 			line("DTSTART:" + d.Start.UTC().Format("20060102T150405Z"))
 			line("DTEND:" + d.End.UTC().Format("20060102T150405Z"))
 			line("SUMMARY:" + escape(Japanese(d.Label)))
-			if len(d.With) > 0 {
-				line("DESCRIPTION:" + escape(WithLine(d.With)))
-			}
 		default:
 			next, _ := time.Parse("20060102", date)
 			line("DTSTART;VALUE=DATE:" + date)
@@ -94,11 +92,6 @@ func ClosingDates(from, to time.Time, usual []int, custom map[string][]int) []st
 	}
 	sort.Strings(out)
 	return out
-}
-
-// WithLine says who else is on the shift, for a calendar event.
-func WithLine(with []string) string {
-	return "一緒: " + strings.Join(with, "、")
 }
 
 // Japanese is a day's label as the workplace says it.
