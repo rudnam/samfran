@@ -88,11 +88,14 @@ test('a place logged several times before shows one date, and keeps its visits',
   const res = await page.request.post('/api/restaurants', { data: { name: 'Ramen Tsubaki', visit: { visited_on: '2026-10-01', note: 'The tantanmen, extra spicy' } } });
   const { id } = await res.json();
   expect((await page.request.post(`/api/restaurants/${id}/visits`, { data: { visited_on: '2026-11-02', note: 'Shio this time' } })).status()).toBe(201);
-  expect((await page.request.post('/api/restaurants', { data: { name: 'Gyoza Komachi', visit: { visited_on: '2026-10-05' } } })).status()).toBe(201);
+  // More places, so the list offers Search (it does from five).
+  for (const [name, on] of [['Gyoza Komachi', '2026-10-05'], ['Hanabi Grill', '2026-09-01'], ['Blue Sky Café', '2026-08-01'], ['Taco Loco', '2026-07-01']]) {
+    expect((await page.request.post('/api/restaurants', { data: { name, visit: { visited_on: on } } })).status()).toBe(201);
+  }
 
   await page.reload();
   const cards = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
-  await expect(cards).toHaveCount(2);
+  await expect(cards).toHaveCount(5);
   await expect(cards.first()).toContainText('Ramen Tsubaki'); // latest date first
   await expect(cards.first()).toContainText('Nov 2');
   await expect(cards.first()).not.toContainText('visits');

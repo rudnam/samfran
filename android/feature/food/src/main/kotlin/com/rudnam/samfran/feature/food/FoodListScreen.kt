@@ -190,7 +190,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                     }
                     onMap -> item(key = "map") {
                         PlacesMap(state.shown, state.near, onOpen) { place, open ->
-                            PlaceRow(place, state.space, state.tab, "", locale, state.today, state.near, onClick = open)
+                            PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = open)
                         }
                     }
                     else -> items(state.shown, key = { it.id }) { place ->
