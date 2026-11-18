@@ -158,8 +158,6 @@ export const ja = {
   'Usually about a minute.': 'ふつう1分ほどかかります。',
   'Everyone there': '同じ時間帯の人',
   '+{count} there': 'ほか{count}人',
-  'night before': '前日の夜勤',
-  'next morning': '翌朝',
   'To read photos, first set the name as it’s printed on the sheet in': '写真を読み込むには、先に勤務表に書かれている名前を設定してください:',
   'Could not open that photo.': 'この写真を開けませんでした。',
   'Check the shifts': 'シフトを確認',

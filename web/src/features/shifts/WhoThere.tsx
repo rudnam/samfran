@@ -85,7 +85,7 @@ export function WhoThere({
   const from = Date.parse(day.start);
   const span = Date.parse(day.end) - from;
   const at = (iso?: string, fallback = 0) => (iso ? Math.min(1, Math.max(0, (Date.parse(iso) - from) / span)) : fallback);
-  type Row = { name: string; start?: string; end?: string; kind: 'me' | 'same' | 'other'; note?: string };
+  type Row = { name: string; start?: string; end?: string; kind: 'me' | 'same' | 'other' };
   const rows: Row[] = [
     { name: who, start: day.start, end: day.end, kind: 'me' } as Row,
     ...(day.with ?? []).map((name): Row => ({ name, start: day.start, end: day.end, kind: 'same' })),
@@ -95,7 +95,6 @@ export function WhoThere({
         start: o.start,
         end: o.end,
         kind: 'other',
-        note: o.day_offset === -1 ? t('night before') : o.day_offset === 1 ? t('next morning') : undefined,
       }),
     ),
   ].sort((a, b) => Date.parse(a.start ?? '') - Date.parse(b.start ?? '') || (a.kind === 'me' ? -1 : b.kind === 'me' ? 1 : 0));
@@ -109,7 +108,6 @@ export function WhoThere({
           <li key={`${r.kind}:${r.name}`} className={r.kind}>
             <span className="there-name">
               {r.name}
-              {r.note && <span className="there-tag quiet">{r.note}</span>}
             </span>
             <span className="there-bar" aria-hidden="true">
               <i style={{ left: `${left * 100}%`, width: `${width * 100}%` }} />

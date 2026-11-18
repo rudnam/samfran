@@ -93,15 +93,11 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean
         return
     }
 
-    data class Line(val name: String, val start: OffsetDateTime?, val end: OffsetDateTime?, val me: Boolean, val same: Boolean, val note: String?)
-    val nightBefore = stringResource(R.string.night_before)
-    val nextMorning = stringResource(R.string.next_morning)
+    data class Line(val name: String, val start: OffsetDateTime?, val end: OffsetDateTime?, val me: Boolean, val same: Boolean)
     val lines = buildList {
-        add(Line(who, start, end, me = true, same = false, note = null))
-        day.with.forEach { add(Line(it, start, end, me = false, same = true, note = null)) }
-        day.others.forEach { o ->
-            add(Line(o.name, o.start, o.end, me = false, same = false, note = when (o.dayOffset) { -1 -> nightBefore; 1 -> nextMorning; else -> null }))
-        }
+        add(Line(who, start, end, me = true, same = false))
+        day.with.forEach { add(Line(it, start, end, me = false, same = true)) }
+        day.others.forEach { o -> add(Line(o.name, o.start, o.end, me = false, same = false)) }
     }.sortedWith(compareBy<Line> { it.start?.toEpochSecond() ?: Long.MAX_VALUE }.thenBy { !it.me })
 
     // Bars against Sam's shift: 0 at her start, 1 at her end.
@@ -115,12 +111,7 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, onEveryone: (Boolean
     Column(modifier.fillMaxWidth().semantics { contentDescription = everyoneLabel }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         lines.forEach { l ->
             Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                FlowRow(Modifier.weight(1f), itemVerticalAlignment = Alignment.CenterVertically) {
-                    Text(l.name, style = MaterialTheme.typography.bodySmall, fontWeight = if (l.me) FontWeight.Bold else null, color = textColor)
-                    if (l.note != null) {
-                        Text(l.note, Modifier.padding(start = 6.dp), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = mutedColor)
-                    }
-                }
+                Text(l.name, Modifier.weight(1f), style = MaterialTheme.typography.bodySmall, fontWeight = if (l.me) FontWeight.Bold else null, color = textColor)
                 val left = at(l.start, 0f)
                 val width = (at(l.end, 1f) - left).coerceAtLeast(0.04f)
                 BoxWithConstraints(Modifier.width(56.dp).height(8.dp).clip(RoundedCornerShape(4.dp)).background(if (ink != null) Color.Black.copy(alpha = 0.08f) else colors.sunken)) {

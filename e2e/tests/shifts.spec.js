@@ -325,7 +325,6 @@ test('see everyone there during a shift, not only those on the same one', async 
   // A night shift from the day before shows on an early shift.
   await cal.getByRole('button', { name: /^2 / }).click();
   await expect(there.nth(0)).toContainText('ヨル タロウ');
-  await expect(there.nth(0)).toContainText('night before');
   await expect(there.nth(0)).toContainText('22:00–7:00');
 
   // This device remembers it, and the list shows it too.
