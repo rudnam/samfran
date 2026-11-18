@@ -744,3 +744,4 @@ button.link.start { align-self: flex-start; padding-left: 0; }
 button.link.inline { padding: 0; }
 .stop-list li { padding: 0; }
 .stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }
+.page-head.with-action > button { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }
