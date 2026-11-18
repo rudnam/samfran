@@ -142,34 +142,47 @@ class FoodViewModelTest {
     }
 
     @Test
-    fun `logging a visit, rating, and removing a visit with undo`() = runTest {
+    fun `changing when you went, rating, and not been yet with undo`() = runTest {
         val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, space, clock, backgroundScope)
         watch(vm.state)
-        assertEquals(4, vm.state.value.visitCount)
-        vm.setVisitNote("Tongue")
-        vm.logVisit()
-        assertEquals(5, vm.state.value.visitCount)
-        assertEquals("", vm.state.value.visitNote)
+        assertEquals(LocalDate.of(2026, 11, 14), vm.state.value.beenOn)
+        // Change opens on the date it has; going again moves that date, it adds no visit.
+        vm.startPicking()
+        assertEquals(LocalDate.of(2026, 11, 14), vm.state.value.picking)
+        vm.setPicking(LocalDate.of(2026, 11, 15))
+        vm.saveBeen()
+        assertNull(vm.state.value.picking)
+        assertEquals(LocalDate.of(2026, 11, 15), vm.state.value.beenOn)
+        assertEquals(4, vm.state.value.place?.visitCount)
         vm.rate(3)
         assertEquals(3, vm.state.value.place?.myStars)
 
-        val visit = vm.state.value.visits.first().id
-        vm.removeVisit(visit)
-        assertFalse(vm.state.value.visits.any { it.id == visit })
-        vm.undoRemove()
-        assertTrue(vm.state.value.visits.any { it.id == visit })
-        vm.removeVisit(visit)
-        vm.commitRemove()
-        testScheduler.runCurrent() // the delete runs in the app's scope, past the page
-        assertNull(vm.state.value.removing)
-        assertFalse(food.list.value!!.first { it.id == 12L }.visits!!.any { it.id == visit })
+        vm.notBeen()
+        assertNull(vm.state.value.beenOn)
+        vm.undoNotBeen()
+        assertEquals(LocalDate.of(2026, 11, 15), vm.state.value.beenOn)
+        vm.notBeen()
+        vm.commitNotBeen()
+        testScheduler.runCurrent() // it runs in the app's scope, past the page
+        assertFalse(vm.state.value.clearing)
+        assertFalse(food.list.value!!.first { it.id == 12L }.been)
     }
 
     @Test
-    fun `a visit can't be in the future`() = runTest {
-        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, space, clock, backgroundScope)
-        vm.setVisitOn(LocalDate.of(2027, 1, 1))
-        assertEquals(LocalDate.of(2026, 11, 16), vm.state.first().visitOn)
+    fun `mark as been asks when, today unless changed, and not in the future`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, space, clock, backgroundScope)
+        watch(vm.state)
+        assertNull(vm.state.value.beenOn)
+        vm.startPicking()
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.picking)
+        vm.setPicking(LocalDate.of(2027, 1, 1))
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.picking)
+        vm.cancelPicking()
+        assertNull(vm.state.value.picking)
+        vm.startPicking()
+        vm.saveBeen()
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.beenOn)
+        assertEquals(1, vm.state.value.place?.visitCount)
     }
 
     @Test

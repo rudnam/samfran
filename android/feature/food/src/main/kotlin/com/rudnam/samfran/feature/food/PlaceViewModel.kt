@@ -31,27 +31,29 @@ data class PlaceUiState(
     val space: Space? = null,
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
-    val visitOn: LocalDate = LocalDate.now(),
-    val visitNote: String = "",
-    /** A visit just removed: hidden, and deleted for real once Undo's time is up. */
-    val removing: Long? = null,
+    /** The date being picked (Mark as been, or Change), or null when closed. */
+    val picking: LocalDate? = null,
+    /** "Not been yet" just chosen: shown so, and saved once Undo's time is up. */
+    val clearing: Boolean = false,
     /** The place is gone (deleted here): the page closes. */
     val deleted: Boolean = false,
     val today: LocalDate = LocalDate.now(),
 ) {
-    val visits get() = place?.visits.orEmpty().filter { it.id != removing }
-    val visitCount get() = (place?.visitCount ?: 0) - if (removing != null) 1 else 0
+    /** When you went, the one date a place shows; null if not yet. */
+    val beenOn: LocalDate? get() = if (clearing) null else place?.lastVisit
 }
 
 interface PlaceActions {
     fun rate(stars: Int)
-    fun setVisitOn(date: LocalDate)
-    fun setVisitNote(note: String)
-    fun logVisit()
-    /** Hides the visit; [undoRemove] brings it back, [commitRemove] deletes it. */
-    fun removeVisit(id: Long)
-    fun undoRemove()
-    fun commitRemove()
+    /** Opens the date: today for Mark as been, else when you went. */
+    fun startPicking()
+    fun setPicking(date: LocalDate)
+    fun cancelPicking()
+    fun saveBeen()
+    /** Shows it as not been yet; [undoNotBeen] brings it back, [commitNotBeen] saves it. */
+    fun notBeen()
+    fun undoNotBeen()
+    fun commitNotBeen()
     fun delete()
 }
 
@@ -65,7 +67,7 @@ class PlaceViewModel @Inject constructor(
 ) : ViewModel(), PlaceActions {
     private val id = savedState.toRoute<PlaceRoute>().id
     private val today = LocalDate.now(clock)
-    private val local = MutableStateFlow(PlaceUiState(visitOn = today, today = today))
+    private val local = MutableStateFlow(PlaceUiState(today = today))
 
     val state: StateFlow<PlaceUiState> = combine(local, food.restaurant(id), spaces.space) { s, place, space ->
         s.copy(place = place ?: s.place.takeIf { s.deleted }, space = space, loaded = s.loaded || place != null)
@@ -92,37 +94,36 @@ class PlaceViewModel @Inject constructor(
 
     override fun rate(stars: Int) = change({ food.rate(id, stars) })
 
-    override fun setVisitOn(date: LocalDate) = local.update { it.copy(visitOn = minOf(date, it.today)) }
+    override fun startPicking() = local.update { it.copy(picking = state.value.beenOn ?: it.today) }
 
-    override fun setVisitNote(note: String) = local.update { it.copy(visitNote = note.take(1000)) }
+    override fun setPicking(date: LocalDate) = local.update { it.copy(picking = minOf(date, it.today)) }
 
-    override fun logVisit() {
-        val s = local.value
-        change({ food.addVisit(id, s.visitOn, s.visitNote) }) { it.copy(visitNote = "", visitOn = it.today) }
+    override fun cancelPicking() = local.update { it.copy(picking = null) }
+
+    override fun saveBeen() {
+        val on = local.value.picking ?: return
+        change({ food.setBeen(id, on) }) { it.copy(picking = null) }
     }
 
-    override fun removeVisit(id: Long) {
-        commitRemove() // an earlier one waiting goes now
-        local.update { it.copy(removing = id) }
-    }
+    override fun notBeen() = local.update { it.copy(clearing = true, picking = null) }
 
-    override fun undoRemove() = local.update { it.copy(removing = null) }
+    override fun undoNotBeen() = local.update { it.copy(clearing = false) }
 
-    override fun commitRemove() {
-        val visit = local.value.removing ?: return
-        // Outlives the page: leaving it mustn't cancel the delete.
+    override fun commitNotBeen() {
+        if (!local.value.clearing) return
+        // Outlives the page: leaving it mustn't cancel the change.
         appScope.launch {
-            val result = food.deleteVisit(id, visit)
-            local.update { it.copy(removing = null, problem = result.takeIf { r -> r !is Outcome.Done }) }
+            val result = food.clearBeen(id)
+            local.update { it.copy(clearing = false, problem = result.takeIf { r -> r !is Outcome.Done }) }
         }
     }
 
     override fun delete() {
-        local.update { it.copy(removing = null) } // a visit waiting to be removed goes with the place
+        local.update { it.copy(clearing = false) } // a "not been yet" waiting goes with the place
         change({ food.delete(id) }) { it.copy(deleted = true) }
     }
 
     override fun onCleared() {
-        commitRemove()
+        commitNotBeen()
     }
 }

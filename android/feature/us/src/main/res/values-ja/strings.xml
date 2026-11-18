@@ -40,7 +40,7 @@
     <string name="disconnect">接続を解除</string>
     <string name="this_device">この端末</string>
     <string name="tell_me">変更を知らせる</string>
-    <string name="tell_me_hint">相手がお店を追加したり、来店を記録したり、評価したり、シフトを保存したり、バスアラームを開始したりすると通知が届きます。30分ほどかかることがあります。</string>
+    <string name="tell_me_hint">相手が場所を追加したり、行ったり、評価したり、シフトを保存したり、バスアラームを開始したりすると通知が届きます。30分ほどかかることがあります。</string>
     <string name="allow_notifications">スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。</string>
     <string name="language">言語</string>
     <string name="appearance">表示モード</string>
@@ -65,7 +65,9 @@
     <string name="change_added_want">%sを行きたいリストに追加</string>
     <string name="change_edited">%sを編集</string>
     <string name="change_deleted">%sを削除</string>
-    <string name="change_visit">%sの訪問を記録</string>
+    <string name="change_visit">%sに行った</string>
+    <string name="change_been_date">%sの行った日を変更</string>
+    <string name="change_been_cleared">%sを行きたいリストに戻した</string>
     <string name="change_visit_removed">%sの訪問を削除</string>
     <string name="change_rated">%1$sを★%2$dで評価</string>
     <string name="change_unrated">%sの評価を消去</string>

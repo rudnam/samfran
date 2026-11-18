@@ -14,9 +14,6 @@
     <string name="nothing_on_list">リストは空です</string>
     <string name="save_places_to_try">気になる場所を保存して、次のおでかけの参考に。</string>
     <string name="added_by">%sが追加</string>
-    <plurals name="n_visits">
-        <item quantity="other">%d回</item>
-    </plurals>
     <string name="add_a_place">場所を追加</string>
     <string name="edit_place">場所を編集</string>
     <string name="weve_been">行った</string>
@@ -43,20 +40,16 @@
     <string name="ratings">評価</string>
     <string name="you">あなた</string>
     <string name="not_rated_yet">まだ評価していません</string>
-    <string name="visits">訪問</string>
-    <string name="not_yet">まだ</string>
-    <string name="date">日付</string>
-    <string name="visit_note">この訪問のメモ</string>
-    <string name="visit_note_hint">どうだった？（任意）</string>
-    <string name="log_visit">記録する</string>
-    <string name="we_went">行った！</string>
-    <string name="logged_by">%sが記録</string>
-    <string name="remove">削除</string>
+    <string name="been_on">行った日 · %s</string>
+    <string name="change">変更</string>
+    <string name="mark_as_been">行った</string>
+    <string name="when_did_you_go">いつ行きましたか？</string>
+    <string name="not_been_yet">まだ行っていない</string>
     <string name="delete_this_place">この場所を削除</string>
-    <string name="visit_removed">訪問を削除しました。</string>
+    <string name="moved_to_want">行きたいリストに戻しました。</string>
     <string name="undo">元に戻す</string>
     <string name="delete_place_title">%sを削除しますか？</string>
-    <string name="delete_place_body">訪問の記録と評価も一緒に削除されます。元に戻せません。</string>
+    <string name="delete_place_body">評価も一緒に削除されます。元に戻せません。</string>
     <string name="delete">削除</string>
     <string name="place_gone">この場所はもうありません。</string>
     <string name="name_search_hint">入力して検索（例: すき家、浜松城）</string>

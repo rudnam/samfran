@@ -174,6 +174,10 @@ data class NetworkRestaurantInput(
 @Serializable
 data class NetworkNewVisit(@SerialName("visited_on") val visitedOn: String, val note: String = "")
 
+/** When you went (PUT /api/restaurants/{id}/been): the one date a place shows. */
+@Serializable
+data class NetworkBeen(@SerialName("visited_on") val visitedOn: String)
+
 @Serializable
 data class NetworkStars(val stars: Int)
 

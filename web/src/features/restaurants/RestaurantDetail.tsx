@@ -1,11 +1,11 @@
-// One place: both ratings, notes, every visit, and logging another.
+// One place: both ratings, notes, and whether you've been (and when).
 import { BackLink } from '../../components/BackLink';
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { confirmDialog, dropToast, showToast, Skeleton } from '../../components/Overlay';
 import { StarPicker } from '../../components/Stars';
-import { t, tn } from '../../i18n';
+import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
 import { categoryName, categoryOf, CategoryTile } from './categories';
@@ -16,10 +16,10 @@ export function RestaurantDetail({ id }: { id: number }) {
   const [changeError, setError] = useState('');
   const error = changeError || loadError;
   const [busy, setBusy] = useState(false);
-  // A visit just removed: hidden, and deleted for real once Undo's time is up.
-  const [removing, setRemoving] = useState(0);
-  const [visitOn, setVisitOn] = useState(today());
-  const [visitNote, setVisitNote] = useState('');
+  // "Not been yet" just chosen: shown so, and saved once Undo's time is up.
+  const [clearing, setClearing] = useState(false);
+  // The date being picked (Mark as been, or Change), or null when closed.
+  const [picking, setPicking] = useState<string | null>(null);
   const { space } = useSpace();
 
   /** Runs a change that answers with the restaurant as it now is. */
@@ -37,50 +37,48 @@ export function RestaurantDetail({ id }: { id: number }) {
     }
   }
 
-  async function logVisit(e: FormEvent) {
+  async function saveBeen(e: FormEvent) {
     e.preventDefault();
-    if (await change(() => api.addVisit(id, visitOn, visitNote))) {
-      setVisitNote('');
-      setVisitOn(today());
-    }
+    if (picking && (await change(() => api.setBeen(id, picking)))) setPicking(null);
   }
 
-  /** Hides the visit and offers Undo; without it, the visit is deleted when the offer ends. */
-  function removeVisit(visit: number) {
+  /** Back to want to go, with Undo; without it, it's saved when the offer ends. */
+  function notBeen() {
+    setPicking(null);
     showToast({
-      message: t('Visit removed.'),
+      message: t('Moved to Want to go.'),
       action: t('Undo'),
-      onAction: () => setRemoving(0),
+      onAction: () => setClearing(false),
       onClose: () => {
-        api.deleteVisit(id, visit).then(
+        api.clearBeen(id).then(
           (fresh) => {
             setR(fresh);
-            setRemoving(0);
+            setClearing(false);
           },
           (err) => {
             setError(errorMessage(err));
-            setRemoving(0);
+            setClearing(false);
           },
         );
       },
     });
-    setRemoving(visit); // after showToast, which finishes an earlier removal first
+    setClearing(true); // after showToast, which finishes an earlier one first
   }
 
   async function remove() {
     if (!r) return;
     const yes = await confirmDialog({
       title: t('Delete {name}?', { name: r.name }),
-      body: t('Its visits and ratings go with it. This can’t be undone.'),
+      body: t('Its ratings go with it. This can’t be undone.'),
       confirm: t('Delete'),
       danger: true,
     });
     if (!yes) return;
-    dropToast(); // a visit waiting to be removed goes with the place
+    dropToast(); // a 'not been yet' waiting to be saved goes with the place
     setBusy(true);
     try {
       await api.deleteRestaurant(id);
-      replaceRoute(r.visit_count > 0 ? 'home' : 'want');
+      replaceRoute(r.visit_count > 0 && !clearing ? 'home' : 'want');
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -105,18 +103,35 @@ export function RestaurantDetail({ id }: { id: number }) {
   const mine = r.ratings.find((x) => x.me)?.stars ?? 0;
   const partner = space?.members.find((m) => !m.me);
   const theirs = r.ratings.find((x) => !x.me);
-  const visits = (r.visits ?? []).filter((v) => v.id !== removing);
-  const visitCount = r.visit_count - (removing ? 1 : 0);
+  const beenOn = clearing ? null : r.last_visit;
   return (
     <section className="stack">
-      <BackLink href={href(r.visit_count > 0 ? 'home' : 'want')} label="Our spots" />
+      <BackLink href={href(beenOn ? 'home' : 'want')} label="Our spots" />
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
         <p className="lead place-kind">
           <CategoryTile category={categoryOf(r.category)} size="sm" />
           {[categoryName(categoryOf(r.category)), r.cuisine, r.area].filter(Boolean).join(' · ')}
         </p>
+        {beenOn && (
+          <p className="been-line">
+            {t('Been · {date}', { date: shortDate(beenOn) })}
+            {picking === null && (
+              <>
+                {' · '}
+                <button type="button" className="link" disabled={busy} onClick={() => setPicking(beenOn)}>
+                  {t('Change')}
+                </button>
+              </>
+            )}
+          </p>
+        )}
         <div className="row wrap">
+          {!beenOn && picking === null && (
+            <button type="button" disabled={busy} onClick={() => setPicking(today())}>
+              {t('Mark as been')}
+            </button>
+          )}
           <a className="button secondary" href={mapLink(r)} target="_blank" rel="noreferrer">
             {t('Open in Maps')}
           </a>
@@ -125,6 +140,28 @@ export function RestaurantDetail({ id }: { id: number }) {
           </a>
         </div>
       </header>
+
+      {picking !== null && (
+        <form className="card been-form" onSubmit={saveBeen}>
+          <label className="field">
+            {t('When did you go?')}
+            <input type="date" required max={today()} value={picking} onChange={(e) => setPicking(e.target.value)} />
+          </label>
+          <div className="row wrap">
+            <button type="submit" disabled={busy}>
+              {t('Save')}
+            </button>
+            <button type="button" className="secondary" disabled={busy} onClick={() => setPicking(null)}>
+              {t('Cancel')}
+            </button>
+            {beenOn && (
+              <button type="button" className="link quiet" disabled={busy} onClick={notBeen}>
+                {t('Not been yet')}
+              </button>
+            )}
+          </div>
+        </form>
+      )}
 
       {error && (
         <p role="alert" className="error">
@@ -162,47 +199,6 @@ export function RestaurantDetail({ id }: { id: number }) {
           <p className="prewrap">{r.notes}</p>
         </div>
       )}
-
-      <div className="card stack">
-        <div className="row spread">
-          <h2>{t('Visits')}</h2>
-          <span className="muted">{visitCount > 0 ? tn(visitCount, '{n} visit', '{n} visits') : t('Not yet')}</span>
-        </div>
-        <form className="visit-form" onSubmit={logVisit}>
-          <input type="date" aria-label={t('Date')} required max={today()} value={visitOn} onChange={(e) => setVisitOn(e.target.value)} />
-          <input
-            aria-label={t('Note about this visit')}
-            placeholder={t('How was it? (optional)')}
-            maxLength={1000}
-            value={visitNote}
-            onChange={(e) => setVisitNote(e.target.value)}
-          />
-          <button type="submit" disabled={busy}>
-            {visitCount > 0 ? t('Log visit') : t('We went!')}
-          </button>
-        </form>
-        {visits.length > 0 && (
-          <ul className="visits" aria-label={t('Visits')}>
-            {visits.map((v) => (
-              <li key={v.id}>
-                <span className="visit-date">{shortDate(v.visited_on)}</span>
-                <span className="grow">
-                  {v.note || <span className="muted">{v.added_by ? t('Logged by {name}', { name: v.added_by }) : ''}</span>}
-                </span>
-                <button
-                  type="button"
-                  className="link quiet"
-                  disabled={busy}
-                  aria-label={t('Delete the visit on {date}', { date: shortDate(v.visited_on) })}
-                  onClick={() => removeVisit(v.id)}
-                >
-                  {t('Remove')}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
 
       <button type="button" className="link danger" disabled={busy} onClick={remove}>
         {t('Delete this place')}

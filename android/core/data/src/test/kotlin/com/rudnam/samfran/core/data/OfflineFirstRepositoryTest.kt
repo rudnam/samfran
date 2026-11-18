@@ -103,11 +103,13 @@ class OfflineFirstRepositoryTest {
         server.takeRequest()
         answer(body = """{"id":15,"name":"Sushi Kiyo","visit_count":1,"last_visit":"2026-11-16","ratings":[],"visits":[{"id":3,"visited_on":"2026-11-16","note":"omakase","added_by":"Fran"}]}""")
         answer(body = list) // the list asked for again afterwards
-        val r = food.addVisit(15, LocalDate.of(2026, 11, 16), " omakase ")
+        val r = food.setBeen(15, LocalDate.of(2026, 11, 16))
         assertTrue(r is Outcome.Done)
         val sent = server.takeRequest()
-        assertEquals("/api/restaurants/15/visits", sent.url.encodedPath)
-        assertEquals("""{"visited_on":"2026-11-16","note":"omakase"}""", sent.body?.utf8())
+        assertEquals("PUT", sent.method)
+        assertEquals("/api/restaurants/15/been", sent.url.encodedPath)
+        assertEquals("""{"visited_on":"2026-11-16"}""", sent.body?.utf8())
+        assertEquals(LocalDate.of(2026, 11, 16), food.restaurant(15).first()?.lastVisit)
         assertEquals("omakase", food.restaurant(15).first()?.visits?.single()?.note)
     }
 

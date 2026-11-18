@@ -125,14 +125,13 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
         return Outcome.Done(Unit)
     }
 
-    override suspend fun addVisit(id: Long, on: LocalDate, note: String) = change(id) {
-        val visits = listOf(Visit(System.nanoTime(), on, note, "Fran")) + it.visits.orEmpty()
-        it.copy(visits = visits, visitCount = it.visitCount + 1, lastVisit = maxOf(on, it.lastVisit ?: on))
+    override suspend fun setBeen(id: Long, on: LocalDate) = change(id) {
+        val old = it.visits.orEmpty()
+        val visits = if (old.isEmpty()) listOf(Visit(System.nanoTime(), on, "", "Fran")) else listOf(old.first().copy(visitedOn = on)) + old.drop(1)
+        it.copy(visits = visits, visitCount = maxOf(it.visitCount, 1), lastVisit = visits.maxOf { v -> v.visitedOn })
     }
 
-    override suspend fun deleteVisit(id: Long, visit: Long) = change(id) {
-        it.copy(visits = it.visits?.filter { v -> v.id != visit }, visitCount = it.visitCount - 1)
-    }
+    override suspend fun clearBeen(id: Long) = change(id) { it.copy(visits = emptyList(), visitCount = 0, lastVisit = null) }
 
     override suspend fun rate(id: Long, stars: Int) = change(id) { r ->
         val others = r.ratings.filter { !it.me }

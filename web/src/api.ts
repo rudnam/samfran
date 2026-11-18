@@ -162,9 +162,10 @@ export const api = {
     request<Restaurant>('POST', '/api/restaurants', f),
   updateRestaurant: (id: number, f: Partial<RestaurantFields>) => request<Restaurant>('PATCH', `/api/restaurants/${id}`, f),
   deleteRestaurant: (id: number) => request<void>('DELETE', `/api/restaurants/${id}`),
-  addVisit: (id: number, visited_on: string, note: string) =>
-    request<Restaurant>('POST', `/api/restaurants/${id}/visits`, { visited_on, note }),
-  deleteVisit: (id: number, visit: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/visits/${visit}`),
+  /** When you went (YYYY-MM-DD): the one date a place shows. */
+  setBeen: (id: number, visited_on: string) => request<Restaurant>('PUT', `/api/restaurants/${id}/been`, { visited_on }),
+  /** Not been yet: back on the want-to-go list. */
+  clearBeen: (id: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/been`),
   /** The place's name from a Google Maps link, '' if it can't be read. */
   /** position: also find lat/lng by the place's name when the link has none (found_by_name). */
   lookupMap: (url: string, position = false) =>

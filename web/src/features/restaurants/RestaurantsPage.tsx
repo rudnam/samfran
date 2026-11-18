@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
-import { t, tn } from '../../i18n';
+import { t } from '../../i18n';
 import { href } from '../../router';
 import { personTone, useSpace } from '../../space';
 import { categories, categoryName, categoryOf, categoryShort, CategoryTile, Icon, type Category } from './categories';
@@ -254,11 +254,6 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                       <span className="spot-meta">· {t('Added by {name}', { name: r.added_by })}</span>
                     )}
                   </span>
-                  {noteMatch(r, query) && (
-                    <span className="spot-note">
-                      {shortDate(noteMatch(r, query)!.visited_on)} · {noteMatch(r, query)!.note}
-                    </span>
-                  )}
                 </span>
                 {near && distanceText(near, r) ? (
                   <span className="spot-when">
@@ -268,8 +263,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                 ) : (
                   r.last_visit && (
                     <span className="spot-when">
-                      <strong>{shortDate(r.last_visit)}</strong>
-                      <span>{tn(r.visit_count, '{n} visit', '{n} visits')}</span>
+                      <span>{shortDate(r.last_visit)}</span>
                     </span>
                   )
                 )}
@@ -291,14 +285,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
 function matches(r: Restaurant, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q)) || !!noteMatch(r, query);
-}
-
-/** The newest visit whose note has the search in it: "where did we have that?". */
-function noteMatch(r: Restaurant, query: string) {
-  const q = query.trim().toLowerCase();
-  if (!q) return undefined;
-  return r.visit_notes?.find((v) => v.note.toLowerCase().includes(q));
+  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q));
 }
 
 /**
