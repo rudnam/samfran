@@ -10,6 +10,7 @@ import com.rudnam.samfran.core.model.Member
 import com.rudnam.samfran.core.model.Rating
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.ShiftCodes
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.model.ShiftSettings
@@ -104,15 +105,27 @@ object Samples {
             "29" to "22F", "30" to "普",
         ).map { (dd, code) ->
             day("2026-11-$dd", code).let { d ->
-                // Others with the same code that day, as the photo reader lists them.
+                // Others with the same code that day, as the photo reader lists them,
+                // others on other shifts whose hours overlap it, and everyone kept (people).
                 when (code) {
-                    // And others on other shifts whose hours overlap it.
                     "13F" -> d.copy(
                         with = listOf("タナカ ユイ"),
                         others = listOf(there("ヤマダ ハナ", "9F", "2026-11-$dd"), there("サトウ ミオ", "17F", "2026-11-$dd")),
+                        people = listOf(
+                            ShiftCoworker("タナカ ユイ", "13F"), ShiftCoworker("ヤマダ ハナ", "9F"), ShiftCoworker("サトウ ミオ", "17F"),
+                            ShiftCoworker("コバヤシ リク", "5D"), // 5:00–13:00: gone as the shift starts
+                            ShiftCoworker("ヨル タロウ", "22F", -1),
+                        ),
                     )
-                    "22F" -> d.copy(with = listOf("スズキ ケン", "ヤマモト アオイ"), others = listOf(there("アサ ミキ", "6F", "2026-11-$dd", offset = 1)))
-                    "7F" -> d.copy(others = listOf(there("ヨル タロウ", "23F", "2026-11-$dd", offset = -1)))
+                    "22F" -> d.copy(
+                        with = listOf("スズキ ケン", "ヤマモト アオイ"),
+                        others = listOf(there("アサ ミキ", "6F", "2026-11-$dd", offset = 1)),
+                        people = listOf(ShiftCoworker("スズキ ケン", "22F"), ShiftCoworker("ヤマモト アオイ", "22F"), ShiftCoworker("アサ ミキ", "6F", 1)),
+                    )
+                    "7F" -> d.copy(
+                        others = listOf(there("ヨル タロウ", "23F", "2026-11-$dd", offset = -1)),
+                        people = listOf(ShiftCoworker("ヨル タロウ", "23F", -1)),
+                    )
                     else -> d
                 }
             }

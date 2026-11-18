@@ -12,6 +12,7 @@ import com.rudnam.samfran.core.model.Me
 import com.rudnam.samfran.core.model.Member
 import com.rudnam.samfran.core.model.Rating
 import com.rudnam.samfran.core.model.Restaurant
+import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
@@ -205,6 +206,8 @@ data class NetworkShiftDay(
     val with: List<String>? = null,
     /** Others on other shifts whose hours overlap it; older servers leave it out. */
     val others: List<NetworkShiftThere>? = null,
+    /** Everyone kept around the day; older servers leave it out. */
+    val people: List<NetworkCoworker>? = null,
 )
 
 @Serializable
@@ -216,7 +219,7 @@ data class NetworkShiftThere(
     val end: String? = null,
 )
 
-/** Someone else at work around a day, as sent back when saving. */
+/** Someone else at work around a day, as kept and as sent back when saving. */
 @Serializable
 data class NetworkCoworker(
     val name: String,
@@ -274,6 +277,7 @@ fun NetworkShiftMonth.asModel() = ShiftMonth(
             others = d.others.orEmpty().map { o ->
                 ShiftThere(o.name, o.code, o.dayOffset, o.start?.let(OffsetDateTime::parse), o.end?.let(OffsetDateTime::parse))
             },
+            people = d.people.orEmpty().map { p -> ShiftCoworker(p.name, p.code, p.dayOffset) },
         )
     },
     nameAsRead = nameAsRead,
@@ -284,10 +288,8 @@ fun NetworkShiftMonth.asModel() = ShiftMonth(
 data class NetworkShiftCode(
     val date: String,
     val code: String,
-    /** Who's on the same shift, kept only while the day's code is unchanged; left out otherwise. */
-    val with: List<String>? = null,
-    /** Others at work around it, as read or saved; the server keeps those who overlap the day's shift. */
-    val others: List<NetworkCoworker>? = null,
+    /** Everyone at work around it, there during the shift or not: the server works out who's shown. */
+    val people: List<NetworkCoworker> = emptyList(),
 )
 
 @Serializable

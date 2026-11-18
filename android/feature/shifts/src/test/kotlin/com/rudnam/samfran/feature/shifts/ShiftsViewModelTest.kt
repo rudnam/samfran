@@ -75,44 +75,44 @@ class ShiftsViewModelTest {
     }
 
     @Test
-    fun `who's on the same shift is kept only while the day's code is unchanged`() = runTest {
+    fun `a corrected code changes who's there, and nobody is lost`() = runTest {
         val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
-        assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(LocalDate.of(2026, 11, 4)))
-        vm.setCode(LocalDate.of(2026, 11, 5), "7F") // was 13F: a different shift
-        assertEquals(emptyList<String>(), vm.state.value.withFor(LocalDate.of(2026, 11, 5)))
+        val day = LocalDate.of(2026, 11, 4) // 13F: 13:00–22:00
+        fun there() = vm.state.value.there(day).map { it.name }
+        assertEquals(listOf("タナカ ユイ", "ヤマダ ハナ", "サトウ ミオ"), there())
+        vm.setCode(day, "7F") // 7:00–16:00: the one on 5D is there now, and the night before's 22F still isn't
+        assertEquals(listOf("タナカ ユイ", "ヤマダ ハナ", "コバヤシ リク"), there())
+        vm.setCode(day, "13F")
+        assertEquals(listOf("タナカ ユイ", "ヤマダ ハナ", "サトウ ミオ"), there())
+        vm.setCode(day, "7F")
         vm.save()
-        assertEquals(listOf("タナカ ユイ"), shifts.savedWith?.get(LocalDate.of(2026, 11, 4)))
-        assertEquals(null, shifts.savedWith?.get(LocalDate.of(2026, 11, 5)))
-    }
-
-    @Test
-    fun `names typed for a day are saved, and stay when the code changes`() = runTest {
-        val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
-        val day = LocalDate.of(2026, 11, 2)
-        vm.editWith(day)
-        assertEquals(day, vm.state.value.editingWith)
-        vm.setWith(day, "サトウ ハナ、 タナカ ユイ ,")
-        vm.setCode(day, "9F")
-        assertEquals(listOf("サトウ ハナ", "タナカ ユイ"), vm.state.value.withFor(day))
-        vm.focus(LocalDate.of(2026, 11, 3)) // a code box: the names close
-        assertEquals(null, vm.state.value.editingWith)
-        vm.save()
-        assertEquals(listOf("サトウ ハナ", "タナカ ユイ"), shifts.savedWith?.get(day))
+        // Everyone is saved, there or not: the server works out who's shown.
+        assertEquals(5, shifts.savedPeople?.get(day)?.size)
         assertEquals(emptyMap<String, String>(), shifts.savedCorrections) // not checking a scan
     }
 
     @Test
-    fun `a name's chip adds it to the open day, and takes it off again`() = runTest {
+    fun `anyone's name or code can be fixed, someone added, and someone taken off`() = runTest {
         val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11")), shifts, reminders)
-        val day = LocalDate.of(2026, 11, 2)
-        val names = vm.state.value.namesBesides(day)
-        assertEquals("タナカ ユイ", names.first()) // the most frequent this month
-        vm.editWith(day)
-        vm.toggleName("スズキ ケン")
-        vm.toggleName("タナカ ユイ")
-        assertEquals("スズキ ケン, タナカ ユイ", vm.state.value.withText(day))
-        vm.toggleName("スズキ ケン")
-        assertEquals(listOf("タナカ ユイ"), vm.state.value.withFor(day))
+        val day = LocalDate.of(2026, 11, 4)
+        vm.openPeople(day)
+        assertEquals(day, vm.state.value.openDay)
+        val rows = vm.state.value.people.getValue(day)
+        assertEquals(3, vm.state.value.shown.size) // those there, listed first
+        vm.setPersonName(rows[1].key, "ヤマダ ハル") // someone on another shift
+        vm.setPersonCode(rows[3].key, "１３ｆ") // the one on 5D, now there
+        vm.removePerson(rows[4].key)
+        vm.addPerson()
+        val added = vm.state.value.people.getValue(day).last()
+        assertEquals("13F", added.code) // on the day's own code
+        assertTrue(added.key in vm.state.value.shown)
+        vm.setPersonName(added.key, "サトウ ハナ")
+        assertEquals(listOf("タナカ ユイ", "ヤマダ ハル", "サトウ ミオ", "コバヤシ リク", "サトウ ハナ"), vm.state.value.there(day).map { it.name })
+        vm.openPeople(null)
+        vm.save()
+        val saved = shifts.savedPeople?.get(day).orEmpty()
+        assertEquals(listOf("タナカ ユイ", "ヤマダ ハル", "サトウ ミオ", "コバヤシ リク", "サトウ ハナ"), saved.map { it.name })
+        assertEquals("13F", saved[3].code)
     }
 
     @Test
@@ -120,11 +120,13 @@ class ShiftsViewModelTest {
         shifts.read = Samples.november.copy(nameAsRead = "オトル サマンタ")
         shifts.readPhoto(ByteArray(1))
         val vm = ShiftEditorViewModel(SavedStateHandle(ShiftEditRoute("2026-11", fromPhoto = true)), shifts, reminders)
-        val day = LocalDate.of(2026, 11, 4) // read as タナカ ユイ
-        vm.editWith(day)
-        vm.setWith(day, "タナカ ユエ")
+        val day = LocalDate.of(2026, 11, 4) // read as タナカ ユイ and ヤマダ ハナ
+        vm.openPeople(day)
+        val rows = vm.state.value.people.getValue(day)
+        vm.setPersonName(rows[0].key, "タナカ ユエ")
+        vm.setPersonName(rows[1].key, "ヤマダ ハル")
         vm.save()
-        assertEquals(mapOf("タナカ ユイ" to "タナカ ユエ"), shifts.savedCorrections)
+        assertEquals(mapOf("タナカ ユイ" to "タナカ ユエ", "ヤマダ ハナ" to "ヤマダ ハル"), shifts.savedCorrections)
     }
 
     @Test

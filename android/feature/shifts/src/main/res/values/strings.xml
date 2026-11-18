@@ -28,7 +28,6 @@
     <string name="reading_days">Reading the days</string>
     <string name="reading_days_of">Reading the days: %1$d of %2$d</string>
     <string name="everyone_there">Everyone there</string>
-    <string name="n_there">+%d there</string>
     <string name="you">You</string>
     <string name="take_photo">Take a photo</string>
     <string name="choose_photo">Choose a photo</string>
@@ -68,14 +67,23 @@
     <string name="made_new_link">Made a new link. Add it again where you used the old one.</string>
     <string name="link_off">The calendar link is off.</string>
     <string name="with_names">With %s</string>
-    <string name="add_who_with">Who’s with you?</string>
-    <string name="edit_who_with">change who’s with you on %s</string>
-    <string name="who_with">Who’s with you</string>
-    <string name="who_with_on">Who’s with you on %s</string>
-    <string name="who_with_hint">Separate names with commas, or tap them below</string>
     <string name="done">Done</string>
     <string name="use_usual_days">Use the usual days</string>
     <string name="closing_usual_hint">The usual days, from Settings. Change them here for %1$s only.</string>
     <string name="closing_own_hint">Only for %1$s. Other months keep the usual days.</string>
     <string name="no_closing_this_month">No 締め申請通知 this month.</string>
+    <!-- A day's people, on the edit screen -->
+    <string name="whos_there_on">Who’s there on %s</string>
+    <string name="names_as_on_sheet">Names and codes as on the sheet.</string>
+    <string name="nobody_yet">Nobody yet.</string>
+    <string name="add_someone">+ Add someone</string>
+    <string name="n_more_not_there">%d more that day, not there during this shift</string>
+    <string name="hide_not_there">Hide those not there during this shift</string>
+    <string name="person_n">Person %d</string>
+    <string name="name_of_person">Name of person %d</string>
+    <string name="code_of">Code of %s</string>
+    <string name="their_name">Their name</string>
+    <string name="remove_person">Remove %s</string>
+    <string name="the_day_before">the day before</string>
+    <string name="the_next_day">the next day</string>
 </resources>

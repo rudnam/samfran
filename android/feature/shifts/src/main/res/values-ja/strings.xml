@@ -28,7 +28,6 @@
     <string name="reading_days">日ごとに読んでいます</string>
     <string name="reading_days_of">日ごとに読んでいます: %1$d/%2$d日</string>
     <string name="everyone_there">同じ時間帯の人</string>
-    <string name="n_there">ほか%d人</string>
     <string name="you">あなた</string>
     <string name="take_photo">写真を撮る</string>
     <string name="choose_photo">写真を選ぶ</string>
@@ -68,14 +67,23 @@
     <string name="made_new_link">新しいリンクを作りました。古いリンクを使っていたところに登録し直してください。</string>
     <string name="link_off">カレンダーのリンクをオフにしました。</string>
     <string name="with_names">一緒: %s</string>
-    <string name="add_who_with">一緒の人を追加</string>
-    <string name="edit_who_with">%sに一緒の人を変える</string>
-    <string name="who_with">一緒の人</string>
-    <string name="who_with_on">%sに一緒の人</string>
-    <string name="who_with_hint">「、」か「,」で区切る。下の名前をタップしても入る</string>
     <string name="done">完了</string>
     <string name="use_usual_days">いつもの日に戻す</string>
     <string name="closing_usual_hint">設定のいつもの日です。ここで変えると%1$sだけ変わります。</string>
     <string name="closing_own_hint">%1$sだけの日です。ほかの月はいつもの日のままです。</string>
     <string name="no_closing_this_month">今月は締め申請通知なし</string>
+    <!-- A day's people, on the edit screen -->
+    <string name="whos_there_on">%sにいる人</string>
+    <string name="names_as_on_sheet">名前とコードは勤務表のとおりに。</string>
+    <string name="nobody_yet">まだいません。</string>
+    <string name="add_someone">＋ 人を追加</string>
+    <string name="n_more_not_there">ほか%d人（この日にいるが、このシフトの時間にはいない）</string>
+    <string name="hide_not_there">このシフトの時間にいない人を隠す</string>
+    <string name="person_n">%d人目</string>
+    <string name="name_of_person">%d人目の名前</string>
+    <string name="code_of">%sのコード</string>
+    <string name="their_name">名前</string>
+    <string name="remove_person">%sを削除</string>
+    <string name="the_day_before">前日</string>
+    <string name="the_next_day">翌日</string>
 </resources>

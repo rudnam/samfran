@@ -1,6 +1,13 @@
 package com.rudnam.samfran.feature.shifts
 
 import androidx.compose.foundation.border
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.Role
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,11 +18,9 @@ import com.rudnam.samfran.core.designsystem.component.Hint
 import com.rudnam.samfran.core.designsystem.component.LinkButton
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -42,11 +47,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -65,7 +68,6 @@ import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.ShiftCodes
-import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.ui.Dates
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.currentLocale
@@ -84,52 +86,39 @@ internal fun ShiftEditorDestination(navigation: ShiftsNavigation, viewModel: Shi
  * what the photo reader found, or the saved month to fix by hand. Every day
  * has a box for its code and shows what the code means as it's typed. The
  * common codes are one tap away: a chip fills the focused day and moves on.
- * Under a working day is who's with you: tapping it opens the names to edit,
- * and the chips then offer the names on the month's other days instead.
+ * Each day is one line; a working day ends in a count of who's there, which
+ * opens that day's people (PeoplePage) to fix.
  */
 @Composable
 fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, onBack: () -> Unit) {
+    val open = state.openDay
+    if (open != null && state.base != null) {
+        PeoplePage(state, open, actions)
+        return
+    }
     val colors = SamFranTheme.colors
     val locale = currentLocale
     val month = Dates.month(state.month, locale)
     val requesters = remember(state.month) { state.dates.associateWith { FocusRequester() } }
-    // The chips move the focus on: the next day's box follows (not while a day's names are open).
+    // The chips move the focus on: the next day's box follows.
     LaunchedEffect(state.focused) {
-        if (state.editingWith == null) state.focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } }
+        state.focused?.let { requesters[it] }?.let { runCatching { it.requestFocus() } }
     }
     SubPage(
         onBack = onBack,
         bottomBar = if (state.base == null) null else ({
             Column {
                 HorizontalDivider(color = colors.border)
-                val editing = state.editingWith
-                if (editing == null) {
-                    ChipRow {
-                        for (code in ShiftCodes.common) {
-                            val meaning = ShiftCodes.explain(code, state.base.settings.lengths)
-                            FilterChip(
-                                selected = state.focused?.let { state.codes[it] } == code,
-                                onClick = { actions.chip(code) },
-                                label = { Text(code, fontWeight = FontWeight.Bold) },
-                                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.a.bg),
-                                modifier = Modifier.semantics { contentDescription = "$code, ${ShiftCodes.labelOf(meaning.label)}" },
-                            )
-                        }
-                    }
-                } else {
-                    val names = state.namesBesides(editing)
-                    if (names.isNotEmpty()) {
-                        val now = state.withFor(editing)
-                        ChipRow {
-                            for (name in names) {
-                                FilterChip(
-                                    selected = name in now,
-                                    onClick = { actions.toggleName(name) },
-                                    label = { Text(name) },
-                                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.a.bg),
-                                )
-                            }
-                        }
+                ChipRow {
+                    for (code in ShiftCodes.common) {
+                        val meaning = ShiftCodes.explain(code, state.base.settings.lengths)
+                        FilterChip(
+                            selected = state.focused?.let { state.codes[it] } == code,
+                            onClick = { actions.chip(code) },
+                            label = { Text(code, fontWeight = FontWeight.Bold) },
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = colors.a.bg),
+                            modifier = Modifier.semantics { contentDescription = "$code, ${ShiftCodes.labelOf(meaning.label)}" },
+                        )
                     }
                 }
                 PrimaryButton(
@@ -176,7 +165,7 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                         modifier = Modifier
                             .width(84.dp)
                             .focusRequester(requesters.getValue(date))
-                            .onFocusChanged { if (it.isFocused && (state.focused != date || state.editingWith != null)) actions.focus(date) }
+                            .onFocusChanged { if (it.isFocused && state.focused != date) actions.focus(date) }
                             .semantics { contentDescription = codeFor },
                         label = null,
                         placeholder = null,
@@ -198,13 +187,7 @@ fun ShiftEditorScreen(state: ShiftEditorUiState, actions: ShiftEditorActions, on
                             if (meaning.problem != null) Text(stringResource(R.string.unknown_length), style = MaterialTheme.typography.bodySmall, color = colors.danger)
                         }
                     }
-                }
-                // Who's with you: under the day at full width, where its box opens in place.
-                if (state.editingWith == date) {
-                    NamesField(state.withText(date), date, day, actions)
-                } else {
-                    val names = state.withFor(date)
-                    if (names.isNotEmpty() || meaning?.kind == ShiftKind.Work) WithLine(names, state.thereCount(date), day) { actions.editWith(date) }
+                    if (state.working(date)) PeopleCount(state.there(date).size, day) { actions.openPeople(date) }
                 }
             }
         }
@@ -269,65 +252,113 @@ private fun ChipRow(content: @Composable () -> Unit) {
     ) { content() }
 }
 
-/** Who's with you on a day, or a way to add them; tapping it opens the names to edit. */
+
+/** How many are there during a day's shift ("+" for nobody yet); it opens the day's people. */
 @Composable
-private fun WithLine(names: List<String>, there: Int, day: String, onClick: () -> Unit) {
+private fun PeopleCount(count: Int, day: String, onClick: () -> Unit) {
     val colors = SamFranTheme.colors
-    // How many others on other shifts are there: a count here, the names on the Shifts page.
-    val more = @Composable {
-        if (there > 0) Text(stringResource(R.string.n_there, there), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.muted)
-    }
-    val pencil = @Composable {
-        more()
-        LineIcon(SamFranIcons.edit, null, Modifier.padding(start = 6.dp), tint = colors.muted, size = 14.dp)
-    }
-    Box(
+    val label = stringResource(R.string.whos_there_on, day) + if (count > 0) " ($count)" else ""
+    Row(
         Modifier
-            .fillMaxWidth()
-            .padding(start = 68.dp, bottom = 4.dp)
-            .heightIn(min = 28.dp)
-            .clickable(onClickLabel = stringResource(R.string.edit_who_with, day), onClick = onClick),
-        contentAlignment = Alignment.CenterStart,
+            .clip(CircleShape)
+            .then(if (count > 0) Modifier.background(colors.sunken) else Modifier.border(1.5.dp, colors.border, CircleShape))
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = label }
+            .padding(horizontal = 11.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        if (names.isEmpty()) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LineIcon(SamFranIcons.add, null, tint = colors.accentInk, size = 14.dp)
-                Text(stringResource(R.string.add_who_with), style = MaterialTheme.typography.bodySmall, color = colors.accentInk)
-                more()
-            }
-        } else {
-            WithNames(names, trailing = pencil)
-        }
+        LineIcon(SamFranIcons.us, null, tint = if (count > 0) colors.text else colors.muted, size = 16.dp)
+        Text(if (count > 0) "$count" else "+", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = if (count > 0) colors.text else colors.muted)
     }
 }
 
 /**
- * A day's names as one line, separated by commas, under the day's row. It
- * takes the focus when it opens; Done (or the check) closes it.
+ * Who's at work around one day (web: PeopleSheet.tsx): everyone read off the
+ * sheet or added, each with the code in their cell, all of it fixable. Those
+ * there during the shift come first; the rest of that day's people wait,
+ * folded away, in case the day's code is corrected.
  */
 @Composable
-private fun NamesField(text: String, date: LocalDate, day: String, actions: ShiftEditorActions) {
-    val requester = remember { FocusRequester() }
-    LaunchedEffect(date) { runCatching { requester.requestFocus() } }
-    // The cursor goes to the end when a chip changes the names.
-    var value by remember { mutableStateOf(TextFieldValue(text, TextRange(text.length))) }
-    if (value.text != text) value = TextFieldValue(text, TextRange(text.length))
-    val label = stringResource(R.string.who_with_on, day)
-    OutlinedTextField(
-        value = value,
-        onValueChange = { value = it; actions.setWith(date, it.text) },
-        label = { Text(stringResource(R.string.who_with)) },
-        supportingText = { Text(stringResource(R.string.who_with_hint)) },
-        textStyle = MaterialTheme.typography.bodyMedium,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { actions.editWith(null) }),
-        trailingIcon = {
-            IconButton(onClick = { actions.editWith(null) }) { LineIcon(SamFranIcons.check, stringResource(R.string.done), size = 20.dp) }
+private fun PeoplePage(state: ShiftEditorUiState, date: LocalDate, actions: ShiftEditorActions) {
+    val colors = SamFranTheme.colors
+    val locale = currentLocale
+    val close = { actions.openPeople(null) }
+    BackHandler(onBack = close)
+    val rows = state.people[date].orEmpty()
+    val shown = rows.filter { it.key in state.shown }
+    val rest = rows.filter { it.key !in state.shown }
+    var restOpen by rememberSaveable(date) { mutableStateOf(false) }
+    SubPage(
+        onBack = close,
+        bottomBar = {
+            Column {
+                HorizontalDivider(color = colors.border)
+                PrimaryButton(stringResource(R.string.done), close, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp))
+            }
         },
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 68.dp, bottom = 8.dp)
-            .focusRequester(requester)
-            .semantics { contentDescription = label },
-    )
+    ) {
+        PageTitle(stringResource(R.string.whos_there_on, Dates.day(date, locale)))
+        val hours = state.hours(date)
+        Hint(
+            listOfNotNull(
+                ShiftCodes.normalize(state.codes[date].orEmpty()),
+                hours?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" },
+                stringResource(R.string.names_as_on_sheet),
+            ).joinToString(" · "),
+        )
+        SamFranCard(spacing = 8) {
+            if (shown.isEmpty()) Hint(stringResource(R.string.nobody_yet))
+            shown.forEach { PersonLine(state, date, it, rows.indexOf(it), actions) }
+            SecondaryButton(stringResource(R.string.add_someone), actions::addPerson, Modifier.fillMaxWidth().padding(top = 4.dp))
+        }
+        if (rest.isNotEmpty()) {
+            LinkButton(
+                if (restOpen) stringResource(R.string.hide_not_there) else stringResource(R.string.n_more_not_there, rest.size),
+                { restOpen = !restOpen },
+            )
+            if (restOpen) {
+                SamFranCard(spacing = 8) { rest.forEach { PersonLine(state, date, it, rows.indexOf(it), actions) } }
+            }
+        }
+    }
+}
+
+/** One person: their name and code to fix, when they're there, and a way to take them off. */
+@Composable
+private fun PersonLine(state: ShiftEditorUiState, date: LocalDate, p: PersonRow, index: Int, actions: ShiftEditorActions) {
+    val colors = SamFranTheme.colors
+    val there = p.name.isBlank() || state.isThere(date, p)
+    val label = p.name.trim().ifEmpty { stringResource(R.string.person_n, index + 1) }
+    val nameLabel = stringResource(R.string.name_of_person, index + 1)
+    val codeLabel = stringResource(R.string.code_of, label)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = p.name,
+            onValueChange = { actions.setPersonName(p.key, it) },
+            singleLine = true,
+            placeholder = { Text(stringResource(R.string.their_name)) },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = if (there) colors.text else colors.muted),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.weight(1f).semantics { contentDescription = nameLabel },
+        )
+        OutlinedTextField(
+            value = p.code,
+            onValueChange = { actions.setPersonCode(p.key, it) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+            modifier = Modifier.width(72.dp).semantics { contentDescription = codeLabel },
+        )
+        Column(Modifier.width(58.dp), horizontalAlignment = Alignment.End) {
+            val h = ShiftCodes.hoursAround(p.code, p.dayOffset, state.base?.settings?.lengths.orEmpty())
+            Text(h?.let { (from, to) -> "${ShiftCodes.clock(from)}–${ShiftCodes.clock(to)}" } ?: "–", style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
+            if (p.dayOffset != 0) {
+                Text(stringResource(if (p.dayOffset < 0) R.string.the_day_before else R.string.the_next_day), style = MaterialTheme.typography.labelSmall, color = colors.muted)
+            }
+        }
+        IconButton(onClick = { actions.removePerson(p.key) }, modifier = Modifier.size(32.dp)) {
+            LineIcon(SamFranIcons.close, stringResource(R.string.remove_person, label), tint = colors.muted, size = 18.dp)
+        }
+    }
 }

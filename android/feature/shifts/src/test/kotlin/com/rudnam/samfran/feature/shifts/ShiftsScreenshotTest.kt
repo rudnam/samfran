@@ -5,10 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.ReadProgress
+import com.rudnam.samfran.core.model.ShiftCoworker
+import com.rudnam.samfran.core.model.ShiftMonth
 import com.rudnam.samfran.core.testing.Samples
 import org.junit.Rule
 import org.junit.Test
@@ -46,9 +49,11 @@ class ShiftsScreenshotTest {
         override fun setCode(date: LocalDate, code: String) {}
         override fun focus(date: LocalDate?) {}
         override fun chip(code: String) {}
-        override fun editWith(date: LocalDate?) {}
-        override fun setWith(date: LocalDate, text: String) {}
-        override fun toggleName(name: String) {}
+        override fun openPeople(date: LocalDate?) {}
+        override fun setPersonName(key: Long, name: String) {}
+        override fun setPersonCode(key: Long, code: String) {}
+        override fun removePerson(key: Long) {}
+        override fun addPerson() {}
         override fun setClosing(index: Int, day: Int) {}
         override fun addClosing() {}
         override fun removeClosing(index: Int) {}
@@ -147,57 +152,46 @@ class ShiftsScreenshotTest {
         ShiftEditorScreen(ShiftEditorUiState(read.month, base = read, codes = read.days.associate { it.date to it.code }), editor, {})
     }
 
-    /** A day's names open to edit, with the month's other names as chips. */
-    @Test
-    fun editingWhoIsWith() = shot("check-names") {
-        ShiftEditorScreen(
-            ShiftEditorUiState(
-                read.month, base = read, codes = read.days.associate { it.date to it.code },
-                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
-                typed = mapOf(LocalDate.of(2026, 11, 2) to "タナカ ユイ, サトウ"),
-            ),
-            editor, {},
+    /** The editor's state for a month, with [open]'s people open as the editor opens them. */
+    private fun editing(m: ShiftMonth, open: LocalDate? = null): ShiftEditorUiState {
+        var key = 0L
+        val s = ShiftEditorUiState(
+            m.month, base = m, codes = m.days.associate { it.date to it.code },
+            people = m.days.associate { d -> d.date to d.people.map { PersonRow(++key, it.name, it.code, it.dayOffset) } },
         )
+        return if (open == null) s else s.copy(openDay = open, shown = s.there(open).map { it.key }.toSet())
+    }
+
+    /** A day's people (the 4th, a 13F): those there first, then the rest of the day's, unfolded. */
+    @Test
+    fun aDaysPeople() {
+        compose.setContent { SamFranTheme { ShiftEditorScreen(editing(read, LocalDate.of(2026, 11, 4)), editor, {}) } }
+        compose.onNodeWithText("2 more that day, not there during this shift").performClick()
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/shifts-check-people.png")
     }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
-    fun editingWhoIsWithJapanese() = shot("check-names-ja") {
-        ShiftEditorScreen(
-            ShiftEditorUiState(
-                read.month, base = read, codes = read.days.associate { it.date to it.code },
-                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
-            ),
-            editor, {},
-        )
-    }
+    fun aDaysPeopleJapanese() = shot("check-people-ja") { ShiftEditorScreen(editing(read, LocalDate.of(2026, 11, 4)), editor, {}) }
 
-    /** A busy month: several people on a shift, shown and open to edit. */
+    /** A busy month: several people on a shift. */
     private val crowded = read.copy(
         days = read.days.map {
             when (it.date.dayOfMonth) {
-                2 -> it.copy(with = listOf("タナカ ユイ", "スズキ ケン", "ヤマモト アオイ", "サトウ ハナ", "ナカムラ ショウタロウ"))
-                3 -> it.copy(with = listOf("スズキ ケン", "ヤマモト アオイ", "イトウ メグミ", "コバヤシ ダイスケ"))
+                2 -> it.copy(
+                    people = listOf("タナカ ユイ", "スズキ ケン", "ヤマモト アオイ", "サトウ ハナ", "ナカムラ ショウタロウ").map { n -> ShiftCoworker(n, "7F") } +
+                        ShiftCoworker("ヨル タロウ", "23F", -1) + ShiftCoworker("ヤマダ ハナ", "9F") + ShiftCoworker("オソ ジロウ", "17F"),
+                )
                 else -> it
             }
         },
     )
 
     @Test
-    fun severalCoworkers() = shot("check-many") {
-        ShiftEditorScreen(ShiftEditorUiState(crowded.month, base = crowded, codes = crowded.days.associate { it.date to it.code }), editor, {})
-    }
+    fun severalCoworkers() = shot("check-many") { ShiftEditorScreen(editing(crowded), editor, {}) }
 
     @Test
-    fun editingSeveralCoworkers() = shot("check-many-names") {
-        ShiftEditorScreen(
-            ShiftEditorUiState(
-                crowded.month, base = crowded, codes = crowded.days.associate { it.date to it.code },
-                focused = LocalDate.of(2026, 11, 2), editingWith = LocalDate.of(2026, 11, 2),
-            ),
-            editor, {},
-        )
-    }
+    fun aBusyDaysPeople() = shot("check-many-people") { ShiftEditorScreen(editing(crowded, LocalDate.of(2026, 11, 2)), editor, {}) }
 
     private val settingsState = ShiftSettingsUiState(
         settings = Samples.settings.copy(feedPath = "/calendar/abc123.ics"),
