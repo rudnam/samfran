@@ -11,6 +11,7 @@ import { addMonths, dayName, labelOf, monthName, shrinkPhoto, timesOf } from './
 import { EveryoneToggle, WhoThere } from './WhoThere';
 import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
+import { googleCalendarUrl } from './ShiftCalendarLinkPage';
 
 // Calendar or list: remembered on this device.
 type View = 'calendar' | 'list';
@@ -42,6 +43,7 @@ export function ShiftsPage({ month }: { month?: string }) {
   const [readError, setError] = useState('');
   const error = readError || loadError;
   const [reading, setReading] = useState<ReadProgress | null>(null);
+  const [copied, setCopied] = useState(false);
   const [view, setView] = useState<View>(savedView);
   // Who else is at work stays hidden until the people button is pressed.
   const [everyone, showEveryone] = useState(false);
@@ -198,11 +200,19 @@ export function ShiftsPage({ month }: { month?: string }) {
           </a>
         )}
       </div>
-      {/* Once it's on there's nothing to do after each new month, so it's only a quiet line. */}
+      {/* Once it's on there's nothing to do after each new month, so it's only a quiet line:
+          it copies the Open Google Calendar address, to send to whoever should add it. */}
       {data?.settings.feed_path && (
-        <p className="muted small">
-          <a href={href('shifts/calendar')}>{t('Calendar link is on')}</a> · {t('updates by itself')}
-        </p>
+        <button
+          type="button"
+          className="link quiet start"
+          onClick={() => {
+            const url = googleCalendarUrl(`${location.origin}${data.settings.feed_path}`);
+            void navigator.clipboard?.writeText(url).then(() => setCopied(true), () => {});
+          }}
+        >
+          {copied ? t('Copied') : t('Share via Google Calendar')}
+        </button>
       )}
 
       {needsName && data?.settings.reader && (
