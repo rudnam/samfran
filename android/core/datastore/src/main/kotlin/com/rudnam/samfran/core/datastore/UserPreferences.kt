@@ -35,8 +35,8 @@ data class UserPreferences(
     val shiftsAsList: Boolean = false,
     /** The Places tab shows only this category ([com.rudnam.samfran.core.model.PlaceCategory.key]); empty for all. */
     val placesCategory: String = "",
-    /** The Places tab lists the nearest first, rather than the newest. */
-    val placesNearby: Boolean = false,
+    /** How the Places tab orders the list (PlaceOrder.key, in feature/food); empty for newest first. */
+    val placesOrder: String = "",
     /** The Places tab shows them on a map, rather than as a list. */
     val placesOnMap: Boolean = false,
 )
@@ -53,7 +53,8 @@ class UserPreferencesRepository @Inject constructor(
             activitySeen = p[ACTIVITY_SEEN],
             shiftsAsList = p[SHIFTS_AS_LIST] ?: false,
             placesCategory = p[PLACES_CATEGORY] ?: "",
-            placesNearby = p[PLACES_NEARBY] ?: false,
+            // Before the order menu there was only a Nearby switch: a phone that had it on opens on Nearby.
+            placesOrder = p[PLACES_ORDER] ?: if (p[PLACES_NEARBY] == true) "nearby" else "",
             placesOnMap = p[PLACES_ON_MAP] ?: false,
         )
     }
@@ -78,8 +79,11 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { if (key.isEmpty()) it.remove(PLACES_CATEGORY) else it[PLACES_CATEGORY] = key }
     }
 
-    suspend fun setPlacesNearby(nearby: Boolean) {
-        dataStore.edit { it[PLACES_NEARBY] = nearby }
+    suspend fun setPlacesOrder(key: String) {
+        dataStore.edit {
+            it[PLACES_ORDER] = key
+            it.remove(PLACES_NEARBY)
+        }
     }
 
     suspend fun setPlacesOnMap(onMap: Boolean) {
@@ -114,7 +118,9 @@ class UserPreferencesRepository @Inject constructor(
         val ACTIVITY_SEEN = longPreferencesKey("activity_seen")
         val SHIFTS_AS_LIST = booleanPreferencesKey("shifts_as_list")
         val PLACES_CATEGORY = stringPreferencesKey("places_category")
+        /** The old Nearby switch, read once so a phone that had it on opens on Nearby. */
         val PLACES_NEARBY = booleanPreferencesKey("places_nearby")
+        val PLACES_ORDER = stringPreferencesKey("places_order")
         val PLACES_ON_MAP = booleanPreferencesKey("places_on_map")
         val ME_EMAIL = stringPreferencesKey("me_email")
         val ME_PASSWORD = booleanPreferencesKey("me_has_password")

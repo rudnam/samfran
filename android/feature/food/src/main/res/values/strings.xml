@@ -128,6 +128,9 @@
     <string name="sort_latest">Latest</string>
     <string name="sort_newest">Newest</string>
     <string name="sort_nearby">Nearby</string>
+    <string name="sort_top_rated">Top rated</string>
+    <string name="sort_name">A–Z</string>
+    <string name="order_is">Order: %s</string>
     <string name="view">View</string>
     <string name="view_list">List</string>
     <string name="view_map">Map</string>
