@@ -1,5 +1,5 @@
 // Whose shifts, how to find their row on the sheet, how long each letter's
-// shift is. The calendar link is on ShiftCalendarLinkPage.
+// shift is. The calendar link is on ShiftCalendarLinkPage, from the Shifts page.
 import { BackLink } from '../../components/BackLink';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ShiftSettings } from '../../api';
@@ -156,15 +156,6 @@ export function ShiftSettingsPage() {
               </button>
             </div>
           </form>
-
-          <div className="card stack">
-            <h2>{t('In your calendar')}</h2>
-            <div className="row wrap">
-              <a className="button secondary" href={href('shifts/calendar')}>
-                {t('Add to Google Calendar')}
-              </a>
-            </div>
-          </div>
         </>
       )}
     </section>

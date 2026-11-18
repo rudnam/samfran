@@ -182,6 +182,9 @@ export const ja = {
   Latest: '最近',
   Newest: '新しい順',
   Nearby: '近い順',
+  'Top rated': '評価の高い順',
+  'A–Z': '名前順',
+  'Order: {name}': '並び順: {name}',
   Map: '地図',
   'Finding where you are…': '現在地を確認しています…',
   'Location is off for this site, so the list is newest first. Allow it in the browser to sort by distance.':
@@ -247,7 +250,6 @@ export const ja = {
   'Turn on the calendar link': 'カレンダーのリンクをオンにする',
 
   // The calendar link
-  'In your calendar': 'カレンダーに表示',
   'Add to Google Calendar': 'Googleカレンダーに追加',
   'Open Google Calendar': 'Googleカレンダーを開く',
   'On a computer, open Google Calendar': 'パソコンでGoogleカレンダーを開く',

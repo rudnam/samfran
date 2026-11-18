@@ -82,6 +82,12 @@ async function pickCategory(page, name) {
   await page.getByRole('radiogroup', { name: 'Category' }).getByRole('radio', { name }).click();
 }
 
+/** Orders the list ('Newest', 'Nearby', 'Top rated', 'A–Z'), from the order menu above it. */
+async function pickOrder(page, name) {
+  await page.getByRole('button', { name: /^Order:/ }).click();
+  await page.getByRole('radiogroup', { name: 'Order' }).getByRole('radio', { name }).click();
+}
+
 let n = 0;
 /** A unique email per call, so parallel tests never share an account. */
 function uniqueEmail() {
@@ -134,4 +140,4 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, uniqueEmail, PASSWORD, confirmationLink, resetLink };
+module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, pickOrder, uniqueEmail, PASSWORD, confirmationLink, resetLink };
