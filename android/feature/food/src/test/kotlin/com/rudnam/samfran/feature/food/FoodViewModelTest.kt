@@ -103,7 +103,7 @@ class FoodViewModelTest {
     }
 
     @Test
-    fun `top rated puts the best first and the unrated last; A to Z by name; both remembered`() = runTest {
+    fun `top rated puts the best first and the unrated last, A to Z by name, both remembered`() = runTest {
         val vm = FoodListViewModel(food, space, preferences, alarm, clock)
         watch(vm.state)
         // Hanabi and Menya both average 4.5: they keep their newest-first order.
