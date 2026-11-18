@@ -48,6 +48,8 @@ func newTestServerDB(t *testing.T, edit ...func(*config.Config)) (*httptest.Serv
 		"privacy.html":         {Data: []byte("<!doctype html><title>Privacy</title>")},
 		"assets/app-1.js":      {Data: []byte("console.log(1)")},
 		"manifest.webmanifest": {Data: []byte(`{"name":"App"}`)},
+		"map.html": {Data: []byte(`<!doctype html><script type="module" crossorigin src="/assets/map-1.js"></script>` +
+			`<link rel="modulepreload" crossorigin href="/assets/icons-1.js">`)},
 	}
 	ts := httptest.NewServer(server.New(cfg, conn, static, "test"))
 	t.Cleanup(ts.Close)

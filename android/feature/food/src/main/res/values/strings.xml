@@ -131,4 +131,22 @@
     <string name="kind_hot_spring">Onsen</string>
     <string name="kind_mall">Shopping mall</string>
     <string name="kind_marketplace">Market</string>
+    <!-- Nearby and the map -->
+    <string name="order">Order</string>
+    <string name="sort_latest">Latest</string>
+    <string name="sort_newest">Newest</string>
+    <string name="sort_nearby">Nearby</string>
+    <string name="view">View</string>
+    <string name="view_list">List</string>
+    <string name="view_map">Map</string>
+    <string name="finding_location">Finding where you are…</string>
+    <string name="location_off">Couldn’t find where you are (is location allowed for SamFran?), so the list is newest first.</string>
+    <string name="map_of_places">Map of the places</string>
+    <plurals name="n_not_on_map">
+        <item quantity="one">%d not on the map yet: its place is still being looked up, or wasn’t found.</item>
+        <item quantity="other">%d not on the map yet: their place is still being looked up, or wasn’t found.</item>
+    </plurals>
+    <string name="search">Search</string>
+    <string name="all_places">All places</string>
+    <string name="category_is">Category: %s</string>
 </resources>

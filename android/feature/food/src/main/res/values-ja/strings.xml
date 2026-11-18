@@ -128,4 +128,20 @@
     <string name="kind_hot_spring">温泉</string>
     <string name="kind_mall">ショッピングモール</string>
     <string name="kind_marketplace">市場</string>
+    <string name="order">並び順</string>
+    <string name="sort_latest">最近</string>
+    <string name="sort_newest">新しい順</string>
+    <string name="sort_nearby">近い順</string>
+    <string name="view">表示</string>
+    <string name="view_list">リスト</string>
+    <string name="view_map">地図</string>
+    <string name="finding_location">現在地を確認しています…</string>
+    <string name="location_off">現在地がわからなかったので（SamFranに位置情報を許可していますか？）、新しい順に並べています。</string>
+    <string name="map_of_places">場所の地図</string>
+    <plurals name="n_not_on_map">
+        <item quantity="other">%dか所はまだ地図にありません（場所を調べている途中か、見つかりませんでした）。</item>
+    </plurals>
+    <string name="search">検索</string>
+    <string name="all_places">すべての場所</string>
+    <string name="category_is">カテゴリ: %s</string>
 </resources>

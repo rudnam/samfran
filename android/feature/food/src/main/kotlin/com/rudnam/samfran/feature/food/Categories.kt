@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
@@ -79,6 +80,18 @@ val PlaceCategory.kindHint: Int?
         PlaceCategory.Relax -> R.string.kind_hint_relax
         PlaceCategory.Shopping -> R.string.kind_hint_shopping
         PlaceCategory.Other -> null
+    }
+
+/** Its colour on the map, the same in light and dark (categoryIcons.ts pinColors). */
+val PlaceCategory.pinColor: Color
+    get() = when (this) {
+        PlaceCategory.Eat -> Color(0xFF85490F)
+        PlaceCategory.Nature -> Color(0xFF23653A)
+        PlaceCategory.Culture -> Color(0xFFA8291A)
+        PlaceCategory.Fun -> Color(0xFF2F4AA0)
+        PlaceCategory.Relax -> Color(0xFF7A2F8F)
+        PlaceCategory.Shopping -> Color(0xFF835500)
+        PlaceCategory.Other -> Color(0xFF7A6C5F)
     }
 
 /** Its tile's colours (.tile.cat-*). */
