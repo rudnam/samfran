@@ -33,7 +33,7 @@ test('the next shift shows up with the month, not after it', async ({ page }) =>
   const next = new Date(d.getFullYear(), d.getMonth() + 1, 1);
   const month = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
   await page.request.put('/api/shifts/settings', { data: { person_name: 'Sam', name_on_sheet: 'オトル サマンタ' } });
-  expect((await page.request.put('/api/shifts/month', { data: { month, days: [{ date: `${month}-03`, code: '普' }] } })).status()).toBe(200);
+  expect((await page.request.put('/api/shifts/month', { data: { month, days: [{ date: `${month}-03`, code: '9F' }] } })).status()).toBe(200);
   // And next month answers slowly.
   await page.route(`**/api/shifts?month=${month}`, slow(1000));
 
