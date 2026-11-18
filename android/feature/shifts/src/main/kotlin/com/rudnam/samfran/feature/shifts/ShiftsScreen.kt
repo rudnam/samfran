@@ -198,13 +198,13 @@ fun ShiftsScreen(
                         if (state.data != null && !filled) {
                             SecondaryButton(stringResource(R.string.enter_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = shown != null, icon = SamFranIcons.edit)
                         }
+                        // Once it's on there's nothing to do after each new month, so it's only a quiet line.
                         val calendarOn = state.data?.settings?.feedPath?.isNotEmpty() == true
-                        SecondaryButton(
-                            stringResource(if (calendarOn) R.string.google_calendar_on else R.string.add_to_google_calendar),
-                            onCalendar,
-                            Modifier.fillMaxWidth(),
-                            icon = SamFranIcons.calendar,
-                        )
+                        if (calendarOn) {
+                            LinkButton(stringResource(R.string.calendar_link_on), onCalendar, quiet = true)
+                        } else if (state.data != null) {
+                            SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
+                        }
                     }
                     if (state.needsName && state.canRead) {
                         Row(verticalAlignment = Alignment.CenterVertically) {

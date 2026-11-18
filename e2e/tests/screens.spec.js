@@ -174,7 +174,7 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
-    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await shot('7d-bus-settings');
     await page.getByRole('button', { name: '‹ Bus alarm' }).click();

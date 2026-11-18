@@ -192,10 +192,18 @@ export function ShiftsPage({ month }: { month?: string }) {
             {t('Enter by hand')}
           </a>
         )}
-        <a className="button secondary" href={href('shifts/calendar')}>
-          {data?.settings.feed_path ? t('Google Calendar: on') : t('Add to Google Calendar')}
-        </a>
+        {data && !data.settings.feed_path && (
+          <a className="button secondary" href={href('shifts/calendar')}>
+            {t('Add to Google Calendar')}
+          </a>
+        )}
       </div>
+      {/* Once it's on there's nothing to do after each new month, so it's only a quiet line. */}
+      {data?.settings.feed_path && (
+        <p className="muted small">
+          <a href={href('shifts/calendar')}>{t('Calendar link is on')}</a> · {t('updates by itself')}
+        </p>
+      )}
 
       {needsName && data?.settings.reader && (
         <p className="hint">
