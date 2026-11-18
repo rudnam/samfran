@@ -95,6 +95,9 @@ class ShiftsViewModel @Inject constructor(
         ShiftsUiState(asked = savedState.toRoute<ShiftsRoute>().month?.let(YearMonth::parse), today = today, picked = today),
     )
 
+    /** A path on the server (the calendar link's) as a full address. */
+    fun address(path: String): String = shifts.address(path)
+
     /** The photo just read: the editor opens on its month. */
     val readMonth = MutableStateFlow<YearMonth?>(null)
 

@@ -92,8 +92,23 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   expect(await feed.text()).toContain('SUMMARY:夜勤');
   expect(await feed.text()).toContain(`DTSTART;VALUE=DATE:${month.replace('-', '')}15\r\nDTEND;VALUE=DATE:${month.replace('-', '')}16\r\nSUMMARY:締め申請通知`);
   await page.locator('a.back').click();
-  // Once it's on, the Shifts page says so.
-  await expect(page.getByRole('link', { name: 'Calendar link is on' })).toBeVisible();
+  // Once it's on, the Shifts page has a quiet line that copies the Google Calendar address.
+  // The tests' plain-http address has no clipboard (it needs https), so catch what's written instead.
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async (text) => void (window.copiedText = text) },
+    });
+  });
+  await page.getByRole('button', { name: 'Share via Google Calendar' }).click();
+  await expect(page.getByRole('button', { name: 'Copied' })).toBeVisible();
+  expect(await page.evaluate(() => window.copiedText)).toBe(
+    `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(webcal)}`,
+  );
+  // Or the plain link, for any other calendar app.
+  await page.getByRole('button', { name: 'Other calendars' }).click();
+  await expect(page.getByRole('button', { name: 'Share via Google Calendar' })).toBeVisible();
+  expect(await page.evaluate(() => window.copiedText)).toMatch(/^https?:\/\/[^/]+\/api\/shifts\/feed\/[\w-]+\.ics$/);
   await expect(page.getByRole('link', { name: 'Add to Google Calendar' })).toHaveCount(0);
 
   // The 締め申請通知 days can be changed: the 10th and the 25th instead.

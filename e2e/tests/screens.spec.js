@@ -175,7 +175,7 @@ for (const [name, viewport] of [
     await shot('7a2-google-calendar');
     // Back on Shifts with the link on: a month with shifts, then an empty one.
     await page.goto('/app/#/shifts');
-    await expect(page.getByRole('link', { name: 'Calendar link is on' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Share via Google Calendar' })).toBeVisible();
     await shot('6d-shifts-calendar-on');
     await page.getByRole('link', { name: 'Next month' }).click();
     await page.getByRole('link', { name: 'Next month' }).click();

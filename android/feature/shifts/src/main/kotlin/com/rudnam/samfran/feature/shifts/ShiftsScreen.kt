@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -48,6 +49,7 @@ import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.ui.Dates
 import com.rudnam.samfran.core.ui.TabPage
+import com.rudnam.samfran.core.ui.copyText
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
 import com.rudnam.samfran.feature.shifts.navigation.ShiftEditRoute
@@ -59,6 +61,7 @@ import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val read by viewModel.readMonth.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     LaunchedEffect(read) {
         read?.let {
             viewModel.readOpened()
@@ -73,6 +76,7 @@ internal fun ShiftsDestination(navigation: ShiftsNavigation, viewModel: ShiftsVi
         onTakePhoto = { viewModel.askPhoto(SheetPhotos.Source.Camera) },
         onChoosePhoto = { viewModel.askPhoto(SheetPhotos.Source.Picker) },
         onCalendar = { navigation.navigate(ShiftCalendarLinkRoute) },
+        onCopyCalendar = { path, google -> viewModel.address(path).let { context.copyText(if (google) googleCalendarUrl(it) else it) } },
     )
 }
 
@@ -87,6 +91,8 @@ fun ShiftsScreen(
     onTakePhoto: () -> Unit,
     onChoosePhoto: () -> Unit,
     onCalendar: () -> Unit = {},
+    /** Copies the calendar link (its path on the server): as Google Calendar's address, or plain for other calendars. */
+    onCopyCalendar: (path: String, google: Boolean) -> Unit = { _, _ -> },
 ) {
     val colors = SamFranTheme.colors
     val locale = currentLocale
@@ -198,10 +204,23 @@ fun ShiftsScreen(
                         if (state.data != null && !filled) {
                             SecondaryButton(stringResource(R.string.enter_by_hand), onEdit, Modifier.fillMaxWidth(), enabled = shown != null, icon = SamFranIcons.edit)
                         }
-                        // Once it's on there's nothing to do after each new month, so it's only a quiet line.
-                        val calendarOn = state.data?.settings?.feedPath?.isNotEmpty() == true
-                        if (calendarOn) {
-                            LinkButton(stringResource(R.string.calendar_link_on), onCalendar, quiet = true)
+                        // Once it's on there's nothing to do after each new month, so it's only a quiet line: it copies
+                        // the Open Google Calendar address (or the plain link, for any other calendar) to send.
+                        val feedPath = state.data?.settings?.feedPath.orEmpty()
+                        if (feedPath.isNotEmpty()) {
+                            // Which was just copied: Google Calendar's address, the plain link, or neither.
+                            var copied by remember(feedPath) { mutableStateOf<Boolean?>(null) }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                LinkButton(stringResource(if (copied == true) R.string.copied else R.string.share_via_google_calendar), {
+                                    onCopyCalendar(feedPath, true)
+                                    copied = true
+                                }, quiet = true)
+                                Text("·", color = colors.muted)
+                                LinkButton(stringResource(if (copied == false) R.string.copied else R.string.other_calendars), {
+                                    onCopyCalendar(feedPath, false)
+                                    copied = false
+                                }, quiet = true)
+                            }
                         } else if (state.data != null) {
                             SecondaryButton(stringResource(R.string.add_to_google_calendar), onCalendar, Modifier.fillMaxWidth(), icon = SamFranIcons.calendar)
                         }
