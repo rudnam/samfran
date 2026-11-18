@@ -1,7 +1,7 @@
 // Sam's shifts: the month, the next shift, reading a photo of the sheet,
 // and fixing days by hand. Adding them to Google Calendar is on
 // ShiftCalendarLinkPage, the settings on ShiftSettingsPage.
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { api, errorMessage, type ReadProgress, type ShiftDay, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
 import { href, navigate } from '../../router';
@@ -23,9 +23,22 @@ function savedView(): View {
   }
 }
 
+/** The next shift, looking into next month if this one has none left. */
+async function loadNext(): Promise<{ day: ShiftDay | null }> {
+  const now = Date.now();
+  const upcoming = (m: ShiftMonth) => m.days.find((d) => d.end && Date.parse(d.end) > now) ?? null;
+  const cur = await api.shifts();
+  return { day: upcoming(cur) ?? upcoming(await api.shifts(addMonths(cur.month, 1))) };
+}
+
 export function ShiftsPage({ month }: { month?: string }) {
   const { data, error: loadError } = useCached(`shifts:${month ?? ''}`, () => api.shifts(month), errorMessage);
-  const [next, setNext] = useState<ShiftDay | null>(null);
+  // The next shift, only on the current month's page. Cached like the month,
+  // and the month waits for it, so its card never drops in above a calendar
+  // that's already showing.
+  const nextShift = useCached(`shifts-next:${month ?? ''}`, () => (month ? Promise.resolve({ day: null }) : loadNext()), errorMessage);
+  const next = nextShift.data?.day ?? null;
+  const ready = data !== null && (nextShift.data !== null || nextShift.error !== '');
   const [readError, setError] = useState('');
   const error = readError || loadError;
   const [reading, setReading] = useState<ReadProgress | null>(null);
@@ -42,17 +55,6 @@ export function ShiftsPage({ month }: { month?: string }) {
       // Private browsing: it lasts until the page is left.
     }
   }
-
-  // The next shift, looking into next month if this one has none left.
-  useEffect(() => {
-    if (month) return; // only on the current month's page
-    const now = Date.now();
-    const upcoming = (m: ShiftMonth) => m.days.find((d) => d.end && Date.parse(d.end) > now) ?? null;
-    api.shifts().then(async (cur) => {
-      const found = upcoming(cur);
-      setNext(found ?? upcoming(await api.shifts(addMonths(cur.month, 1))));
-    }, () => {});
-  }, [month]);
 
   async function readPhoto(file: File) {
     setError('');
@@ -128,14 +130,14 @@ export function ShiftsPage({ month }: { month?: string }) {
         </div>
         <EveryoneToggle on={everyone} onChange={showEveryone} />
         </div>
-        {!data && !error && <Skeleton rows={6} />}
-        {data && data.days.length === 0 && (
+        {!ready && !error && <Skeleton rows={6} />}
+        {ready && data && data.days.length === 0 && (
           <div className="empty flat">
             <p className="empty-title">{t('No shifts for this month')}</p>
             <p className="muted">{t('Read a photo of the sheet, or enter the days by hand.')}</p>
           </div>
         )}
-        {data && data.days.length > 0 && view === 'calendar' && (
+        {ready && data && data.days.length > 0 && view === 'calendar' && (
           <ShiftCalendar
             key={data.month}
             month={data.month}
@@ -146,7 +148,7 @@ export function ShiftsPage({ month }: { month?: string }) {
            
           />
         )}
-        {data && data.days.length > 0 && view === 'list' && (
+        {ready && data && data.days.length > 0 && view === 'list' && (
           <ul className="shift-list" aria-label={t('Shifts')}>
             {data.days.map((d) => (
               <li key={d.date} className={d.kind === 'work' ? '' : 'quiet'}>
