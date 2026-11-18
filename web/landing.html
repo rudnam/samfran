@@ -2,32 +2,101 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SamFran</title>
-<meta name="description" content="An app for two." data-ja-content="ふたりのためのアプリ。">
-<meta name="theme-color" content="#fdf6ee">
+<meta name="description" content="The little app for the two of you: places to go, work shifts, and a bus alarm." data-ja-content="ふたりのための小さなアプリ。行きたい場所、シフト、バスのアラーム。">
+<meta name="theme-color" content="#fdf6ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17120e" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <!-- The introduction, served at /. The app is at /app/ (index.html).
-     landing.ts shows it in Japanese (data-ja) and offers the Android app
-     while the server has one. -->
+     landing.ts shows it in Japanese (data-ja: HTML, ours), and offers the
+     demo and the Android app while the server has them. The preview on the
+     right is drawn here, not a screenshot, so it's sharp and translates. -->
 <script type="module" src="/src/landing.ts"></script>
 </head>
 <body class="landing">
-<main class="intro">
-  <img class="intro-logo" src="/icon.svg" alt="" width="56" height="56">
-  <h1>SamFran</h1>
-  <p class="intro-line" data-ja="ふたりのためのアプリ。">An app for two.</p>
-  <div class="intro-actions">
-    <a class="button" href="/app/" data-ja="ログイン">Sign in</a>
-    <a class="button secondary" href="/download/samfran.apk" data-download hidden download data-ja="Android版をダウンロード">Download for Android</a>
-  </div>
-  <p class="intro-foot">
-    <button type="button" class="link quiet" id="language-toggle" lang="ja" data-ja="English">日本語</button>
-    <span aria-hidden="true">·</span>
-    <a href="/privacy" data-ja="プライバシー">Privacy</a>
-  </p>
+<svg class="lp-sprite" width="0" height="0" aria-hidden="true">
+  <defs>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM14.5 9.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z"/></symbol>
+    <symbol id="i-shifts" viewBox="0 0 24 24"><path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-bus" viewBox="0 0 24 24"><path d="M8 3h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM5 11h14M8 21v-3M16 21v-3"/></symbol>
+    <symbol id="i-us" viewBox="0 0 24 24"><path d="M12.5 8a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM19.5 9a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0zM3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 1.8 6 5.5"/></symbol>
+    <symbol id="i-eat" viewBox="0 0 24 24"><path d="M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9"/></symbol>
+    <symbol id="i-nature" viewBox="0 0 24 24"><path d="M12 3a5 5 0 0 1 5 5 4 4 0 0 1-1 7.5H8A4 4 0 0 1 7 8a5 5 0 0 1 5-5zM12 15.5V21M12 12.5l-2.5-2M9 21h6"/></symbol>
+    <symbol id="i-culture" viewBox="0 0 24 24"><path d="M3 5c4 1.2 14 1.2 18 0M5 9.5h14M7 6.3V21M17 6.3V21M12 6.5v3"/></symbol>
+    <symbol id="i-relax" viewBox="0 0 24 24"><path d="M8.5 3c-1 1.3 1 2.4 0 3.7s1 2.4 0 3.7M12 2.5c-1 1.3 1 2.4 0 3.7s1 2.4 0 3.7M15.5 3c-1 1.3 1 2.4 0 3.7s1 2.4 0 3.7M5 12.5c-.8 1-1 2-1 3 0 3 3.6 5.5 8 5.5s8-2.5 8-5.5c0-1-.2-2-1-3"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/></symbol>
+  </defs>
+</svg>
+
+<header class="lp-top">
+  <a class="lp-brand" href="/" aria-label="SamFran">
+    <img src="/icon.svg" alt="" width="34" height="34">
+    <span>SamFran</span>
+  </a>
+  <button type="button" class="lp-lang" id="language-toggle" lang="ja" data-ja="English">日本語</button>
+</header>
+
+<main>
+  <section class="lp-hero">
+    <div class="lp-copy">
+      <p class="lp-kicker" data-ja="ふたりのためのアプリ">An app for two</p>
+      <h1 data-ja="ふたりの毎日を、<br>ひとつのアプリに。">Everything the two of you share, <span class="lp-accent">in one place.</span></h1>
+      <p class="lp-lead" data-ja="行きたい場所や行った場所、シフト、乗り過ごさないためのバスのアラーム。ふたりで同じものを見て、それぞれが評価をつけられます。">Places you want to go and places you've been, the work shifts, and a bus alarm so nobody sleeps past their stop. You both see the same things, and each of you gets your own say.</p>
+      <div class="lp-actions">
+        <a class="button lp-primary" href="/app/" data-ja="ログイン">Sign in</a>
+        <a class="button secondary" href="/app/?demo" data-demo hidden data-ja="デモを試す">Try the demo</a>
+        <a class="button secondary" href="/download/samfran.apk" data-download hidden download data-ja="Android版をダウンロード">Download for Android</a>
+      </div>
+    </div>
+
+    <div class="lp-preview" aria-hidden="true">
+      <div class="lp-card lp-places">
+        <div class="lp-card-head">
+          <span data-ja="行きたい · 近い順">Want to go · nearest first</span>
+        </div>
+        <ul>
+          <li><span class="lp-tile t-nature"><svg><use href="#i-nature"/></svg></span><span class="lp-row"><b data-ja="城山公園">Castle Park</b><small data-ja="公園 · 桜は4月の初め">Park · cherry trees in April</small></span><em>1.2 km</em></li>
+          <li><span class="lp-tile t-eat"><svg><use href="#i-eat"/></svg></span><span class="lp-row"><b data-ja="はなび亭">Hanabi Grill</b><small><span class="lp-star">★5</span> <span data-ja="ハンバーグ">Hamburg steak</span></small></span><em>350 m</em></li>
+          <li><span class="lp-tile t-culture"><svg><use href="#i-culture"/></svg></span><span class="lp-row"><b data-ja="丘の上神社">Hilltop Shrine</b><small data-ja="神社">Shrine</small></span><em>3.8 km</em></li>
+          <li><span class="lp-tile t-relax"><svg><use href="#i-relax"/></svg></span><span class="lp-row"><b data-ja="湖畔温泉">Lakeside Onsen</b><small data-ja="温泉 · 夜12時まで">Onsen · open till midnight</small></span><em>15 km</em></li>
+        </ul>
+      </div>
+      <div class="lp-card lp-shift">
+        <span class="lp-tile t-shift"><svg><use href="#i-shifts"/></svg></span>
+        <span class="lp-row"><small data-ja="次のシフト">Next shift</small><b data-ja="明日 7:00–16:00">Tomorrow 7:00–16:00</b></span>
+      </div>
+      <div class="lp-card lp-bus">
+        <span class="lp-tile t-bus"><svg><use href="#i-bell"/></svg></span>
+        <span class="lp-row"><small data-ja="バスのアラーム">Bus alarm</small><b data-ja="降りる600m手前で振動">Buzzes 600 m before your stop</b></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-features" aria-label="What's in it" data-ja-label="できること">
+    <article>
+      <span class="lp-tile t-nature"><svg><use href="#i-pin"/></svg></span>
+      <h2 data-ja="行きたい場所">Places to go</h2>
+      <p data-ja="レストランも、公園も、神社も温泉も。カテゴリで分けて、近い順や地図で見られます。行ったら記録して、ふたりそれぞれが星をつけます。">Restaurants, parks, shrines, onsen. Sorted by kind, nearest first or on a map. Log a visit when you go, and each give it your own stars.</p>
+    </article>
+    <article>
+      <span class="lp-tile t-shift"><svg><use href="#i-shifts"/></svg></span>
+      <h2 data-ja="シフト">Shifts</h2>
+      <p data-ja="勤務表の写真を撮るだけで、ひと月分のシフトが入ります。次のシフトがすぐわかり、カレンダーにも追加できます。">Take a photo of the monthly sheet and the whole month is in. The next shift is always on top, and it can go in your calendar.</p>
+    </article>
+    <article>
+      <span class="lp-tile t-bus"><svg><use href="#i-bus"/></svg></span>
+      <h2 data-ja="バスのアラーム">Bus alarm</h2>
+      <p data-ja="うとうとしても大丈夫。降りるバス停が近づくと、スマホが振動して起こしてくれます（Androidアプリ）。">Doze off on the way home: the phone buzzes before your stop so you don't ride past it (Android app).</p>
+    </article>
+  </section>
 </main>
+
+<footer class="lp-foot">
+  <span class="lp-foot-brand"><svg class="lp-heart"><use href="#i-us"/></svg> <span data-ja="ふたりのために">Made for two</span></span>
+  <a href="/privacy" data-ja="プライバシー">Privacy</a>
+</footer>
 </body>
 </html>
