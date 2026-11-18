@@ -118,8 +118,6 @@ fun ShiftsScreen(
                             }
                             CodeChip(next.code)
                         }
-                        // Everyone there: under the shift, at the card's full width.
-                        if (state.everyone) WhoThere(next, me, true, Modifier.padding(start = 24.dp, top = 8.dp))
                     }
                 }
             }
