@@ -1,11 +1,11 @@
-// The list: places you've been (latest visit first) and places you want to go,
+// The list: places you've been (when you went, latest first) and places you want to go,
 // all of them or one category's, newest, nearest, best rated or A–Z first, as a
 // list or on a map.
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
 import { Skeleton } from '../../components/Overlay';
-import { t, tn } from '../../i18n';
+import { t } from '../../i18n';
 import { locale } from '../../language';
 import { href } from '../../router';
 import { personTone, useSpace } from '../../space';
@@ -282,11 +282,6 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                       <span className="spot-meta">· {t('Added by {name}', { name: r.added_by })}</span>
                     )}
                   </span>
-                  {noteMatch(r, query) && (
-                    <span className="spot-note">
-                      {shortDate(noteMatch(r, query)!.visited_on)} · {noteMatch(r, query)!.note}
-                    </span>
-                  )}
                 </span>
                 {near && distanceText(near, r) ? (
                   <span className="spot-when">
@@ -296,8 +291,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                 ) : (
                   r.last_visit && (
                     <span className="spot-when">
-                      <strong>{shortDate(r.last_visit)}</strong>
-                      <span>{tn(r.visit_count, '{n} visit', '{n} visits')}</span>
+                      <span>{shortDate(r.last_visit)}</span>
                     </span>
                   )
                 )}
@@ -319,14 +313,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
 function matches(r: Restaurant, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q)) || !!noteMatch(r, query);
-}
-
-/** The newest visit whose note has the search in it: "where did we have that?". */
-function noteMatch(r: Restaurant, query: string) {
-  const q = query.trim().toLowerCase();
-  if (!q) return undefined;
-  return r.visit_notes?.find((v) => v.note.toLowerCase().includes(q));
+  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q));
 }
 
 /** How to order the list: an icon button (filled unless newest first) opening a menu of the ways. */

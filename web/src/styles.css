@@ -401,14 +401,10 @@ select.language { width: auto; padding: 6px 10px; }
 .stars-static { color: var(--star); font-size: 1.35rem; letter-spacing: 3px; }
 .stars-static .off { color: var(--star-off); }
 
-.visit-form { display: grid; grid-template-columns: 9.5rem 1fr auto; gap: 8px; }
-@media (max-width: 520px) {
-  .visit-form { grid-template-columns: 1fr auto; }
-  .visit-form input:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
-}
-.visits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.visits li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--divider); }
-.visit-date { font-weight: 700; min-width: 4.5rem; font-variant-numeric: tabular-nums; }
+.been-line { margin: 0; font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.been-line .link { font-size: inherit; }
+.been-form { display: flex; flex-direction: column; gap: 12px; }
+.been-form input[type="date"] { max-width: 12rem; }
 
 /* ---------- Shifts ---------- */
 .eyebrow { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
@@ -464,12 +460,9 @@ dialog.people-sheet { width: min(32rem, calc(100vw - 32px)); max-height: 86vh; o
 .people-edit .code-input { width: 3.6rem; padding: 9px 4px; }
 /* Not there during the shift: in grey, after those who are. */
 .people-edit li.away .person-name, .people-edit li.away .person-when { color: var(--muted); }
-button.person-when {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
-  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap;
-  background: none; color: var(--text); font-weight: 500; border-radius: 8px;
+.person-when {
+  width: 5.6rem; flex: none; padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500;
 }
-button.person-when .block:not(.muted) { color: var(--accent-ink); font-weight: 700; }
 /* Who's with you, as one quiet line until it's opened to fix. */
 
 /* Calendar/List with the "Everyone there" toggle beside it. */
@@ -669,7 +662,6 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 @media (prefers-reduced-motion: reduce) { .skeleton span { animation: none; } }
 
 /* A visit's note that matched the search. */
-.spot-note { font-size: 0.8125rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Changes the other person made since this device last looked. */
 .tabbar a { position: relative; }
@@ -744,3 +736,6 @@ button.link.inline { padding: 0; }
 .stop-list li { padding: 0; }
 .stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }
 .page-head.with-action > button { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }
+
+/* A quiet line of text choices: Share via Google Calendar · Other calendars. */
+.row.tight-row { gap: 8px; align-self: flex-start; }

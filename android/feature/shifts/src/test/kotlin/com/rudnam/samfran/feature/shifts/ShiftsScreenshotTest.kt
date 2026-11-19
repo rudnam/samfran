@@ -51,7 +51,6 @@ class ShiftsScreenshotTest {
         override fun openPeople(date: LocalDate?) {}
         override fun setPersonName(key: Long, name: String) {}
         override fun setPersonCode(key: Long, code: String) {}
-        override fun nextPersonDay(key: Long) {}
         override fun removePerson(key: Long) {}
         override fun addPerson() {}
         override fun setClosing(index: Int, day: Int) {}
@@ -97,6 +96,14 @@ class ShiftsScreenshotTest {
 
     @Test
     fun list() = shot("list") { ShiftsScreen(month.copy(asList = true), actions, {}, {}, {}, {}) }
+
+    /** With the calendar link on: a quiet line that copies it for Google Calendar or any other calendar. */
+    @Test
+    fun calendarLinkOn() = shot("list-calendar-on") {
+        // A few days, so the line is on screen.
+        val on = Samples.november.copy(settings = Samples.november.settings.copy(feedPath = "/calendar/abc123.ics"), days = Samples.november.days.take(3))
+        ShiftsScreen(month.copy(data = on, asList = true), actions, {}, {}, {}, {})
+    }
 
     @Test
     fun reading() = shot("reading") {

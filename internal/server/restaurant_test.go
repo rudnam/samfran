@@ -49,7 +49,8 @@ func TestRestaurants(t *testing.T) {
 		"visit": map[string]string{"visited_on": "2026-10-01", "note": "great salsa"}, "stars": 4,
 	}, &r)
 	if code != 201 || r.Name != "Taco Loco" || r.VisitCount != 1 || r.LastVisit == nil || *r.LastVisit != "2026-10-01" ||
-		len(r.Ratings) != 1 || r.Ratings[0].Stars != 4 || !r.Ratings[0].Me || len(r.Visits) != 1 || r.Visits[0].Note != "great salsa" {
+		len(r.Ratings) != 1 || r.Ratings[0].Stars != 4 || !r.Ratings[0].Me || len(r.Visits) != 1 || r.Visits[0].Note != "great salsa" ||
+		r.Notes != "2026-10-01 · great salsa" { // what's written about a visit shows in the place's notes
 		t.Fatalf("create: %d %+v", code, r)
 	}
 	path := "/api/restaurants/" + itoa(r.ID)
@@ -110,7 +111,8 @@ func TestRestaurants(t *testing.T) {
 
 	// Another visit, newest first.
 	if code := alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-02", "note": "tantanmen"}, &r); code != 201 ||
-		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" {
+		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" ||
+		r.Notes != "2026-10-01 · great salsa\n2026-11-02 · tantanmen" {
 		t.Fatalf("add visit: %d %+v", code, r)
 	}
 	if code := alice.do("DELETE", path+"/visits/"+itoa(r.Visits[1].ID), nil, &r); code != 200 || r.VisitCount != 1 {
@@ -141,6 +143,27 @@ func TestRestaurants(t *testing.T) {
 		t.Errorf("visit notes in the list: %+v", list)
 	}
 
+	// The apps show one date: PUT .../been moves the newest visit, and the
+	// older ones (as older apps logged them) stay.
+	alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-05"}, &r)
+	if code := alice.do("PUT", path+"/been", map[string]string{"visited_on": "2026-11-08"}, &r); code != 200 ||
+		r.VisitCount != 2 || *r.LastVisit != "2026-11-08" || r.Visits[0].VisitedOn != "2026-11-08" || r.Visits[1].Note != "tantanmen" {
+		t.Fatalf("set been date: %d %+v", code, r)
+	}
+	for _, body := range []any{map[string]string{"visited_on": "yesterday"}, map[string]any{}} {
+		if code := alice.do("PUT", path+"/been", body, nil); code != 400 {
+			t.Errorf("bad been date %v: %d", body, code)
+		}
+	}
+	// Not been yet: back on the want-to-go list.
+	if code := alice.do("DELETE", path+"/been", nil, &r); code != 200 || r.VisitCount != 0 || r.LastVisit != nil {
+		t.Fatalf("not been yet: %d %+v", code, r)
+	}
+	// Been again: a first visit.
+	if code := alice.do("PUT", path+"/been", map[string]string{"visited_on": "2026-11-01"}, &r); code != 200 || r.VisitCount != 1 || *r.LastVisit != "2026-11-01" {
+		t.Fatalf("been again: %d %+v", code, r)
+	}
+
 	// Bob's space can't see or touch any of it.
 	if bob.do("GET", "/api/restaurants", nil, &list); len(list) != 0 {
 		t.Errorf("bob sees alice's restaurants: %+v", list)
@@ -152,6 +175,8 @@ func TestRestaurants(t *testing.T) {
 		{"GET", path, nil},
 		{"PATCH", path, map[string]string{"name": "mine"}},
 		{"POST", path + "/visits", map[string]string{"visited_on": "2026-11-01"}},
+		{"PUT", path + "/been", map[string]string{"visited_on": "2026-11-01"}},
+		{"DELETE", path + "/been", nil},
 		{"PUT", path + "/rating", map[string]int{"stars": 1}},
 		{"DELETE", path, nil},
 	} {

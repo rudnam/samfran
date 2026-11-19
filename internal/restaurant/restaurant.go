@@ -2,7 +2,10 @@
 // to: restaurants, parks, shrines, onsen… each in a category (category.go),
 // with when you went, what you thought, and each person's own rating. It
 // began as a list of restaurants, which is why it, its table and its API
-// are named so. A place with no visits is on the want-to-go list. Everything belongs
+// are named so. A place with no visits is on the want-to-go list. The apps
+// show a place as been there (on its newest visit's date, which PUT .../been
+// sets) or not yet; the visits behind that stay in the API for older apps,
+// which still log and list several. Everything belongs
 // to the space (internal/space), so both of you see and change the same list.
 package restaurant
 
@@ -300,6 +303,59 @@ func (s *Store) DeleteVisit(ctx context.Context, spaceID, id, visitID int64) err
 	return oneRow(res, err)
 }
 
+// SetBeen marks one of the space's restaurants as been there on a date: a
+// first visit when it has none, else the newest visit moves to that date (the
+// app shows one date; older visits and their notes stay as they were). It
+// reports whether a visit was added.
+func (s *Store) SetBeen(ctx context.Context, spaceID, by, id int64, on string) (bool, error) {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE restaurant_visits SET visited_on = $3
+		WHERE id = (SELECT v.id FROM restaurant_visits v JOIN restaurants r ON r.id = v.restaurant_id
+			WHERE r.id = $1 AND r.space_id = $2 ORDER BY v.visited_on DESC, v.id DESC LIMIT 1)`, id, spaceID, on)
+	if err != nil {
+		return false, err
+	}
+	if n, err := res.RowsAffected(); err != nil || n > 0 {
+		return false, err
+	}
+	return true, s.AddVisit(ctx, spaceID, by, id, on, "")
+}
+
+// AddToNotes adds a line to the end of one of the space's restaurant's notes
+// (cut to fit their limit), so what Claude was told is where the apps show it.
+func (s *Store) AddToNotes(ctx context.Context, spaceID, id int64, line string) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE restaurants SET notes = left(CASE WHEN notes = '' THEN $3 ELSE notes || E'\n' || $3 END, $4)
+		WHERE id = $1 AND space_id = $2`, id, spaceID, line, maxNotes)
+	return oneRow(res, err)
+}
+
+// NoteVisit adds what was written about a visit (if anything) to its place's
+// notes, as "2026-11-14 · note": the apps show the place's notes, not the
+// visits' (migration 024 did the same for the notes written before).
+func (s *Store) NoteVisit(ctx context.Context, spaceID, id int64, on, note string) error {
+	if note = strings.TrimSpace(note); note == "" {
+		return nil
+	}
+	return s.AddToNotes(ctx, spaceID, id, on+" · "+note)
+}
+
+// ClearBeen puts one of the space's restaurants back on the want-to-go list:
+// its visits go.
+func (s *Store) ClearBeen(ctx context.Context, spaceID, id int64) error {
+	var exists bool
+	if err := s.db.QueryRowContext(ctx, `
+		WITH r AS (SELECT id FROM restaurants WHERE id = $1 AND space_id = $2),
+		gone AS (DELETE FROM restaurant_visits WHERE restaurant_id IN (SELECT id FROM r))
+		SELECT EXISTS (SELECT 1 FROM r)`, id, spaceID).Scan(&exists); err != nil {
+		return err
+	}
+	if !exists {
+		return db.ErrNotFound
+	}
+	return nil
+}
+
 // Rate sets the user's rating of one of the space's restaurants; 0 clears it.
 func (s *Store) Rate(ctx context.Context, spaceID, userID, id int64, stars int) error {
 	var exists bool
@@ -391,6 +447,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("DELETE /api/restaurants/{id}", h.delete)
 	route("POST /api/restaurants/{id}/visits", h.addVisit)
 	route("DELETE /api/restaurants/{id}/visits/{visit}", h.deleteVisit)
+	route("PUT /api/restaurants/{id}/been", h.setBeen)
+	route("DELETE /api/restaurants/{id}/been", h.clearBeen)
 	route("PUT /api/restaurants/{id}/rating", h.rate)
 }
 
@@ -551,6 +609,9 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 		if err := h.store.AddVisit(r.Context(), sp, me, id, visit.VisitedOn, visit.Note); err != nil {
 			return err
 		}
+		if err := h.store.NoteVisit(r.Context(), sp, id, visit.VisitedOn, visit.Note); err != nil {
+			return err
+		}
 	}
 	if in.Stars > 0 {
 		if err := h.store.Rate(r.Context(), sp, me, id, in.Stars); err != nil {
@@ -652,6 +713,9 @@ func (h *Handler) addVisit(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
+	if err := h.store.NoteVisit(r.Context(), space.SpaceFrom(r), id, v.VisitedOn, v.Note); err != nil {
+		return err
+	}
 	h.log(r, "visit_logged", id, map[string]any{"date": v.VisitedOn})
 	return h.respond(w, r, http.StatusCreated, id)
 }
@@ -669,6 +733,51 @@ func (h *Handler) deleteVisit(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	h.log(r, "visit_removed", id, nil)
+	return h.respond(w, r, http.StatusOK, id)
+}
+
+// setBeen sets the one date the apps show: when you went.
+func (h *Handler) setBeen(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	if !ok {
+		return errNoSuch
+	}
+	var in struct {
+		VisitedOn string `json:"visited_on"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	v, err := h.checkVisit(visitIn{VisitedOn: in.VisitedOn})
+	if err != nil {
+		return err
+	}
+	added, err := h.store.SetBeen(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id, v.VisitedOn)
+	if errors.Is(err, db.ErrNotFound) {
+		return errNoSuch
+	} else if err != nil {
+		return err
+	}
+	if added {
+		h.log(r, "visit_logged", id, map[string]any{"date": v.VisitedOn})
+	} else {
+		h.log(r, "been_date_changed", id, map[string]any{"date": v.VisitedOn})
+	}
+	return h.respond(w, r, http.StatusOK, id)
+}
+
+// clearBeen is "not been yet": back on the want-to-go list.
+func (h *Handler) clearBeen(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	if !ok {
+		return errNoSuch
+	}
+	if err := h.store.ClearBeen(r.Context(), space.SpaceFrom(r), id); errors.Is(err, db.ErrNotFound) {
+		return errNoSuch
+	} else if err != nil {
+		return err
+	}
+	h.log(r, "been_cleared", id, nil)
 	return h.respond(w, r, http.StatusOK, id)
 }
 

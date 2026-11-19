@@ -7,10 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -25,7 +23,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -58,14 +55,14 @@ internal fun PlaceDestination(navigation: FoodNavigation, snackbar: SnackbarHost
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(state.deleted) { if (state.deleted) navigation.back() }
-    // A visit removed: Undo for a few seconds, then it's deleted for real.
-    val removed = stringResource(R.string.visit_removed)
+    // Not been yet: Undo for a few seconds, then it's saved.
+    val moved = stringResource(R.string.moved_to_want)
     val undo = stringResource(R.string.undo)
-    LaunchedEffect(state.removing) {
-        if (state.removing == null) return@LaunchedEffect
-        when (snackbar.showSnackbar(removed, actionLabel = undo, duration = SnackbarDuration.Short)) {
-            SnackbarResult.ActionPerformed -> viewModel.undoRemove()
-            SnackbarResult.Dismissed -> viewModel.commitRemove()
+    LaunchedEffect(state.clearing) {
+        if (!state.clearing) return@LaunchedEffect
+        when (snackbar.showSnackbar(moved, actionLabel = undo, duration = SnackbarDuration.Short)) {
+            SnackbarResult.ActionPerformed -> viewModel.undoNotBeen()
+            SnackbarResult.Dismissed -> viewModel.commitNotBeen()
         }
     }
     PlaceScreen(
@@ -77,7 +74,7 @@ internal fun PlaceDestination(navigation: FoodNavigation, snackbar: SnackbarHost
     )
 }
 
-/** One place (web/src/features/restaurants/RestaurantDetail.tsx): ratings, notes, every visit, and logging another. */
+/** One place (web/src/features/restaurants/RestaurantDetail.tsx): ratings, notes, and whether you've been (and when). */
 @Composable
 fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, onEdit: () -> Unit, onMap: () -> Unit) {
     val colors = SamFranTheme.colors
@@ -102,9 +99,32 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
                 val line = listOf(stringResource(place.category.title), place.subtitle).filter { it.isNotBlank() }.joinToString(" · ")
                 Text(line, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
             }
+            val beenOn = state.beenOn
+            if (beenOn != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(stringResource(R.string.been_on, Dates.short(beenOn, locale, state.today)), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    if (state.picking == null) {
+                        Text(" · ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                        LinkButton(stringResource(R.string.change), actions::startPicking, enabled = !state.busy)
+                    }
+                }
+            }
+            if (beenOn == null && state.picking == null) {
+                PrimaryButton(stringResource(R.string.mark_as_been), actions::startPicking, Modifier.fillMaxWidth(), enabled = !state.busy)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SecondaryButton(stringResource(R.string.open_in_maps), onMap, icon = SamFranIcons.map)
                 SecondaryButton(stringResource(R.string.edit), onEdit, icon = SamFranIcons.edit)
+            }
+        }
+        state.picking?.let { picking ->
+            SamFranCard {
+                DateField(label = stringResource(R.string.when_did_you_go), date = picking, max = state.today, onChange = actions::setPicking)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PrimaryButton(stringResource(R.string.save), actions::saveBeen, enabled = !state.busy)
+                    SecondaryButton(stringResource(R.string.cancel), actions::cancelPicking, enabled = !state.busy)
+                    if (state.beenOn != null) LinkButton(stringResource(R.string.not_been_yet), actions::notBeen, enabled = !state.busy, quiet = true)
+                }
             }
         }
         state.problem?.problem()?.let { ErrorText(it) }
@@ -131,49 +151,6 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
             SamFranCard(spacing = 8) {
                 CardTitle(stringResource(R.string.notes))
                 Text(place.notes, style = MaterialTheme.typography.bodyLarge)
-            }
-        }
-
-        SamFranCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                CardTitle(stringResource(R.string.visits), Modifier.weight(1f))
-                Hint(if (state.visitCount > 0) pluralStringResource(R.plurals.n_visits, state.visitCount, state.visitCount) else stringResource(R.string.not_yet))
-            }
-            DateField(
-                label = stringResource(R.string.date),
-                date = state.visitOn,
-                max = state.today,
-                onChange = actions::setVisitOn,
-            )
-            OutlinedTextField(
-                value = state.visitNote,
-                onValueChange = actions::setVisitNote,
-                placeholder = { Text(stringResource(R.string.visit_note_hint)) },
-                label = { Text(stringResource(R.string.visit_note)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            PrimaryButton(
-                stringResource(if (state.visitCount > 0) R.string.log_visit else R.string.we_went),
-                actions::logVisit,
-                Modifier.fillMaxWidth(),
-                enabled = !state.busy,
-            )
-            if (state.visits.isNotEmpty()) {
-                Column {
-                    state.visits.forEachIndexed { i, v ->
-                        if (i > 0) HorizontalDivider(color = colors.divider)
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(Dates.short(v.visitedOn, locale, state.today), Modifier.width(96.dp), style = MaterialTheme.typography.labelLarge)
-                            Text(
-                                v.note.ifBlank { if (v.addedBy.isNotBlank()) stringResource(R.string.logged_by, v.addedBy) else "" },
-                                Modifier.weight(1f),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = if (v.note.isBlank()) colors.muted else colors.text,
-                            )
-                            LinkButton(stringResource(R.string.remove), { actions.removeVisit(v.id) }, enabled = !state.busy, quiet = true)
-                        }
-                    }
-                }
             }
         }
 

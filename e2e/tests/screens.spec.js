@@ -77,10 +77,20 @@ for (const [name, viewport] of [
     await expect(page.getByRole('dialog', { name: 'Delete Hanabi Grill?' })).toBeVisible();
     await shot('4b-delete-dialog');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('button', { name: /^Delete the visit on/ }).click();
+    await page.getByRole('button', { name: 'Change' }).click();
+    await expect(page.getByLabel('When did you go?')).toBeVisible();
+    await shot('4c-been-change');
+    await page.getByRole('button', { name: 'Not been yet' }).click();
     await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
-    await shot('4c-undo');
+    await shot('4d-undo');
     await page.getByRole('button', { name: 'Undo' }).click();
+    // A want-to-go place: Mark as been asks when.
+    await page.getByRole('link', { name: 'Our spots' }).click();
+    await page.getByRole('link', { name: /Want to go/ }).click();
+    await page.getByRole('link', { name: /Blue Sky Café/ }).click();
+    await page.getByRole('button', { name: 'Mark as been' }).click();
+    await expect(page.getByLabel('When did you go?')).toBeVisible();
+    await shot('4e-mark-been');
 
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
@@ -148,7 +158,7 @@ for (const [name, viewport] of [
     await expect(page.locator('.cal-detail').getByRole('list', { name: 'Everyone there' })).toBeVisible();
     await shot('6c-shifts-everyone');
     await page.getByRole('button', { name: 'Everyone there' }).click();
-    await page.getByRole('link', { name: 'Edit by hand' }).click();
+    await page.getByRole('link', { name: /^Edit \S+ \d{4}$/ }).click();
     await expect(page.getByRole('list', { name: 'Days' })).toBeVisible();
     await shot('7-shift-edit');
     // Who's there on a day (the 3rd, a 13F), to fix a name or a code.
@@ -161,9 +171,16 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
     await shot('7a-shift-edit-closing');
     await page.goto('/app/#/shifts/calendar');
-    await page.getByRole('button', { name: 'Turn on the calendar link' }).click();
     await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
     await shot('7a2-google-calendar');
+    // Back on Shifts with the link on: a month with shifts, then an empty one.
+    await page.goto('/app/#/shifts');
+    await expect(page.getByRole('button', { name: 'Share via Google Calendar' })).toBeVisible();
+    await shot('6d-shifts-calendar-on');
+    await page.getByRole('link', { name: 'Next month' }).click();
+    await page.getByRole('link', { name: 'Next month' }).click();
+    await expect(page.getByText('No shifts for this month')).toBeVisible();
+    await shot('6e-shifts-empty-month');
 
     // The bus alarm: first time, then with a stop chosen.
     await page.getByRole('link', { name: 'Bus', exact: true }).click();
@@ -174,7 +191,7 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
-    await page.getByRole('button', { name: '⚙ Settings' }).click();
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await shot('7d-bus-settings');
     await page.getByRole('button', { name: '‹ Bus alarm' }).click();

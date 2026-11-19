@@ -97,8 +97,6 @@ interface ShiftEditorActions {
     fun openPeople(date: LocalDate?)
     fun setPersonName(key: Long, name: String)
     fun setPersonCode(key: Long, code: String)
-    /** Which day their cell is on: the same day, then the day before (a night shift), then the next day. */
-    fun nextPersonDay(key: Long)
     fun removePerson(key: Long)
     /** Adds someone to the open day, on its own code. */
     fun addPerson()
@@ -186,7 +184,6 @@ class ShiftEditorViewModel @Inject constructor(
 
     override fun setPersonCode(key: Long, code: String) = person(key) { it.copy(code = code.take(12)) }
 
-    override fun nextPersonDay(key: Long) = person(key) { it.copy(dayOffset = if (it.dayOffset == 0) -1 else if (it.dayOffset < 0) 1 else 0) }
 
     override fun removePerson(key: Long) = person(key) { null }
 

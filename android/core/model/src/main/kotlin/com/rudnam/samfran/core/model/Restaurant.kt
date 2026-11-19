@@ -81,11 +81,11 @@ data class Restaurant(
     /** Kind and area, as the place's page writes them under its name, after the category. */
     val subtitle: String get() = listOf(cuisine, area).filter { it.isNotBlank() }.joinToString(" · ")
 
-    /** The search matches its name, area, kind, notes or a visit's note. */
+    /** The search matches its name, area, kind or notes. */
     fun matches(query: String): Boolean {
         val q = query.trim()
         if (q.isEmpty()) return true
-        return listOf(name, area, cuisine, notes).any { it.contains(q, ignoreCase = true) } || noteMatching(q) != null
+        return listOf(name, area, cuisine, notes).any { it.contains(q, ignoreCase = true) }
     }
 
     /** Meters from [here], or null when where it is isn't known. */
@@ -93,13 +93,6 @@ data class Restaurant(
         val a = lat ?: return null
         val b = lng ?: return null
         return meters(here.first, here.second, a, b)
-    }
-
-    /** The newest visit whose note has the search in it. */
-    fun noteMatching(query: String): VisitNote? {
-        val q = query.trim()
-        if (q.isEmpty()) return null
-        return visitNotes.firstOrNull { it.note.contains(q, ignoreCase = true) }
     }
 }
 

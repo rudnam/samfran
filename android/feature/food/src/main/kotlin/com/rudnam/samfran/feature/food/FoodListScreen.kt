@@ -57,7 +57,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -195,11 +194,11 @@ fun FoodListScreen(
                 }
                 onMap -> item(key = "map") {
                     map(state.shown, state.near, onOpen) { place, open ->
-                        PlaceRow(place, state.space, state.tab, "", locale, state.today, state.near, onClick = open)
+                        PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = open)
                     }
                 }
                 else -> items(state.shown, key = { it.id }) { place ->
-                    PlaceRow(place, state.space, state.tab, state.query, locale, state.today, state.near, onClick = { onOpen(place.id) })
+                    PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = { onOpen(place.id) })
                 }
             }
         }
@@ -328,13 +327,12 @@ private fun CategoryMenu(state: FoodListUiState, actions: FoodListActions) {
     }
 }
 
-/** One place on the list (.spot): its category's tile, name, ratings, what it is, and the last visit. */
+/** One place on the list (.spot): its category's tile, name, ratings, what it is, and when you went. */
 @Composable
 private fun PlaceRow(
     place: Restaurant,
     space: Space?,
     tab: FoodTab,
-    query: String,
     locale: java.util.Locale,
     today: java.time.LocalDate,
     near: Pair<Double, Double>?,
@@ -354,30 +352,16 @@ private fun PlaceRow(
                         Text("· " + stringResource(R.string.added_by, place.addedBy), style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     }
                 }
-                place.noteMatching(query)?.let { note ->
-                    Text(
-                        Dates.short(note.visitedOn, locale, today) + " · " + note.note,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.muted,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
             }
             val away = near?.let(place::metersFrom)
             if (away != null) {
-                // Nearby: how far, and when you last went.
+                // Nearby: how far, and when you went.
                 Column(horizontalAlignment = Alignment.End) {
                     Text(distanceText(away), style = MaterialTheme.typography.labelMedium, color = colors.accentInk)
                     place.lastVisit?.let { Text(Dates.short(it, locale, today), style = MaterialTheme.typography.bodySmall, color = colors.muted) }
                 }
             } else {
-                place.lastVisit?.let { last ->
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(Dates.short(last, locale, today), style = MaterialTheme.typography.labelMedium)
-                        Text(pluralStringResource(R.plurals.n_visits, place.visitCount, place.visitCount), style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                    }
-                }
+                place.lastVisit?.let { Text(Dates.short(it, locale, today), style = MaterialTheme.typography.bodySmall, color = colors.muted) }
             }
         }
     }

@@ -1,8 +1,8 @@
 // Who's at work around one day, while a month is checked or fixed: everyone
 // read off the sheet (or added), each with the code in their cell, in one list.
-// Those there during the day's shift come first; the rest of that day's people
-// follow in grey, in case the shift's code is corrected. Names, codes and days
-// can all be fixed.
+// A read lists only those there during the day's shift; anyone who isn't
+// after a code is changed is shown in grey, and isn't kept when the month is
+// saved. Names and codes can be fixed.
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
 import { clock, dayName, hoursAround, normalize, overlaps } from './codes';
@@ -28,10 +28,6 @@ export function isThere(p: PersonRow, code: string, hours: [number, number] | un
   const theirs = hoursAround(p.code, p.day_offset, lengths);
   return !!theirs && overlaps(theirs, hours);
 }
-
-/** The same day → the day before → the next day → the same day. */
-const nextOffset = (o: number) => (o === 0 ? -1 : o < 0 ? 1 : 0);
-const dayWord = (o: number) => (o < 0 ? t('day before') : o > 0 ? t('next day') : t('same day'));
 
 export function PeopleSheet({
   date,
@@ -93,16 +89,8 @@ export function PeopleSheet({
           aria-label={t('Code of {name}', { name: label })}
           onChange={(e) => update(r.key, { code: e.target.value })}
         />
-        {/* Which day their cell is on: the same day, the day before (a night shift), the next day. */}
-        <button
-          type="button"
-          className="person-when small"
-          aria-label={t('Which day {name} works: {day}', { name: label, day: dayWord(r.day_offset) })}
-          onClick={() => update(r.key, { day_offset: nextOffset(r.day_offset) })}
-        >
-          {theirs ? `${clock(theirs[0])}–${clock(theirs[1])}` : '–'}
-          <span className={`block${r.day_offset === 0 ? ' muted' : ''}`}>{dayWord(r.day_offset)}</span>
-        </button>
+        {/* Their hours (which day their cell is on comes from the read). */}
+        <span className="person-when small">{theirs ? `${clock(theirs[0])}–${clock(theirs[1])}` : '–'}</span>
         <button type="button" className="link quiet" aria-label={t('Remove {name}', { name: label })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))}>
           ×
         </button>
