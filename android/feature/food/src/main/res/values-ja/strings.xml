@@ -140,4 +140,6 @@
     <string name="search">検索</string>
     <string name="all_places">すべての場所</string>
     <string name="category_is">カテゴリ: %s</string>
+    <string name="recenter_map">すべて表示</string>
+    <string name="my_location">現在地</string>
 </resources>

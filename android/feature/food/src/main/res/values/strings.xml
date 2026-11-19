@@ -144,4 +144,6 @@
     <string name="search">Search</string>
     <string name="all_places">All places</string>
     <string name="category_is">Category: %s</string>
+    <string name="recenter_map">Show all</string>
+    <string name="my_location">Where you are</string>
 </resources>

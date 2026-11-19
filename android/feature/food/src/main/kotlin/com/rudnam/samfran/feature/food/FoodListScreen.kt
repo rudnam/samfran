@@ -93,7 +93,14 @@ internal fun FoodListDestination(navigation: FoodNavigation, viewModel: FoodList
 /** The Places tab (web/src/features/restaurants/RestaurantsPage.tsx): been there and want to go, all or one category's. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Long) -> Unit, onAdd: () -> Unit) {
+fun FoodListScreen(
+    state: FoodListUiState,
+    actions: FoodListActions,
+    onOpen: (Long) -> Unit,
+    onAdd: () -> Unit,
+    map: @Composable (places: List<Restaurant>, here: Pair<Double, Double>?, onOpen: (Long) -> Unit, card: @Composable (Restaurant, () -> Unit) -> Unit) -> Unit =
+        { places, here, open, card -> PlacesMap(places, here, open, card = card) },
+) {
     val locale = currentLocale
     val context = LocalContext.current
     // The map needs this build's Google Maps key; without one, it's a list.
@@ -111,90 +118,97 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     }
     // Opened on Nearby: find where the phone is.
     LaunchedEffect(state.nearby) { if (state.nearby && state.here == null) actions.findHere() }
-    Box(Modifier.fillMaxSize()) {
-        PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
-            TabPage(bottomSpace = 96) {
-                item(key = "head") { PageTitle(stringResource(R.string.our_spots)) }
-                item(key = "tabs") {
-                    Segmented(
-                        options = listOf(stringResource(R.string.been_there), stringResource(R.string.want_to_go)),
-                        selected = state.tab.ordinal,
-                        onSelect = { actions.setTab(FoodTab.entries[it]) },
-                        counts = if (state.all == null) null else listOf(state.been.size.toString(), state.want.size.toString()),
-                    )
-                }
-                if (!state.all.isNullOrEmpty()) {
-                    // One toolbar (.toolbar): the category menu, then search, the order (a menu) and Map as icon buttons.
-                    item(key = "tools") {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.weight(1f)) { if (state.filterable) CategoryMenu(state, actions) }
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                if (state.searchable) {
-                                    IconToggle(SamFranIcons.search, stringResource(R.string.search), searching) {
-                                        if (searching) actions.setQuery("")
-                                        searchOpen = !searching
-                                    }
+    val pageContent: @Composable () -> Unit = {
+        TabPage(bottomSpace = 96) {
+            item(key = "head") { PageTitle(stringResource(R.string.our_spots)) }
+            item(key = "tabs") {
+                Segmented(
+                    options = listOf(stringResource(R.string.been_there), stringResource(R.string.want_to_go)),
+                    selected = state.tab.ordinal,
+                    onSelect = { actions.setTab(FoodTab.entries[it]) },
+                    counts = if (state.all == null) null else listOf(state.been.size.toString(), state.want.size.toString()),
+                )
+            }
+            if (!state.all.isNullOrEmpty()) {
+                // One toolbar (.toolbar): the category menu, then search, the order (a menu) and Map as icon buttons.
+                item(key = "tools") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { if (state.filterable) CategoryMenu(state, actions) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            if (state.searchable) {
+                                IconToggle(SamFranIcons.search, stringResource(R.string.search), searching) {
+                                    if (searching) actions.setQuery("")
+                                    searchOpen = !searching
                                 }
-                                OrderMenu(state.order) { if (it == PlaceOrder.Nearby) nearby() else actions.setOrder(it) }
-                                if (canMap) IconToggle(SamFranIcons.map, stringResource(R.string.view_map), onMap) { actions.setOnMap(!onMap) }
                             }
-                        }
-                    }
-                    if (searching) {
-                        item(key = "search") {
-                            val focus = remember { FocusRequester() }
-                            OutlinedTextField(
-                                value = state.query,
-                                onValueChange = actions::setQuery,
-                                placeholder = { Text(stringResource(R.string.search_hint)) },
-                                leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
-                                singleLine = true,
-                                shape = MaterialTheme.shapes.small,
-                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedContainerColor = SamFranTheme.colors.surface,
-                                    focusedContainerColor = SamFranTheme.colors.surface,
-                                    unfocusedBorderColor = SamFranTheme.colors.border,
-                                ),
-                                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-                            )
-                            // Opened by its button: ready to type.
-                            LaunchedEffect(Unit) { if (searchOpen) runCatching { focus.requestFocus() } }
-                        }
-                    }
-                    if (state.nearby && state.locating != Locating.No) {
-                        item(key = "locating") {
-                            Hint(stringResource(if (state.locating == Locating.Asking) R.string.finding_location else R.string.location_off))
+                            OrderMenu(state.order) { if (it == PlaceOrder.Nearby) nearby() else actions.setOrder(it) }
+                            if (canMap) IconToggle(SamFranIcons.map, stringResource(R.string.view_map), onMap) { actions.setOnMap(!onMap) }
                         }
                     }
                 }
-                state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
-                when {
-                    state.all == null -> item(key = "loading") { Skeleton(rows = 4) }
-                    state.shown.isEmpty() -> item(key = "empty") {
-                        val filter = state.activeFilter
-                        when {
-                            state.query.isNotBlank() -> EmptyState(stringResource(R.string.nothing_matches, state.query.trim()), null)
-                            filter != null && state.onTab.isNotEmpty() -> Column(
-                                Modifier.fillMaxWidth(),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                EmptyState(stringResource(R.string.nothing_in_category, stringResource(filter.short)), null)
-                                TextButton(onClick = { actions.setFilter(null) }) { Text(stringResource(R.string.show_all)) }
-                            }
-                            state.tab == FoodTab.Been -> EmptyState(stringResource(R.string.no_places_yet), stringResource(R.string.add_first_place))
-                            else -> EmptyState(stringResource(R.string.nothing_on_list), stringResource(R.string.save_places_to_try))
-                        }
-                    }
-                    onMap -> item(key = "map") {
-                        PlacesMap(state.shown, state.near, onOpen) { place, open ->
-                            PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = open)
-                        }
-                    }
-                    else -> items(state.shown, key = { it.id }) { place ->
-                        PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = { onOpen(place.id) })
+                if (searching) {
+                    item(key = "search") {
+                        val focus = remember { FocusRequester() }
+                        OutlinedTextField(
+                            value = state.query,
+                            onValueChange = actions::setQuery,
+                            placeholder = { Text(stringResource(R.string.search_hint)) },
+                            leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
+                            singleLine = true,
+                            shape = MaterialTheme.shapes.small,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = SamFranTheme.colors.surface,
+                                focusedContainerColor = SamFranTheme.colors.surface,
+                                unfocusedBorderColor = SamFranTheme.colors.border,
+                            ),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                        )
+                        // Opened by its button: ready to type.
+                        LaunchedEffect(Unit) { if (searchOpen) runCatching { focus.requestFocus() } }
                     }
                 }
+                if (state.nearby && state.locating != Locating.No) {
+                    item(key = "locating") {
+                        Hint(stringResource(if (state.locating == Locating.Asking) R.string.finding_location else R.string.location_off))
+                    }
+                }
+            }
+            state.problem?.let { p -> item(key = "problem") { p.problem()?.let { ErrorText(it) } } }
+            when {
+                state.all == null -> item(key = "loading") { Skeleton(rows = 4) }
+                state.shown.isEmpty() -> item(key = "empty") {
+                    val filter = state.activeFilter
+                    when {
+                        state.query.isNotBlank() -> EmptyState(stringResource(R.string.nothing_matches, state.query.trim()), null)
+                        filter != null && state.onTab.isNotEmpty() -> Column(
+                            Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            EmptyState(stringResource(R.string.nothing_in_category, stringResource(filter.short)), null)
+                            TextButton(onClick = { actions.setFilter(null) }) { Text(stringResource(R.string.show_all)) }
+                        }
+                        state.tab == FoodTab.Been -> EmptyState(stringResource(R.string.no_places_yet), stringResource(R.string.add_first_place))
+                        else -> EmptyState(stringResource(R.string.nothing_on_list), stringResource(R.string.save_places_to_try))
+                    }
+                }
+                onMap -> item(key = "map") {
+                    map(state.shown, state.near, onOpen) { place, open ->
+                        PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = open)
+                    }
+                }
+                else -> items(state.shown, key = { it.id }) { place ->
+                    PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = { onOpen(place.id) })
+                }
+            }
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        if (onMap) {
+            pageContent()
+        } else {
+            PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
+                pageContent()
             }
         }
         ExtendedFloatingActionButton(
