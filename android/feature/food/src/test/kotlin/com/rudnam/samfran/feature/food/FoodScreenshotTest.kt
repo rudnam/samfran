@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
@@ -88,6 +89,25 @@ class FoodScreenshotTest {
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun wantToGoJapanese() = shot("want-ja") { FoodListScreen(been.copy(tab = FoodTab.Want), list, {}, {}) }
+
+    @Test
+    fun placesMap() = shot("map") {
+        FoodListScreen(
+            been.copy(onMap = true), list, {}, {},
+            map = { places, _, _, card ->
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxWidth().height(480.dp).background(SamFranTheme.colors.sunken),
+                    contentAlignment = androidx.compose.ui.Alignment.BottomCenter,
+                ) {
+                    places.firstOrNull()?.let { p ->
+                        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().padding(10.dp)) {
+                            card(p) {}
+                        }
+                    }
+                }
+            },
+        )
+    }
 
     @Test
     fun searchFindsAVisitNote() = shot("search") { FoodListScreen(been.copy(query = "miso"), list, {}, {}) }
