@@ -432,6 +432,13 @@ test('order: newest, best rated or by name, and remembered', async ({ page }) =>
   // Best rated first; nobody's rated Unrated Udon, so it's last.
   await pickOrder(page, 'Top rated');
   await expect(page.getByRole('button', { name: 'Order: Top rated' })).toBeVisible();
+  // The button looks the same whichever order; the menu ticks the current one.
+  await expect(page.getByRole('button', { name: 'Order: Top rated' })).not.toHaveClass(/\bon\b/);
+  await page.getByRole('button', { name: 'Order: Top rated' }).click();
+  await expect(page.getByRole('radio', { name: 'Top rated', checked: true }).locator('svg')).toHaveCount(1);
+  await expect(page.getByRole('radio', { name: 'Newest' }).locator('svg')).toHaveCount(0);
+  await page.screenshot({ path: test.info().outputPath('order-menu.png') });
+  await page.keyboard.press('Escape');
   await expect(been).toHaveText([/Ramen Tsubaki/, /Bento Box/, /Gyoza Komachi/, /Unrated Udon/]);
 
   // By name; remembered when the app is opened again.
