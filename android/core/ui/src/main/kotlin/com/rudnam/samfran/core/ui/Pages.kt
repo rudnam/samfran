@@ -119,7 +119,6 @@ fun SubPage(
                 .padding(top = 4.dp, bottom = 24.dp)
                 .then(if (bottomBar == null) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) else Modifier),
             verticalArrangement = Arrangement.spacedBy(16.dp),
-            userScrollEnabled = userScrollEnabled,
             content = content,
         )
         if (bottomBar != null) {
