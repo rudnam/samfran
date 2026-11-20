@@ -250,7 +250,10 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         next?.let { return it }
         val all = now()
         val id = (all.stops.maxOfOrNull { it.id } ?: 0) + 1
-        val s = BusStop(true, stop.name.trim(), stop.lat, stop.lng, stop.alertMeters, all.buzz, id, stop.shifts.orEmpty(), stop.ask ?: false, stop.kind ?: StopKind.Bus, stop.buzz ?: Buzz.Strong)
+        val s = BusStop(
+            set = true, name = stop.name.trim(), lat = stop.lat, lng = stop.lng, alertMeters = stop.alertMeters, buzz = stop.buzz ?: Buzz.Strong,
+            id = id, shifts = stop.shifts.orEmpty(), ask = stop.ask ?: false, kind = stop.kind ?: StopKind.Bus, soundAfter = all.soundAfter,
+        )
         return set(take(all.copy(stops = all.stops + s, lastId = if (all.stops.isEmpty()) id else all.lastId), id, stop.shifts))
     }
 
