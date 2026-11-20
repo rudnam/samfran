@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.maps.GoogleMapOptions
@@ -49,14 +50,14 @@ import com.rudnam.samfran.core.ui.currentLocale
  * made without it) it's Google's web map, as the website shows it.
  */
 @Composable
-fun StopMap(lat: Double, lng: Double, name: String, modifier: Modifier = Modifier) {
+fun StopMap(lat: Double, lng: Double, name: String, modifier: Modifier = Modifier, height: Dp = 280.dp) {
     val context = LocalContext.current
     val native = remember { hasMapsKey(context) }
     val description = stringResource(R.string.stop_on_map, name.ifBlank { stringResource(R.string.your_stop_lower) })
     Box(
         modifier
             .fillMaxWidth()
-            .height(280.dp)
+            .height(height)
             .clip(MaterialTheme.shapes.small)
             .background(SamFranTheme.colors.sunken)
             .semantics { contentDescription = description },

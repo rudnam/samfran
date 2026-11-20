@@ -12,7 +12,7 @@ data class BusStop(
     val lng: Double = 0.0,
     /** Buzz this many metres before the stop. */
     val alertMeters: Int = 800,
-    /** How the phone buzzes there (the person's, at every stop). */
+    /** How the phone buzzes there. */
     val buzz: Buzz = Buzz.Strong,
     /** The server's id for it; 0 for none. */
     val id: Long = 0,
@@ -37,6 +37,7 @@ data class BusStops(
     val stops: List<BusStop> = emptyList(),
     /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
     val lastId: Long = 0,
+    /** How older apps buzz, at every stop; each stop has its own ([BusStop.buzz]). */
     val buzz: Buzz = Buzz.Strong,
     /** Seconds of buzzing before the alarm sound joins in, if it isn't stopped (0: never). */
     val soundAfter: Int = SoundAfter.DEFAULT,
