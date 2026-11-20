@@ -5,11 +5,12 @@
 // internal/httpx/middleware.go).
 import { t, useLanguage } from '../../i18n';
 
-export function StopMap({ lat, lng, name }: { lat: number; lng: number; name: string }) {
+/** small: a short strip, at the top of a stop's page. */
+export function StopMap({ lat, lng, name, small }: { lat: number; lng: number; name: string; small?: boolean }) {
   const lang = useLanguage();
   const q = new URLSearchParams({ q: `${lat},${lng}`, z: '17', hl: lang, output: 'embed' });
   return (
-    <div className="stop-map">
+    <div className={small ? 'stop-map small' : 'stop-map'}>
       <iframe
         src={`https://www.google.com/maps?${q}`}
         title={t('{stop} on the map', { stop: name || t('your stop') })}

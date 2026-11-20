@@ -60,6 +60,7 @@ type savedStop struct {
 	Lat, Lng    float64
 	AlertMeters int `json:"alert_meters"`
 	Kind        string
+	Buzz        string
 	Shifts      []string
 	Ask         bool
 }
@@ -128,6 +129,17 @@ func TestSavedStops(t *testing.T) {
 	if s := all.named("Shizuoka Station"); s.AlertMeters != 1000 || len(s.Shifts) != 2 || s.Kind != "train" {
 		t.Errorf("changed: %+v", s)
 	}
+	// Each stop buzzes its own way: strong to start with, kept by a change that leaves it out.
+	if all.named("Aoi").Buzz != "strong" || all.named("Shizuoka Station").Buzz != "strong" {
+		t.Errorf("buzz to start with: %+v", all)
+	}
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "Shizuoka Station", "lat": 34.97, "lng": 138.39, "alert_meters": 1000, "buzz": "strongest"}, &all)
+	if all.named("Shizuoka Station").Buzz != "strongest" || all.named("Aoi").Buzz != "strong" {
+		t.Errorf("one stop's buzz: %+v", all)
+	}
+	if code := sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "x", "lat": 34.97, "lng": 138.39, "buzz": "loud"}, nil); code != 400 {
+		t.Errorf("a stop's buzz must be one of them: %d", code)
+	}
 	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "Shizuoka Station", "lat": 34.97, "lng": 138.39, "shifts": []string{"Late"}}, &all)
 	if a, s := all.named("Aoi"), all.named("Shizuoka Station"); len(a.Shifts) != 0 || len(s.Shifts) != 1 || s.Shifts[0] != "Late" {
 		t.Errorf("taking Late: %+v %+v", a, s)
@@ -171,6 +183,12 @@ func TestSavedStops(t *testing.T) {
 	}
 	if sam.do("PUT", "/api/bus/buzz", map[string]any{"buzz": "gentle"}, &all); all.Buzz != "gentle" || all.SoundAfter != 60 {
 		t.Errorf("buzz: %+v", all)
+	}
+	// As older apps set it: every stop's.
+	for _, x := range all.Stops {
+		if x.Buzz != "gentle" {
+			t.Errorf("an older app's buzz is every stop's: %+v", x)
+		}
 	}
 	// The sound, on its own: the buzz stays.
 	if sam.do("PUT", "/api/bus/buzz", map[string]any{"sound_after": 0}, &all); all.Buzz != "gentle" || all.SoundAfter != 0 {

@@ -29,6 +29,8 @@ type SavedStop struct {
 	// Kind is "bus" for a bus stop or "train" for a station (Kinds): how
 	// the apps word it and how far before it they offer to buzz.
 	Kind string `json:"kind"`
+	// Buzz is how the phone buzzes at this stop: one of Buzzes.
+	Buzz string `json:"buzz"`
 	// Shifts are the kinds of shift this is the stop for (ShiftKinds); each
 	// kind is on at most one of a person's stops.
 	Shifts []string `json:"shifts"`
@@ -42,8 +44,11 @@ type Stops struct {
 	Stops []SavedStop `json:"stops"`
 	// LastID is the stop used last (or the only one): the one to go to when
 	// no shift says which. 0 when there are none.
-	LastID int64  `json:"last_id"`
-	Buzz   string `json:"buzz"`
+	LastID int64 `json:"last_id"`
+	// Buzz is how older apps buzz, at every stop; newer ones use each
+	// stop's. Setting it (PUT /api/bus/buzz, as older apps do) sets every
+	// stop's too.
+	Buzz string `json:"buzz"`
 	// SoundAfter is how many seconds the phone buzzes before it adds its
 	// alarm sound, if the buzz isn't stopped: one of SoundAfters; 0 never.
 	SoundAfter int `json:"sound_after"`
@@ -91,7 +96,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 		return all, err
 	}
 	// The one used last comes first here, then they're put in the order they were added.
-	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, kind, shifts, ask FROM bus_saved_stops
+	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, kind, buzz, shifts, ask FROM bus_saved_stops
 		WHERE user_id = $1 ORDER BY used_at DESC, id DESC`, user)
 	if err != nil {
 		return all, err
@@ -99,7 +104,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 	defer rows.Close()
 	for rows.Next() {
 		var x SavedStop
-		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, &x.Kind, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
+		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, &x.Kind, &x.Buzz, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
 			return all, err
 		}
 		if all.LastID == 0 {
@@ -154,6 +159,12 @@ func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops)
 	}
 	if err := f(tx, before); err != nil {
 		return Stops{}, err
+	}
+	if set.Buzz != nil {
+		// Older apps buzz one way everywhere: so does every stop.
+		if _, err := tx.ExecContext(ctx, `UPDATE bus_saved_stops SET buzz = $2 WHERE user_id = $1`, user, *set.Buzz); err != nil {
+			return Stops{}, err
+		}
 	}
 	after, err := h.load(ctx, tx, user)
 	if err != nil {
@@ -212,6 +223,8 @@ type savedInput struct {
 	Ask *bool `json:"ask"`
 	// Left out (as older apps do), a changed stop keeps its own (a new one is "bus").
 	Kind *string `json:"kind"`
+	// Left out, a changed stop keeps its own (a new one is "strong").
+	Buzz *string `json:"buzz"`
 }
 
 func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput, error) {
@@ -224,6 +237,9 @@ func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput,
 	}
 	if in.Kind != nil && !slices.Contains(Kinds, *in.Kind) {
 		return in, httpx.Errorf(http.StatusBadRequest, "kind must be bus or train")
+	}
+	if in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz) {
+		return in, errBuzz
 	}
 	if in.Shifts != nil {
 		for _, k := range *in.Shifts {
@@ -273,9 +289,9 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		// A new stop isn't the one used last, unless it's the first.
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
-			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus')) RETURNING id`,
-			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind).Scan(&id); err != nil {
+			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind, buzz)
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong')) RETURNING id`,
+			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind, in.Buzz).Scan(&id); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, &kinds)
@@ -322,8 +338,8 @@ func (h *Handler) changeStop(w http.ResponseWriter, r *http.Request) error {
 	}
 	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
 		if _, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET name = $3, lat = $4, lng = $5, alert_meters = $6,
-			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask), kind = COALESCE($9, kind) WHERE user_id = $1 AND id = $2`,
-			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask, in.Kind); err != nil {
+			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask), kind = COALESCE($9, kind), buzz = COALESCE($10, buzz) WHERE user_id = $1 AND id = $2`,
+			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask, in.Kind, in.Buzz); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, in.Shifts)

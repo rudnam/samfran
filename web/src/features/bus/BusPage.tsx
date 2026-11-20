@@ -11,10 +11,11 @@
 // "Try it now" is a practice run: a pretend ride of a few seconds that ends
 // the way a real one does. It vibrates where the browser can, so anyone can
 // see what it does before relying on it.
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
 import { t, type Key } from '../../i18n';
 import { labelOf } from '../shifts/codes';
+import { confirmDialog } from '../../components/Overlay';
 import { StopMap } from './StopMap';
 
 const shiftKinds: ShiftLabel[] = ['Early', 'Middle', 'Late', 'Night'];
@@ -49,13 +50,6 @@ const maxStops = 10;
 const distances: Record<StopKind, number[]> = { bus: [400, 600, 800, 1000, 1500, 2000], train: [1000, 1500, 2000, 3000, 4000, 5000] };
 const defaultMeters: Record<StopKind, number> = { bus: 800, train: 2000 };
 
-/** How long it buzzes before adding the phone's alarm sound, if not stopped (0: never). */
-const soundAfters: { s: number; label: Key }[] = [
-  { s: 0, label: 'Never' },
-  { s: 30, label: '30 s' },
-  { s: 60, label: '1 min' },
-  { s: 120, label: '2 min' },
-];
 
 /**
  * The ways it can buzz, as the Android app does them (Buzz, in core/model's Bus.kt):
@@ -96,28 +90,38 @@ const practiceMs = 6000;
 
 type Practice = { phase: 'riding'; startedAt: number } | { phase: 'buzzing' } | { phase: 'done' } | null;
 
-/** The stop being changed, or "new" for adding one. */
-type Editing = SavedStop | 'new' | null;
+/** A stop as its page shows it: a saved one, or a new one not added yet. */
+type Draft = Omit<SavedStop, 'id'>;
+
+/**
+ * What's open besides the ride: Settings; a stop's page (a saved one by id,
+ * or a new one before it's added); or the search for where a stop is (for
+ * a new one, or to move a saved one).
+ */
+type View =
+  | { page: 'settings' }
+  | { page: 'stop'; id: number }
+  | { page: 'new'; draft: Draft }
+  | { page: 'where'; id: number | 'new' };
+
+/** A new stop at a place picked: the usual distance for its kind, a strong buzz, no shifts. */
+function draftAt(p: Picked): Draft {
+  return { ...p, alert_meters: defaultMeters[p.kind], buzz: 'strong', shifts: [], ask: false };
+}
 
 export function BusPage() {
   const [all, setAll] = useState<BusStops | null>(null);
   const [error, setError] = useState('');
-  const [editing, setEditing] = useState<Editing>(null);
-  // Settings are open: the stops, and how it buzzes. A stop opened from there goes back there.
-  const [settings, setSettings] = useState(false);
+  const [view, setView] = useState<View | null>(null);
   const [apk, setApk] = useState<Downloads['android']>(null);
   const [shift, setShift] = useState<ShiftDay | null>(null);
   // A stop picked on this visit, instead of the one for the shift.
   const [picked, setPicked] = useState<number | null>(null);
+  // The stop just added, marked in Settings.
+  const [added, setAdded] = useState<number | null>(null);
 
   useEffect(() => {
-    api.busStops().then(
-      (s) => {
-        setAll(s);
-        if (s.stops.length === 0) setEditing('new');
-      },
-      (err) => setError(errorMessage(err)),
-    );
+    api.busStops().then(setAll, (err) => setError(errorMessage(err)));
     api.downloads().then((d) => setApk(d.android), () => {});
     api.shifts().then((m) => setShift(homeShift(m.days, Date.now())), () => {});
   }, []);
@@ -140,7 +144,7 @@ export function BusPage() {
 
   function buzzForPractice() {
     setPractice({ phase: 'buzzing' });
-    webBuzz(true, all?.buzz);
+    webBuzz(true, stop?.buzz);
   }
 
   function endPractice() {
@@ -158,22 +162,92 @@ export function BusPage() {
 
   const ready = !!stop;
   const buzzing = practice?.phase === 'buzzing';
+  const first = all !== null && !ready;
+
+  /** Saves a change to a saved stop, straight away. */
+  async function change(s: SavedStop, c: Partial<Draft>) {
+    setError('');
+    const next = { ...s, ...c };
+    try {
+      setAll(await api.changeBusStop(s.id, { name: next.name, lat: next.lat, lng: next.lng, alert_meters: next.alert_meters, kind: next.kind, buzz: next.buzz, shifts: next.shifts, ask: next.ask }));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function add(d: Draft) {
+    setError('');
+    try {
+      const after = await api.addBusStop(d);
+      const id = Math.max(...after.stops.map((s) => s.id));
+      setAll(after);
+      if (first) {
+        setView(null);
+      } else {
+        setAdded(id);
+        setView({ page: 'settings' });
+      }
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function remove(s: SavedStop) {
+    if (!(await confirmDialog({ title: t('Remove {stop}?', { stop: s.name || t('Unnamed stop') }), confirm: t('Remove'), danger: true }))) return;
+    setError('');
+    try {
+      const after = await api.deleteBusStop(s.id);
+      setAll(after);
+      if (picked === s.id) setPicked(null);
+      setView(after.stops.length ? { page: 'settings' } : null);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function setSound(on: boolean) {
+    setError('');
+    try {
+      setAll(await api.setAlarm({ sound_after: on ? 60 : 0 }));
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  // Where "‹" goes from each page.
+  const back: { label: Key; to: View | null } | null = !view
+    ? null
+    : view.page === 'settings'
+      ? { label: 'Ride alarm', to: null }
+      : view.page === 'stop'
+        ? { label: 'Settings', to: { page: 'settings' } }
+        : view.page === 'new'
+          ? { label: 'Add a stop', to: { page: 'where', id: 'new' } }
+          : view.id === 'new'
+            ? first
+              ? null
+              : { label: 'Settings', to: { page: 'settings' } }
+            : { label: 'Back', to: { page: 'stop', id: view.id } };
+  const editing = view?.page === 'stop' ? all?.stops.find((s) => s.id === view.id) : undefined;
+  const moving = view?.page === 'where' && view.id !== 'new' ? all?.stops.find((s) => s.id === view.id) : undefined;
+  // The first time, choosing the stop is the page.
+  const shown: View | null = first && !view ? { page: 'where', id: 'new' } : view;
 
   return (
     <section className="stack">
-      {ready && (editing || settings) && (
-        <button type="button" className="link back" onClick={() => (editing ? setEditing(null) : setSettings(false))}>
-          ‹ {editing && settings ? t('Settings') : t('Ride alarm')}
+      {back && (
+        <button type="button" className="link back" onClick={() => setView(back.to)}>
+          ‹ {t(back.label)}
         </button>
       )}
-      {(!ready || !editing) && (
+      {(!shown || first) && (
         <header className="page-head with-action">
           <div>
-            <h1 className="display">{settings && ready ? t('Settings') : t('Ride alarm')}</h1>
-            {!(settings && ready) && <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>}
+            <h1 className="display">{t('Ride alarm')}</h1>
+            <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
           </div>
-          {ready && !settings && !buzzing && (
-            <button type="button" className="secondary" onClick={() => setSettings(true)}>
+          {ready && !buzzing && (
+            <button type="button" className="secondary" onClick={() => setView({ page: 'settings' })}>
               {t('Settings')}
             </button>
           )}
@@ -186,7 +260,7 @@ export function BusPage() {
         </p>
       )}
 
-      {stop && buzzing && (
+      {!shown && stop && buzzing && (
         <div className="card stack buzz" role="alertdialog" aria-label={t('Your stop is next')}>
           <span className="eyebrow">{t('Practice run')}</span>
           <p className="buzz-big">{t('Your stop is next')}</p>
@@ -198,7 +272,7 @@ export function BusPage() {
         </div>
       )}
 
-      {all && stop && !buzzing && !editing && !settings && (
+      {!shown && all && stop && !buzzing && (
         <RideCard
           all={all}
           stop={stop}
@@ -219,35 +293,50 @@ export function BusPage() {
         />
       )}
 
-      {all && !ready && <HowItWorks />}
+      {first && !view && <HowItWorks />}
 
-      {all && editing && (
-        <StopForm
-          key={editing === 'new' ? 'new' : editing.id}
-          stop={editing === 'new' ? null : editing}
-          all={all}
-          first={!ready}
-          onSaved={(s, id) => {
-            setAll(s);
-            setEditing(null);
-            if (s.stops.length === 0) {
-              setSettings(false);
-              setEditing('new');
+      {all && shown?.page === 'settings' && (
+        <SettingsPage all={all} added={added} onOpen={(id) => setView(id === 'new' ? { page: 'where', id: 'new' } : { page: 'stop', id })} onSound={setSound} />
+      )}
+
+      {all && shown?.page === 'where' && (
+        <WherePage
+          key={String(shown.id)}
+          first={first}
+          title={moving ? moving.name || t('Unnamed stop') : t('Add a stop')}
+          near={moving ? { lat: moving.lat, lng: moving.lng } : all.stops[0] ? { lat: all.stops[0].lat, lng: all.stops[0].lng } : null}
+          onPick={(p) => {
+            if (moving) {
+              const meters = distances[p.kind].includes(moving.alert_meters) ? moving.alert_meters : defaultMeters[p.kind];
+              void change(moving, { ...p, alert_meters: meters });
+              setView({ page: 'stop', id: moving.id });
+            } else {
+              setView({ page: 'new', draft: draftAt(p) });
             }
-            // A stop just added is the one to look at.
-            if (id) setPicked(id);
-            else if (picked && !s.stops.some((x) => x.id === picked)) setPicked(null);
           }}
         />
       )}
 
-      {all && ready && !editing && settings && <AlarmSettings all={all} onChange={setEditing} onSaved={setAll} />}
+      {all && shown?.page === 'new' && (
+        <StopPage
+          stop={shown.draft}
+          all={all}
+          onChange={(c) => setView({ page: 'new', draft: { ...shown.draft, ...c } })}
+          onWhere={() => setView({ page: 'where', id: 'new' })}
+          onAdd={() => add(shown.draft)}
+        />
+      )}
 
-      {all && ready && !editing && settings && (
-        <details className="card how-fold">
-          <summary>{t('How it works')}</summary>
-          <Steps />
-        </details>
+      {all && editing && (
+        <StopPage
+          key={editing.id}
+          stop={editing}
+          id={editing.id}
+          all={all}
+          onChange={(c) => change(editing, c)}
+          onWhere={() => setView({ page: 'where', id: editing.id })}
+          onRemove={() => remove(editing)}
+        />
       )}
     </section>
   );
@@ -323,7 +412,7 @@ function Route({ progress, arrived, kind }: { progress: number; arrived?: boolea
   );
 }
 
-/** A bus or a train, from the front (SamFranIcons.bus and .train on Android). */
+/** A bus or a train, from the front: the bus boxy, with its mirrors (SamFranIcons.bus and .train on Android). */
 export function VehicleIcon({ kind, size = 24, stroke = 2 }: { kind: StopKind; size?: number; stroke?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -331,7 +420,7 @@ export function VehicleIcon({ kind, size = 24, stroke = 2 }: { kind: StopKind; s
     </svg>
   );
 }
-const busPath = 'M8 3h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM5 11h14M8 21v-3M16 21v-3';
+const busPath = 'M7 3h10a2 2 0 0 1 2 2v13H5V5a2 2 0 0 1 2-2zM5 7h14M5 13h14M3 8v3M21 8v3M8 16h.01M16 16h.01M7 18v3M17 18v3';
 const trainPath = 'M8 2h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zM5 9h14M12 2v7M8.5 13h.01M15.5 13h.01M9 17l-2 4M15 17l2 4';
 
 function RideCard(p: {
@@ -422,70 +511,248 @@ function RideCard(p: {
   );
 }
 
-function DistancePicker({ value, kind, onPick, disabled }: { value: number; kind: StopKind; onPick: (m: number) => void; disabled?: boolean }) {
+/** A row that opens something: what it is, and what it's set to now. */
+function Row({ icon, label, value, onClick }: { icon: ReactNode; label: string; value: string; onClick: () => void }) {
   return (
-    <div className="field">
-      <span id="buzz-distance">{t('Buzz this far before the stop')}</span>
-      <div className="chips" role="radiogroup" aria-labelledby="buzz-distance">
-        {distances[kind].map((d) => (
-          <button key={d} type="button" role="radio" aria-checked={value === d} className={value === d ? 'on' : ''} disabled={disabled} onClick={() => onPick(d)}>
-            {km(d)}
-          </button>
-        ))}
-      </div>
-      <span className="hint">
-        {t(early(value, kind))} {t(kind === 'train' ? 'On a fast train, choose more.' : 'On a fast road, choose more.')}
+    <button type="button" className="setting-row" onClick={onClick}>
+      <span className="setting-icon" aria-hidden="true">
+        {icon}
       </span>
-    </div>
-  );
-}
-
-function BuzzPicker({ value, onPick, disabled }: { value: Buzz; onPick: (b: Buzz) => void; disabled?: boolean }) {
-  return (
-    <div className="field">
-      <span id="buzz-how">{t('How it buzzes')}</span>
-      <div className="chips three" role="radiogroup" aria-labelledby="buzz-how">
-        {buzzes.map((b) => (
-          <button key={b.buzz} type="button" role="radio" aria-checked={value === b.buzz} className={value === b.buzz ? 'on' : ''} disabled={disabled} onClick={() => onPick(b.buzz)}>
-            {t(b.label)}
-          </button>
-        ))}
-      </div>
-      <span className="hint">{t(buzzOf(value).about)} {t('Try it now to feel it.')}</span>
-    </div>
-  );
-}
-
-function SoundPicker({ value, onPick, disabled }: { value: number; onPick: (s: number) => void; disabled?: boolean }) {
-  return (
-    <div className="field">
-      <span id="sound-after">{t('If it isn’t stopped, add sound after')}</span>
-      <div className="chips four" role="radiogroup" aria-labelledby="sound-after">
-        {soundAfters.map((x) => (
-          <button key={x.s} type="button" role="radio" aria-checked={value === x.s} className={value === x.s ? 'on' : ''} disabled={disabled} onClick={() => onPick(x.s)}>
-            {t(x.label)}
-          </button>
-        ))}
-      </div>
-      <span className="hint">
-        {value > 0
-          ? t('The phone’s alarm sound joins the buzz, getting louder, even on silent. Hear it in the Android app’s settings.')
-          : t('It only buzzes.')}
+      <span className="grow setting-label">{label}</span>
+      <span className="setting-value">{value}</span>
+      <span aria-hidden="true" className="muted">
+        ›
       </span>
+    </button>
+  );
+}
+
+/** One choice, opened from a row: from the bottom on phones, in the middle on wider screens. */
+function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="ask"
+      aria-label={title}
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
+      }}
+      onClick={(e) => {
+        if (e.target === dialog.current) onClose();
+      }}
+    >
+      <div className="stack">
+        <h2>{title}</h2>
+        {children}
+      </div>
+    </dialog>
+  );
+}
+
+/** One-tap choices in a row: picking one is the answer. */
+function Choices<T extends string | number>({ label, choices, value, onPick, className }: { label: string; choices: { v: T; text: string }[]; value: T; onPick: (v: T) => void; className?: string }) {
+  return (
+    <div className={`chips ${className ?? ''}`} role="radiogroup" aria-label={label}>
+      {choices.map((c) => (
+        <button key={String(c.v)} type="button" role="radio" aria-checked={value === c.v} className={value === c.v ? 'on' : ''} onClick={() => onPick(c.v)}>
+          {c.text}
+        </button>
+      ))}
     </div>
   );
 }
 
-function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSaved: (s: BusStops) => void }) {
+/** Settings: the stops (each opens its page), whether a sound joins in, and how it works. */
+function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: number | 'new') => void; onSound: (on: boolean) => void }) {
   const { all } = p;
+  return (
+    <>
+      <h1 className="display">{t('Settings')}</h1>
+      <div className="card stack tight">
+        <span className="eyebrow">{t('Your stops')}</span>
+        <ul className="stop-list">
+          {all.stops.map((s) => (
+            <li key={s.id} className={s.id === p.added ? 'just-added' : undefined}>
+              <button type="button" className="stop-row" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onOpen(s.id)}>
+                <span className="stop-kind" aria-hidden="true">
+                  <VehicleIcon kind={s.kind} size={20} />
+                </span>
+                <span className="grow">
+                  <strong className="block">{s.name || t('Unnamed stop')}</strong>
+                  {s.id === p.added ? (
+                    <span className="muted small">{t('Just added')}</span>
+                  ) : (
+                    s.shifts.length > 0 && <span className="muted small">{t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>
+                  )}
+                </span>
+                <span aria-hidden="true" className="muted">
+                  ›
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        {all.stops.length < maxStops && (
+          <button type="button" className="link start" onClick={() => p.onOpen('new')}>
+            {t('+ Add a stop')}
+          </button>
+        )}
+      </div>
+      <div className="card stack tight">
+        <label className="switch">
+          <span className="grow">
+            <strong className="block">{t('Add sound if I don’t stop it')}</strong>
+            <span className="muted small">{t('After a minute of buzzing, the phone’s alarm sound plays too, getting louder. Even on silent.')}</span>
+          </span>
+          <input type="checkbox" role="switch" checked={all.sound_after > 0} onChange={(e) => p.onSound(e.target.checked)} />
+        </label>
+      </div>
+      <details className="card how-fold">
+        <summary>{t('How it works')}</summary>
+        <Steps />
+      </details>
+    </>
+  );
+}
+
+/** Which sheet is open on a stop's page. */
+type Open = 'distance' | 'buzz' | 'shifts' | null;
+
+/**
+ * A stop's page: a small map, then one row for each setting, each opening
+ * its choices. A saved stop saves each change as it's made; a new one is
+ * added by "Add stop", so backing out leaves nothing behind.
+ */
+function StopPage(p: {
+  stop: Draft;
+  /** A saved stop's id; none for a new one. */
+  id?: number;
+  all: BusStops;
+  onChange: (c: Partial<Draft>) => void;
+  onWhere: () => void;
+  onAdd?: () => Promise<void>;
+  onRemove?: () => void;
+}) {
+  const { stop } = p;
+  const [open, setOpen] = useState<Open>(null);
+  const [busy, setBusy] = useState(false);
+  const name = stop.name || t('Unnamed stop');
+  const pick = (c: Partial<Draft>) => {
+    setOpen(null);
+    p.onChange(c);
+  };
+  return (
+    <>
+      <h1 className="display">{name}</h1>
+      <div className="card">
+        <StopMap lat={stop.lat} lng={stop.lng} name={stop.name} small />
+      </div>
+      <div className="card setting-list">
+        <Row icon={<VehicleIcon kind={stop.kind} size={20} />} label={t('Where')} value={name} onClick={p.onWhere} />
+        <Row icon={<RulerIcon />} label={t('Buzz before')} value={km(stop.alert_meters)} onClick={() => setOpen('distance')} />
+        <Row icon={<BellIcon />} label={t('How it buzzes')} value={t(buzzOf(stop.buzz).label)} onClick={() => setOpen('buzz')} />
+      </div>
+      <div className="card setting-list">
+        <Row icon={<CalendarIcon />} label={t('Use after')} value={stop.shifts.length ? stop.shifts.map(labelOf).join('・') : t('None')} onClick={() => setOpen('shifts')} />
+        <label className="switch setting-switch">
+          <span className="grow setting-label">{t('Ask when these end')}</span>
+          <input type="checkbox" role="switch" checked={stop.ask} onChange={(e) => p.onChange({ ask: e.target.checked })} />
+        </label>
+      </div>
+      {p.onAdd ? (
+        <button
+          type="button"
+          className="big"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            await p.onAdd!();
+            setBusy(false);
+          }}
+        >
+          {t('Add stop')}
+        </button>
+      ) : (
+        <button type="button" className="link danger center" onClick={p.onRemove}>
+          {t('Remove this stop')}
+        </button>
+      )}
+
+      {open === 'distance' && (
+        <Sheet title={t('Buzz before {stop}', { stop: name })} onClose={() => setOpen(null)}>
+          <Choices label={t('Buzz before')} choices={distances[stop.kind].map((d) => ({ v: d, text: km(d) }))} value={stop.alert_meters} onPick={(d) => pick({ alert_meters: d })} />
+          <p className="hint">{t(early(stop.alert_meters, stop.kind))}</p>
+        </Sheet>
+      )}
+      {open === 'buzz' && (
+        <Sheet title={t('How it buzzes at {stop}', { stop: name })} onClose={() => setOpen(null)}>
+          <Choices label={t('How it buzzes')} className="three" choices={buzzes.map((b) => ({ v: b.buzz, text: t(b.label) }))} value={stop.buzz} onPick={(b) => pick({ buzz: b })} />
+          <p className="hint">{t(buzzOf(stop.buzz).about)}</p>
+        </Sheet>
+      )}
+      {open === 'shifts' && <ShiftSheet stop={stop} id={p.id} all={p.all} onDone={(shifts) => pick({ shifts })} onClose={() => setOpen(null)} />}
+    </>
+  );
+}
+
+/** The kinds of shift a stop is for: several can be on, so it has a Done. */
+function ShiftSheet({ stop, id, all, onDone, onClose }: { stop: Draft; id?: number; all: BusStops; onDone: (v: ShiftLabel[]) => void; onClose: () => void }) {
+  const [value, setValue] = useState(stop.shifts);
+  // Kinds that another stop has now, which this one would take.
+  const taken = [...new Set(value.map((k) => all.stops.find((s) => s.id !== id && s.shifts.includes(k))).filter((s): s is SavedStop => !!s))];
+  return (
+    <Sheet title={t('Use {stop} after', { stop: stop.name || t('this stop') })} onClose={onClose}>
+      <div className="chips four" role="group" aria-label={t('Use after')}>
+        {shiftKinds.map((k) => {
+          const on = value.includes(k);
+          return (
+            <button key={k} type="button" aria-pressed={on} className={on ? 'on' : ''} onClick={() => setValue(on ? value.filter((x) => x !== k) : shiftKinds.filter((x) => x === k || value.includes(x)))}>
+              {labelOf(k)}
+            </button>
+          );
+        })}
+      </div>
+      {taken.length > 0 && <p className="hint">{t('{stop} won’t be used for them any more.', { stop: taken.map((s) => s.name || t('Unnamed stop')).join('、') })}</p>}
+      <button type="button" onClick={() => onDone(value)}>
+        {t('Done')}
+      </button>
+    </Sheet>
+  );
+}
+
+/** Where a stop is: a name, a place, and whether it's a bus stop or a station. */
+type Picked = { name: string; lat: number; lng: number; kind: StopKind };
+
+/**
+ * Where a stop is: search by name (and town), each result's icon saying
+ * bus stop or station; or, folded away, a Google Maps link to it.
+ */
+function WherePage({ first, title, near, onPick }: { first: boolean; title: string; near: { lat: number; lng: number } | null; onPick: (p: Picked) => void }) {
+  const [query, setQuery] = useState('');
+  const search = useStopSearch(query, near);
+  const [link, setLink] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // From a link: where it is, but not its name or kind for sure, so those are asked.
+  const [fromLink, setFromLink] = useState<Picked | null>(null);
 
-  async function setAlarm(s: { buzz?: Buzz; sound_after?: number }) {
+  async function useLink() {
+    if (!link.trim()) return;
     setBusy(true);
     setError('');
     try {
-      p.onSaved(await api.setAlarm(s));
+      const p = await api.lookupMap(link.trim(), true);
+      if (p.lat === undefined || p.lng === undefined) {
+        setError(t('Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.'));
+      } else {
+        // Google Maps calls a stop "Name（バス）".
+        setFromLink({ name: (p.name ?? query).replace(/\s*[（(](バス|Bus)[）)]$/, ''), lat: p.lat, lng: p.lng, kind: 'bus' });
+      }
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -495,33 +762,79 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
 
   return (
     <>
-      <div className="card stack tight">
-        <span className="eyebrow">{t('Your stops')}</span>
-        <ul className="stop-list">
-          {all.stops.map((s) => (
-            <li key={s.id}>
-              <button type="button" className="stop-row" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onChange(s)}>
-                <span className="stop-kind" aria-hidden="true">
-                  <VehicleIcon kind={s.kind} size={20} />
-                </span>
-                <span className="grow">
-                  <strong className="block">{s.name || t('Unnamed stop')}</strong>
-                  {s.shifts.length > 0 && <span className="muted small">{t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>}
-                </span>
-                <span aria-hidden="true" className="muted">›</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {all.stops.length < maxStops && (
-          <button type="button" className="link start" onClick={() => p.onChange('new')}>
-            {t('+ Add a stop')}
-          </button>
-        )}
-      </div>
+      {first ? <h2>{t('Where do you get off?')}</h2> : <h1 className="display">{title}</h1>}
       <div className="card stack">
-        <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setAlarm({ buzz: b })} disabled={busy} />
-        <SoundPicker value={all.sound_after} onPick={(x) => x !== all.sound_after && void setAlarm({ sound_after: x })} disabled={busy} />
+        <input
+          type="search"
+          autoFocus={!first}
+          maxLength={80}
+          autoComplete="off"
+          aria-label={t('Stop or station')}
+          placeholder={t('Name, and the town if it’s common')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && search.found?.length) onPick(search.found[0]);
+          }}
+        />
+        {query && search.found && search.found.length > 0 && (
+          <ul className="found-list" aria-label={t('Matching stops')}>
+            {search.found.map((f) => (
+              <li key={`${f.name}${f.lat}${f.lng}`}>
+                <button type="button" onClick={() => onPick(f)}>
+                  <span className="kind-tile" role="img" aria-label={f.kind === 'train' ? t('Station') : t('Bus stop')}>
+                    <VehicleIcon kind={f.kind} size={22} />
+                  </span>
+                  <span className="grow">
+                    <strong className="block">{f.name}</strong>
+                    {f.area && <span className="muted small">{f.area}</span>}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {query && search.failed && <p className="hint">{t('The stop search isn’t answering. Paste a Google Maps link instead.')}</p>}
+        {query && search.found?.length === 0 && <p className="hint">{t('No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.')}</p>}
+        {query && !!search.found?.length && (
+          <a className="osm small" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+            {t('Stops from OpenStreetMap')}
+          </a>
+        )}
+
+        <details className="other-ways">
+          <summary>{t('Can’t find it? Other ways')}</summary>
+          <div className="stack tight">
+            <span className="row">
+              <input type="url" aria-label={t('Google Maps link to the stop')} placeholder={t('Paste a Google Maps link to the stop')} value={link} onChange={(e) => setLink(e.target.value)} />
+              <button type="button" className="secondary" disabled={busy || !link.trim()} onClick={useLink}>
+                {t('Use link')}
+              </button>
+            </span>
+            {fromLink && (
+              <div className="stack tight">
+                <StopMap lat={fromLink.lat} lng={fromLink.lng} name={fromLink.name} small />
+                <label className="field">
+                  <span>{t('Name')}</span>
+                  <input maxLength={80} value={fromLink.name} onChange={(e) => setFromLink({ ...fromLink, name: e.target.value })} />
+                </label>
+                <Choices
+                  label={t('Bus or train')}
+                  className="two"
+                  choices={[
+                    { v: 'bus' as StopKind, text: t('Bus stop') },
+                    { v: 'train' as StopKind, text: t('Station') },
+                  ]}
+                  value={fromLink.kind}
+                  onPick={(k) => setFromLink({ ...fromLink, kind: k })}
+                />
+                <button type="button" onClick={() => onPick(fromLink)}>
+                  {t('Use this')}
+                </button>
+              </div>
+            )}
+          </div>
+        </details>
         {error && (
           <p role="alert" className="error">
             {error}
@@ -532,31 +845,27 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
   );
 }
 
-function ShiftPicker({ value, onPick, name, all, id }: { value: ShiftLabel[]; onPick: (v: ShiftLabel[]) => void; name: string; all: BusStops; id?: number }) {
-  // Kinds that another stop has now, which this one would take.
-  const taken = value
-    .map((k) => all.stops.find((s) => s.id !== id && s.shifts.includes(k)))
-    .filter((s): s is SavedStop => !!s);
+function RulerIcon() {
   return (
-    <div className="field">
-      <span id="stop-shifts">{t('Use this stop after')}</span>
-      <div className="chips four" role="group" aria-labelledby="stop-shifts">
-        {shiftKinds.map((k) => {
-          const on = value.includes(k);
-          return (
-            <button key={k} type="button" aria-pressed={on} className={on ? 'on' : ''} onClick={() => onPick(on ? value.filter((x) => x !== k) : [...value, k])}>
-              {labelOf(k)}
-            </button>
-          );
-        })}
-      </div>
-      <span className="hint">
-        {value.length > 0
-          ? t('After these shifts, the alarm picks {stop} for you. You can still pick another stop that day.', { stop: name.trim() || t('this stop') })
-          : t('None: it’s only used when you pick it.')}
-        {taken.length > 0 && ' ' + t('{stop} won’t be used for them any more.', { stop: [...new Set(taken.map((s) => s.name || t('Unnamed stop')))].join('、') })}
-      </span>
-    </div>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 12h16M4 8v8M20 8v8M8 12v-2M12 12v-3M16 12v-2" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3 10h18M8 3v4M16 3v4" />
+    </svg>
   );
 }
 
@@ -588,253 +897,4 @@ function useStopSearch(query: string, near: { lat: number; lng: number } | null)
     return () => clearTimeout(timer);
   }, [query]); // eslint-disable-line react-hooks/exhaustive-deps
   return { found, failed };
-}
-
-/** Choosing the stop: search by name, or (folded away) a Google Maps link to it or where the phone is now. */
-function StopForm({
-  stop,
-  all,
-  first,
-  onSaved,
-}: {
-  /** null for a new one. */
-  stop: SavedStop | null;
-  all: BusStops;
-  first: boolean;
-  /** id: the stop just added. */
-  onSaved: (s: BusStops, id?: number) => void;
-}) {
-  const [name, setName] = useState(stop?.name ?? '');
-  const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop ? { lat: stop.lat, lng: stop.lng } : null);
-  const [shifts, setShifts] = useState<ShiftLabel[]>(stop?.shifts ?? []);
-  const [kind, setKind] = useState<StopKind>(stop?.kind ?? 'bus');
-  const [ask, setAsk] = useState(stop?.ask ?? false);
-  // The map shows once a stop is found, until it's saved; or when asked for.
-  const [showMap, setShowMap] = useState(false);
-  const [link, setLink] = useState('');
-  const [byName, setByName] = useState(false);
-  // What's being searched for: the name as typed, until a stop is picked.
-  const [query, setQuery] = useState('');
-  const search = useStopSearch(query, pos);
-  const [other, setOther] = useState(false);
-
-  /** A bus stop or a station: the distance changes to suit it, unless it's one of its choices. */
-  function changeKind(k: StopKind) {
-    setKind(k);
-    if (!distances[k].includes(meters)) setMeters(defaultMeters[k]);
-  }
-
-  function pick(f: FoundStop) {
-    changeKind(f.kind);
-    setName(f.name);
-    setPos({ lat: f.lat, lng: f.lng });
-    setByName(false);
-    setShowMap(true);
-    setQuery('');
-    setError('');
-  }
-  const [meters, setMeters] = useState(stop?.alert_meters || 800);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  async function fromLink() {
-    if (!link.trim()) return;
-    setBusy(true);
-    setError('');
-    try {
-      const p = await api.lookupMap(link.trim(), true);
-      if (p.lat === undefined || p.lng === undefined) {
-        setError(
-          t('Couldn’t find where that stop is. In Google Maps, press and hold on the stop to drop a pin, then share that pin’s link.'),
-        );
-      } else {
-        setPos({ lat: p.lat, lng: p.lng });
-        setByName(!!p.found_by_name);
-        setShowMap(true);
-        // Google Maps calls a stop "Name（バス）".
-        if (!name.trim() && p.name) setName(p.name.replace(/\s*[（(](バス|Bus)[）)]$/, ''));
-      }
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    // Enter while choosing from the list takes the first match.
-    if (query && search.found?.length) {
-      pick(search.found[0]);
-      return;
-    }
-    if (!pos) return;
-    setBusy(true);
-    setError('');
-    try {
-      const input = { name, lat: pos.lat, lng: pos.lng, alert_meters: meters, shifts, ask, kind };
-      if (stop) {
-        onSaved(await api.changeBusStop(stop.id, input));
-      } else {
-        const after = await api.addBusStop(input);
-        onSaved(after, Math.max(...after.stops.map((s) => s.id)));
-      }
-    } catch (err) {
-      setError(errorMessage(err));
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    if (!stop || !confirm(t('Remove {stop}?', { stop: stop.name || t('Unnamed stop') }))) return;
-    setBusy(true);
-    setError('');
-    try {
-      onSaved(await api.deleteBusStop(stop.id));
-    } catch (err) {
-      setError(errorMessage(err));
-      setBusy(false);
-    }
-  }
-
-  return (
-    <form className="stack" onSubmit={save}>
-      {!first && <h1 className="display">{stop ? stop.name || t('Unnamed stop') : t('Add a stop')}</h1>}
-      <div className="card stack">
-      {first && <span className="eyebrow">{t('Step 1 of 2')}</span>}
-      {first ? <h2>{t('Where do you get off?')}</h2> : <span className="eyebrow">{t('Where')}</span>}
-      <div className="field">
-        <label htmlFor="stop-name">{t('Stop or station')}</label>
-        <input
-          id="stop-name"
-          maxLength={80}
-          autoComplete="off"
-          placeholder={t('Type part of it, e.g. 葵西')}
-          value={name}
-          aria-describedby="stop-search-hint"
-          onChange={(e) => {
-            setName(e.target.value);
-            setQuery(e.target.value);
-          }}
-        />
-        {query && search.found && search.found.length > 0 && (
-          <ul className="suggest" aria-label={t('Matching stops')}>
-            {search.found.map((f) => (
-              <li key={`${f.name}${f.lat}${f.lng}`}>
-                <button type="button" onClick={() => pick(f)}>
-                  <span className="suggest-icon" aria-hidden="true">
-                    {f.kind === 'train' ? '🚉' : '🚏'}
-                  </span>
-                  <span className="suggest-text">
-                    <strong>{f.name}</strong>
-                    {f.area && <span className="hint">{f.area}</span>}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <span className="hint" id="stop-search-hint">
-          {query && search.failed
-            ? t('The stop search isn’t answering. Paste a Google Maps link instead.')
-            : query && search.found?.length === 0
-              ? t('No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.')
-              : query && search.found?.length
-                ? (
-                    <>
-                      {t('Tap your stop. Not there? Add the town: 新林 知立.')}{' '}
-                      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-                        {t('Stops from OpenStreetMap')}
-                      </a>
-                    </>
-                  )
-                : null}
-        </span>
-        {pos && !query && (showMap || first) && <StopMap lat={pos.lat} lng={pos.lng} name={name} />}
-        {pos && !query && (
-          <span className="found">
-            ✓ {byName ? t('Found it on OpenStreetMap, by its name.') : t('Found it.')}{' '}
-            {showMap || first ? (
-              <a href={`https://www.google.com/maps/search/?api=1&query=${pos.lat},${pos.lng}`} target="_blank" rel="noreferrer">
-                {t('Check on the map')}
-              </a>
-            ) : (
-              <button type="button" className="link inline" onClick={() => setShowMap(true)}>
-                {t('See it on the map')}
-              </button>
-            )}
-          </span>
-        )}
-      </div>
-
-      <details className="other-ways" open={other} onToggle={(e) => setOther(e.currentTarget.open)}>
-        <summary>{t('Can’t find it? Other ways')}</summary>
-        <div className="stack tight">
-          <span className="row">
-            <input
-              type="url"
-              aria-label={t('Google Maps link to the stop')}
-              placeholder={t('Paste a Google Maps link to the stop')}
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              onBlur={fromLink}
-            />
-            <button type="button" className="secondary" disabled={busy || !link.trim()} onClick={fromLink}>
-              {t('Use link')}
-            </button>
-          </span>
-        </div>
-      </details>
-
-      <div className="field">
-        <span id="stop-kind">{t('Bus or train')}</span>
-        <div className="chips two" role="radiogroup" aria-labelledby="stop-kind">
-          {(['bus', 'train'] as const).map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => changeKind(k)}>
-              {k === 'train' ? t('Station') : t('Bus stop')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {first && <span className="eyebrow">{t('Step 2 of 2')}</span>}
-      <DistancePicker value={meters} kind={kind} onPick={setMeters} />
-      </div>
-      {!first && (
-        <div className="card stack">
-          <span className="eyebrow">{t('When it’s used')}</span>
-          <ShiftPicker value={shifts} onPick={setShifts} name={name} all={all} id={stop?.id} />
-          <div className="field">
-            <span id="stop-ask">{t('Ask when these end')}</span>
-            <div className="chips two" role="radiogroup" aria-labelledby="stop-ask">
-              {[true, false].map((v) => (
-                <button key={String(v)} type="button" role="radio" aria-checked={ask === v} className={ask === v ? 'on' : ''} onClick={() => setAsk(v)}>
-                  {v ? t('Ask') : t('Don’t ask')}
-                </button>
-              ))}
-            </div>
-            <span className="hint">
-              {ask ? t('After a shift whose stop this is, the Android app asks “Start the ride alarm?”.') : t('Off: no question after shifts whose stop this is.')}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      <div className="row end">
-        {stop && (
-          <button type="button" className="link danger push-start" disabled={busy} onClick={remove}>
-            {t('Remove this stop')}
-          </button>
-        )}
-        <button type="submit" disabled={busy || !pos}>
-          {t('Save')}
-        </button>
-      </div>
-    </form>
-  );
 }

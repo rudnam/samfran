@@ -412,6 +412,8 @@ export interface SavedStop {
   /** Ring this many metres before the stop. */
   alert_meters: number;
   kind: StopKind;
+  /** How the phone buzzes at this stop. */
+  buzz: Buzz;
   /** The kinds of shift it's the stop for; each is on one stop at most. */
   shifts: ShiftLabel[];
   /** The Android app asks "Start bus alarm?" when a shift whose stop this is ends. */
@@ -423,7 +425,7 @@ export interface BusStops {
   stops: SavedStop[];
   /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
   last_id: number;
-  /** How the phone buzzes, at any stop. */
+  /** How older apps buzz, at every stop (each stop has its own now). */
   buzz: Buzz;
   /** Seconds of buzzing before the phone's alarm sound joins in, if it isn't stopped: 0 (never), 30, 60 or 120. */
   sound_after: number;
@@ -440,6 +442,8 @@ export interface BusStopInput {
   ask?: boolean;
   /** Left out, a changed stop keeps its own; a new one is a bus stop. */
   kind?: StopKind;
+  /** Left out, a changed stop keeps its own; a new one buzzes strong. */
+  buzz?: Buzz;
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */
