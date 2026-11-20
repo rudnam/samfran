@@ -164,14 +164,22 @@ export function BusPage() {
   const buzzing = practice?.phase === 'buzzing';
   const first = all !== null && !ready;
 
+  /** A change that didn't save: back to what the server has. */
+  function undo() {
+    api.busStops().then(setAll, () => {});
+  }
+
   /** Saves a change to a saved stop, straight away. */
   async function change(s: SavedStop, c: Partial<Draft>) {
     setError('');
     const next = { ...s, ...c };
+    // Shown at once (a switch flips as it's tapped); the server's answer then replaces it.
+    setAll((a) => a && { ...a, stops: a.stops.map((x) => (x.id === s.id ? next : x)) });
     try {
       setAll(await api.changeBusStop(s.id, { name: next.name, lat: next.lat, lng: next.lng, alert_meters: next.alert_meters, kind: next.kind, buzz: next.buzz, shifts: next.shifts, ask: next.ask }));
     } catch (err) {
       setError(errorMessage(err));
+      undo();
     }
   }
 
@@ -207,10 +215,12 @@ export function BusPage() {
 
   async function setSound(on: boolean) {
     setError('');
+    setAll((a) => a && { ...a, sound_after: on ? 60 : 0 });
     try {
       setAll(await api.setAlarm({ sound_after: on ? 60 : 0 }));
     } catch (err) {
       setError(errorMessage(err));
+      undo();
     }
   }
 
@@ -728,6 +738,11 @@ function ShiftSheet({ stop, id, all, onDone, onClose }: { stop: Draft; id?: numb
 /** Where a stop is: a name, a place, and whether it's a bus stop or a station. */
 type Picked = { name: string; lat: number; lng: number; kind: StopKind };
 
+/** A search result as a stop: without its area, which isn't kept. */
+function pickOf(f: FoundStop): Picked {
+  return { name: f.name, lat: f.lat, lng: f.lng, kind: f.kind };
+}
+
 /**
  * Where a stop is: search by name (and town), each result's icon saying
  * bus stop or station; or, folded away, a Google Maps link to it.
@@ -774,14 +789,14 @@ function WherePage({ first, title, near, onPick }: { first: boolean; title: stri
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && search.found?.length) onPick(search.found[0]);
+            if (e.key === 'Enter' && search.found?.length) onPick(pickOf(search.found[0]));
           }}
         />
         {query && search.found && search.found.length > 0 && (
           <ul className="found-list" aria-label={t('Matching stops')}>
             {search.found.map((f) => (
               <li key={`${f.name}${f.lat}${f.lng}`}>
-                <button type="button" onClick={() => onPick(f)}>
+                <button type="button" onClick={() => onPick(pickOf(f))}>
                   <span className="kind-tile" role="img" aria-label={f.kind === 'train' ? t('Station') : t('Bus stop')}>
                     <VehicleIcon kind={f.kind} size={22} />
                   </span>
