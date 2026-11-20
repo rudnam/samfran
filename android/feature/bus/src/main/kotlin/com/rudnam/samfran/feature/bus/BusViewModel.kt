@@ -14,9 +14,11 @@ import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKinds
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.model.stopNameFromMaps
 import com.rudnam.samfran.feature.bus.navigation.BusRoute
@@ -45,9 +47,11 @@ data class StopForm(
     /** The position came from OpenStreetMap, by the name in the link. */
     val byName: Boolean = false,
     val meters: Int = 800,
+    /** A bus stop or a station: set by picking it from the search, or by hand. */
+    val kind: StopKind = StopKind.Bus,
     /** The kinds of shift it's the stop for. */
     val shifts: List<String> = emptyList(),
-    /** Ask "Start bus alarm?" when a shift whose stop this is ends. Off for a new stop. */
+    /** Ask "Start the ride alarm?" when a shift whose stop this is ends. Off for a new stop. */
     val ask: Boolean = false,
     /** It asks, but notifications are off for the app: say how to allow them. */
     val askBlocked: Boolean = false,
@@ -131,6 +135,10 @@ interface BusActions {
     fun toggleMap()
     /** How it buzzes, from the settings card: saved straight away. */
     fun setBuzz(buzz: Buzz)
+    /** When the sound joins in if the buzz isn't stopped (0: never): saved straight away. */
+    fun setSoundAfter(seconds: Int)
+    /** "Hear the sound": a few seconds of it. */
+    fun hearSound()
     /** Where to get off, for this ride. */
     fun pickStop(id: Long)
     /** "Other stop" is done with. */
@@ -148,6 +156,8 @@ interface BusActions {
     fun useLink()
     fun useHere()
     fun setMeters(meters: Int)
+    /** A bus stop or a station: the distance changes to suit it, unless it's one of its choices. */
+    fun setKind(kind: StopKind)
     fun saveStop()
 }
 
@@ -203,7 +213,8 @@ class BusViewModel @Inject constructor(
     private fun formFor(stop: BusStop) = StopForm(
         name = stop.name,
         position = stop.lat to stop.lng,
-        meters = stop.alertMeters.takeIf { it > 0 } ?: 800,
+        meters = stop.alertMeters.takeIf { it > 0 } ?: Distances.default(stop.kind),
+        kind = stop.kind,
         shifts = stop.shifts,
         ask = stop.ask,
     )
@@ -270,6 +281,18 @@ class BusViewModel @Inject constructor(
         }
     }
 
+    override fun setSoundAfter(seconds: Int) {
+        val all = state.value.stops ?: return
+        if (seconds == all.soundAfter || local.value.savingSettings) return
+        local.update { it.copy(savingSettings = true, problem = null) }
+        viewModelScope.launch {
+            val r = bus.setSoundAfter(seconds)
+            local.update { it.copy(savingSettings = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
+        }
+    }
+
+    override fun hearSound() = alarm.hearSound()
+
     override fun pickStop(id: Long) {
         if (state.value.trip.running) return
         endPractice()
@@ -332,7 +355,7 @@ class BusViewModel @Inject constructor(
 
     override fun pick(stop: FoundStop) {
         search?.cancel()
-        form { it.copy(name = stop.name, position = stop.lat to stop.lng, byName = false, query = "", found = null, problem = null, showMap = true) }
+        form { suited(it.copy(name = stop.name, position = stop.lat to stop.lng, byName = false, query = "", found = null, problem = null, showMap = true), stop.kind) }
     }
 
     override fun setOtherWays(open: Boolean) = form { it.copy(otherWays = open) }
@@ -372,6 +395,12 @@ class BusViewModel @Inject constructor(
 
     override fun setMeters(meters: Int) = form { it.copy(meters = meters) }
 
+    override fun setKind(kind: StopKind) = form { suited(it, kind) }
+
+    /** [f] for a stop of [kind]: its distance stays if it's one of the kind's choices. */
+    private fun suited(f: StopForm, kind: StopKind) =
+        f.copy(kind = kind, meters = if (f.meters in Distances.choices(kind)) f.meters else Distances.default(kind))
+
     override fun saveStop() {
         val f = local.value.form
         // Saving while choosing from the list takes the first match.
@@ -383,7 +412,7 @@ class BusViewModel @Inject constructor(
         val editing = local.value.editing ?: return
         form { it.copy(busy = true, problem = null) }
         viewModelScope.launch {
-            val input = StopInput(f.name, pos.first, pos.second, f.meters, f.shifts, f.ask)
+            val input = StopInput(f.name, pos.first, pos.second, f.meters, f.shifts, f.ask, f.kind)
             val before = state.value.stops?.stops.orEmpty().map { it.id }.toSet()
             val r = if (editing == BusUiState.NEW) bus.add(input) else bus.change(editing, input)
             when (r) {

@@ -2,8 +2,8 @@ const { test, expect, signUp } = require('./fixtures');
 
 test('choose the bus stop from a Google Maps link, then try a practice run', async ({ page }) => {
   await signUp(page);
-  await page.getByRole('link', { name: 'Bus', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Bus alarm' })).toBeVisible();
+  await page.getByRole('link', { name: 'Ride', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Ride alarm' })).toBeVisible();
   // First time: how it works, then choosing the stop.
   await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Where do you get off?' })).toBeVisible();
@@ -14,7 +14,7 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await page.getByLabel('Google Maps link to the stop').fill('https://www.google.com/maps/place/Kamijima+Station/@34.7108,137.7261,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x1!8m2!3d34.7111!4d137.7265');
   await page.getByRole('button', { name: 'Use link' }).click();
   await expect(page.getByText('Found it.')).toBeVisible();
-  await expect(page.getByLabel('Stop name')).toHaveValue('Kamijima Station');
+  await expect(page.getByLabel('Stop or station')).toHaveValue('Kamijima Station');
   // A map of it: Google Maps, zoomed in on the stop.
   await expect(page.getByTitle('Kamijima Station on the map')).toHaveAttribute('src', /maps\?q=34\.7111%2C137\.7265&z=17/);
   const distance = page.getByRole('radiogroup', { name: 'Buzz this far before the stop' });
@@ -55,7 +55,7 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await page.getByRole('button', { name: 'Save' }).click();
   // Back in Settings, then back to the ride.
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
+  await page.getByRole('button', { name: '‹ Ride alarm' }).click();
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
   await page.reload();
   await expect(page.getByText('Buzzes 600 m before the stop.')).toBeVisible();
@@ -70,8 +70,20 @@ test('choose the bus stop from a Google Maps link, then try a practice run', asy
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await expect(how.getByRole('radio', { name: 'Strongest' })).toHaveAttribute('aria-checked', 'true');
+  // And whether a sound joins in if it isn't stopped: after a minute by default.
+  const sound = page.getByRole('radiogroup', { name: 'If it isn’t stopped, add sound after' });
+  await expect(sound.getByRole('radio', { name: '1 min' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText(/^The phone’s alarm sound joins the buzz/)).toBeVisible();
+  await sound.getByRole('radio', { name: 'Never' }).click();
+  await expect(page.getByText('It only buzzes.')).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(sound.getByRole('radio', { name: 'Never' })).toHaveAttribute('aria-checked', 'true');
+  await expect(how.getByRole('radio', { name: 'Strongest' })).toHaveAttribute('aria-checked', 'true');
+  await sound.getByRole('radio', { name: '30 s' }).click();
+  await expect(sound.getByRole('radio', { name: '30 s' })).toHaveAttribute('aria-checked', 'true');
   await page.screenshot({ path: test.info().outputPath('bus-settings.png'), fullPage: true });
-  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
+  await page.getByRole('button', { name: '‹ Ride alarm' }).click();
 
   // A practice run then vibrates that way, where the browser can.
   await page.evaluate(() => {
@@ -99,18 +111,20 @@ test('find the bus stop by typing part of its name', async ({ page }) => {
     });
   });
   await signUp(page);
-  await page.getByRole('link', { name: 'Bus', exact: true }).click();
-  await page.getByLabel('Stop name').fill('あおい');
+  await page.getByRole('link', { name: 'Ride', exact: true }).click();
+  await page.getByLabel('Stop or station').fill('あおい');
   await expect(page.getByText('No stops by that name.')).toBeVisible();
-  await page.getByLabel('Stop name').fill('葵西小');
+  await page.getByLabel('Stop or station').fill('葵西小');
   const list = page.getByRole('list', { name: 'Matching stops' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await expect(page.getByRole('link', { name: 'Stops from OpenStreetMap' })).toBeVisible();
+  // A common name needs its town, which the hint says how to add.
+  await expect(page.getByText('Tap your stop. Not there? Add the town: 新林 知立.')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-search.png'), fullPage: true });
   await list.getByRole('button', { name: /葵西小学校入口/ }).click();
 
   await expect(list).toHaveCount(0);
-  await expect(page.getByLabel('Stop name')).toHaveValue('葵西小学校入口');
+  await expect(page.getByLabel('Stop or station')).toHaveValue('葵西小学校入口');
   await expect(page.getByText('Found it.')).toBeVisible();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByTitle('葵西小学校入口 on the map')).toHaveAttribute('src', /maps\?q=34\.76966%2C137\.71207/);
@@ -132,15 +146,21 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   });
   await signUp(page);
   expect((await page.request.post('/api/bus/stops', { data: { name: '葵西小学校入口', lat: 34.76966, lng: 137.71207 } })).status()).toBe(201);
-  await page.getByRole('link', { name: 'Bus', exact: true }).click();
+  await page.getByRole('link', { name: 'Ride', exact: true }).click();
   await expect(page.getByRole('radio', { name: /葵西小学校入口/ })).toHaveAttribute('aria-checked', 'true');
 
   // A second stop, for late shifts, added in Settings.
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: '+ Add a stop' }).click();
   await expect(page.getByRole('heading', { name: 'Add a stop' })).toBeVisible();
-  await page.getByLabel('Stop name').fill('静岡');
+  await page.getByLabel('Stop or station').fill('静岡');
   await page.getByRole('list', { name: 'Matching stops' }).getByRole('button', { name: /静岡駅/ }).click();
+  // A station: trains go further between stops, so it buzzes further ahead.
+  await expect(page.getByRole('radiogroup', { name: 'Bus or train' }).getByRole('radio', { name: 'Station' })).toHaveAttribute('aria-checked', 'true');
+  const distance = page.getByRole('radiogroup', { name: 'Buzz this far before the stop' });
+  await expect(distance.getByRole('radio', { name: '2.0 km' })).toHaveAttribute('aria-checked', 'true');
+  await expect(distance.getByRole('radio', { name: '5.0 km' })).toBeVisible();
+  await expect(page.getByText('About one to two minutes early. On a fast train, choose more.')).toBeVisible();
   const shifts = page.getByRole('group', { name: 'Use this stop after' });
   await shifts.getByRole('button', { name: '遅番' }).click();
   await expect(shifts.getByRole('button', { name: '遅番' })).toHaveAttribute('aria-pressed', 'true');
@@ -160,6 +180,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   const picker = page.getByRole('radiogroup', { name: 'Get off at' });
   await expect(picker.getByRole('radio', { name: /静岡駅/ })).toHaveAttribute('aria-checked', 'true');
   await expect(page.getByText(/^遅番 until \d\d:\d\d, so it’s 静岡駅\.$/)).toBeVisible();
+  await expect(page.getByText('Buzzes 2.0 km before the stop. About one to two minutes early.')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stops.png'), fullPage: true });
 
   // Another for today: one tap, and no reason given.
@@ -175,7 +196,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByText('静岡駅 won’t be used for them any more.')).toBeVisible();
   // And it asks when they end.
   await ask.getByRole('radio', { name: 'Ask', exact: true }).click();
-  await expect(page.getByText('After a shift whose stop this is, the Android app asks “Start bus alarm?”.')).toBeVisible();
+  await expect(page.getByText('After a shift whose stop this is, the Android app asks “Start the ride alarm?”.')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stop-ask.png'), fullPage: true });
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('button', { name: 'Change 葵西小学校入口' })).toContainText('After 遅番');
@@ -189,7 +210,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await page.getByRole('button', { name: 'Change 静岡駅' }).click();
   await page.getByRole('button', { name: 'Remove this stop' }).click();
   await expect(page.locator('.stop-list li')).toHaveCount(1);
-  await page.getByRole('button', { name: '‹ Bus alarm' }).click();
+  await page.getByRole('button', { name: '‹ Ride alarm' }).click();
   await expect(picker.getByRole('radio')).toHaveCount(1);
   await expect(page.getByText(/^遅番 until \d\d:\d\d, so it’s 葵西小学校入口\.$/)).toBeVisible();
 });

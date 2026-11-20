@@ -261,7 +261,8 @@ export const api = {
   addBusStop: (s: BusStopInput) => request<BusStops>('POST', '/api/bus/stops', s),
   changeBusStop: (id: number, s: BusStopInput) => request<BusStops>('PUT', `/api/bus/stops/${id}`, s),
   deleteBusStop: (id: number) => request<BusStops>('DELETE', `/api/bus/stops/${id}`),
-  setBuzz: (buzz: Buzz) => request<BusStops>('PUT', '/api/bus/buzz', { buzz }),
+  /** How the phone alarms, at every stop: each left out stays as it was. */
+  setAlarm: (s: { buzz?: Buzz; sound_after?: number }) => request<BusStops>('PUT', '/api/bus/buzz', s),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
@@ -379,7 +380,7 @@ export interface FoundStop {
   name: string;
   /** City, district, street. */
   area: string;
-  kind: 'bus' | 'train';
+  kind: StopKind;
   lat: number;
   lng: number;
 }
@@ -399,6 +400,9 @@ export interface BusStop {
 /** The kinds of shift a stop can be for, as the server labels shifts. */
 export type ShiftLabel = 'Early' | 'Middle' | 'Late' | 'Night';
 
+/** A bus stop, or a train station. */
+export type StopKind = 'bus' | 'train';
+
 /** One of the signed-in person's stops. */
 export interface SavedStop {
   id: number;
@@ -407,6 +411,7 @@ export interface SavedStop {
   lng: number;
   /** Ring this many metres before the stop. */
   alert_meters: number;
+  kind: StopKind;
   /** The kinds of shift it's the stop for; each is on one stop at most. */
   shifts: ShiftLabel[];
   /** The Android app asks "Start bus alarm?" when a shift whose stop this is ends. */
@@ -420,6 +425,8 @@ export interface BusStops {
   last_id: number;
   /** How the phone buzzes, at any stop. */
   buzz: Buzz;
+  /** Seconds of buzzing before the phone's alarm sound joins in, if it isn't stopped: 0 (never), 30, 60 or 120. */
+  sound_after: number;
 }
 
 export interface BusStopInput {
@@ -431,6 +438,8 @@ export interface BusStopInput {
   shifts?: ShiftLabel[];
   /** Left out, a changed stop keeps its own; a new one asks. */
   ask?: boolean;
+  /** Left out, a changed stop keeps its own; a new one is a bus stop. */
+  kind?: StopKind;
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */

@@ -78,6 +78,8 @@ import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.Early
+import com.rudnam.samfran.core.model.SoundAfter
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.mapLink
 import com.rudnam.samfran.core.ui.TabPage
 import com.rudnam.samfran.core.ui.openWeb
@@ -144,9 +146,10 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
 }
 
 /**
- * The bus-stop alarm (web/src/features/bus/BusPage.tsx). Choose the stop
- * once; on the bus, "I'm on the bus" starts a trip on the phone, which buzzes
- * before the stop until "Stop". The phone does the watching; this page
+ * The ride alarm, for the bus or the train (web/src/features/bus/BusPage.tsx).
+ * Choose the stop (a bus stop or a station) once; on board, "I'm on the
+ * bus" (or train) starts a trip on the phone, which buzzes before the stop
+ * until "Stop", adding a sound if it isn't stopped. The phone does the watching; this page
  * explains it, sets it up, starts it, shows it and stops it. "Try it now" is
  * a practice run that really buzzes.
  *
@@ -195,7 +198,13 @@ fun BusScreen(
                 item(key = "head") { PageTitle(stringResource(R.string.settings)) }
                 problems(state)
                 item(key = "stops") { StopsCard(all, actions) }
-                item(key = "buzz") { SamFranCard { BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings) } }
+                item(key = "buzz") {
+                    SamFranCard(spacing = 14) {
+                        BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings)
+                        HorizontalDivider(color = SamFranTheme.colors.divider)
+                        SoundChips(all.soundAfter, actions::setSoundAfter, actions::hearSound, enabled = !state.savingSettings)
+                    }
+                }
                 item(key = "fold") { HowItWorksFold() }
                 return@TabPage
             }
@@ -298,7 +307,7 @@ private fun RideCard(
                 val d = alert + (start - alert) * practice.left
                 Eyebrow(stringResource(R.string.practice_run), color = colors.accentInk)
                 Text(stringResource(R.string.distance_to, Distances.format(d), name), style = MaterialTheme.typography.headlineSmall)
-                RouteLine(1f - practice.left)
+                RouteLine(1f - practice.left, stop.kind)
                 Hint(stringResource(R.string.practice_hint, Distances.format(alert.toFloat())))
                 SecondaryButton(stringResource(R.string.end_practice), actions::endPractice, Modifier.fillMaxWidth())
             }
@@ -309,12 +318,12 @@ private fun RideCard(
             }
             state.riding -> {
                 val d = state.trip.distance
-                Eyebrow(stringResource(R.string.on_the_bus), color = colors.accentInk)
+                Eyebrow(stringResource(if (stop.kind == StopKind.Train) R.string.on_the_train else R.string.on_the_bus), color = colors.accentInk)
                 Text(
                     if (d >= 0) stringResource(R.string.distance_to, Distances.format(d), name) else stringResource(R.string.finding_you),
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                RouteLine(Distances.progress(state.from, d, alert))
+                RouteLine(Distances.progress(state.from, d, alert), stop.kind)
                 if (d >= 0) Text(stringResource(R.string.buzzes_in, Distances.format(maxOf(0f, d - alert))), style = MaterialTheme.typography.titleSmall)
                 Hint(stringResource(R.string.lock_hint))
                 SecondaryButton(stringResource(R.string.stop_alarm), actions::stopTrip, Modifier.fillMaxWidth())
@@ -333,10 +342,10 @@ private fun RideCard(
                     } else if (state.picked != null && all.forShift(shift) != null && all.forShift(shift) != stop) {
                         Hint(stringResource(R.string.just_this_ride))
                     }
-                    Hint(stringResource(R.string.buzzes_before, Distances.format(alert.toFloat())) + " " + stringResource(earlyText(Distances.early(alert))))
+                    Hint(stringResource(R.string.buzzes_before, Distances.format(alert.toFloat())) + " " + stringResource(earlyText(Distances.early(alert, stop.kind))))
                 }
                 map(stop.lat, stop.lng, stop.name)
-                PrimaryButton(stringResource(R.string.on_bus), onStartTrip, Modifier.fillMaxWidth(), big = true)
+                PrimaryButton(stringResource(if (stop.kind == StopKind.Train) R.string.on_train else R.string.on_bus), onStartTrip, Modifier.fillMaxWidth(), big = true)
                 SecondaryButton(stringResource(R.string.try_it_now), onPractice, Modifier.fillMaxWidth())
                 Hint(stringResource(R.string.on_bus_hint), Modifier.fillMaxWidth())
             }
@@ -344,9 +353,9 @@ private fun RideCard(
     }
 }
 
-/** The ride as a line: the bus moving towards the stop, and the stretch at the end where it buzzes. */
+/** The ride as a line: the bus or train moving towards the stop, and the stretch at the end where it buzzes. */
 @Composable
-private fun RouteLine(progress: Float) {
+private fun RouteLine(progress: Float, kind: StopKind) {
     val colors = SamFranTheme.colors
     val zone = 0.24f
     val at = progress.coerceIn(0f, 1f) * (1f - zone)
@@ -359,15 +368,20 @@ private fun RouteLine(progress: Float) {
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = (w * at - 14.dp).coerceAtLeast(0.dp)).size(28.dp).clip(CircleShape).background(colors.surface),
             contentAlignment = Alignment.Center,
-        ) { LineIcon(SamFranIcons.bus, null, size = 18.dp, tint = colors.accentInk, stroke = 2.4f) }
+        ) { LineIcon(vehicle(kind), null, size = 18.dp, tint = colors.accentInk, stroke = 2.4f) }
     }
 }
+
+private fun vehicle(kind: StopKind) = if (kind == StopKind.Train) SamFranIcons.train else SamFranIcons.bus
 
 /** What a buzz distance means on a ride. */
 private fun earlyText(e: Early) = when (e) {
     Early.RightBefore -> R.string.early_right_before
     Early.OneStop -> R.string.early_one_stop
     Early.TwoStops -> R.string.early_two_stops
+    Early.OneMinute -> R.string.early_one_minute
+    Early.OneToTwoMinutes -> R.string.early_one_two_minutes
+    Early.TwoToThreeMinutes -> R.string.early_two_three_minutes
     Early.Plenty -> R.string.early_plenty
 }
 
@@ -395,13 +409,13 @@ private fun Step(n: Int, title: Int, body: Int) {
     }
 }
 
-/** Six one-tap distances, each saying what it means. */
+/** Six one-tap distances for the kind of stop, each saying what it means. */
 @Composable
-private fun DistanceChips(value: Int, onPick: (Int) -> Unit, enabled: Boolean = true) {
+private fun DistanceChips(value: Int, kind: StopKind, onPick: (Int) -> Unit, enabled: Boolean = true) {
     val colors = SamFranTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(stringResource(R.string.buzz_how_far), style = MaterialTheme.typography.labelLarge)
-        for (row in Distances.choices.chunked(3)) {
+        for (row in Distances.choices(kind).chunked(3)) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (m in row) {
                     val on = m == value
@@ -419,7 +433,7 @@ private fun DistanceChips(value: Int, onPick: (Int) -> Unit, enabled: Boolean = 
                 }
             }
         }
-        Hint(stringResource(earlyText(Distances.early(value))) + " " + stringResource(R.string.fast_road))
+        Hint(stringResource(earlyText(Distances.early(value, kind))) + " " + stringResource(if (kind == StopKind.Train) R.string.fast_train else R.string.fast_road))
     }
 }
 
@@ -445,6 +459,59 @@ private fun BuzzChips(value: Buzz, onPick: (Buzz) -> Unit, enabled: Boolean = tr
             }
         }
         Hint(stringResource(buzzAbout(value)) + " " + stringResource(R.string.buzz_try))
+    }
+}
+
+/** A row of one-tap choices, the one picked filled in. */
+@Composable
+private fun <T> ChoiceRow(choices: List<Pair<T, String>>, value: T, onPick: (T) -> Unit, enabled: Boolean = true) {
+    val colors = SamFranTheme.colors
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for ((v, label) in choices) {
+            val on = v == value
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(if (on) colors.accent else colors.sunken)
+                    .clickable(enabled = enabled, role = Role.RadioButton) { onPick(v) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/** Whether, and when, the alarm sound joins the buzz if it isn't stopped; and hearing it. */
+@Composable
+private fun SoundChips(value: Int, onPick: (Int) -> Unit, onHear: () -> Unit, enabled: Boolean = true) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.sound_after), style = MaterialTheme.typography.labelLarge)
+        ChoiceRow(
+            SoundAfter.choices.map { s ->
+                s to when {
+                    s == 0 -> stringResource(R.string.sound_never)
+                    s < 60 -> stringResource(R.string.sound_seconds, s)
+                    else -> stringResource(R.string.sound_minutes, s / 60)
+                }
+            },
+            value,
+            onPick,
+            enabled,
+        )
+        Hint(stringResource(if (value > 0) R.string.sound_on_hint else R.string.sound_off_hint))
+        SecondaryButton(stringResource(R.string.hear_sound), onHear, Modifier.fillMaxWidth())
+    }
+}
+
+/** A bus stop or a station. */
+@Composable
+private fun KindChips(value: StopKind, onPick: (StopKind) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(stringResource(R.string.kind_label), style = MaterialTheme.typography.labelLarge)
+        ChoiceRow(listOf(StopKind.Bus to stringResource(R.string.kind_bus), StopKind.Train to stringResource(R.string.kind_train)), value, onPick)
     }
 }
 
@@ -530,6 +597,7 @@ private fun StopsCard(all: BusStops, actions: BusActions) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                LineIcon(vehicle(s.kind), null, size = 20.dp, tint = colors.muted)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
                     if (s.shifts.isNotEmpty()) Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
@@ -541,7 +609,7 @@ private fun StopsCard(all: BusStops, actions: BusActions) {
     }
 }
 
-/** Whether to ask "Start bus alarm?" when a shift whose stop this is ends. */
+/** Whether to ask "Start the ride alarm?" when a shift whose stop this is ends. */
 @Composable
 private fun AskRow(f: StopForm, onToggle: () -> Unit) {
     val colors = SamFranTheme.colors
@@ -693,8 +761,9 @@ private fun StopPage(
                     }
                 }
             }
+            KindChips(f.kind, actions::setKind)
             if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
-            DistanceChips(f.meters, actions::setMeters)
+            DistanceChips(f.meters, f.kind, actions::setMeters)
         }
         if (!first) {
             SamFranCard(spacing = 14) {

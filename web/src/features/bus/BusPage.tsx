@@ -1,6 +1,7 @@
-// The bus-stop alarm. Choose the stop here; the alarm itself runs in the
-// Android app, which buzzes before the stop until "Stop". This page explains
-// it, sets it up, and offers the app.
+// The ride alarm, for the bus or the train. Choose the stop (a bus stop or a
+// station) here; the alarm itself runs in the Android app, which buzzes
+// before the stop until "Stop", adding a sound if it isn't stopped. This
+// page explains it, sets it up, and offers the app.
 //
 // A person can keep several stops, as they get off at different ones after
 // different shifts: a stop can be the one for some kinds of shift, and the
@@ -11,7 +12,7 @@
 // the way a real one does. It vibrates where the browser can, so anyone can
 // see what it does before relying on it.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel } from '../../api';
+import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
 import { t, type Key } from '../../i18n';
 import { labelOf } from '../shifts/codes';
 import { StopMap } from './StopMap';
@@ -40,7 +41,21 @@ function stopFor(all: BusStops, shift: ShiftDay | null): SavedStop | undefined {
 /** How many stops a person can keep (MaxStops, in internal/bus). */
 const maxStops = 10;
 
-const distances = [400, 600, 800, 1000, 1500, 2000];
+/**
+ * The choices for how far before the stop to buzz, and the one to start
+ * from, for each kind of stop (Distances, in core/model's Bus.kt): bus stops
+ * are 300–500 m apart in a city; stations a few km, and trains go faster.
+ */
+const distances: Record<StopKind, number[]> = { bus: [400, 600, 800, 1000, 1500, 2000], train: [1000, 1500, 2000, 3000, 4000, 5000] };
+const defaultMeters: Record<StopKind, number> = { bus: 800, train: 2000 };
+
+/** How long it buzzes before adding the phone's alarm sound, if not stopped (0: never). */
+const soundAfters: { s: number; label: Key }[] = [
+  { s: 0, label: 'Never' },
+  { s: 30, label: '30 s' },
+  { s: 60, label: '1 min' },
+  { s: 120, label: '2 min' },
+];
 
 /**
  * The ways it can buzz, as the Android app does them (Buzz, in core/model's Bus.kt):
@@ -62,8 +77,14 @@ function km(m: number): string {
   return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-/** What a buzz distance means on a ride, roughly: city bus stops are 300–500 m apart. */
-function early(m: number): Key {
+/** What a buzz distance means on a ride, roughly (Distances.early, in core/model's Bus.kt). */
+function early(m: number, kind: StopKind): Key {
+  if (kind === 'train') {
+    if (m <= 1000) return 'About a minute early.';
+    if (m <= 2000) return 'About one to two minutes early.';
+    if (m <= 3000) return 'About two to three minutes early.';
+    return 'Plenty of time to wake up.';
+  }
   if (m <= 400) return 'Right before the stop.';
   if (m <= 800) return 'About one stop early.';
   if (m <= 1500) return 'About two stops early.';
@@ -142,13 +163,13 @@ export function BusPage() {
     <section className="stack">
       {ready && (editing || settings) && (
         <button type="button" className="link back" onClick={() => (editing ? setEditing(null) : setSettings(false))}>
-          ‹ {editing && settings ? t('Settings') : t('Bus alarm')}
+          ‹ {editing && settings ? t('Settings') : t('Ride alarm')}
         </button>
       )}
       {(!ready || !editing) && (
         <header className="page-head with-action">
           <div>
-            <h1 className="display">{settings && ready ? t('Settings') : t('Bus alarm')}</h1>
+            <h1 className="display">{settings && ready ? t('Settings') : t('Ride alarm')}</h1>
             {!(settings && ready) && <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>}
           </div>
           {ready && !settings && !buzzing && (
@@ -260,15 +281,15 @@ function Steps() {
       <li>
         <span className="how-num" aria-hidden="true">2</span>
         <span>
-          <strong className="block">{t('Tap “I’m on the bus”')}</strong>
-          <span className="muted small">{t('When you get on. Then lock the phone and rest.')}</span>
+          <strong className="block">{t('Start it when you get on')}</strong>
+          <span className="muted small">{t('Tap “I’m on the bus” or “I’m on the train”. Then lock the phone and rest.')}</span>
         </span>
       </li>
       <li>
         <span className="how-num" aria-hidden="true">3</span>
         <span>
           <strong className="block">{t('It buzzes before your stop')}</strong>
-          <span className="muted small">{t('It keeps buzzing until you tap “Stop”.')}</span>
+          <span className="muted small">{t('It keeps buzzing until you tap “Stop”, and adds a sound if you don’t.')}</span>
         </span>
       </li>
     </ol>
@@ -285,8 +306,8 @@ function HowItWorks() {
   );
 }
 
-/** The ride as a line: the bus moving along it towards the stop, with the stretch where it buzzes. */
-function Route({ progress, arrived }: { progress: number; arrived?: boolean }) {
+/** The ride as a line: the bus or train moving along it towards the stop, with the stretch where it buzzes. */
+function Route({ progress, arrived, kind }: { progress: number; arrived?: boolean; kind: StopKind }) {
   const zone = 24; // % of the line, at the end, where it buzzes
   const at = arrived ? 100 - zone / 2 : Math.min(1, Math.max(0, progress)) * (100 - zone);
   return (
@@ -295,15 +316,23 @@ function Route({ progress, arrived }: { progress: number; arrived?: boolean }) {
       <span className="route-done" style={{ width: `${at}%` }} />
       <span className="route-zone" style={{ width: `${zone}%` }} />
       <span className="route-bus" style={{ left: `${at}%` }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="5" y="3" width="14" height="15" rx="3" />
-          <path d="M5 11h14M8 21v-3M16 21v-3" />
-        </svg>
+        <VehicleIcon kind={kind} size={18} stroke={2.4} />
       </span>
       <span className="route-stop" />
     </div>
   );
 }
+
+/** A bus or a train, from the front (SamFranIcons.bus and .train on Android). */
+export function VehicleIcon({ kind, size = 24, stroke = 2 }: { kind: StopKind; size?: number; stroke?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={kind === 'train' ? trainPath : busPath} />
+    </svg>
+  );
+}
+const busPath = 'M8 3h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM5 11h14M8 21v-3M16 21v-3';
+const trainPath = 'M8 2h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zM5 9h14M12 2v7M8.5 13h.01M15.5 13h.01M9 17l-2 4M15 17l2 4';
 
 function RideCard(p: {
   all: BusStops;
@@ -329,7 +358,7 @@ function RideCard(p: {
       <div className="card stack trip on" role="status">
         <span className="eyebrow">{t('Practice run')}</span>
         <p className="trip-big">{t('{distance} to {stop}', { distance: km(d), stop: name })}</p>
-        <Route progress={1 - p.practiceLeft} />
+        <Route progress={1 - p.practiceLeft} kind={stop.kind} />
         <p className="small">{t('Pretend you’ve dozed off… it buzzes {distance} before the stop.', { distance: km(alert) })}</p>
         <button type="button" className="secondary" onClick={p.onEndPractice}>
           {t('End practice')}
@@ -373,7 +402,7 @@ function RideCard(p: {
           </p>
         )}
         <p className="muted small">
-          {t('Buzzes {distance} before the stop.', { distance: km(alert) })} {t(early(alert))}
+          {t('Buzzes {distance} before the stop.', { distance: km(alert) })} {t(early(alert, stop.kind))}
         </p>
       </div>
       <StopMap lat={stop.lat} lng={stop.lng} name={stop.name} />
@@ -393,18 +422,20 @@ function RideCard(p: {
   );
 }
 
-function DistancePicker({ value, onPick, disabled }: { value: number; onPick: (m: number) => void; disabled?: boolean }) {
+function DistancePicker({ value, kind, onPick, disabled }: { value: number; kind: StopKind; onPick: (m: number) => void; disabled?: boolean }) {
   return (
     <div className="field">
       <span id="buzz-distance">{t('Buzz this far before the stop')}</span>
       <div className="chips" role="radiogroup" aria-labelledby="buzz-distance">
-        {distances.map((d) => (
+        {distances[kind].map((d) => (
           <button key={d} type="button" role="radio" aria-checked={value === d} className={value === d ? 'on' : ''} disabled={disabled} onClick={() => onPick(d)}>
             {km(d)}
           </button>
         ))}
       </div>
-      <span className="hint">{t(early(value))} {t('On a fast road, choose more.')}</span>
+      <span className="hint">
+        {t(early(value, kind))} {t(kind === 'train' ? 'On a fast train, choose more.' : 'On a fast road, choose more.')}
+      </span>
     </div>
   );
 }
@@ -425,16 +456,36 @@ function BuzzPicker({ value, onPick, disabled }: { value: Buzz; onPick: (b: Buzz
   );
 }
 
+function SoundPicker({ value, onPick, disabled }: { value: number; onPick: (s: number) => void; disabled?: boolean }) {
+  return (
+    <div className="field">
+      <span id="sound-after">{t('If it isn’t stopped, add sound after')}</span>
+      <div className="chips four" role="radiogroup" aria-labelledby="sound-after">
+        {soundAfters.map((x) => (
+          <button key={x.s} type="button" role="radio" aria-checked={value === x.s} className={value === x.s ? 'on' : ''} disabled={disabled} onClick={() => onPick(x.s)}>
+            {t(x.label)}
+          </button>
+        ))}
+      </div>
+      <span className="hint">
+        {value > 0
+          ? t('The phone’s alarm sound joins the buzz, getting louder, even on silent. Hear it in the Android app’s settings.')
+          : t('It only buzzes.')}
+      </span>
+    </div>
+  );
+}
+
 function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSaved: (s: BusStops) => void }) {
   const { all } = p;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  async function setBuzz(b: Buzz) {
+  async function setAlarm(s: { buzz?: Buzz; sound_after?: number }) {
     setBusy(true);
     setError('');
     try {
-      p.onSaved(await api.setBuzz(b));
+      p.onSaved(await api.setAlarm(s));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -450,6 +501,9 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
           {all.stops.map((s) => (
             <li key={s.id}>
               <button type="button" className="stop-row" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onChange(s)}>
+                <span className="stop-kind" aria-hidden="true">
+                  <VehicleIcon kind={s.kind} size={20} />
+                </span>
                 <span className="grow">
                   <strong className="block">{s.name || t('Unnamed stop')}</strong>
                   {s.shifts.length > 0 && <span className="muted small">{t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>}
@@ -466,7 +520,8 @@ function AlarmSettings(p: { all: BusStops; onChange: (s: Editing) => void; onSav
         )}
       </div>
       <div className="card stack">
-        <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setBuzz(b)} disabled={busy} />
+        <BuzzPicker value={all.buzz} onPick={(b) => b !== all.buzz && void setAlarm({ buzz: b })} disabled={busy} />
+        <SoundPicker value={all.sound_after} onPick={(x) => x !== all.sound_after && void setAlarm({ sound_after: x })} disabled={busy} />
         {error && (
           <p role="alert" className="error">
             {error}
@@ -552,6 +607,7 @@ function StopForm({
   const [name, setName] = useState(stop?.name ?? '');
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(stop ? { lat: stop.lat, lng: stop.lng } : null);
   const [shifts, setShifts] = useState<ShiftLabel[]>(stop?.shifts ?? []);
+  const [kind, setKind] = useState<StopKind>(stop?.kind ?? 'bus');
   const [ask, setAsk] = useState(stop?.ask ?? false);
   // The map shows once a stop is found, until it's saved; or when asked for.
   const [showMap, setShowMap] = useState(false);
@@ -562,7 +618,14 @@ function StopForm({
   const search = useStopSearch(query, pos);
   const [other, setOther] = useState(false);
 
+  /** A bus stop or a station: the distance changes to suit it, unless it's one of its choices. */
+  function changeKind(k: StopKind) {
+    setKind(k);
+    if (!distances[k].includes(meters)) setMeters(defaultMeters[k]);
+  }
+
   function pick(f: FoundStop) {
+    changeKind(f.kind);
     setName(f.name);
     setPos({ lat: f.lat, lng: f.lng });
     setByName(false);
@@ -609,7 +672,7 @@ function StopForm({
     setBusy(true);
     setError('');
     try {
-      const input = { name, lat: pos.lat, lng: pos.lng, alert_meters: meters, shifts, ask };
+      const input = { name, lat: pos.lat, lng: pos.lng, alert_meters: meters, shifts, ask, kind };
       if (stop) {
         onSaved(await api.changeBusStop(stop.id, input));
       } else {
@@ -641,7 +704,7 @@ function StopForm({
       {first && <span className="eyebrow">{t('Step 1 of 2')}</span>}
       {first ? <h2>{t('Where do you get off?')}</h2> : <span className="eyebrow">{t('Where')}</span>}
       <div className="field">
-        <label htmlFor="stop-name">{t('Stop name')}</label>
+        <label htmlFor="stop-name">{t('Stop or station')}</label>
         <input
           id="stop-name"
           maxLength={80}
@@ -675,11 +738,11 @@ function StopForm({
           {query && search.failed
             ? t('The stop search isn’t answering. Paste a Google Maps link instead.')
             : query && search.found?.length === 0
-              ? t('No stops by that name. Try fewer characters, written as on the stop’s sign.')
+              ? t('No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.')
               : query && search.found?.length
                 ? (
                     <>
-                      {t('Tap your stop.')}{' '}
+                      {t('Tap your stop. Not there? Add the town: 新林 知立.')}{' '}
                       <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
                         {t('Stops from OpenStreetMap')}
                       </a>
@@ -723,8 +786,19 @@ function StopForm({
         </div>
       </details>
 
+      <div className="field">
+        <span id="stop-kind">{t('Bus or train')}</span>
+        <div className="chips two" role="radiogroup" aria-labelledby="stop-kind">
+          {(['bus', 'train'] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={kind === k} className={kind === k ? 'on' : ''} onClick={() => changeKind(k)}>
+              {k === 'train' ? t('Station') : t('Bus stop')}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {first && <span className="eyebrow">{t('Step 2 of 2')}</span>}
-      <DistancePicker value={meters} onPick={setMeters} />
+      <DistancePicker value={meters} kind={kind} onPick={setMeters} />
       </div>
       {!first && (
         <div className="card stack">
@@ -740,7 +814,7 @@ function StopForm({
               ))}
             </div>
             <span className="hint">
-              {ask ? t('After a shift whose stop this is, the Android app asks “Start bus alarm?”.') : t('Off: no question after shifts whose stop this is.')}
+              {ask ? t('After a shift whose stop this is, the Android app asks “Start the ride alarm?”.') : t('Off: no question after shifts whose stop this is.')}
             </span>
           </div>
         </div>

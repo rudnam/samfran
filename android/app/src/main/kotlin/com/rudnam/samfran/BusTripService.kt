@@ -13,6 +13,9 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.media.AudioAttributes
+import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -31,12 +34,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * A bus trip: while it runs, the phone watches its position (GPS, the
- * network as a fallback) and, once it's within the alert distance of the
- * stop, buzzes: the phone vibrates, with no sound and the way the stop's
- * buzz says, until "I'm up" is tapped,
- * the notification is swiped away or SamFran is opened (or for ten minutes
- * at most). The service stays until then, so the buzzing isn't cut short.
+ * A ride, by bus or train: while it runs, the phone watches its position
+ * (GPS, the network as a fallback) and, once it's within the alert distance
+ * of the stop, buzzes: the phone vibrates the way the person's buzz says,
+ * until "Stop" is tapped, the notification is swiped away or SamFran is
+ * opened (or for ten minutes at most). If it isn't stopped within their
+ * sound_after, the phone's alarm sound joins in, rising from quiet; it
+ * plays as an alarm, so even on silent. The service stays until then, so the buzzing isn't cut short.
  * It's a foreground service, so it shows a notification for as long as it
  * runs, and Android doesn't stop it while the screen is off. It stops itself
  * after ringing, or after three hours. Positions never leave the phone.
@@ -49,6 +53,7 @@ class BusTripService : Service(), LocationListener {
     private var lng = 0.0
     private var radius = 800f
     private var buzz = Buzz.Strong
+    private var soundAfter = 0
     private var locations: LocationManager? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { stopSelf() }
@@ -65,6 +70,7 @@ class BusTripService : Service(), LocationListener {
         radius = intent.getFloatExtra(EXTRA_RADIUS, 800f)
         stopName = intent.getStringExtra(EXTRA_NAME).orEmpty()
         buzz = Buzz.from(intent.getStringExtra(EXTRA_BUZZ))
+        soundAfter = intent.getIntExtra(EXTRA_SOUND_AFTER, 0)
         channels(this)
         val n = tripNotification(getString(R.string.trip_starting))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -98,7 +104,7 @@ class BusTripService : Service(), LocationListener {
         if (d[0] <= radius) {
             // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
             locations?.removeUpdates(this)
-            ring(this, stopName, buzz)
+            ring(this, stopName, buzz, soundAfter)
             return
         }
         getSystemService(NotificationManager::class.java)
@@ -145,6 +151,7 @@ class BusTripService : Service(), LocationListener {
         const val EXTRA_RADIUS = "radius"
         const val EXTRA_NAME = "name"
         const val EXTRA_BUZZ = "buzz"
+        const val EXTRA_SOUND_AFTER = "sound_after"
 
         private const val TRIP_CHANNEL = "trip"
         private const val ALARM_CHANNEL = "nearly"
@@ -154,6 +161,15 @@ class BusTripService : Service(), LocationListener {
         private const val MAX_BUZZ_MS = 10 * 60 * 1000L
         private val main = Handler(Looper.getMainLooper())
         private val autoStop = Any()
+        private val soundStart = Any()
+        private val soundSteps = Any()
+
+        /** How long the sound takes to rise from quiet to the alarm volume. */
+        private const val RISE_MS = 20_000L
+        private const val QUIET = 0.1f
+
+        /** The alarm sound, while it plays. */
+        private var player: MediaPlayer? = null
 
         @Volatile private var stopName = ""
 
@@ -183,10 +199,11 @@ class BusTripService : Service(), LocationListener {
             }
 
         /**
-         * Buzzes: vibrates on repeat, with a notification whose "I'm up" button
-         * (or swiping it away, or opening SamFran) stops it. Ten minutes at most.
+         * Buzzes: vibrates on repeat, with a notification whose "Stop" button
+         * (or swiping it away, or opening SamFran) stops it. Ten minutes at
+         * most. After [soundAfter] seconds (0: never), the alarm sound joins in.
          */
-        fun ring(c: Context, name: String, buzz: Buzz) {
+        fun ring(c: Context, name: String, buzz: Buzz, soundAfter: Int = 0) {
             val app = c.applicationContext
             channels(app)
             val v = vibrator(app)
@@ -219,12 +236,69 @@ class BusTripService : Service(), LocationListener {
             app.getSystemService(NotificationManager::class.java).notify(ALARM_NOTIFICATION, n)
             main.removeCallbacksAndMessages(autoStop)
             main.postAtTime({ stopBuzz(app) }, autoStop, SystemClock.uptimeMillis() + MAX_BUZZ_MS)
+            main.removeCallbacksAndMessages(soundStart)
+            if (soundAfter > 0) {
+                main.postAtTime({ if (state.value.buzzing) sound(app) }, soundStart, SystemClock.uptimeMillis() + soundAfter * 1000L)
+            }
+        }
+
+        /** The phone's alarm sound; its ringtone or notification sound when it has none set. */
+        private fun alarmSound(c: Context): Uri? =
+            RingtoneManager.getActualDefaultRingtoneUri(c, RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getActualDefaultRingtoneUri(c, RingtoneManager.TYPE_RINGTONE)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        /**
+         * Plays the alarm sound on repeat, as an alarm (so even on silent, and
+         * at the alarm volume), rising from quiet over [riseMs]; for [forMs],
+         * or until [stopSound] when that's 0.
+         */
+        fun sound(c: Context, riseMs: Long = RISE_MS, forMs: Long = 0) {
+            val app = c.applicationContext
+            stopSound()
+            val uri = alarmSound(app) ?: return
+            player = try {
+                MediaPlayer().apply {
+                    setAudioAttributes(
+                        AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+                    )
+                    setDataSource(app, uri)
+                    isLooping = true
+                    setVolume(QUIET, QUIET)
+                    prepare()
+                    start()
+                }
+            } catch (e: Exception) {
+                return // nothing it can play: it still buzzes
+            }
+            val now = SystemClock.uptimeMillis()
+            val steps = 20
+            for (i in 1..steps) {
+                val v = QUIET + (1f - QUIET) * i / steps
+                main.postAtTime({ player?.setVolume(v, v) }, soundSteps, now + riseMs * i / steps)
+            }
+            if (forMs > 0) main.postAtTime({ stopSound() }, soundSteps, now + forMs)
+        }
+
+        fun stopSound() {
+            main.removeCallbacksAndMessages(soundSteps)
+            player?.run {
+                try {
+                    stop()
+                } catch (e: IllegalStateException) {
+                    // it hadn't started
+                }
+                release()
+            }
+            player = null
         }
 
         /** Stops buzzing, and the trip with it. */
         fun stopBuzz(c: Context) {
             val app = c.applicationContext
             main.removeCallbacksAndMessages(autoStop)
+            main.removeCallbacksAndMessages(soundStart)
+            stopSound()
             if (!state.value.buzzing) return
             state.update { it.copy(buzzing = false) }
             vibrator(app).cancel()
@@ -234,7 +308,7 @@ class BusTripService : Service(), LocationListener {
     }
 }
 
-/** "I'm up", or the arrival notification swiped away: stops the buzzing (BusTripService.ring). */
+/** "Stop", or the arrival notification swiped away: stops the buzzing and the sound (BusTripService.ring). */
 class StopBuzzReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) = BusTripService.stopBuzz(context)
 }

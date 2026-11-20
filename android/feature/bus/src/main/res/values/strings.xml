@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="bus_alarm">Bus alarm</string>
+    <string name="bus_alarm">Ride alarm</string>
     <string name="bus_subtitle">Buzzes before your stop, so you don’t miss it.</string>
     <string name="location_denied">SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.</string>
     <string name="your_stop_is_next">Your stop is next</string>
@@ -11,14 +11,14 @@
     <string name="how_it_works">How it works</string>
     <string name="step1_title">Choose your stop</string>
     <string name="step1_body">Just once. It’s kept for every ride.</string>
-    <string name="step2_title">Tap “I’m on the bus”</string>
-    <string name="step2_body">When you get on. Then lock the phone and rest.</string>
+    <string name="step2_title">Start it when you get on</string>
+    <string name="step2_body">Tap “I’m on the bus” or “I’m on the train”. Then lock the phone and rest.</string>
     <string name="step3_title">It buzzes before your stop</string>
-    <string name="step3_body">It keeps buzzing until you tap “Stop”.</string>
+    <string name="step3_body">It keeps buzzing until you tap “Stop”, and adds a sound if you don’t.</string>
     <string name="practice_hint">Pretend you’ve dozed off… it buzzes %s before the stop.</string>
     <string name="end_practice">End practice</string>
     <string name="thats_it">✓ That’s it</string>
-    <string name="thats_it_hint">On a real ride, tap “I’m on the bus” when you get on. That’s all.</string>
+    <string name="thats_it_hint">On a real ride, start it when you get on. That’s all.</string>
     <string name="done">Done</string>
     <string name="on_the_bus">On the bus</string>
     <string name="distance_to">%1$s to %2$s</string>
@@ -36,7 +36,7 @@
     <string name="fast_road">On a fast road, choose more.</string>
     <string name="on_bus">I’m on the bus</string>
     <string name="try_it_now">Try it now</string>
-    <string name="on_bus_hint">Tap “I’m on the bus” when you get on. “Try it now” is a six-second practice.</string>
+    <string name="on_bus_hint">Tap it when you get on. “Try it now” is a six-second practice.</string>
     <string name="buzz_how_far">Buzz this far before the stop</string>
     <string name="buzz_how">How it buzzes</string>
     <string name="buzz_gentle">Gentle</string>
@@ -52,11 +52,11 @@
     <string name="step_1_of_2">Step 1 of 2</string>
     <string name="step_2_of_2">Step 2 of 2</string>
     <string name="where_get_off">Where do you get off?</string>
-    <string name="stop_name">Stop name</string>
+    <string name="stop_name">Stop or station</string>
     <string name="stop_name_hint">Type part of it, e.g. 葵西</string>
     <string name="search_failed">The stop search isn’t answering. Paste a Google Maps link instead.</string>
-    <string name="no_stops">No stops by that name. Try fewer characters, written as on the stop’s sign.</string>
-    <string name="tap_your_stop">Tap your stop.</string>
+    <string name="no_stops">No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.</string>
+    <string name="tap_your_stop">Tap your stop. Not there? Add the town: 新林 知立.</string>
     <string name="osm">Stops from OpenStreetMap.</string>
     <string name="found_it">Found it.</string>
     <string name="found_by_name">Found it on OpenStreetMap, by its name.</string>
@@ -93,5 +93,22 @@
     <string name="stop_where">Where</string>
     <string name="stop_when">When</string>
     <string name="ask_when_these_end">Ask when these end</string>
-    <string name="ask_when_these_end_hint">“Start bus alarm?” when a shift whose stop this is ends.</string>
+    <string name="ask_when_these_end_hint">“Start the ride alarm?” when a shift whose stop this is ends.</string>
+    <!-- Bus or train, and the sound when the buzz isn't stopped -->
+    <string name="on_the_train">On the train</string>
+    <string name="on_train">I’m on the train</string>
+    <string name="early_one_minute">About a minute early.</string>
+    <string name="early_one_two_minutes">About one to two minutes early.</string>
+    <string name="early_two_three_minutes">About two to three minutes early.</string>
+    <string name="fast_train">On a fast train, choose more.</string>
+    <string name="kind_label">Bus or train</string>
+    <string name="kind_bus">Bus stop</string>
+    <string name="kind_train">Station</string>
+    <string name="sound_after">If it isn’t stopped, add sound after</string>
+    <string name="sound_never">Never</string>
+    <string name="sound_seconds">%d s</string>
+    <string name="sound_minutes">%d min</string>
+    <string name="sound_on_hint">The phone’s alarm sound joins the buzz, getting louder, even on silent.</string>
+    <string name="sound_off_hint">It only buzzes.</string>
+    <string name="hear_sound">Hear the sound</string>
 </resources>

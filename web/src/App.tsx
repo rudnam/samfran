@@ -147,8 +147,8 @@ export function App() {
                 {t('Shifts')}
               </a>
               <a href={href('bus')} className={tab === 'bus' ? 'active' : ''} aria-current={tab === 'bus' ? 'page' : undefined}>
-                <BusIcon />
-                {t('Bus')}
+                <RideIcon />
+                {t('Ride')}
               </a>
               {/* Named by hand, so the dot's own label isn't read as part of the tab's name. */}
               <a href={href('us')} aria-label={t('Us')} className={tab === 'us' ? 'active' : ''} aria-current={tab === 'us' ? 'page' : undefined}>
@@ -290,11 +290,13 @@ function ShiftsIcon() {
   );
 }
 
-function BusIcon() {
+/** The ride alarm's tab, for the bus or the train: a route from where you get on to where you get off. */
+function RideIcon() {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="5" y="3" width="14" height="15" rx="3" />
-      <path d="M5 11h14M8 21v-3M16 21v-3" />
+      <circle cx="6" cy="19" r="2.5" />
+      <path d="M8.5 19H17a3.5 3.5 0 0 0 0-7H7a3.5 3.5 0 0 1 0-7h8.5" />
+      <path d="M18 9s-3-2.7-3-5a3 3 0 0 1 6 0c0 2.3-3 5-3 5z" />
     </svg>
   );
 }

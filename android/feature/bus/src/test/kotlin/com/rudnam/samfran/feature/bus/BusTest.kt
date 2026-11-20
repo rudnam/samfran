@@ -9,6 +9,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.testing.FakeBusAlarm
@@ -65,6 +66,9 @@ class BusScreenshotTest {
         override fun closeSettings() {}
         override fun toggleMap() {}
         override fun setBuzz(buzz: Buzz) {}
+        override fun setSoundAfter(seconds: Int) {}
+        override fun hearSound() {}
+        override fun setKind(kind: StopKind) {}
         override fun pickStop(id: Long) {}
         override fun endChoosing() {}
         override fun edit(id: Long) {}
@@ -135,6 +139,17 @@ class BusScreenshotTest {
     @Test
     fun onTheBus() = shot("trip", content = screen(ready.copy(trip = TripStatus(running = true, distance = 2340f), from = 4200f)))
 
+    // To a station: "I'm on the train", and a train on the line.
+    @Test
+    fun readyForTheTrain() = shot("train", content = screen(several.copy(picked = 2)))
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun readyForTheTrainJapanese() = shot("train-ja", content = screen(several.copy(picked = 2)))
+
+    @Test
+    fun onTheTrain() = shot("trip-train", content = screen(several.copy(picked = 2, trip = TripStatus(running = true, distance = 5200f), from = 9000f)))
+
     @Test
     fun buzzing() = shot("buzzing", content = screen(ready.copy(trip = TripStatus(running = true, distance = 640f, buzzing = true))))
 
@@ -165,7 +180,7 @@ class BusScreenshotTest {
     // A stop's page, opened from Settings: where (the map folded away), then when.
     @Test
     fun stopPage() = shot("stop", content = screen(
-        several.copy(settings = true, editing = 2, form = StopForm(name = "静岡駅", position = 34.97 to 138.39, meters = 600, shifts = listOf("Early", "Middle"))),
+        several.copy(settings = true, editing = 2, form = StopForm(name = "静岡駅", position = 34.97 to 138.39, meters = 2000, kind = StopKind.Train, shifts = listOf("Early", "Middle"))),
     ))
 
     @Test
@@ -225,6 +240,38 @@ class BusViewModelTest {
         assertFalse(vm.state.value.trip.running)
         vm.setBuzz(Buzz.Strongest)
         assertEquals(Buzz.Strongest, bus.stopsFlow.value?.buzz)
+        // The sound: after a minute by default; changed, and heard.
+        assertEquals(60, vm.state.value.stops?.soundAfter)
+        vm.setSoundAfter(0)
+        assertEquals(0, bus.stopsFlow.value?.soundAfter)
+        assertEquals(Buzz.Strongest, bus.stopsFlow.value?.buzz)
+        vm.hearSound()
+        assertEquals(1, alarm.heard)
+    }
+
+    @Test
+    fun `a station from the search is a train stop, with a train's distance`() = runTest {
+        val vm = vm()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        vm.add()
+        assertEquals(StopKind.Bus to 800, vm.state.value.form.let { it.kind to it.meters })
+        vm.setName("静岡")
+        advanceTimeBy(300)
+        vm.pick(vm.state.value.form.found!!.single { it.train })
+        assertEquals(StopKind.Train to 2000, vm.state.value.form.let { it.kind to it.meters })
+        // A distance both have stays; one only the bus has goes.
+        vm.setMeters(1500)
+        vm.setKind(StopKind.Bus)
+        assertEquals(1500, vm.state.value.form.meters)
+        vm.setMeters(400)
+        vm.setKind(StopKind.Train)
+        assertEquals(2000, vm.state.value.form.meters)
+        vm.saveStop()
+        val saved = bus.stopsFlow.value!!.stops.last()
+        assertEquals(listOf("静岡", "train", "2000"), listOf(saved.name, saved.kind.api, saved.alertMeters.toString()))
+        // Opened again, it's still a station.
+        vm.edit(saved.id)
+        assertEquals(StopKind.Train, vm.state.value.form.kind)
     }
 
     @Test

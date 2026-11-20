@@ -6,6 +6,8 @@ import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.SoundAfter
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.McpToken
@@ -342,6 +344,8 @@ data class NetworkBusStop(
     @SerialName("alert_meters") val alertMeters: Int = 800,
     val shifts: List<String> = emptyList(),
     val ask: Boolean = false,
+    /** Missing from an older server (or the phone's copy of its answer): a bus stop. */
+    val kind: String = "bus",
 )
 
 @Serializable
@@ -349,11 +353,17 @@ data class NetworkBusStops(
     val stops: List<NetworkBusStop> = emptyList(),
     @SerialName("last_id") val lastId: Long = 0,
     val buzz: String = "strong",
+    @SerialName("sound_after") val soundAfter: Int = SoundAfter.DEFAULT,
 )
 
 fun NetworkBusStops.asModel(): BusStops {
     val b = Buzz.from(buzz)
-    return BusStops(stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts, it.ask) }, lastId, b)
+    return BusStops(
+        stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts, it.ask, StopKind.from(it.kind), soundAfter) },
+        lastId,
+        b,
+        soundAfter,
+    )
 }
 
 @Serializable
@@ -366,10 +376,16 @@ data class NetworkBusStopInput(
     val shifts: List<String>? = null,
     /** Left out (null), a changed stop keeps its own; a new one asks. */
     val ask: Boolean? = null,
+    /** "bus" or "train". Left out (null), a changed stop keeps its own; a new one is a bus stop. */
+    val kind: String? = null,
 )
 
+/** How the phone alarms (PUT /api/bus/buzz): each left out (null) stays as it was. */
 @Serializable
-data class NetworkBuzz(val buzz: String)
+data class NetworkAlarmSettings(
+    val buzz: String? = null,
+    @SerialName("sound_after") val soundAfter: Int? = null,
+)
 
 @Serializable
 data class NetworkFoundStop(
