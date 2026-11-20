@@ -316,7 +316,7 @@ function matches(r: Restaurant, query: string): boolean {
   return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q));
 }
 
-/** How to order the list: an icon button (filled unless newest first) opening a menu of the ways. */
+/** How to order the list: an icon button, the same whichever order (it's a menu, not a toggle), opening a menu of the ways with the current one ticked. */
 function SortMenu({ value, onChange }: { value: Sort; onChange: (s: Sort) => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
@@ -325,13 +325,13 @@ function SortMenu({ value, onChange }: { value: Sort; onChange: (s: Sort) => voi
     <div className="cat-menu" ref={box}>
       <button
         type="button"
-        className={`icon-toggle${value !== 'newest' ? ' on' : ''}`}
+        className="icon-toggle"
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={t('Order: {name}', { name: sortName(value) })}
         onClick={() => setOpen(!open)}
       >
-        <Icon name={value === 'nearby' ? 'nearby' : 'sort'} size={20} />
+        <Icon name="sort" size={20} />
       </button>
       {open && (
         <div className="cat-menu-list end" role="radiogroup" aria-label={t('Order')}>
@@ -347,6 +347,7 @@ function SortMenu({ value, onChange }: { value: Sort; onChange: (s: Sort) => voi
               }}
             >
               <span className="grow">{sortName(s)}</span>
+              {value === s && <Icon name="check" size={18} />}
             </button>
           ))}
         </div>
