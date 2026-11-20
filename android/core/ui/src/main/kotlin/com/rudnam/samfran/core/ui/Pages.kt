@@ -56,6 +56,8 @@ fun TabPage(
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
     bottomSpace: Int = 24,
+    /** Off while a finger is on something inside that drags by itself (a map), so the page doesn't take the drag. */
+    userScrollEnabled: Boolean = true,
     content: LazyListScope.() -> Unit,
 ) {
     val insets = WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal).asPaddingValues()
@@ -73,6 +75,7 @@ fun TabPage(
                 bottom = bottomSpace.dp,
             ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
+            userScrollEnabled = userScrollEnabled,
             content = content,
         )
         }
@@ -116,6 +119,7 @@ fun SubPage(
                 .padding(top = 4.dp, bottom = 24.dp)
                 .then(if (bottomBar == null) Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom)) else Modifier),
             verticalArrangement = Arrangement.spacedBy(16.dp),
+            userScrollEnabled = userScrollEnabled,
             content = content,
         )
         if (bottomBar != null) {

@@ -109,11 +109,13 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
             .any { ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED }
         if (granted) actions.setOrder(PlaceOrder.Nearby) else askLocation.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }
+    // A finger on the map: the page holds still, so the drag moves the map.
+    var mapHeld by remember { mutableStateOf(false) }
     // Opened on Nearby: find where the phone is.
     LaunchedEffect(state.nearby) { if (state.nearby && state.here == null) actions.findHere() }
     Box(Modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
-            TabPage(bottomSpace = 96) {
+            TabPage(bottomSpace = 96, userScrollEnabled = !mapHeld) {
                 item(key = "head") { PageTitle(stringResource(R.string.our_spots)) }
                 item(key = "tabs") {
                     Segmented(
@@ -187,7 +189,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
                         }
                     }
                     onMap -> item(key = "map") {
-                        PlacesMap(state.shown, state.near, onOpen) { place, open ->
+                        PlacesMap(state.shown, state.near, onOpen, onHeld = { mapHeld = it }) { place, open ->
                             PlaceRow(place, state.space, state.tab, locale, state.today, state.near, onClick = open)
                         }
                     }

@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,16 +21,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.RequestDisallowInterceptTouchEvent
-import androidx.compose.ui.input.pointer.pointerInteropFilter
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -62,10 +64,20 @@ internal fun hasMapsKey(context: Context): Boolean = try {
  * a pin per place that has a position, in its category's colour and icon,
  * and the phone's spot when [here] is known. Tapping a pin shows the place's
  * card under the map, which opens it.
+ *
+ * [onHeld] says when a finger goes down on the map and when the last one
+ * lifts: the page around it must stop scrolling meanwhile (TabPage's
+ * userScrollEnabled), or it takes every drag that's more up-and-down than
+ * sideways and the map only pans sideways.
  */
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun PlacesMap(places: List<Restaurant>, here: Pair<Double, Double>?, onOpen: (Long) -> Unit, card: @Composable (Restaurant, () -> Unit) -> Unit) {
+fun PlacesMap(
+    places: List<Restaurant>,
+    here: Pair<Double, Double>?,
+    onOpen: (Long) -> Unit,
+    onHeld: (Boolean) -> Unit,
+    card: @Composable (Restaurant, () -> Unit) -> Unit,
+) {
     val placed = places.filter { it.lat != null && it.lng != null }
     var selected by rememberSaveable { mutableStateOf<Long?>(null) }
     var loaded by remember { mutableStateOf(false) }
@@ -81,9 +93,9 @@ fun PlacesMap(places: List<Restaurant>, here: Pair<Double, Double>?, onOpen: (Lo
             camera.move(CameraUpdateFactory.newLatLngBounds(bounds, 120))
         }
     }
-    // A drag on the map moves the map, not the page around it.
-    val disallow = remember { RequestDisallowInterceptTouchEvent() }
     val description = stringResource(R.string.map_of_places)
+    // The latest callback, without restarting the watcher (and dropping the hold) mid-drag.
+    val held by rememberUpdatedState(onHeld)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(
             Modifier
@@ -91,9 +103,17 @@ fun PlacesMap(places: List<Restaurant>, here: Pair<Double, Double>?, onOpen: (Lo
                 .height(440.dp)
                 .clip(MaterialTheme.shapes.medium)
                 .background(SamFranTheme.colors.sunken)
-                .pointerInteropFilter(disallow) {
-                    disallow(true)
-                    false
+                // Watches the fingers before the map sees them, and takes nothing from it.
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        held(true)
+                        try {
+                            while (awaitPointerEvent(PointerEventPass.Initial).changes.any { it.pressed }) Unit
+                        } finally {
+                            held(false)
+                        }
+                    }
                 }
                 .semantics { contentDescription = description },
         ) {
