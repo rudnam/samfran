@@ -4,7 +4,7 @@ export const categories = ['eat', 'nature', 'culture', 'fun', 'relax', 'shopping
 export type Category = (typeof categories)[number];
 
 /** Icon paths, one per category, plus the Places tab's own. */
-export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort', string> = {
+export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort' | 'check', string> = {
   eat: 'M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9',
   nature: 'M12 3a5 5 0 0 1 5 5 4 4 0 0 1-1 7.5H8A4 4 0 0 1 7 8a5 5 0 0 1 5-5zM12 15.5V21M12 12.5l-2.5-2M9 21h6',
   culture: 'M3 5c4 1.2 14 1.2 18 0M5 9.5h14M7 6.3V21M17 6.3V21M12 6.5v3',
