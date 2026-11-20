@@ -228,30 +228,30 @@ private fun IconToggle(icon: String, label: String, on: Boolean, onClick: () -> 
     }
 }
 
-/** How to order the list: an icon button (dark unless newest first) opening a menu of the ways. */
+/** How to order the list: an icon button, the same whichever order (it's a menu, not a toggle), opening a menu of the ways with the current one ticked. */
 @Composable
 private fun OrderMenu(order: PlaceOrder, onPick: (PlaceOrder) -> Unit) {
     val colors = SamFranTheme.colors
     var open by remember { mutableStateOf(false) }
-    val on = order != PlaceOrder.Newest
     val label = stringResource(R.string.order_is, stringResource(order.title))
     Box {
         Box(
             Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(13.dp))
-                .background(if (on) colors.text else colors.surface)
-                .then(if (on) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(13.dp)))
+                .background(colors.surface)
+                .border(1.dp, colors.border, RoundedCornerShape(13.dp))
                 .clickable(onClickLabel = label, role = Role.Button) { open = true }
                 .semantics { contentDescription = label },
             contentAlignment = Alignment.Center,
         ) {
-            LineIcon(if (order == PlaceOrder.Nearby) SamFranIcons.nearby else SamFranIcons.sort, null, tint = if (on) colors.bg else colors.text, size = 21.dp)
+            LineIcon(SamFranIcons.sort, null, tint = colors.text, size = 21.dp)
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = colors.surface, shape = RoundedCornerShape(16.dp)) {
             for (o in PlaceOrder.entries) {
                 DropdownMenuItem(
                     text = { Text(stringResource(o.title), fontWeight = FontWeight.SemiBold) },
+                    trailingIcon = if (o == order) ({ LineIcon(SamFranIcons.check, null, size = 18.dp) }) else null,
                     onClick = {
                         open = false
                         onPick(o)
