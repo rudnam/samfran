@@ -130,6 +130,7 @@ for (const [name, viewport] of [
       }),
     );
     await page.goto('/app/#/add');
+    await page.reload(); // a fresh form, not the one just filled in
     await page.getByLabel('Name', { exact: true }).fill('大仏');
     const far = page.getByRole('list', { name: 'Matching places' }).getByRole('listitem');
     await expect(far).toHaveCount(5);
