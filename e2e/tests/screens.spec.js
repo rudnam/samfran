@@ -98,11 +98,12 @@ for (const [name, viewport] of [
     await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
-          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', category: 'eat', lat: 34.704, lng: 137.734 },
-          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', category: 'eat', lat: 34.703, lng: 137.73 },
-          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', category: 'eat', lat: 34.71, lng: 137.72 },
-          { name: 'Gyoza Park', area: 'Hamamatsu Naka', street: '', kind: 'park', category: 'nature', lat: 34.72, lng: 137.72 },
-          { name: 'Gyoza Shrine', area: 'Hamamatsu Kita', street: '', kind: 'place_of_worship', category: 'culture', lat: 34.8, lng: 137.7 },
+          // The one saved (Station East), another branch of it, and others, each with how far.
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', category: 'eat', lat: 34.7032, lng: 137.737, meters: 240 },
+          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', category: 'eat', lat: 34.703, lng: 137.73, meters: 450 },
+          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', category: 'eat', lat: 34.71, lng: 137.72, meters: 1500 },
+          { name: 'Gyoza Park', area: 'Hamamatsu Naka', street: '', kind: 'park', category: 'nature', lat: 34.72, lng: 137.72, meters: 2300 },
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Kita', street: 'Miyakoda', kind: 'restaurant', category: 'eat', lat: 34.8, lng: 137.7, meters: 11400 },
         ],
       }),
     );

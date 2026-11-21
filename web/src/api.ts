@@ -372,6 +372,10 @@ export interface FoundPlace {
   food?: string;
   /** From placeDetails: the place's own Google Maps link. */
   map_url?: string;
+  /** How far it is from where the search was asked from, when it was given one. */
+  meters?: number;
+  /** Who found it: google or openstreetmap (missing from an older server: openstreetmap). */
+  source?: string;
 }
 
 /** Where the signed-in person gets off the bus. */

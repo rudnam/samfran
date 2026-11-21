@@ -24,7 +24,7 @@ func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/places:autocomplete":
 			w.Write([]byte(`{"suggestions":[
-				{"placePrediction":{"placeId":"ChIJishimatsu1","structuredFormat":{"mainText":{"text":"石松 JR浜松駅店"},"secondaryText":{"text":"日本、〒430-0926 静岡県浜松市中央区砂山町"}},"types":["food","chinese_restaurant","restaurant"]}},
+				{"placePrediction":{"placeId":"ChIJishimatsu1","structuredFormat":{"mainText":{"text":"石松 JR浜松駅店"},"secondaryText":{"text":"日本、〒430-0926 静岡県浜松市中央区砂山町"}},"types":["food","chinese_restaurant","restaurant"],"distanceMeters":412}},
 				{"queryPrediction":{"text":{"text":"石松餃子"}}},
 				{"placePrediction":{"placeId":"ChIJishimatsu2","structuredFormat":{"mainText":{"text":"石松餃子 浜北本店"},"secondaryText":{"text":"日本、静岡県浜松市浜名区"}},"types":["restaurant","food"]}},
 				{"placePrediction":{"placeId":"ChIJishimatsucho","structuredFormat":{"mainText":{"text":"石松町"},"secondaryText":{"text":"日本、静岡県"}},"types":["sublocality","political","geocode"]}},
@@ -70,8 +70,12 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	if len(found) != 3 {
 		t.Fatalf("found %+v", found)
 	}
-	if f := found[0]; f.Name != "石松 JR浜松駅店" || f.PlaceID != "ChIJishimatsu1" || f.Street != "静岡県浜松市中央区砂山町" || f.Kind != "chinese_restaurant" || f.Category != CategoryEat {
+	if f := found[0]; f.Name != "石松 JR浜松駅店" || f.PlaceID != "ChIJishimatsu1" || f.Street != "静岡県浜松市中央区砂山町" || f.Kind != "chinese_restaurant" || f.Category != CategoryEat ||
+		f.Meters == nil || *f.Meters != 412 || f.Source != SourceGoogle {
 		t.Errorf("first: %+v", f)
+	}
+	if f := found[1]; f.Meters != nil {
+		t.Errorf("a distance Google didn't give: %+v", f)
 	}
 	if f := found[2]; f.Name != "石松公園" || f.Kind != "park" || f.Category != CategoryNature {
 		t.Errorf("park: %+v", f)
@@ -93,7 +97,7 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	var p FoundPlace
 	json.Unmarshal(rec.Body.Bytes(), &p)
 	want := FoundPlace{Name: "石松 JR浜松駅店", Area: "浜松市 中央区", Street: "砂山町", Kind: "chinese_restaurant", Category: CategoryEat, Lat: 34.7036, Lng: 137.7352,
-		PlaceID: "ChIJishimatsu1", Food: "中華料理店", MapURL: "https://maps.google.com/?cid=123"}
+		PlaceID: "ChIJishimatsu1", Food: "中華料理店", MapURL: "https://maps.google.com/?cid=123", Source: SourceGoogle}
 	if p != want {
 		t.Errorf("details:\n got %+v\nwant %+v", p, want)
 	}

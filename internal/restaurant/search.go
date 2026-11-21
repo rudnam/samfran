@@ -5,8 +5,9 @@ package restaurant
 // (restaurants, parks, shrines, museums… category.go) whose names match, from Photon
 // (photon.komoot.io), a search-as-you-type geocoder over OpenStreetMap data
 // (Nominatim forbids autocomplete). Results near lat/lng, when given, come
-// first: the web page sends the person's bus stop, if they have one, so the
-// branch in their own town wins over one across the country.
+// first: the apps send where the phone is (when they may know without
+// asking), else the person's bus stop, so the branch in their own town wins
+// over one across the country.
 //
 // Romaji works when OpenStreetMap has a Latin name for the place (name:en
 // and the like), which chains mostly do: "sukiya" finds すき家, "coco ichi"
@@ -64,7 +65,19 @@ type FoundPlace struct {
 	Food string `json:"food,omitempty"`
 	// MapURL is the place's own Google Maps link, from Google's details.
 	MapURL string `json:"map_url,omitempty"`
+	// Meters is how far it is from the lat/lng the search was given, when
+	// it was given one and the search knows (Google's suggestions say so).
+	Meters *int `json:"meters,omitempty"`
+	// Source is who found it, "google" or "openstreetmap", for the credit
+	// the form shows under the suggestions.
+	Source string `json:"source,omitempty"`
 }
+
+// Source of a found place.
+const (
+	SourceGoogle = "google"
+	SourceOSM    = "openstreetmap"
+)
 
 // placeSearch asks Photon, remembering recent answers.
 type placeSearch struct {
@@ -79,7 +92,24 @@ type searched struct {
 	at    time.Time
 }
 
+// search is what Photon finds for q, each with how far it is from near.
 func (s *placeSearch) search(ctx context.Context, q string, near *[2]float64) ([]FoundPlace, error) {
+	found, err := s.find(ctx, q, near)
+	if err != nil || near == nil {
+		return found, err
+	}
+	// The cache is shared by searches up to about 10 km apart: the distance
+	// is worked out afresh for each, on a copy.
+	out := make([]FoundPlace, len(found))
+	for i, p := range found {
+		m := int(geo.Meters(near[0], near[1], p.Lat, p.Lng) + 0.5)
+		p.Meters = &m
+		out[i] = p
+	}
+	return out, nil
+}
+
+func (s *placeSearch) find(ctx context.Context, q string, near *[2]float64) ([]FoundPlace, error) {
 	key := q
 	if near != nil {
 		// Round the bias to about 10 km, so nearby searches share answers.
@@ -160,7 +190,7 @@ next:
 			street = p.Locality
 		}
 		found = append(found, FoundPlace{Name: p.Name, Area: strings.Join(area, " "), Street: street, Kind: p.OSMValue,
-			Category: osmCategory(p.OSMKey, p.OSMValue), Lat: c[1], Lng: c[0]})
+			Category: osmCategory(p.OSMKey, p.OSMValue), Lat: c[1], Lng: c[0], Source: SourceOSM})
 		if len(found) == maxFound {
 			break
 		}

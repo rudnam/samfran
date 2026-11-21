@@ -115,7 +115,18 @@ data class FoundPlace(
     val googleMapUrl: String = "",
     /** The category the kind of place is in; null from an older server. */
     val category: PlaceCategory? = null,
+    /** How far it is from where the search was asked from, when it was given one (null from an older server). */
+    val meters: Int? = null,
+    /** Who found it: [SOURCE_GOOGLE] or OpenStreetMap ("openstreetmap", or empty from an older server). */
+    val source: String = "",
 ) {
+    /** Whether its position is known: a Google suggestion has it only once its details come. */
+    val located: Boolean get() = lat != 0.0 || lng != 0.0
+
+    companion object {
+        const val SOURCE_GOOGLE = "google"
+    }
+
     /** Where it is, as a suggestion's second line: street and area. */
     val where: String get() = listOf(street, area).filter { it.isNotBlank() }.joinToString(" · ")
 
@@ -144,9 +155,74 @@ fun distanceText(meters: Double): String = when {
 fun List<Restaurant>.byDistance(here: Pair<Double, Double>): List<Restaurant> =
     sortedWith(compareBy<Restaurant> { it.metersFrom(here) ?: Double.MAX_VALUE }.thenByDescending { it.id })
 
-/** A place on the list with this name (any case, spaces around ignored), so it isn't added twice. */
+/** A place on the list with this name (any case, spaces around ignored). */
 fun List<Restaurant>.named(name: String): Restaurant? =
     name.trim().takeIf { it.isNotEmpty() }?.let { n -> firstOrNull { it.name.trim().equals(n, ignoreCase = true) } }
+
+/**
+ * Whether a place found or typed in is one already saved (web: saved.ts). The
+ * name alone isn't enough: a chain has a branch in every town, and two towns
+ * can each have a shop with one name. [same]: it is this saved one.
+ * [elsewhere]: a saved place with the name somewhere else, or maybe the same
+ * one where that can't be told.
+ */
+data class SavedMatch(val same: Restaurant? = null, val elsewhere: Restaurant? = null)
+
+/** Two places with one name this close are the same place. */
+private const val SAME_PLACE_METERS = 150.0
+
+/** The town in an Area: its first word ("浜松市 中央区" → "浜松市"). */
+private fun town(area: String): String = area.trim().split(Regex("[\\s,、]+")).first().lowercase()
+
+private enum class Same { Yes, No, Unknown }
+
+private fun Restaurant.compare(lat: Double?, lng: Double?, area: String, street: String, mapUrl: String): Same {
+    if (mapUrl.isNotBlank() && mapUrl == this.mapUrl) return Same.Yes
+    val a = this.lat
+    val b = this.lng
+    if (a != null && b != null && (a != 0.0 || b != 0.0) && lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
+        return if (meters(a, b, lat, lng) < SAME_PLACE_METERS) Same.Yes else Same.No
+    }
+    val saved = town(this.area)
+    if (saved.isEmpty()) return Same.Unknown
+    if (area.isNotBlank()) return if (town(area) == saved) Same.Unknown else Same.No
+    if (street.isNotBlank()) return if (street.lowercase().contains(saved)) Same.Unknown else Same.No
+    return Same.Unknown
+}
+
+/**
+ * The saved place [name] at that spot surely is, else a saved place with the
+ * name elsewhere. Typed in by hand with nothing to go on ([sure] false), a
+ * saved place with the name counts as the same.
+ */
+fun List<Restaurant>.findSaved(
+    name: String,
+    lat: Double? = null,
+    lng: Double? = null,
+    area: String = "",
+    street: String = "",
+    mapUrl: String = "",
+    sure: Boolean,
+): SavedMatch {
+    if (name.isBlank()) return SavedMatch()
+    var unknown: Restaurant? = null
+    var other: Restaurant? = null
+    for (r in this) {
+        if (!r.name.trim().equals(name.trim(), ignoreCase = true)) continue
+        when (r.compare(lat, lng, area, street, mapUrl)) {
+            Same.Yes -> return SavedMatch(same = r)
+            Same.Unknown -> if (unknown == null) unknown = r
+            Same.No -> if (other == null) other = r
+        }
+    }
+    if (unknown != null && !sure) return SavedMatch(same = unknown)
+    return SavedMatch(elsewhere = unknown ?: other)
+}
+
+/** A suggestion's saved twin: the same place only when it surely is. A Google suggestion has only its address line until picked. */
+fun List<Restaurant>.findSaved(p: FoundPlace): SavedMatch =
+    if (p.located) findSaved(p.name, p.lat, p.lng, p.area, p.street, p.googleMapUrl, sure = true)
+    else findSaved(p.name, street = p.street, sure = true)
 
 /** What a person types in about a place. */
 data class RestaurantFields(

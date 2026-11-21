@@ -146,8 +146,12 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
     /** Google's details, by place ID. */
     var details: Map<String, com.rudnam.samfran.core.model.FoundPlace> = emptyMap()
 
+    /** Where the last search was asked from. */
+    var searchedNear: Pair<Double, Double>? = null
+
     override suspend fun search(query: String, near: Pair<Double, Double>?, session: String): Outcome<List<com.rudnam.samfran.core.model.FoundPlace>> {
         sessions += session
+        searchedNear = near
         return next ?: Outcome.Done(places.filter { it.name.contains(query, ignoreCase = true) })
     }
 

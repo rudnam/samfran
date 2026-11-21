@@ -20,7 +20,11 @@ export function meters(a: Spot, b: Spot): number {
 /** How far a place is: "350 m", "1.2 km", "14 km"; empty when it has no position. */
 export function distanceText(me: Spot, p: Pick<Restaurant, 'lat' | 'lng'>): string {
   if (p.lat == null || p.lng == null) return '';
-  const m = meters(me, { lat: p.lat, lng: p.lng });
+  return metersText(meters(me, { lat: p.lat, lng: p.lng }));
+}
+
+/** A distance as the list shows it: "350 m", "1.2 km", "14 km". */
+export function metersText(m: number): string {
   if (m < 1000) return `${Math.max(10, Math.round(m / 10) * 10)} m`;
   if (m < 10000) return `${(m / 1000).toFixed(1)} km`;
   return `${Math.round(m / 1000)} km`;
@@ -50,4 +54,24 @@ export function useLocation() {
     );
   }
   return { state, ask };
+}
+
+/**
+ * Where the phone is, only if this site may already know: it never asks.
+ * null when it may not, or the position doesn't come within a few seconds.
+ */
+export async function whereIfAllowed(): Promise<Spot | null> {
+  try {
+    if (!navigator.geolocation || !navigator.permissions) return null;
+    if ((await navigator.permissions.query({ name: 'geolocation' })).state !== 'granted') return null;
+  } catch {
+    return null;
+  }
+  return new Promise((resolve) =>
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 5 * 60 * 1000 },
+    ),
+  );
 }

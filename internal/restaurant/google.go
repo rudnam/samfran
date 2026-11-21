@@ -137,6 +137,8 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 					SecondaryText struct{ Text string } `json:"secondaryText"`
 				} `json:"structuredFormat"`
 				Types []string `json:"types"`
+				// How far it is from origin, when one was sent.
+				DistanceMeters *int `json:"distanceMeters"`
 			} `json:"placePrediction"`
 		} `json:"suggestions"`
 	}
@@ -155,6 +157,8 @@ func (g *googlePlaces) suggest(ctx context.Context, q string, near *[2]float64, 
 			Kind:     suggestedKind(p.Types),
 			Category: googleCategory(p.Types),
 			PlaceID:  p.PlaceID,
+			Meters:   p.DistanceMeters,
+			Source:   SourceGoogle,
 		})
 		if len(found) == maxFound {
 			break
@@ -318,6 +322,7 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 		PlaceID:  p.ID,
 		Food:     food,
 		MapURL:   mapLink(p.GoogleMapsURI),
+		Source:   SourceGoogle,
 	}, nil
 }
 

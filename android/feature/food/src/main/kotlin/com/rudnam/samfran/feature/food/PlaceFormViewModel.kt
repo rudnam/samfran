@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.rudnam.samfran.core.data.BusAlarm
 import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
@@ -11,7 +12,8 @@ import com.rudnam.samfran.core.model.FoundPlace
 import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.RestaurantFields
-import com.rudnam.samfran.core.model.named
+import com.rudnam.samfran.core.model.SavedMatch
+import com.rudnam.samfran.core.model.findSaved
 import com.rudnam.samfran.core.model.Shared
 import com.rudnam.samfran.feature.food.navigation.PlaceFormRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,8 +57,27 @@ data class PlaceFormUiState(
     /** What's already on the list, to say so instead of adding it twice. */
     val saved: List<Restaurant> = emptyList(),
 ) {
-    /** A place on the list with the name typed. */
-    val duplicate: Restaurant? get() = if (editing) null else saved.named(fields?.name.orEmpty())
+    /**
+     * What's in the form, on the list already? The picked place by where it is;
+     * a name typed in, by its name (and area, when one's typed).
+     */
+    val savedMatch: SavedMatch
+        get() {
+            val f = fields ?: return SavedMatch()
+            if (editing) return SavedMatch()
+            val p = picked?.takeIf { it.name.trim() == f.name.trim() }
+            return if (p != null) saved.findSaved(f.name, p.lat, p.lng, p.area, p.street, p.googleMapUrl, sure = true)
+            else saved.findSaved(f.name, area = f.area, sure = false)
+        }
+
+    /** The place on the list this is. */
+    val duplicate: Restaurant? get() = savedMatch.same
+
+    /** A place on the list with this name, somewhere else (or maybe; it can't be told). */
+    val elsewhere: Restaurant? get() = savedMatch.elsewhere
+
+    /** A suggestion's twin on the list: the same place only when it surely is. */
+    fun savedFor(place: FoundPlace): SavedMatch = saved.findSaved(place)
 
     val editing: Boolean get() = id != null
     val ready: Boolean get() = fields?.name?.isNotBlank() == true && !busy
@@ -84,6 +105,7 @@ class PlaceFormViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val food: FoodRepository,
     private val bus: BusRepository,
+    private val location: BusAlarm,
     clock: Clock,
 ) : ViewModel(), PlaceFormActions {
     private val route = savedState.toRoute<PlaceFormRoute>()
@@ -112,8 +134,17 @@ class PlaceFormViewModel @Inject constructor(
         }
         if (route.id == null) {
             viewModelScope.launch { food.restaurants.collect { list -> _state.update { it.copy(saved = list.orEmpty()) } } }
-            // Near the bus stop first, if there is one: likely the right town.
-            viewModelScope.launch { near = bus.stops.first()?.last?.let { it.lat to it.lng } }
+            // Near where the phone is first, if the app may know (it doesn't ask here):
+            // they're often adding the place they're at. Else near the bus stop, if
+            // there is one: likely the right town.
+            viewModelScope.launch {
+                val stop = bus.stops.first()?.last?.let { it.lat to it.lng }
+                if (here == null) near = stop
+            }
+            viewModelScope.launch {
+                here = location.here()
+                if (here != null) near = here
+            }
         }
         // Shared from Maps with only a link: ask the server for the name.
         _state.value.fields?.let { f -> if (route.shared != null && f.name.isBlank() && f.mapUrl.isNotBlank()) nameFromLink(f.mapUrl) }
@@ -122,6 +153,7 @@ class PlaceFormViewModel @Inject constructor(
     override fun set(fields: RestaurantFields) = _state.update { it.copy(fields = fields) }
 
     private var near: Pair<Double, Double>? = null
+    private var here: Pair<Double, Double>? = null
     private var search: Job? = null
     /** One Google session from typing to picking; a new one after each pick. */
     private var session = java.util.UUID.randomUUID().toString()

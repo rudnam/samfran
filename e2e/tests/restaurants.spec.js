@@ -244,6 +244,54 @@ test('find a place by typing its name: no Maps link needed', async ({ page }) =>
   await expect(page.getByText('Already on your list:')).toBeVisible();
 });
 
+test('one name in two places: the saved one says so, the other can be added; near where you are first', async ({ page }) => {
+  // At Hamamatsu Station, with location allowed: the search is asked from here, not from the bus stop.
+  await standAt(page, 34.7038, 137.7349);
+  let asked = null;
+  await page.route('**/api/restaurants/suggest?*', (route) => {
+    asked = new URL(route.request().url()).searchParams;
+    route.fulfill({
+      json: [
+        { name: 'まるや', area: '浜松市 中央区', street: '鍛冶町', kind: 'restaurant', category: 'eat', lat: 34.7041, lng: 137.7352, meters: 40, source: 'openstreetmap' },
+        { name: 'まるや', area: '静岡市 葵区', street: '紺屋町', kind: 'restaurant', category: 'eat', lat: 34.9715, lng: 138.3862, meters: 65400, source: 'openstreetmap' },
+      ],
+    });
+  });
+  await signUp(page);
+  // Saved before, in Hamamatsu: a few metres from where this map puts it.
+  const res = await page.request.post('/api/restaurants', { data: { name: 'まるや', area: '浜松市 中央区', lat: 34.7042, lng: 137.7353 } });
+  expect(res.status()).toBe(201);
+  const hamamatsu = (await res.json()).id;
+
+  await page.getByRole('link', { name: 'Add a place' }).first().click();
+  const name = page.getByLabel('Name', { exact: true });
+  await name.fill('まるや');
+  const list = page.getByRole('list', { name: 'Matching places' });
+  await expect(list.getByRole('listitem')).toHaveCount(2);
+  expect(Number(asked.get('lat'))).toBeCloseTo(34.7038, 3);
+  expect(Number(asked.get('lng'))).toBeCloseTo(137.7349, 3);
+  // The saved one opens it; the one in Shizuoka is a place to pick, with a word about the other.
+  await expect(list.getByRole('link', { name: /まるや.*Already on your list/ })).toHaveAttribute('href', new RegExp(`/restaurant/${hamamatsu}`));
+  const shizuoka = list.getByRole('button', { name: /まるや/ });
+  await expect(shizuoka).toHaveText(/紺屋町 · 静岡市 葵区.*You have one in 浜松市 中央区.*65 km/);
+  await shizuoka.click();
+  await expect(page.getByLabel('Area')).toHaveValue('静岡市 葵区');
+  await expect(page.getByText('You have another one, in 浜松市 中央区:')).toBeVisible();
+  await expect(page.getByText('Already on your list:')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'まるや' })).toBeVisible();
+
+  // Typed in by hand, not found, with another town: not a saved one either.
+  await page.route('**/api/restaurants/suggest?*', (route) => route.fulfill({ json: [] }));
+  await page.goto('/app/#/add');
+  await name.fill('まるや');
+  await page.getByLabel('Area').fill('豊橋市');
+  await expect(page.getByText(/You have another one, in (浜松市 中央区|静岡市 葵区):/)).toBeVisible();
+  // With no town, it might be: said as before.
+  await page.getByLabel('Area').fill('');
+  await expect(page.getByText('Already on your list:')).toBeVisible();
+});
+
 test('with Google: picking a suggestion fills in its area, kind and its own Maps link', async ({ page }) => {
   // The server asks Google Places when it has a key; here, this fake answers.
   let sessions = [];
@@ -253,8 +301,8 @@ test('with Google: picking a suggestion fills in its area, kind and its own Maps
     route.fulfill({
       json: u.searchParams.get('q').startsWith('ishi')
         ? [
-            { name: '石松 JR浜松駅店', area: '', street: '静岡県浜松市中央区砂山町', kind: 'chinese_restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu1' },
-            { name: '石松餃子 浜北本店', area: '', street: '静岡県浜松市浜名区', kind: 'restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu2' },
+            { name: '石松 JR浜松駅店', area: '', street: '静岡県浜松市中央区砂山町', kind: 'chinese_restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu1', meters: 412, source: 'google' },
+            { name: '石松餃子 浜北本店', area: '', street: '静岡県浜松市浜名区', kind: 'restaurant', lat: 0, lng: 0, place_id: 'ChIJishimatsu2', meters: 14800, source: 'google' },
           ]
         : [],
     });
@@ -277,6 +325,10 @@ test('with Google: picking a suggestion fills in its area, kind and its own Maps
   await name.fill('ishimatsu');
   const list = page.getByRole('list', { name: 'Matching places' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
+  // How far each is; Google credited, not OpenStreetMap.
+  await expect(list.getByRole('listitem')).toHaveText([/石松 JR浜松駅店.*410 m/, /石松餃子 浜北本店.*15 km/]);
+  await expect(page.getByText('Places from Google Maps')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Places from OpenStreetMap' })).toHaveCount(0);
   await list.getByRole('button', { name: /石松 JR浜松駅店/ }).click();
 
   await expect(name).toHaveValue('石松 JR浜松駅店');
