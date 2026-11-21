@@ -4,19 +4,43 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
 )
 
+// googleCall is a request the fake Google was sent.
+type googleCall struct {
+	r    *http.Request
+	body map[string]any
+}
+
+// googleCalls are the requests the fake Google was sent, by path: suggest
+// sends two at once, in no set order.
+type googleCalls struct {
+	mu    sync.Mutex
+	calls map[string][]googleCall
+}
+
+// to are the requests sent to path ("/places:autocomplete"), in order.
+func (c *googleCalls) to(path string) []googleCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.calls[path])
+}
+
 // fakeGoogle answers like Places API (New), and records what it was asked.
-func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[]map[string]any) {
-	var reqs []*http.Request
-	var bodies []map[string]any
+// Text Search finds 鎌倉大仏殿高徳院 (well known), 東大寺大仏殿 (just), a
+// small temple and 大仏殿跡 (not), and 石松 JR浜松駅店, Autocomplete's first.
+func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *googleCalls) {
+	calls := &googleCalls{calls: map[string][]googleCall{}}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		reqs = append(reqs, r)
 		var body map[string]any
 		json.NewDecoder(r.Body).Decode(&body)
-		bodies = append(bodies, body)
+		calls.mu.Lock()
+		calls.calls[r.URL.Path] = append(calls.calls[r.URL.Path], googleCall{r, body})
+		calls.mu.Unlock()
 		if fail || r.Header.Get("X-Goog-Api-Key") != "k" {
 			http.Error(w, `{"error":{"code":403}}`, http.StatusForbidden)
 			return
@@ -29,6 +53,14 @@ func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[
 				{"placePrediction":{"placeId":"ChIJishimatsu2","structuredFormat":{"mainText":{"text":"石松餃子 浜北本店"},"secondaryText":{"text":"日本、静岡県浜松市浜名区"}},"types":["restaurant","food"]}},
 				{"placePrediction":{"placeId":"ChIJishimatsucho","structuredFormat":{"mainText":{"text":"石松町"},"secondaryText":{"text":"日本、静岡県"}},"types":["sublocality","political","geocode"]}},
 				{"placePrediction":{"placeId":"ChIJishimatsupark","structuredFormat":{"mainText":{"text":"石松公園"},"secondaryText":{"text":"日本、静岡県浜松市"}},"types":["park","tourist_attraction","point_of_interest","establishment"]}}
+			]}`))
+		case r.Method == http.MethodPost && r.URL.Path == "/places:searchText":
+			w.Write([]byte(`{"places":[
+				{"id":"ChIJsmalltemple","displayName":{"text":"大仏寺"},"shortFormattedAddress":"高岡市","types":["buddhist_temple","place_of_worship"],"primaryType":"buddhist_temple","location":{"latitude":36.75,"longitude":137.02},"userRatingCount":120},
+				{"id":"ChIJtodaiji000","displayName":{"text":"東大寺大仏殿"},"shortFormattedAddress":"奈良市雑司町４０６−１","types":["buddhist_temple","tourist_attraction"],"primaryType":"buddhist_temple","location":{"latitude":34.689,"longitude":135.84},"userRatingCount":3000},
+				{"id":"ChIJishimatsu1","displayName":{"text":"石松 JR浜松駅店"},"shortFormattedAddress":"浜松市中央区砂山町","types":["chinese_restaurant","restaurant"],"primaryType":"chinese_restaurant","location":{"latitude":34.7036,"longitude":137.7352},"userRatingCount":9000},
+				{"id":"ChIJruins00000","displayName":{"text":"鎌倉大仏殿跡"},"shortFormattedAddress":"鎌倉市長谷４丁目２−２８","types":["historical_place"],"primaryType":"historical_place","location":{"latitude":35.317,"longitude":139.536},"userRatingCount":2999},
+				{"id":"ChIJkotokuin00","displayName":{"text":"鎌倉大仏殿高徳院"},"shortFormattedAddress":"鎌倉市長谷４丁目２−２８","types":["buddhist_temple","tourist_attraction","place_of_worship"],"primaryType":"buddhist_temple","location":{"latitude":35.3167,"longitude":139.5358},"userRatingCount":33716}
 			]}`))
 		case r.Method == http.MethodGet && r.URL.Path == "/places/ChIJishimatsu1":
 			w.Write([]byte(`{"id":"ChIJishimatsu1","displayName":{"text":"石松 JR浜松駅店"},
@@ -51,11 +83,11 @@ func fakeGoogle(t *testing.T, fail bool) (*httptest.Server, *[]*http.Request, *[
 		}
 	}))
 	t.Cleanup(srv.Close)
-	return srv, &reqs, &bodies
+	return srv, calls
 }
 
 func TestGoogleSuggestAndDetails(t *testing.T) {
-	srv, reqs, bodies := fakeGoogle(t, false)
+	srv, calls := fakeGoogle(t, false)
 	h := NewHandler(nil)
 	h.UseGoogle("k", srv.URL+"/")
 
@@ -66,8 +98,9 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	}
 	var found []FoundPlace
 	json.Unmarshal(rec.Body.Bytes(), &found)
-	// The town is left out: it's an address, not a place to go.
-	if len(found) != 3 {
+	// The town is left out: it's an address, not a place to go. After the
+	// nearby ones, the well-known places Autocomplete didn't suggest.
+	if len(found) != 5 {
 		t.Fatalf("found %+v", found)
 	}
 	if f := found[0]; f.Name != "石松 JR浜松駅店" || f.PlaceID != "ChIJishimatsu1" || f.Street != "静岡県浜松市中央区砂山町" || f.Kind != "chinese_restaurant" || f.Category != CategoryEat ||
@@ -80,12 +113,28 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	if f := found[2]; f.Name != "石松公園" || f.Kind != "park" || f.Category != CategoryNature {
 		t.Errorf("park: %+v", f)
 	}
-	if _, ok := b0(bodies)["includedPrimaryTypes"]; ok {
+	b := calls.to("/places:autocomplete")[0].body
+	if _, ok := b["includedPrimaryTypes"]; ok {
 		t.Error("suggestions are still limited to some types of place")
 	}
-	b := (*bodies)[0]
 	if b["input"] != "ishimatsu" || b["languageCode"] != "ja" || b["sessionToken"] != "abc-123" || b["locationBias"] == nil {
 		t.Errorf("autocomplete body: %v", b)
+	}
+	// The well-known ones, the most reviewed first: 高徳院 178 km away.
+	if f := found[3]; f.Name != "鎌倉大仏殿高徳院" || f.PlaceID != "ChIJkotokuin00" || f.Street != "鎌倉市長谷４丁目２−２８" || f.Kind != "buddhist_temple" ||
+		f.Category != CategoryCulture || f.Meters == nil || *f.Meters/1000 != 178 || f.Source != SourceGoogle || f.Lat != 0 {
+		t.Errorf("well known: %+v", f)
+	}
+	if f := found[4]; f.Name != "東大寺大仏殿" {
+		t.Errorf("second well known: %+v", f)
+	}
+	// Text Search is asked anywhere in Japan, not near the person.
+	ts := calls.to("/places:searchText")[0]
+	if b := ts.body; b["textQuery"] != "ishimatsu" || b["locationBias"] != nil || b["locationRestriction"] == nil || b["languageCode"] != "ja" {
+		t.Errorf("text search body: %v", b)
+	}
+	if !strings.Contains(ts.r.Header.Get("X-Goog-FieldMask"), "places.userRatingCount") {
+		t.Errorf("text search field mask: %v", ts.r.Header)
 	}
 
 	rec = httptest.NewRecorder()
@@ -101,7 +150,7 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	if p != want {
 		t.Errorf("details:\n got %+v\nwant %+v", p, want)
 	}
-	d := (*reqs)[1]
+	d := calls.to("/places/ChIJishimatsu1")[0].r
 	if d.URL.Query().Get("sessionToken") != "abc-123" || d.URL.Query().Get("languageCode") != "ja" || !strings.Contains(d.Header.Get("X-Goog-FieldMask"), "primaryTypeDisplayName") {
 		t.Errorf("details request: %s %v", d.URL, d.Header)
 	}
@@ -119,7 +168,7 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	if p.Food != "" || p.Area != "浜松市" {
 		t.Errorf("plain restaurant: %+v", p)
 	}
-	if lang := (*reqs)[2].URL.Query().Get("languageCode"); lang != "ja" {
+	if lang := calls.to("/places/ChIJishimatsu2")[0].r.URL.Query().Get("languageCode"); lang != "ja" {
 		t.Errorf("languageCode from Accept-Language = %q", lang)
 	}
 
@@ -132,7 +181,7 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 }
 
 func TestSuggestFallsBackToPhoton(t *testing.T) {
-	google, _, _ := fakeGoogle(t, true)
+	google, _ := fakeGoogle(t, true)
 	photon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"features":[{"geometry":{"coordinates":[137.734,34.704]},"properties":{"name":"すき家","osm_value":"fast_food","city":"浜松市"}}]}`))
 	}))
@@ -161,8 +210,6 @@ func TestSuggestFallsBackToPhoton(t *testing.T) {
 		t.Error("details without a key")
 	}
 }
-
-func b0(bodies *[]map[string]any) map[string]any { return (*bodies)[0] }
 
 func TestGoogleCategory(t *testing.T) {
 	for _, c := range []struct {
@@ -233,7 +280,7 @@ func TestSuggestedKind(t *testing.T) {
 }
 
 func TestDetailsAlwaysInJapaneseFoodInTheAppsLanguage(t *testing.T) {
-	srv, reqs, bodies := fakeGoogle(t, false)
+	srv, calls := fakeGoogle(t, false)
 	h := NewHandler(nil)
 	h.UseGoogle("k", srv.URL+"/")
 
@@ -249,13 +296,38 @@ func TestDetailsAlwaysInJapaneseFoodInTheAppsLanguage(t *testing.T) {
 	if p.Name != "石松 JR浜松駅店" || p.Area != "浜松市 中央区" || p.Food != "Chinese restaurant" {
 		t.Errorf("in English: %+v", p)
 	}
-	if lang := (*reqs)[0].URL.Query().Get("languageCode"); lang != "ja" {
+	if lang := calls.to("/places/ChIJishimatsu1")[0].r.URL.Query().Get("languageCode"); lang != "ja" {
 		t.Errorf("details asked in %q, want ja", lang)
 	}
 
 	rec = httptest.NewRecorder()
 	h.suggestHandler(rec, httptest.NewRequest("GET", "/api/restaurants/suggest?q=ishimatsu&lang=en", nil))
-	if len(*bodies) != 2 || (*bodies)[1]["languageCode"] != "ja" {
-		t.Errorf("suggestions asked in %v, want ja", (*bodies)[len(*bodies)-1]["languageCode"])
+	for _, path := range []string{"/places:autocomplete", "/places:searchText"} {
+		if c := calls.to(path); len(c) != 1 || c[0].body["languageCode"] != "ja" {
+			t.Errorf("%s asked in %v, want ja", path, c)
+		}
+	}
+}
+
+func TestSuggestWithoutWellKnown(t *testing.T) {
+	// Text Search failing: the nearby suggestions still come, from Google.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/places:autocomplete" {
+			http.Error(w, "{}", http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(`{"suggestions":[{"placePrediction":{"placeId":"ChIJishimatsu1","structuredFormat":{"mainText":{"text":"石松 JR浜松駅店"}},"types":["restaurant"]}}]}`))
+	}))
+	defer srv.Close()
+	h := NewHandler(nil)
+	h.UseGoogle("k", srv.URL+"/")
+	rec := httptest.NewRecorder()
+	if err := h.suggestHandler(rec, httptest.NewRequest("GET", "/api/restaurants/suggest?q=ishimatsu", nil)); err != nil {
+		t.Fatal(err)
+	}
+	var found []FoundPlace
+	json.Unmarshal(rec.Body.Bytes(), &found)
+	if len(found) != 1 || found[0].PlaceID != "ChIJishimatsu1" {
+		t.Errorf("found %+v", found)
 	}
 }

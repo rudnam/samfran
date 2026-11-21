@@ -10,12 +10,21 @@ package restaurant
 // OpenStreetMap can't. Without a key, or when Google fails, suggest answers
 // from Photon instead (search.go).
 //
-// The two calls share the form's session token, so Google bills the typing
-// and the pick as one session. What goes to Google: the text typed, the
-// person's bus stop (to rank nearby places first), and the app's language.
+// Autocomplete doesn't rank by how well known a place is: from Hamamatsu,
+// "大仏" suggested a baseball field in Mie and Nara's 大仏殿, never 鎌倉大仏
+// (高徳院), with or without the location bias. So alongside it, suggest asks
+// Text Search for q anywhere in Japan and adds its well-known places
+// (wellKnown) after the nearby ones: "大仏" then also has 高徳院 and 牛久大仏,
+// while "ラーメン" and "sukiya" add nothing (tried November 2026).
+//
+// Autocomplete and Place Details share the form's session token, so Google
+// bills the typing and the pick as one session; Text Search is billed per
+// call. What goes to Google: the text typed, where the person is (to rank
+// nearby places first; not sent to Text Search), and the app's language.
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,7 +35,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 
+	"github.com/rudnam/samfran/internal/geo"
 	"github.com/rudnam/samfran/internal/httpx"
 )
 
@@ -303,16 +314,8 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 			food = typeInEnglish(p.PrimaryType)
 		}
 	}
-	// The primary type first: a café whose types also say "store" is a café.
-	category := CategoryOther
-	if p.PrimaryType != "" {
-		category = googleCategory([]string{p.PrimaryType})
-	}
-	if category == CategoryOther {
-		category = googleCategory(p.Types)
-	}
 	return FoundPlace{
-		Category: category,
+		Category: primaryCategory(p.PrimaryType, p.Types),
 		Name:     p.DisplayName.Text,
 		Area:     strings.Join(area, " "),
 		Street:   street,
@@ -326,8 +329,121 @@ func (g *googlePlaces) details(ctx context.Context, id, lang, session string) (F
 	}, nil
 }
 
+// primaryCategory is a place's category, its primary type first: a café
+// whose types also say "store" is a café.
+func primaryCategory(primary string, types []string) string {
+	if primary != "" {
+		if c := googleCategory([]string{primary}); c != CategoryOther {
+			return c
+		}
+	}
+	return googleCategory(types)
+}
+
+const (
+	// wellKnownReviews is how many Google reviews make a place well known:
+	// 高徳院 has 33,716, 牛久大仏 14,146, 東大寺大仏殿 3,617; the most-reviewed
+	// ラーメン shop or すき家 anywhere under 1,700 (November 2026).
+	wellKnownReviews = 3000
+	maxWellKnown     = 3
+)
+
+// japan is the box Text Search looks in. Text Search with no location at
+// all found nothing for "大仏".
+var japan = map[string]any{"rectangle": map[string]any{
+	"low":  map[string]float64{"latitude": 24, "longitude": 122},
+	"high": map[string]float64{"latitude": 46, "longitude": 146},
+}}
+
+// textPlace is a place as Text Search gives it.
+type textPlace struct {
+	ID          string `json:"id"`
+	DisplayName struct {
+		Text string `json:"text"`
+	} `json:"displayName"`
+	ShortFormattedAddress string   `json:"shortFormattedAddress"`
+	Types                 []string `json:"types"`
+	PrimaryType           string   `json:"primaryType"`
+	Location              struct {
+		Latitude  float64 `json:"latitude"`
+		Longitude float64 `json:"longitude"`
+	} `json:"location"`
+	UserRatingCount int `json:"userRatingCount"`
+}
+
+// wellKnown is what Text Search finds for q anywhere in Japan, without
+// regard to where the person is, keeping the well-known places: those with
+// wellKnownReviews or more, the most reviewed first. Like a suggestion, each
+// has a name and an address line until its details are asked for, and how
+// far it is from near, when given.
+func (g *googlePlaces) wellKnown(ctx context.Context, q string, near *[2]float64) ([]FoundPlace, error) {
+	body := map[string]any{
+		"textQuery":           q,
+		"languageCode":        "ja",
+		"regionCode":          "jp",
+		"pageSize":            20,
+		"locationRestriction": japan,
+	}
+	var out struct {
+		Places []textPlace `json:"places"`
+	}
+	mask := "places.id,places.displayName,places.shortFormattedAddress,places.types,places.primaryType,places.location,places.userRatingCount"
+	if err := g.do(ctx, http.MethodPost, "places:searchText", body, mask, &out); err != nil {
+		return nil, err
+	}
+	places := slices.DeleteFunc(out.Places, func(p textPlace) bool {
+		return p.UserRatingCount < wellKnownReviews || p.DisplayName.Text == "" || !validPlaceID.MatchString(p.ID) || !isPlace(p.Types)
+	})
+	slices.SortStableFunc(places, func(a, b textPlace) int { return cmp.Compare(b.UserRatingCount, a.UserRatingCount) })
+	found := []FoundPlace{}
+	for _, p := range places[:min(len(places), maxWellKnown)] {
+		f := FoundPlace{
+			Name:     p.DisplayName.Text,
+			Street:   shortAddress(p.ShortFormattedAddress),
+			Kind:     cmp.Or(p.PrimaryType, suggestedKind(p.Types)),
+			Category: primaryCategory(p.PrimaryType, p.Types),
+			PlaceID:  p.ID,
+			Source:   SourceGoogle,
+		}
+		if near != nil {
+			m := int(geo.Meters(near[0], near[1], p.Location.Latitude, p.Location.Longitude) + 0.5)
+			f.Meters = &m
+		}
+		found = append(found, f)
+	}
+	return found, nil
+}
+
+// suggestions are Autocomplete's, nearest first, then the well-known places
+// it didn't suggest. The two are asked at once; without the well-known ones
+// (Text Search failed), the nearby ones still come.
+func (g *googlePlaces) suggestions(ctx context.Context, q string, near *[2]float64, lang, session string) ([]FoundPlace, error) {
+	var (
+		known    []FoundPlace
+		knownErr error
+		wg       sync.WaitGroup
+	)
+	wg.Go(func() { known, knownErr = g.wellKnown(ctx, q, near) })
+	found, err := g.suggest(ctx, q, near, lang, session)
+	wg.Wait()
+	if err != nil {
+		return nil, err
+	}
+	if knownErr != nil {
+		slog.WarnContext(ctx, "google places text search failed; nearby suggestions only", "err", knownErr)
+	}
+	for _, k := range known {
+		if !slices.ContainsFunc(found, func(f FoundPlace) bool { return f.PlaceID == k.PlaceID }) {
+			found = append(found, k)
+		}
+	}
+	return found, nil
+}
+
 // suggestHandler is GET /api/restaurants/suggest: Google's suggestions when
-// it has a key and answers, Photon's otherwise.
+// it has a key and answers, Photon's otherwise. Photon gets no second
+// search: it says nothing of how well known a place is, and unbiased it finds
+// shops called "ラーメン" across Japan, not famous ones.
 func (h *Handler) suggestHandler(w http.ResponseWriter, r *http.Request) error {
 	q, near, ok := searchParams(r)
 	if !ok {
@@ -339,7 +455,7 @@ func (h *Handler) suggestHandler(w http.ResponseWriter, r *http.Request) error {
 		if !validSession.MatchString(session) {
 			session = ""
 		}
-		found, err := h.google.suggest(r.Context(), q, near, language(r), session)
+		found, err := h.google.suggestions(r.Context(), q, near, language(r), session)
 		if err == nil {
 			httpx.WriteJSON(w, http.StatusOK, found)
 			return nil

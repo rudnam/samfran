@@ -114,6 +114,28 @@ for (const [name, viewport] of [
     await expect(page.getByLabel('Kind')).toHaveValue('Park');
     await expect(page.getByRole('radio', { name: 'Nature & parks' })).toHaveAttribute('aria-checked', 'true');
     await shot('5c-add-picked');
+    // From Google: nearby places first, then well-known ones far away (Text
+    // Search), as the server answered "大仏" near Hamamatsu. Two are both
+    // named 大仏殿, and neither has a position yet.
+    const google = (name, street, kind, category, meters, id) => ({ name, area: '', street, kind, category, lat: 0, lng: 0, meters, place_id: id, source: 'google' });
+    await page.route('**/api/restaurants/suggest?*', (route) =>
+      route.fulfill({
+        json: [
+          google('大仏山公園 野球場', '三重県玉城町世古', 'athletic_field', 'fun', 101000, 'ChIJbaseball00'),
+          google('大仏殿', '奈良県奈良市雑司町４０６−１', 'buddhist_temple', 'culture', 173000, 'ChIJdaibutsuden1'),
+          google('大仏殿', '福井県勝山市片瀬５０−１−１', 'buddhist_temple', 'culture', 152000, 'ChIJdaibutsuden2'),
+          google('鎌倉大仏殿高徳院', '鎌倉市長谷４丁目２−２８', 'buddhist_temple', 'culture', 178000, 'ChIJkotokuin00'),
+          google('牛久大仏', '牛久市久野町２０８３', 'buddhist_temple', 'culture', 267000, 'ChIJushiku0000'),
+        ],
+      }),
+    );
+    await page.goto('/app/#/add');
+    await page.getByLabel('Name', { exact: true }).fill('大仏');
+    const far = page.getByRole('list', { name: 'Matching places' }).getByRole('listitem');
+    await expect(far).toHaveCount(5);
+    await expect(far.nth(3)).toContainText('鎌倉大仏殿高徳院');
+    await expect(far.nth(3)).toContainText('178 km');
+    await shot('5d-add-search-well-known');
 
     // Shifts, with a few days of this month.
     const d = new Date();

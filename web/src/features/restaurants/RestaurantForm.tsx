@@ -367,7 +367,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                   const { same: already, elsewhere } = savedFound(p);
                   const line = [p.street, p.area].filter(Boolean).join(' · ');
                   return (
-                    <li key={`${p.name}${p.lat}${p.lng}`}>
+                    <li key={p.place_id || `${p.name}${p.lat}${p.lng}`}>
                       {already ? (
                         <a className="suggest-row" href={href('restaurant', { id: already.id })}>
                           <CategoryTile category={categoryOf(p.category)} size="sm" />
