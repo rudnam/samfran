@@ -348,6 +348,8 @@ data class NetworkBusStop(
     val kind: String = "bus",
     /** How the phone buzzes at this stop; missing from an older server, the person's. */
     val buzz: String? = null,
+    /** Seconds of buzzing before the sound joins in here (0: never); missing from an older server, a minute. */
+    @SerialName("sound_after") val soundAfter: Int = SoundAfter.DEFAULT,
 )
 
 @Serializable
@@ -355,16 +357,14 @@ data class NetworkBusStops(
     val stops: List<NetworkBusStop> = emptyList(),
     @SerialName("last_id") val lastId: Long = 0,
     val buzz: String = "strong",
-    @SerialName("sound_after") val soundAfter: Int = SoundAfter.DEFAULT,
 )
 
 fun NetworkBusStops.asModel(): BusStops {
     val b = Buzz.from(buzz)
     return BusStops(
-        stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, it.buzz?.let(Buzz::from) ?: b, it.id, it.shifts, it.ask, StopKind.from(it.kind), soundAfter) },
+        stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, it.buzz?.let(Buzz::from) ?: b, it.id, it.shifts, it.ask, StopKind.from(it.kind), it.soundAfter) },
         lastId,
         b,
-        soundAfter,
     )
 }
 
@@ -382,12 +382,7 @@ data class NetworkBusStopInput(
     val kind: String? = null,
     /** Left out (null), a changed stop keeps its own; a new one buzzes strong. */
     val buzz: String? = null,
-)
-
-/** How the phone alarms (PUT /api/bus/buzz): each left out (null) stays as it was. */
-@Serializable
-data class NetworkAlarmSettings(
-    val buzz: String? = null,
+    /** Left out (null), a changed stop keeps its own; a new one's is a minute. */
     @SerialName("sound_after") val soundAfter: Int? = null,
 )
 

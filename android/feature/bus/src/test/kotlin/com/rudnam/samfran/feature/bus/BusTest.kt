@@ -131,13 +131,13 @@ class BusScreenshotTest {
     @Test
     fun choosingFromTheQuestion() = shot("stops-choose", content = screen(several.copy(choosing = true, picked = 2)))
 
-    // Settings: the stops (one just added), and the sound.
+    // Settings: the stops (one just added), and how it works.
     @Test
     fun settings() = shot("settings", content = screen(several.copy(settings = true, added = 3)))
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
-    fun settingsJapanese() = shot("settings-ja", content = screen(several.copy(settings = true, stops = Samples.stops.copy(soundAfter = 0))))
+    fun settingsJapanese() = shot("settings-ja", content = screen(several.copy(settings = true)))
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
@@ -188,9 +188,12 @@ class BusScreenshotTest {
         none.copy(search = WhereSearch(otherWays = true, link = "https://maps.app.goo.gl/x", place = Picked("上島", 34.71, 137.72, StopKind.Train))),
     ))
 
-    // A saved stop's page: a row for each setting.
+    // A saved stop's page: a row for each setting. 実家 has the sound off.
     @Test
     fun stopPage() = shot("stop", content = screen(several.copy(settings = true, editing = 2)))
+
+    @Test
+    fun stopPageNoSound() = shot("stop-no-sound", content = screen(several.copy(settings = true, editing = 3)))
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
@@ -245,14 +248,6 @@ class BusViewModelTest {
         assertEquals(listOf(3L), bus.used)
         vm.stopTrip()
         assertFalse(vm.state.value.trip.running)
-        // The sound: on (after a minute) to start with; switched off, and heard.
-        assertEquals(60, vm.state.value.stops?.soundAfter)
-        vm.setSound(false)
-        assertEquals(0, bus.stopsFlow.value?.soundAfter)
-        vm.setSound(true)
-        assertEquals(60, bus.stopsFlow.value?.soundAfter)
-        vm.hearSound()
-        assertEquals(1, alarm.heard)
     }
 
     @Test
@@ -306,7 +301,7 @@ class BusViewModelTest {
         vm.addStop()
         assertFalse(vm.state.value.isEditing)
         val saved = bus.stopsFlow.value!!.stops.single()
-        assertEquals(listOf("葵西", "600", "Strong"), listOf(saved.name, saved.alertMeters.toString(), saved.buzz.name))
+        assertEquals(listOf("葵西", "600", "Strong", "60"), listOf(saved.name, saved.alertMeters.toString(), saved.buzz.name, saved.soundAfter.toString()))
         assertEquals(saved, vm.state.value.stop)
         assertEquals(1, reminders.syncs)
     }
@@ -363,6 +358,15 @@ class BusViewModelTest {
         vm.toggleAsk()
         assertTrue(bus.stopsFlow.value!!.byId(3)!!.ask)
         assertFalse(vm.state.value.askBlocked)
+        // The sound, this stop's: off, then on after a minute; and heard.
+        assertEquals(0, vm.state.value.pageStop?.soundAfter)
+        vm.setSound(true)
+        assertEquals(60, bus.stopsFlow.value!!.byId(3)!!.soundAfter)
+        assertEquals(60, bus.stopsFlow.value!!.byId(1)!!.soundAfter) // another's as it was
+        vm.setSound(false)
+        assertEquals(0, bus.stopsFlow.value!!.byId(3)!!.soundAfter)
+        vm.hearSound()
+        assertEquals(1, alarm.heard)
         // Where: the search, and the stop moves to what's picked (a station now, with a station's distance).
         vm.openWhere()
         assertTrue(vm.state.value.searching)

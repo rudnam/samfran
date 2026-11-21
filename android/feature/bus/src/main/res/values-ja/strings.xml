@@ -49,7 +49,7 @@
     <string name="stop_name">駅・バス停の名前</string>
     <string name="search_failed">駅・バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。</string>
     <string name="no_stops">その名前の駅・バス停はありません。文字を減らすか、表示どおり（漢字）に入力してください。よくある名前なら町名も: 新林 知立</string>
-    <string name="osm">データ: OpenStreetMap</string>
+    <string name="osm">名前で探す駅・バス停のデータはOpenStreetMapのものです。</string>
     <string name="other_ways">見つからない場合は別の方法で</string>
     <string name="paste_stop_link">駅・バス停のGoogleマップのリンクを貼り付け</string>
     <string name="use_link">リンクを使う</string>

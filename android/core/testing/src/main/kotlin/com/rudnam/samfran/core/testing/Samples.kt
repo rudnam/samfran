@@ -148,7 +148,7 @@ object Samples {
 
     val station = BusStop(set = true, name = "静岡駅", lat = 34.9715, lng = 138.3890, alertMeters = 2000, id = 2, shifts = listOf("Early", "Middle"), ask = true, kind = StopKind.Train, buzz = Buzz.Strongest)
 
-    val mums = BusStop(set = true, name = "実家", lat = 34.9500, lng = 138.4000, alertMeters = 800, id = 3)
+    val mums = BusStop(set = true, name = "実家", lat = 34.9500, lng = 138.4000, alertMeters = 800, id = 3, buzz = Buzz.Gentle, soundAfter = 0)
 
     /** One stop, as most people have. */
     val oneStop = BusStops(listOf(stop.copy(shifts = emptyList())), lastId = 1)

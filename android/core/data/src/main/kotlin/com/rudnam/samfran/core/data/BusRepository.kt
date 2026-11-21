@@ -9,7 +9,6 @@ import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.core.network.SamFranNetwork
-import com.rudnam.samfran.core.network.model.NetworkAlarmSettings
 import com.rudnam.samfran.core.network.model.NetworkBusStops
 import com.rudnam.samfran.core.network.model.NetworkBusStopInput
 import com.rudnam.samfran.core.network.model.asModel
@@ -19,7 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** A stop as it's saved: [shifts], [ask], [kind] or [buzz] null keeps a changed stop's own. */
+/** A stop as it's saved: [shifts], [ask], [kind], [buzz] or [soundAfter] null keeps a changed stop's own. */
 data class StopInput(
     val name: String,
     val lat: Double,
@@ -29,6 +28,8 @@ data class StopInput(
     val ask: Boolean? = null,
     val kind: StopKind? = null,
     val buzz: Buzz? = null,
+    /** Seconds of buzzing before the sound joins in (0: never). */
+    val soundAfter: Int? = null,
 )
 
 /** Where the signed-in person gets off the bus or the train; the server only ever knows the stops, never the phone's position. */
@@ -46,9 +47,6 @@ interface BusRepository {
     /** A trip to it has started: it's the one used last. */
     suspend fun use(id: Long): Outcome<BusStops>
 
-    /** Seconds of buzzing before the alarm sound joins in (0: never). */
-    suspend fun setSoundAfter(seconds: Int): Outcome<BusStops>
-
     /** Stops and stations whose names match [query] (2+ characters); near ones first when [near] is given. */
     suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>>
 }
@@ -65,7 +63,7 @@ internal class OfflineFirstBusRepository @Inject constructor(
 
     private suspend fun keep(f: suspend () -> NetworkBusStops) = outcome(io) { f().also { documents.put(Keys.BUS_STOPS, serializer, it) }.asModel() }
 
-    private fun StopInput.body() = NetworkBusStopInput(name.trim(), lat, lng, alertMeters, shifts, ask, kind?.api, buzz?.api)
+    private fun StopInput.body() = NetworkBusStopInput(name.trim(), lat, lng, alertMeters, shifts, ask, kind?.api, buzz?.api, soundAfter)
 
     override suspend fun refresh() = keep { network.busStops() }
 
@@ -76,8 +74,6 @@ internal class OfflineFirstBusRepository @Inject constructor(
     override suspend fun remove(id: Long) = keep { network.deleteBusStop(id) }
 
     override suspend fun use(id: Long) = keep { network.useBusStop(id) }
-
-    override suspend fun setSoundAfter(seconds: Int) = keep { network.setAlarm(NetworkAlarmSettings(soundAfter = seconds)) }
 
     override suspend fun search(query: String, near: Pair<Double, Double>?) = outcome(io) {
         network.searchStops(query.trim(), near?.first, near?.second).map { it.asModel() }

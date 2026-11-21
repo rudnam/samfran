@@ -49,7 +49,7 @@
     <string name="stop_name">Stop or station</string>
     <string name="search_failed">The stop search isn’t answering. Paste a Google Maps link instead.</string>
     <string name="no_stops">No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.</string>
-    <string name="osm">Stops from OpenStreetMap.</string>
+    <string name="osm">Stops and stations found by name come from OpenStreetMap.</string>
     <string name="other_ways">Can’t find it? Other ways</string>
     <string name="paste_stop_link">Paste a Google Maps link to the stop</string>
     <string name="use_link">Use link</string>

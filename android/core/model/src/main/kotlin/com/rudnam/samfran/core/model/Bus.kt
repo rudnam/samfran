@@ -22,7 +22,7 @@ data class BusStop(
     val ask: Boolean = false,
     /** A bus stop or a train station. */
     val kind: StopKind = StopKind.Bus,
-    /** If the buzz isn't stopped, the alarm sound joins in after this many seconds (0: never). The person's, at every stop. */
+    /** If the buzz isn't stopped, the alarm sound joins in after this many seconds (0: never). */
     val soundAfter: Int = SoundAfter.DEFAULT,
 ) {
     /** The stop on Google Maps. */
@@ -39,8 +39,6 @@ data class BusStops(
     val lastId: Long = 0,
     /** How older apps buzz, at every stop; each stop has its own ([BusStop.buzz]). */
     val buzz: Buzz = Buzz.Strong,
-    /** Seconds of buzzing before the alarm sound joins in, if it isn't stopped (0: never). */
-    val soundAfter: Int = SoundAfter.DEFAULT,
 ) {
     /** The stop used last (or the first). */
     val last: BusStop? get() = stops.firstOrNull { it.id == lastId } ?: stops.firstOrNull()

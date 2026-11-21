@@ -214,7 +214,6 @@ fun BusScreen(
                     item(key = "head") { PageTitle(stringResource(R.string.settings)) }
                     problems(state)
                     item(key = "stops") { StopsCard(all, state.added, actions) }
-                    item(key = "sound") { SoundCard(all.soundAfter > 0, state.saving, actions) }
                     item(key = "fold") { HowItWorksFold() }
                     return@TabPage
                 }
@@ -266,7 +265,13 @@ private fun HowItWorksFold() {
             CardTitle(stringResource(R.string.how_it_works), Modifier.weight(1f))
             LineIcon(if (open) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = SamFranTheme.colors.muted)
         }
-        AnimatedVisibility(open) { Steps() }
+        AnimatedVisibility(open) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Steps()
+                // The search's data, credited as OpenStreetMap's licence asks.
+                Hint(stringResource(R.string.osm))
+            }
+        }
     }
 }
 
@@ -555,26 +560,6 @@ private fun StopsCard(all: BusStops, added: Long?, actions: BusActions) {
     }
 }
 
-/** The sound when the buzz isn't stopped: one switch, and hearing it. */
-@Composable
-private fun SoundCard(on: Boolean, saving: Boolean, actions: BusActions) {
-    val colors = SamFranTheme.colors
-    SamFranCard(spacing = 12) {
-        Row(
-            Modifier.fillMaxWidth().clickable(enabled = !saving, role = Role.Switch) { actions.setSound(!on) },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(stringResource(R.string.sound_switch), style = MaterialTheme.typography.titleSmall)
-                Hint(stringResource(R.string.sound_switch_hint))
-            }
-            Switch(on, onCheckedChange = null, enabled = !saving, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
-        }
-        SecondaryButton(stringResource(R.string.hear_sound), actions::hearSound, Modifier.fillMaxWidth())
-    }
-}
-
 /** A row on a stop's page: what it is, what it's set to, and a tap to change it. */
 @Composable
 private fun SettingRow(icon: String, label: String, value: String, onClick: () -> Unit) {
@@ -612,6 +597,19 @@ private fun StopPage(state: BusUiState, all: BusStops, actions: BusActions, onAs
             SettingRow(SamFranIcons.ruler, stringResource(R.string.buzz_before), Distances.format(stop.meters.toFloat())) { actions.openSheet(StopSheet.Distance) }
             HorizontalDivider(color = colors.divider)
             SettingRow(SamFranIcons.bell, stringResource(R.string.buzz_how), stringResource(buzzName(stop.buzz))) { actions.openSheet(StopSheet.Buzz) }
+            HorizontalDivider(color = colors.divider)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Switch) { actions.setSound(stop.soundAfter == 0) }.padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.sound_switch), style = MaterialTheme.typography.titleSmall)
+                    Hint(stringResource(R.string.sound_switch_hint))
+                }
+                Switch(stop.soundAfter > 0, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
+            }
+            LinkButton(stringResource(R.string.hear_sound), actions::hearSound, Modifier.padding(bottom = 4.dp))
         }
         SamFranCard(spacing = 0, padding = PaddingValues(horizontal = 18.dp, vertical = 2.dp)) {
             SettingRow(
@@ -764,7 +762,6 @@ private fun WherePage(state: BusUiState, actions: BusActions, onHere: () -> Unit
                         }
                     }
                 }
-                Hint(stringResource(R.string.osm))
             }
             if (f.query.isNotEmpty() && f.failed) Hint(stringResource(R.string.search_failed))
             if (f.query.isNotEmpty() && found?.isEmpty() == true) Hint(stringResource(R.string.no_stops))

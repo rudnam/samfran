@@ -46,8 +46,10 @@ data class StopDraft(
     val buzz: Buzz = Buzz.Strong,
     val shifts: List<String> = emptyList(),
     val ask: Boolean = false,
+    /** Seconds of buzzing before the sound joins in, if it isn't stopped (0: never). */
+    val soundAfter: Int = SoundAfter.DEFAULT,
 ) {
-    fun input() = StopInput(name, lat, lng, meters, shifts, ask, kind, buzz)
+    fun input() = StopInput(name, lat, lng, meters, shifts, ask, kind, buzz, soundAfter)
 }
 
 /** A place picked for a stop: from the search, a link, or where the phone is. */
@@ -110,7 +112,7 @@ data class BusUiState(
     val askBlocked: Boolean = false,
     /** A change is being saved. */
     val saving: Boolean = false,
-    /** Settings are open: the stops, and the sound. A stop opened from there goes back there. */
+    /** Settings are open: the stops, and how it works. A stop opened from there goes back there. */
     val settings: Boolean = false,
     /** The stop just added, marked in Settings. */
     val added: Long? = null,
@@ -131,7 +133,7 @@ data class BusUiState(
     val editingStop: BusStop? get() = editing?.takeIf { it != NEW }?.let { stops?.byId(it) }
     /** The stop whose page is open, as its page shows it. */
     val pageStop: StopDraft?
-        get() = draft?.takeIf { editing == NEW } ?: editingStop?.let { StopDraft(it.name, it.lat, it.lng, it.kind, it.alertMeters, it.buzz, it.shifts, it.ask) }
+        get() = draft?.takeIf { editing == NEW } ?: editingStop?.let { StopDraft(it.name, it.lat, it.lng, it.kind, it.alertMeters, it.buzz, it.shifts, it.ask, it.soundAfter) }
     /** The stop's page shows (not the search): a saved one, or a new one picked. */
     val stopPage: Boolean get() = !where && (editingStop != null || (editing == NEW && draft != null))
     /** The search shows: moving a stop, adding one, or the first. */
@@ -157,7 +159,7 @@ interface BusActions {
     fun openSettings()
     /** "‹": back a page (a sheet closes first). */
     fun back()
-    /** The sound when the buzz isn't stopped: on (after a minute) or off. Saved straight away. */
+    /** The sound when the buzz isn't stopped, at the stop whose page is open: on (after a minute) or off. */
     fun setSound(on: Boolean)
     /** "Hear the sound": a few seconds of it. */
     fun hearSound()
@@ -299,15 +301,7 @@ class BusViewModel @Inject constructor(
         }
     }
 
-    override fun setSound(on: Boolean) {
-        val seconds = if (on) SoundAfter.DEFAULT else 0
-        if (state.value.stops?.soundAfter == seconds || local.value.saving) return
-        local.update { it.copy(saving = true, problem = null) }
-        viewModelScope.launch {
-            val r = bus.setSoundAfter(seconds)
-            local.update { it.copy(saving = false, problem = r.takeIf { o -> o !is Outcome.Done }) }
-        }
-    }
+    override fun setSound(on: Boolean) = changeStop { it.copy(soundAfter = if (on) SoundAfter.DEFAULT else 0) }
 
     override fun hearSound() = alarm.hearSound()
 
