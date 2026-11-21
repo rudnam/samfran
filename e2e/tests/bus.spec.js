@@ -49,6 +49,13 @@ test('choose the first stop from a Google Maps link, then try a practice run', a
   await buzz.getByRole('button', { name: 'Stop', exact: true }).click();
   await expect(page.getByText('✓ That’s it')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
+});
+
+test('a saved stop changes as it is changed, with its own buzz, and the sound can be switched off', async ({ page }) => {
+  await signUp(page);
+  expect((await page.request.post('/api/bus/stops', { data: { name: 'Kamijima Station', lat: 34.7111, lng: 137.7265, alert_meters: 1000 } })).status()).toBe(201);
+  await page.getByRole('link', { name: 'Ride', exact: true }).click();
 
   // A saved stop's page saves each change as it's made: how it buzzes there.
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
