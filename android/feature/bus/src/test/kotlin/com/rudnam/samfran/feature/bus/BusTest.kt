@@ -286,7 +286,7 @@ class BusViewModelTest {
     }
 
     @Test
-    fun `the first stop: the search, its page, then Add stop`() = runTest {
+    fun `the first stop is searched for, shown on its page, then added`() = runTest {
         bus.stopsFlow.value = BusStops()
         val vm = vm()
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
