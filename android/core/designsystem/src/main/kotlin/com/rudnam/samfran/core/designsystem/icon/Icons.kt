@@ -21,7 +21,15 @@ import androidx.compose.ui.unit.dp
 object SamFranIcons {
     const val food = "M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9"
     const val shifts = "M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3 10h18M8 3v4M16 3v4"
-    const val bus = "M8 3h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zM5 11h14M8 21v-3M16 21v-3"
+    /** A bus from the front: boxy, with its mirrors (web/src/features/bus/BusPage.tsx draws the same). */
+    const val bus = "M7 3h10a2 2 0 0 1 2 2v13H5V5a2 2 0 0 1 2-2zM5 7h14M5 13h14M3 8v3M21 8v3M8 16h.01M16 16h.01M7 18v3M17 18v3"
+    /** How far: a ruler. */
+    const val ruler = "M4 12h16M4 8v8M20 8v8M8 12v-2M12 12v-3M16 12v-2"
+    const val bell = "M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7zM10 20a2 2 0 0 0 4 0"
+    /** A train from the front (web/src/features/bus/BusPage.tsx draws the same). */
+    const val train = "M8 2h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zM5 9h14M12 2v7M8.5 13h.01M15.5 13h.01M9 17l-2 4M15 17l2 4"
+    /** The Ride tab: a route from where you get on to where you get off. */
+    const val ride = "M8.5 19a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0zM8.5 19H17a3.5 3.5 0 0 0 0-7H7a3.5 3.5 0 0 1 0-7h8.5M18 9s-3-2.7-3-5a3 3 0 0 1 6 0c0 2.3-3 5-3 5z"
     const val us = "M12.5 8a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM19.5 9a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0zM3 20c0-3.5 2.7-6 6-6s6 2.5 6 6M15 14.5c3 0 6 1.8 6 5.5"
     const val add = "M12 5v14M5 12h14"
     const val back = "M15 5l-7 7 7 7"

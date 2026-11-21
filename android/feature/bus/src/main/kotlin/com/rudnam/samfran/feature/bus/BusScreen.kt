@@ -58,6 +58,16 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -78,7 +88,7 @@ import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.Early
-import com.rudnam.samfran.core.model.mapLink
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.ui.TabPage
 import com.rudnam.samfran.core.ui.openWeb
 import com.rudnam.samfran.core.ui.problem
@@ -111,7 +121,7 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
     val askForAsk = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.toggleAsk() }
     // The practice run's buzz shows a notification too: ask for that first (Android 13+), then practise either way.
     val askForPractice = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.practice() }
-    // Opened from "Start bus alarm?": start once the stop is known.
+    // Opened from "Start the ride alarm?": start once the stop is known.
     LaunchedEffect(state.autoStart, state.stops) {
         if (state.stops == null || !state.autoStart) return@LaunchedEffect
         viewModel.autoStartHandled()
@@ -133,7 +143,7 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
             else askForHere.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
         },
         onAsk = {
-            if (!state.form.ask && Build.VERSION.SDK_INT >= 33 && !granted(context, Manifest.permission.POST_NOTIFICATIONS)) {
+            if (state.pageStop?.ask != true && Build.VERSION.SDK_INT >= 33 && !granted(context, Manifest.permission.POST_NOTIFICATIONS)) {
                 askForAsk.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
                 viewModel.toggleAsk()
@@ -144,15 +154,16 @@ internal fun BusDestination(viewModel: BusViewModel = hiltViewModel()) {
 }
 
 /**
- * The bus-stop alarm (web/src/features/bus/BusPage.tsx). Choose the stop
- * once; on the bus, "I'm on the bus" starts a trip on the phone, which buzzes
- * before the stop until "Stop". The phone does the watching; this page
- * explains it, sets it up, starts it, shows it and stops it. "Try it now" is
- * a practice run that really buzzes.
+ * The ride alarm, for the bus or the train (web/src/features/bus/BusPage.tsx).
+ * Choose the stop (a bus stop or a station) once; on board, "I'm on the
+ * bus" (or train) starts a trip on the phone, which buzzes before the stop
+ * until "Stop", adding a sound if it isn't stopped.
  *
- * Three pages, so each shows only a little: the ride (where to get off, and
- * starting); Settings (the stops, and how it buzzes); and a stop's own page
- * (where it is, and when it's used).
+ * Pages, so each shows only a little: the ride (where to get off, and
+ * starting); Settings (the stops, and the sound); a stop's page (a small
+ * map, then one row for each setting, each opening its choices from the
+ * bottom); and the search for where a stop is. The first stop starts with
+ * the search.
  */
 @Composable
 fun BusScreen(
@@ -163,58 +174,68 @@ fun BusScreen(
     onHere: () -> Unit,
     onAsk: () -> Unit,
     onMap: (String) -> Unit,
-    map: @Composable (lat: Double, lng: Double, name: String) -> Unit = { lat, lng, name -> StopMap(lat, lng, name) },
+    map: @Composable (lat: Double, lng: Double, name: String, height: Dp) -> Unit = { lat, lng, name, height -> StopMap(lat, lng, name, height = height) },
 ) {
     val all = state.stops
-    // Back goes from a stop to Settings (or the ride), and from Settings to the ride.
-    BackHandler(enabled = state.ready && state.isEditing) { actions.cancelEdit() }
-    BackHandler(enabled = state.ready && !state.isEditing && state.settings) { actions.closeSettings() }
-    TabPage {
-        when {
-            all == null -> {
-                item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
-                item(key = "loading") { Skeleton(rows = 3) }
-                return@TabPage
-            }
-            // The first stop: how it works, then choosing it.
-            !state.ready -> {
-                item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
-                problems(state)
-                item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
-                item(key = "form") { StopPage(state, all, actions, onHere, onAsk, onMap, map) }
-                return@TabPage
-            }
-            state.isEditing -> {
-                item(key = "back") { BackLink(stringResource(if (state.settings) R.string.settings else R.string.bus_alarm), actions::cancelEdit) }
-                problems(state)
-                item(key = "form") { StopPage(state, all, actions, onHere, onAsk, onMap, map) }
-                return@TabPage
-            }
-            state.settings -> {
-                item(key = "back") { BackLink(stringResource(R.string.bus_alarm), actions::closeSettings) }
-                item(key = "head") { PageTitle(stringResource(R.string.settings)) }
-                problems(state)
-                item(key = "stops") { StopsCard(all, actions) }
-                item(key = "buzz") { SamFranCard { BuzzChips(all.buzz, actions::setBuzz, enabled = !state.savingSettings) } }
-                item(key = "fold") { HowItWorksFold() }
-                return@TabPage
-            }
-        }
-        item(key = "head") {
-            Row(verticalAlignment = Alignment.Top) {
-                PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f), subtitle = stringResource(R.string.bus_subtitle))
-                if (!state.trip.running && !state.buzzing) {
-                    IconButton(onClick = actions::openSettings) { LineIcon(SamFranIcons.settings, stringResource(R.string.settings)) }
+    // Back closes a sheet, then goes back a page: a stop's search to its page, its page to Settings, Settings to the ride.
+    BackHandler(enabled = state.sheet != null || (state.ready && (state.isEditing || state.where || state.settings))) { actions.back() }
+    Box(Modifier.fillMaxSize()) {
+        TabPage {
+            when {
+                all == null -> {
+                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                    item(key = "loading") { Skeleton(rows = 3) }
+                    return@TabPage
+                }
+                // The first stop: how it works, then where.
+                !state.ready && state.searching -> {
+                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                    problems(state)
+                    item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
+                    item(key = "where") { WherePage(state, actions, onHere, map, title = null) }
+                    return@TabPage
+                }
+                state.searching -> {
+                    val moving = state.editingStop?.takeIf { state.where }
+                    item(key = "back") { BackLink(moving?.name?.ifBlank { null } ?: stringResource(if (moving != null) R.string.unnamed_stop else R.string.settings), actions::back) }
+                    problems(state)
+                    item(key = "where") { WherePage(state, actions, onHere, map, title = moving?.name?.ifBlank { stringResource(R.string.unnamed_stop) } ?: stringResource(R.string.add_a_stop)) }
+                    return@TabPage
+                }
+                state.stopPage -> {
+                    val new = state.editing == BusUiState.NEW
+                    if (state.ready || !new) item(key = "back") { BackLink(stringResource(if (new) R.string.add_a_stop else R.string.settings), actions::back) }
+                    problems(state)
+                    item(key = "stop") { StopPage(state, all, actions, onAsk, map) }
+                    return@TabPage
+                }
+                state.settings -> {
+                    item(key = "back") { BackLink(stringResource(R.string.bus_alarm), actions::back) }
+                    item(key = "head") { PageTitle(stringResource(R.string.settings)) }
+                    problems(state)
+                    item(key = "stops") { StopsCard(all, state.added, actions) }
+                    item(key = "fold") { HowItWorksFold() }
+                    return@TabPage
                 }
             }
+            item(key = "head") {
+                Row(verticalAlignment = Alignment.Top) {
+                    PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f), subtitle = stringResource(R.string.bus_subtitle))
+                    if (!state.trip.running && !state.buzzing) {
+                        IconButton(onClick = actions::openSettings) { LineIcon(SamFranIcons.settings, stringResource(R.string.settings)) }
+                    }
+                }
+            }
+            problems(state)
+            val stop = state.stop ?: return@TabPage
+            when {
+                state.buzzing -> item(key = "buzz") { BuzzCard(stop, practice = state.practice != null, onStop = actions::stopBuzz) }
+                state.choosing && !state.trip.running -> item(key = "choose") { ChooseCard(all!!, stop, actions, onStartTrip) }
+                else -> item(key = "ride") { RideCard(state, all!!, stop, actions, onStartTrip, onPractice) { lat, lng, name -> map(lat, lng, name, 280.dp) } }
+            }
         }
-        problems(state)
-        val stop = state.stop ?: return@TabPage
-        when {
-            state.buzzing -> item(key = "buzz") { BuzzCard(stop, practice = state.practice != null, onStop = actions::stopBuzz) }
-            state.choosing && !state.trip.running -> item(key = "choose") { ChooseCard(all!!, stop, actions, onStartTrip) }
-            else -> item(key = "ride") { RideCard(state, all!!, stop, actions, onStartTrip, onPractice, map) }
-        }
+        val shown = state.pageStop
+        if (state.sheet != null && shown != null && all != null) StopSheets(state.sheet, shown, all, state.editing, actions)
     }
 }
 
@@ -244,7 +265,13 @@ private fun HowItWorksFold() {
             CardTitle(stringResource(R.string.how_it_works), Modifier.weight(1f))
             LineIcon(if (open) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = SamFranTheme.colors.muted)
         }
-        AnimatedVisibility(open) { Steps() }
+        AnimatedVisibility(open) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Steps()
+                // The search's data, credited as OpenStreetMap's licence asks.
+                Hint(stringResource(R.string.osm))
+            }
+        }
     }
 }
 
@@ -298,7 +325,7 @@ private fun RideCard(
                 val d = alert + (start - alert) * practice.left
                 Eyebrow(stringResource(R.string.practice_run), color = colors.accentInk)
                 Text(stringResource(R.string.distance_to, Distances.format(d), name), style = MaterialTheme.typography.headlineSmall)
-                RouteLine(1f - practice.left)
+                RouteLine(1f - practice.left, stop.kind)
                 Hint(stringResource(R.string.practice_hint, Distances.format(alert.toFloat())))
                 SecondaryButton(stringResource(R.string.end_practice), actions::endPractice, Modifier.fillMaxWidth())
             }
@@ -309,12 +336,12 @@ private fun RideCard(
             }
             state.riding -> {
                 val d = state.trip.distance
-                Eyebrow(stringResource(R.string.on_the_bus), color = colors.accentInk)
+                Eyebrow(stringResource(if (stop.kind == StopKind.Train) R.string.on_the_train else R.string.on_the_bus), color = colors.accentInk)
                 Text(
                     if (d >= 0) stringResource(R.string.distance_to, Distances.format(d), name) else stringResource(R.string.finding_you),
                     style = MaterialTheme.typography.headlineSmall,
                 )
-                RouteLine(Distances.progress(state.from, d, alert))
+                RouteLine(Distances.progress(state.from, d, alert), stop.kind)
                 if (d >= 0) Text(stringResource(R.string.buzzes_in, Distances.format(maxOf(0f, d - alert))), style = MaterialTheme.typography.titleSmall)
                 Hint(stringResource(R.string.lock_hint))
                 SecondaryButton(stringResource(R.string.stop_alarm), actions::stopTrip, Modifier.fillMaxWidth())
@@ -333,10 +360,10 @@ private fun RideCard(
                     } else if (state.picked != null && all.forShift(shift) != null && all.forShift(shift) != stop) {
                         Hint(stringResource(R.string.just_this_ride))
                     }
-                    Hint(stringResource(R.string.buzzes_before, Distances.format(alert.toFloat())) + " " + stringResource(earlyText(Distances.early(alert))))
+                    Hint(stringResource(R.string.buzzes_before, Distances.format(alert.toFloat())) + " " + stringResource(earlyText(Distances.early(alert, stop.kind))))
                 }
                 map(stop.lat, stop.lng, stop.name)
-                PrimaryButton(stringResource(R.string.on_bus), onStartTrip, Modifier.fillMaxWidth(), big = true)
+                PrimaryButton(stringResource(if (stop.kind == StopKind.Train) R.string.on_train else R.string.on_bus), onStartTrip, Modifier.fillMaxWidth(), big = true)
                 SecondaryButton(stringResource(R.string.try_it_now), onPractice, Modifier.fillMaxWidth())
                 Hint(stringResource(R.string.on_bus_hint), Modifier.fillMaxWidth())
             }
@@ -344,9 +371,9 @@ private fun RideCard(
     }
 }
 
-/** The ride as a line: the bus moving towards the stop, and the stretch at the end where it buzzes. */
+/** The ride as a line: the bus or train moving towards the stop, and the stretch at the end where it buzzes. */
 @Composable
-private fun RouteLine(progress: Float) {
+private fun RouteLine(progress: Float, kind: StopKind) {
     val colors = SamFranTheme.colors
     val zone = 0.24f
     val at = progress.coerceIn(0f, 1f) * (1f - zone)
@@ -359,15 +386,20 @@ private fun RouteLine(progress: Float) {
         Box(
             Modifier.align(Alignment.CenterStart).padding(start = (w * at - 14.dp).coerceAtLeast(0.dp)).size(28.dp).clip(CircleShape).background(colors.surface),
             contentAlignment = Alignment.Center,
-        ) { LineIcon(SamFranIcons.bus, null, size = 18.dp, tint = colors.accentInk, stroke = 2.4f) }
+        ) { LineIcon(vehicle(kind), null, size = 18.dp, tint = colors.accentInk, stroke = 2.4f) }
     }
 }
+
+private fun vehicle(kind: StopKind) = if (kind == StopKind.Train) SamFranIcons.train else SamFranIcons.bus
 
 /** What a buzz distance means on a ride. */
 private fun earlyText(e: Early) = when (e) {
     Early.RightBefore -> R.string.early_right_before
     Early.OneStop -> R.string.early_one_stop
     Early.TwoStops -> R.string.early_two_stops
+    Early.OneMinute -> R.string.early_one_minute
+    Early.OneToTwoMinutes -> R.string.early_one_two_minutes
+    Early.TwoToThreeMinutes -> R.string.early_two_three_minutes
     Early.Plenty -> R.string.early_plenty
 }
 
@@ -395,56 +427,34 @@ private fun Step(n: Int, title: Int, body: Int) {
     }
 }
 
-/** Six one-tap distances, each saying what it means. */
+/** A row of one-tap choices, the one picked filled in. */
 @Composable
-private fun DistanceChips(value: Int, onPick: (Int) -> Unit, enabled: Boolean = true) {
+private fun <T> ChoiceRow(choices: List<Pair<T, String>>, value: T, onPick: (T) -> Unit, enabled: Boolean = true) {
     val colors = SamFranTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.buzz_how_far), style = MaterialTheme.typography.labelLarge)
-        for (row in Distances.choices.chunked(3)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                for (m in row) {
-                    val on = m == value
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .clip(MaterialTheme.shapes.small)
-                            .background(if (on) colors.accent else colors.sunken)
-                            .clickable(enabled = enabled, role = Role.RadioButton) { onPick(m) }
-                            .padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(Distances.format(m.toFloat()), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
-                    }
-                }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        for ((v, label) in choices) {
+            val on = v == value
+            Box(
+                Modifier
+                    .weight(1f)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(if (on) colors.accent else colors.sunken)
+                    .clickable(enabled = enabled, role = Role.RadioButton) { onPick(v) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
             }
         }
-        Hint(stringResource(earlyText(Distances.early(value))) + " " + stringResource(R.string.fast_road))
     }
 }
 
+/** A bus stop or a station. */
 @Composable
-private fun BuzzChips(value: Buzz, onPick: (Buzz) -> Unit, enabled: Boolean = true) {
-    val colors = SamFranTheme.colors
+private fun KindChips(value: StopKind, onPick: (StopKind) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.buzz_how), style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (b in Buzz.entries) {
-                val on = b == value
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(if (on) colors.accent else colors.sunken)
-                        .clickable(enabled = enabled, role = Role.RadioButton) { onPick(b) }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(stringResource(buzzName(b)), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
-                }
-            }
-        }
-        Hint(stringResource(buzzAbout(value)) + " " + stringResource(R.string.buzz_try))
+        Text(stringResource(R.string.kind_label), style = MaterialTheme.typography.labelLarge)
+        ChoiceRow(listOf(StopKind.Bus to stringResource(R.string.kind_bus), StopKind.Train to stringResource(R.string.kind_train)), value, onPick)
     }
 }
 
@@ -517,22 +527,31 @@ private fun ChooseCard(all: BusStops, stop: BusStop, actions: BusActions, onStar
     }
 }
 
-/** The stops: one line each, saying which shifts it's for; a tap opens it. */
+/** The stops: one line each, its icon saying bus stop or station, and the shifts it's for; a tap opens it. */
 @Composable
-private fun StopsCard(all: BusStops, actions: BusActions) {
+private fun StopsCard(all: BusStops, added: Long?, actions: BusActions) {
     val colors = SamFranTheme.colors
     SamFranCard(spacing = 0) {
         Eyebrow(stringResource(R.string.your_stops), Modifier.padding(bottom = 4.dp))
         for ((i, s) in all.stops.withIndex()) {
             if (i > 0) HorizontalDivider(color = colors.divider)
             Row(
-                Modifier.fillMaxWidth().clickable(role = Role.Button) { actions.edit(s.id) }.padding(vertical = 12.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.small)
+                    .background(if (s.id == added) colors.highlight else Color.Transparent)
+                    .clickable(role = Role.Button) { actions.edit(s.id) }
+                    .padding(vertical = 12.dp, horizontal = if (s.id == added) 8.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                LineIcon(vehicle(s.kind), null, size = 20.dp, tint = colors.muted)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
-                    if (s.shifts.isNotEmpty()) Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
+                    when {
+                        s.id == added -> Hint(stringResource(R.string.just_added))
+                        s.shifts.isNotEmpty() -> Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
+                    }
                 }
                 LineIcon(SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
             }
@@ -541,185 +560,83 @@ private fun StopsCard(all: BusStops, actions: BusActions) {
     }
 }
 
-/** Whether to ask "Start bus alarm?" when a shift whose stop this is ends. */
+/** A row on a stop's page: what it is, what it's set to, and a tap to change it. */
 @Composable
-private fun AskRow(f: StopForm, onToggle: () -> Unit) {
+private fun SettingRow(icon: String, label: String, value: String, onClick: () -> Unit) {
     val colors = SamFranTheme.colors
     Row(
-        Modifier.fillMaxWidth().clickable(role = Role.Switch, onClick = onToggle),
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(stringResource(R.string.ask_when_these_end), style = MaterialTheme.typography.titleSmall)
-            Hint(stringResource(R.string.ask_when_these_end_hint))
-        }
-        Switch(f.ask, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
-    }
-    if (f.ask && f.askBlocked) ErrorText(stringResource(R.string.allow_notifications))
-}
-
-/** Which kinds of shift a stop is for: four toggles, saying what they mean. */
-@Composable
-private fun ShiftToggles(all: BusStops, editing: Long?, f: StopForm, actions: BusActions) {
-    val colors = SamFranTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(stringResource(R.string.use_after), style = MaterialTheme.typography.labelLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (k in ShiftKinds) {
-                val on = k in f.shifts
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .clip(MaterialTheme.shapes.small)
-                        .background(if (on) colors.accent else colors.sunken)
-                        .clickable(role = Role.Checkbox) { actions.toggleShift(k) }
-                        .padding(vertical = 12.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(ShiftCodes.labelOf(k), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
-                }
-            }
-        }
-        val name = f.name.trim().ifEmpty { stringResource(R.string.this_stop) }
-        var hint = if (f.shifts.isEmpty()) stringResource(R.string.use_after_none) else stringResource(R.string.use_after_some, name)
-        val taken = all.stops.filter { s -> s.id != editing && s.shifts.any { it in f.shifts } }
-        if (taken.isNotEmpty()) hint += " " + stringResource(R.string.use_after_taken, taken.joinToString("、") { it.name })
-        Hint(hint)
+        LineIcon(icon, null, size = 20.dp, tint = colors.muted)
+        Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        Text(value, Modifier.widthIn(max = 170.dp), color = colors.muted, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        LineIcon(SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
     }
 }
 
 /**
- * A stop's page, in two parts. Where: search by name, or (folded away) a
- * Google Maps link to it or where the phone is now; the map shows once it's
- * found, then folds away. When: the shifts it's for, and whether to ask when
- * they end. The first stop is only where.
+ * A stop's page: a small map, then one row for each setting, each opening
+ * its choices from the bottom. A saved stop saves each change as it's
+ * made; a new one is added by "Add stop", so backing out leaves nothing.
  */
 @Composable
-private fun StopPage(
-    state: BusUiState,
-    all: BusStops,
-    actions: BusActions,
-    onHere: () -> Unit,
-    onAsk: () -> Unit,
-    onMap: (String) -> Unit,
-    map: @Composable (Double, Double, String) -> Unit,
-) {
+private fun StopPage(state: BusUiState, all: BusStops, actions: BusActions, onAsk: () -> Unit, map: @Composable (Double, Double, String, Dp) -> Unit) {
     val colors = SamFranTheme.colors
-    val f = state.form
-    val first = !state.ready
-    val editing = all.byId(state.editing ?: BusUiState.NEW)
+    val stop = state.pageStop ?: return
+    val new = state.editing == BusUiState.NEW
+    val name = stop.name.ifBlank { stringResource(R.string.unnamed_stop) }
     var confirmRemove by rememberSaveable { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        if (!first) PageTitle(editing?.name?.ifBlank { stringResource(R.string.unnamed_stop) } ?: stringResource(R.string.add_a_stop))
-        SamFranCard(spacing = 14) {
-            if (first) {
-                Eyebrow(stringResource(R.string.step_1_of_2), color = colors.accentInk)
-                CardTitle(stringResource(R.string.where_get_off))
-            } else {
-                Eyebrow(stringResource(R.string.stop_where))
+        PageTitle(name)
+        map(stop.lat, stop.lng, stop.name, 150.dp)
+        SamFranCard(spacing = 0, padding = PaddingValues(horizontal = 18.dp, vertical = 2.dp)) {
+            SettingRow(vehicle(stop.kind), stringResource(R.string.stop_where), name, actions::openWhere)
+            HorizontalDivider(color = colors.divider)
+            SettingRow(SamFranIcons.ruler, stringResource(R.string.buzz_before), Distances.format(stop.meters.toFloat())) { actions.openSheet(StopSheet.Distance) }
+            HorizontalDivider(color = colors.divider)
+            SettingRow(SamFranIcons.bell, stringResource(R.string.buzz_how), stringResource(buzzName(stop.buzz))) { actions.openSheet(StopSheet.Buzz) }
+            HorizontalDivider(color = colors.divider)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Switch) { actions.setSound(stop.soundAfter == 0) }.padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(stringResource(R.string.sound_switch), style = MaterialTheme.typography.titleSmall)
+                    Hint(stringResource(R.string.sound_switch_hint))
+                }
+                Switch(stop.soundAfter > 0, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                OutlinedTextField(
-                    value = f.name,
-                    onValueChange = actions::setName,
-                    label = { Text(stringResource(R.string.stop_name)) },
-                    placeholder = { Text(stringResource(R.string.stop_name_hint)) },
-                    leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { actions.saveStop() }),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                val found = f.found
-                if (f.query.isNotEmpty() && !found.isNullOrEmpty()) {
-                    Column {
-                        found.forEachIndexed { i, s ->
-                            if (i > 0) HorizontalDivider(color = colors.divider)
-                            Row(
-                                Modifier.fillMaxWidth().clickable { actions.pick(s) }.padding(vertical = 10.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                Text(if (s.train) "🚉" else "🚏")
-                                Column(Modifier.weight(1f)) {
-                                    Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                    if (s.area.isNotBlank()) Hint(s.area)
-                                }
-                            }
-                        }
-                    }
-                }
-                val hint = when {
-                    f.query.isNotEmpty() && f.searchFailed -> stringResource(R.string.search_failed)
-                    f.query.isNotEmpty() && found?.isEmpty() == true -> stringResource(R.string.no_stops)
-                    f.query.isNotEmpty() && !found.isNullOrEmpty() -> stringResource(R.string.tap_your_stop) + " " + stringResource(R.string.osm)
-                    else -> ""
-                }
-                if (hint.isNotEmpty()) Hint(hint)
-                val pos = f.position
-                if (pos != null && f.query.isEmpty()) {
-                    if (f.showMap || first) map(pos.first, pos.second, f.name)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Hint("✓ " + stringResource(if (f.byName) R.string.found_by_name else R.string.found_it), Modifier.weight(1f, fill = false))
-                        if (f.showMap || first) {
-                            LinkButton(stringResource(R.string.check_on_map), { onMap(mapLink(pos.first, pos.second)) })
-                        } else {
-                            LinkButton(stringResource(R.string.see_on_map), actions::toggleMap)
-                        }
-                    }
-                }
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(Modifier.fillMaxWidth().clickable { actions.setOtherWays(!f.otherWays) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.other_ways), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-                    LineIcon(if (f.otherWays) SamFranIcons.chevronLeft else SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
-                }
-                AnimatedVisibility(f.otherWays) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = f.link,
-                                onValueChange = actions::setLink,
-                                placeholder = { Text(stringResource(R.string.paste_stop_link)) },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
-                                keyboardActions = KeyboardActions(onGo = { actions.useLink() }),
-                                modifier = Modifier.weight(1f),
-                            )
-                            SecondaryButton(stringResource(R.string.use_link), actions::useLink, enabled = !f.busy && f.link.isNotBlank())
-                        }
-                        SecondaryButton(stringResource(R.string.use_here), onHere, Modifier.fillMaxWidth(), enabled = !f.busy, icon = SamFranIcons.location)
-                    }
-                }
-            }
-            if (first) Eyebrow(stringResource(R.string.step_2_of_2), color = colors.accentInk)
-            DistanceChips(f.meters, actions::setMeters)
+            LinkButton(stringResource(R.string.hear_sound), actions::hearSound, Modifier.padding(bottom = 4.dp))
         }
-        if (!first) {
-            SamFranCard(spacing = 14) {
-                Eyebrow(stringResource(R.string.stop_when))
-                ShiftToggles(all, state.editing, f, actions)
-                HorizontalDivider(color = colors.divider)
-                AskRow(f, onAsk)
+        SamFranCard(spacing = 0, padding = PaddingValues(horizontal = 18.dp, vertical = 2.dp)) {
+            SettingRow(
+                SamFranIcons.calendar,
+                stringResource(R.string.use_after_short),
+                if (stop.shifts.isEmpty()) stringResource(R.string.no_shifts) else stop.shifts.joinToString("・") { ShiftCodes.labelOf(it) },
+            ) { actions.openSheet(StopSheet.Shifts) }
+            HorizontalDivider(color = colors.divider)
+            Row(
+                Modifier.fillMaxWidth().clickable(role = Role.Switch, onClick = onAsk).padding(vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.ask_when_these_end), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+                Switch(stop.ask, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
             }
+            if (stop.ask && state.askBlocked) ErrorText(stringResource(R.string.allow_notifications), Modifier.padding(bottom = 12.dp))
         }
-        when (val p = f.problem) {
-            null -> {}
-            StopProblem.NoPosition -> ErrorText(stringResource(R.string.no_position))
-            StopProblem.NoHere -> ErrorText(stringResource(R.string.no_here))
-            is StopProblem.Server -> p.outcome.problem()?.let { ErrorText(it) }
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (editing != null) LinkButton(stringResource(R.string.remove_stop), { confirmRemove = true }, enabled = !f.busy, danger = true)
-            Spacer(Modifier.weight(1f))
-            PrimaryButton(stringResource(R.string.save), actions::saveStop, enabled = !f.busy && f.position != null)
+        if (new) {
+            PrimaryButton(stringResource(R.string.add_stop), actions::addStop, Modifier.fillMaxWidth(), enabled = !state.saving, big = true)
+        } else {
+            LinkButton(stringResource(R.string.remove_stop), { confirmRemove = true }, Modifier.align(Alignment.CenterHorizontally), enabled = !state.saving, danger = true)
         }
     }
-    if (confirmRemove && editing != null) {
+    if (confirmRemove && !new) {
         AlertDialog(
             onDismissRequest = { confirmRemove = false },
-            title = { Text(stringResource(R.string.remove_stop_title, editing.name.ifBlank { stringResource(R.string.unnamed_stop) })) },
+            title = { Text(stringResource(R.string.remove_stop_title, name)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmRemove = false
@@ -729,5 +646,165 @@ private fun StopPage(
             dismissButton = { TextButton(onClick = { confirmRemove = false }) { Text(stringResource(R.string.cancel)) } },
             containerColor = colors.surface,
         )
+    }
+}
+
+/** One choice, from the bottom of the screen over a dimmed page; a tap outside closes it. */
+@Composable
+private fun Sheet(title: String, onClose: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val colors = SamFranTheme.colors
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.35f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
+                .background(colors.surface)
+                // Taps inside don't close it.
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(Modifier.align(Alignment.CenterHorizontally).size(width = 40.dp, height = 4.dp).clip(CircleShape).background(colors.border))
+            Text(title, style = MaterialTheme.typography.titleLarge)
+            content()
+        }
+    }
+}
+
+/** The sheet open on a stop's page. */
+@Composable
+private fun StopSheets(sheet: StopSheet, stop: StopDraft, all: BusStops, editing: Long?, actions: BusActions) {
+    val name = stop.name.ifBlank { stringResource(R.string.unnamed_stop) }
+    when (sheet) {
+        StopSheet.Distance -> Sheet(stringResource(R.string.buzz_before_title, name), actions::closeSheet) {
+            for (row in Distances.choices(stop.kind).chunked(3)) {
+                ChoiceRow(row.map { it to Distances.format(it.toFloat()) }, stop.meters, actions::setMeters)
+            }
+            Hint(stringResource(earlyText(Distances.early(stop.meters, stop.kind))))
+        }
+        StopSheet.Buzz -> Sheet(stringResource(R.string.buzz_how_title, name), actions::closeSheet) {
+            ChoiceRow(Buzz.entries.map { it to stringResource(buzzName(it)) }, stop.buzz, actions::setBuzz)
+            Hint(stringResource(buzzAbout(stop.buzz)))
+        }
+        StopSheet.Shifts -> Sheet(stringResource(R.string.use_after_title, name), actions::closeSheet) {
+            val colors = SamFranTheme.colors
+            var value by rememberSaveable { mutableStateOf(stop.shifts) }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (k in ShiftKinds) {
+                    val on = k in value
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .clip(MaterialTheme.shapes.small)
+                            .background(if (on) colors.accent else colors.sunken)
+                            .clickable(role = Role.Checkbox) { value = if (on) value - k else ShiftKinds.filter { it in value || it == k } }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(ShiftCodes.labelOf(k), color = if (on) colors.accentText else colors.text, fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold)
+                    }
+                }
+            }
+            val taken = all.stops.filter { s -> s.id != editing && s.shifts.any { it in value } }
+            if (taken.isNotEmpty()) Hint(stringResource(R.string.use_after_taken, taken.joinToString("、") { it.name }))
+            PrimaryButton(stringResource(R.string.done), { actions.setShifts(value) }, Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/**
+ * Where a stop is: search by name (and town), each result's icon saying
+ * bus stop or station; or, folded away, a Google Maps link or where the
+ * phone is, then its name and kind.
+ */
+@Composable
+private fun WherePage(state: BusUiState, actions: BusActions, onHere: () -> Unit, map: @Composable (Double, Double, String, Dp) -> Unit, title: String?) {
+    val colors = SamFranTheme.colors
+    val f = state.search
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (title != null) PageTitle(title)
+        SamFranCard(spacing = 12) {
+            if (title == null) CardTitle(stringResource(R.string.where_get_off))
+            OutlinedTextField(
+                value = f.query,
+                onValueChange = actions::setQuery,
+                label = { Text(stringResource(R.string.stop_name)) },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
+                leadingIcon = { LineIcon(SamFranIcons.search, null, size = 20.dp) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { f.found?.firstOrNull()?.let(actions::pick) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            val found = f.found
+            if (f.query.isNotEmpty() && !found.isNullOrEmpty()) {
+                Column {
+                    found.forEachIndexed { i, s ->
+                        if (i > 0) HorizontalDivider(color = colors.divider)
+                        Row(
+                            Modifier.fillMaxWidth().clickable { actions.pick(s) }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(Modifier.size(38.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
+                                LineIcon(vehicle(s.kind), stringResource(if (s.train) R.string.kind_train else R.string.kind_bus), size = 22.dp, tint = colors.accentInk)
+                            }
+                            Column(Modifier.weight(1f)) {
+                                Text(s.name, style = MaterialTheme.typography.titleSmall)
+                                if (s.area.isNotBlank()) Hint(s.area)
+                            }
+                        }
+                    }
+                }
+            }
+            if (f.query.isNotEmpty() && f.failed) Hint(stringResource(R.string.search_failed))
+            if (f.query.isNotEmpty() && found?.isEmpty() == true) Hint(stringResource(R.string.no_stops))
+            Row(Modifier.fillMaxWidth().clickable { actions.setOtherWays(!f.otherWays) }.padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.other_ways), Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, color = colors.accentInk)
+                LineIcon(if (f.otherWays) SamFranIcons.chevronDown else SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
+            }
+            AnimatedVisibility(f.otherWays) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = f.link,
+                            onValueChange = actions::setLink,
+                            placeholder = { Text(stringResource(R.string.paste_stop_link)) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
+                            keyboardActions = KeyboardActions(onGo = { actions.useLink() }),
+                            modifier = Modifier.weight(1f),
+                        )
+                        SecondaryButton(stringResource(R.string.use_link), actions::useLink, enabled = !f.busy && f.link.isNotBlank())
+                    }
+                    SecondaryButton(stringResource(R.string.use_here), onHere, Modifier.fillMaxWidth(), enabled = !f.busy, icon = SamFranIcons.location)
+                }
+            }
+            // From a link or where the phone is: the place, then its name and kind.
+            f.place?.let { p ->
+                map(p.lat, p.lng, p.name, 150.dp)
+                OutlinedTextField(
+                    value = p.name,
+                    onValueChange = actions::setPlaceName,
+                    label = { Text(stringResource(R.string.place_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                KindChips(p.kind, actions::setPlaceKind)
+                PrimaryButton(stringResource(R.string.use_this), actions::usePlace, Modifier.fillMaxWidth())
+            }
+            when (val p = f.problem) {
+                null -> {}
+                StopProblem.NoPosition -> ErrorText(stringResource(R.string.no_position))
+                StopProblem.NoHere -> ErrorText(stringResource(R.string.no_here))
+                is StopProblem.Server -> p.outcome.problem()?.let { ErrorText(it) }
+            }
+        }
     }
 }

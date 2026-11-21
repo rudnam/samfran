@@ -104,7 +104,7 @@ func (h *Handler) put(w http.ResponseWriter, r *http.Request) error {
 		_, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET name = $3, lat = $4, lng = $5, alert_meters = $6 WHERE user_id = $1 AND id = $2`,
 			user, all.LastID, in.Name, *in.Lat, *in.Lng, in.AlertMeters)
 		return err
-	}, in.Buzz)
+	}, settings{Buzz: in.Buzz})
 	if err != nil {
 		return err
 	}

@@ -26,6 +26,14 @@ type SavedStop struct {
 	Lat         float64 `json:"lat"`
 	Lng         float64 `json:"lng"`
 	AlertMeters int     `json:"alert_meters"`
+	// Kind is "bus" for a bus stop or "train" for a station (Kinds): how
+	// the apps word it and how far before it they offer to buzz.
+	Kind string `json:"kind"`
+	// Buzz is how the phone buzzes at this stop: one of Buzzes.
+	Buzz string `json:"buzz"`
+	// SoundAfter is how many seconds the phone buzzes before it adds its
+	// alarm sound, if the buzz isn't stopped: one of SoundAfters; 0 never.
+	SoundAfter int `json:"sound_after"`
 	// Shifts are the kinds of shift this is the stop for (ShiftKinds); each
 	// kind is on at most one of a person's stops.
 	Shifts []string `json:"shifts"`
@@ -39,9 +47,20 @@ type Stops struct {
 	Stops []SavedStop `json:"stops"`
 	// LastID is the stop used last (or the only one): the one to go to when
 	// no shift says which. 0 when there are none.
-	LastID int64  `json:"last_id"`
-	Buzz   string `json:"buzz"`
+	LastID int64 `json:"last_id"`
+	// Buzz is how older apps buzz, at every stop; newer ones use each
+	// stop's. Setting it (PUT /api/bus/buzz, as older apps do) sets every
+	// stop's too.
+	Buzz string `json:"buzz"`
 }
+
+// Kinds are the kinds of stop: a bus stop, or a train station.
+var Kinds = []string{"bus", "train"}
+
+// SoundAfters are the choices for SavedStop.SoundAfter, in seconds.
+var SoundAfters = []int{0, 30, 60, 120}
+
+const defaultSoundAfter = 60
 
 // ShiftKinds are the kinds of working shift a stop can be for, as
 // internal/shift labels them by when they start.
@@ -52,6 +71,7 @@ const MaxStops = 10
 
 var (
 	errBuzz   = httpx.Errorf(http.StatusBadRequest, "buzz must be gentle, strong or strongest")
+	errSound  = httpx.Errorf(http.StatusBadRequest, "sound_after must be 0, 30, 60 or 120")
 	errNoStop = httpx.Errorf(http.StatusNotFound, "no such stop")
 )
 
@@ -76,7 +96,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 		return all, err
 	}
 	// The one used last comes first here, then they're put in the order they were added.
-	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, shifts, ask FROM bus_saved_stops
+	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, kind, buzz, sound_after, shifts, ask FROM bus_saved_stops
 		WHERE user_id = $1 ORDER BY used_at DESC, id DESC`, user)
 	if err != nil {
 		return all, err
@@ -84,7 +104,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 	defer rows.Close()
 	for rows.Next() {
 		var x SavedStop
-		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
+		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, &x.Kind, &x.Buzz, &x.SoundAfter, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
 			return all, err
 		}
 		if all.LastID == 0 {
@@ -111,10 +131,16 @@ func inOrder(kinds []string) []string {
 	return out
 }
 
+// settings are how the phone alarms, at every stop, as older apps set
+// it: left out (nil), it stays as it was.
+type settings struct {
+	Buzz *string `json:"buzz"`
+}
+
 // change runs f in a transaction with the person's stops as they were, then
-// sets the buzz when given, and copies the stop used last into bus_stops
+// sets the settings given, and copies the stop used last into bus_stops
 // (for older apps, and for the previous release while this one rolls out).
-func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops) error, buzz *string) (Stops, error) {
+func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops) error, set settings) (Stops, error) {
 	tx, err := h.db.BeginTx(ctx, nil)
 	if err != nil {
 		return Stops{}, err
@@ -131,12 +157,18 @@ func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops)
 	if err := f(tx, before); err != nil {
 		return Stops{}, err
 	}
+	if set.Buzz != nil {
+		// Older apps buzz one way everywhere: so does every stop.
+		if _, err := tx.ExecContext(ctx, `UPDATE bus_saved_stops SET buzz = $2 WHERE user_id = $1`, user, *set.Buzz); err != nil {
+			return Stops{}, err
+		}
+	}
 	after, err := h.load(ctx, tx, user)
 	if err != nil {
 		return Stops{}, err
 	}
-	if buzz != nil {
-		after.Buzz = *buzz
+	if set.Buzz != nil {
+		after.Buzz = *set.Buzz
 	}
 	if last := after.legacy(); last.Set {
 		if _, err := tx.ExecContext(ctx, `
@@ -145,7 +177,7 @@ func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops)
 			user, last.Name, last.Lat, last.Lng, last.AlertMeters, after.Buzz); err != nil {
 			return Stops{}, err
 		}
-	} else if buzz != nil {
+	} else if set.Buzz != nil {
 		// No stop to keep it with yet.
 		return Stops{}, httpx.Errorf(http.StatusBadRequest, "choose a stop first")
 	}
@@ -183,6 +215,12 @@ type savedInput struct {
 	Shifts *[]string `json:"shifts"`
 	// Left out, a changed stop keeps it as it was (a new one doesn't ask).
 	Ask *bool `json:"ask"`
+	// Left out (as older apps do), a changed stop keeps its own (a new one is "bus").
+	Kind *string `json:"kind"`
+	// Left out, a changed stop keeps its own (a new one is "strong").
+	Buzz *string `json:"buzz"`
+	// Left out, a changed stop keeps its own (a new one's is a minute).
+	SoundAfter *int `json:"sound_after"`
 }
 
 func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput, error) {
@@ -192,6 +230,15 @@ func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput,
 	}
 	if err := in.check(); err != nil {
 		return in, err
+	}
+	if in.Kind != nil && !slices.Contains(Kinds, *in.Kind) {
+		return in, httpx.Errorf(http.StatusBadRequest, "kind must be bus or train")
+	}
+	if in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz) {
+		return in, errBuzz
+	}
+	if in.SoundAfter != nil && !slices.Contains(SoundAfters, *in.SoundAfter) {
+		return in, errSound
 	}
 	if in.Shifts != nil {
 		for _, k := range *in.Shifts {
@@ -241,13 +288,13 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		// A new stop isn't the one used last, unless it's the first.
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
-			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false)) RETURNING id`,
-			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask).Scan(&id); err != nil {
+			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind, buzz, sound_after)
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong'), COALESCE($11::int, $12::int)) RETURNING id`,
+			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind, in.Buzz, in.SoundAfter, defaultSoundAfter).Scan(&id); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, &kinds)
-	}, nil)
+	}, settings{})
 	if err != nil {
 		return err
 	}
@@ -275,7 +322,7 @@ func (h *Handler) changeOne(w http.ResponseWriter, r *http.Request, f func(tx *s
 			return errNoStop
 		}
 		return f(tx, user, id)
-	}, nil)
+	}, settings{})
 	if err != nil {
 		return err
 	}
@@ -290,8 +337,9 @@ func (h *Handler) changeStop(w http.ResponseWriter, r *http.Request) error {
 	}
 	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
 		if _, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET name = $3, lat = $4, lng = $5, alert_meters = $6,
-			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask) WHERE user_id = $1 AND id = $2`,
-			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask); err != nil {
+			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask), kind = COALESCE($9, kind), buzz = COALESCE($10, buzz),
+			sound_after = COALESCE($11, sound_after) WHERE user_id = $1 AND id = $2`,
+			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask, in.Kind, in.Buzz, in.SoundAfter); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, in.Shifts)
@@ -341,17 +389,16 @@ func (h *Handler) logStarted(r *http.Request, stop string) {
 	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
 }
 
+// setBuzz is how older apps set how the phone buzzes: {buzz}, at every stop.
 func (h *Handler) setBuzz(w http.ResponseWriter, r *http.Request) error {
-	var in struct {
-		Buzz string `json:"buzz"`
-	}
+	var in settings
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	if !slices.Contains(Buzzes, in.Buzz) {
+	if in.Buzz == nil || !slices.Contains(Buzzes, *in.Buzz) {
 		return errBuzz
 	}
-	all, err := h.change(r.Context(), account.UserFrom(r).ID, func(*sql.Tx, Stops) error { return nil }, &in.Buzz)
+	all, err := h.change(r.Context(), account.UserFrom(r).ID, func(*sql.Tx, Stops) error { return nil }, in)
 	if err != nil {
 		return err
 	}

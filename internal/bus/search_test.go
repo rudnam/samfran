@@ -47,3 +47,58 @@ func TestSearch(t *testing.T) {
 		t.Errorf("calls = %d, %v", calls.Load(), err)
 	}
 }
+
+// A common name and its town: that town's stops come first, and the others
+// of the name elsewhere don't crowd them out.
+func TestSearchInTown(t *testing.T) {
+	var queries []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		queries = append(queries, q.Get("q"))
+		switch {
+		case q.Get("layer") != "" && (q.Get("q") == "知立" || q.Get("q") == "chiryu"):
+			// The town: Chiryu, Aichi.
+			w.Write([]byte(`{"features":[{"geometry":{"coordinates":[137.0503,35.0016]},"properties":{"name":"知立市","osm_key":"place"}}]}`))
+		case q.Get("layer") != "":
+			w.Write([]byte(`{"features":[]}`))
+		case q.Get("q") == "新林" && q.Get("lat") == "35.0016":
+			// Near Chiryu, Photon still puts a far one first.
+			w.Write([]byte(`{"features":[
+				{"geometry":{"coordinates":[139.60,35.70]},"properties":{"name":"新林","osm_key":"highway","city":"東京都"}},
+				{"geometry":{"coordinates":[137.0581,35.0102]},"properties":{"name":"新林","osm_key":"highway","city":"知立市"}},
+				{"geometry":{"coordinates":[137.0420,34.9950]},"properties":{"name":"新林町","osm_key":"highway","city":"知立市"}}
+			]}`))
+		default:
+			// The whole text, and the name alone: other towns' stops of that name.
+			w.Write([]byte(`{"features":[
+				{"geometry":{"coordinates":[139.60,35.70]},"properties":{"name":"新林","osm_key":"highway","city":"東京都"}},
+				{"geometry":{"coordinates":[135.70,34.98]},"properties":{"name":"新林","osm_key":"highway","city":"京都市"}}
+			]}`))
+		}
+	}))
+	defer srv.Close()
+
+	for _, q := range []string{"新林 知立", "新林　知立", "知立 新林"} {
+		s := &Searcher{base: srv.URL, client: srv.Client()}
+		queries = nil
+		found, err := s.Search(context.Background(), q, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []string
+		for _, f := range found {
+			got = append(got, f.Name+" "+f.Area)
+		}
+		want := []string{"新林 知立市", "新林町 知立市", "新林 東京都", "新林 京都市"}
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("%s: got %q, want %q (asked %q)", q, got, want, queries)
+		}
+	}
+
+	// One word: no town to look for.
+	s := &Searcher{base: srv.URL, client: srv.Client()}
+	queries = nil
+	if found, err := s.Search(context.Background(), "新林", nil); err != nil || len(found) != 2 || len(queries) != 1 {
+		t.Errorf("one word: %+v %v, asked %q", found, err, queries)
+	}
+}

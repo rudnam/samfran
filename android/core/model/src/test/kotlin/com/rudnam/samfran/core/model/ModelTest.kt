@@ -120,6 +120,15 @@ class BusTest {
         assertEquals(Early.OneStop, Distances.early(800))
         assertEquals(Early.TwoStops, Distances.early(1500))
         assertEquals(Early.Plenty, Distances.early(2000))
+        // A train: in minutes, and further.
+        assertEquals(Early.OneMinute, Distances.early(1000, StopKind.Train))
+        assertEquals(Early.OneToTwoMinutes, Distances.early(2000, StopKind.Train))
+        assertEquals(Early.TwoToThreeMinutes, Distances.early(3000, StopKind.Train))
+        assertEquals(Early.Plenty, Distances.early(5000, StopKind.Train))
+        assertEquals(2000, Distances.default(StopKind.Train))
+        assertTrue(Distances.default(StopKind.Train) in Distances.choices(StopKind.Train))
+        assertTrue(Distances.default(StopKind.Bus) in Distances.choices(StopKind.Bus))
+        assertEquals(StopKind.Bus, StopKind.from("ferry"))
         assertEquals(0.5f, Distances.progress(from = 2800f, now = 1800f, alert = 800))
         assertEquals(0f, Distances.progress(from = 2800f, now = -1f, alert = 800))
     }
