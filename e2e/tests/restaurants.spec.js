@@ -271,7 +271,7 @@ test('one name in two places: the saved one says so, the other can be added; nea
   expect(Number(asked.get('lat'))).toBeCloseTo(34.7038, 3);
   expect(Number(asked.get('lng'))).toBeCloseTo(137.7349, 3);
   // The saved one opens it; the one in Shizuoka is a place to pick, with a word about the other.
-  await expect(list.getByRole('link', { name: /まるや.*Already on your list/ })).toHaveAttribute('href', new RegExp(`/restaurant/${hamamatsu}`));
+  await expect(list.getByRole('link', { name: /まるや.*Already on your list/ })).toHaveAttribute('href', `#/restaurant?id=${hamamatsu}`);
   const shizuoka = list.getByRole('button', { name: /まるや/ });
   await expect(shizuoka).toHaveText(/紺屋町 · 静岡市 葵区.*You have one in 浜松市 中央区.*65 km/);
   await shizuoka.click();
