@@ -289,7 +289,7 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
 			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind, buzz, sound_after)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong'), COALESCE($11, $12)) RETURNING id`,
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong'), COALESCE($11::int, $12::int)) RETURNING id`,
 			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind, in.Buzz, in.SoundAfter, defaultSoundAfter).Scan(&id); err != nil {
 			return err
 		}
