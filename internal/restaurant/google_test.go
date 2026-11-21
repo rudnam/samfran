@@ -98,8 +98,9 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 	}
 	var found []FoundPlace
 	json.Unmarshal(rec.Body.Bytes(), &found)
-	// The town is left out: it's an address, not a place to go. After the
-	// nearby ones, the well-known places Autocomplete didn't suggest.
+	// The town is left out: it's an address, not a place to go. The nearby
+	// one, the well-known places Autocomplete didn't suggest, then the
+	// suggestions with no distance.
 	if len(found) != 5 {
 		t.Fatalf("found %+v", found)
 	}
@@ -107,10 +108,10 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 		f.Meters == nil || *f.Meters != 412 || f.Source != SourceGoogle {
 		t.Errorf("first: %+v", f)
 	}
-	if f := found[1]; f.Meters != nil {
+	if f := found[3]; f.Name != "石松餃子 浜北本店" || f.Meters != nil {
 		t.Errorf("a distance Google didn't give: %+v", f)
 	}
-	if f := found[2]; f.Name != "石松公園" || f.Kind != "park" || f.Category != CategoryNature {
+	if f := found[4]; f.Name != "石松公園" || f.Kind != "park" || f.Category != CategoryNature {
 		t.Errorf("park: %+v", f)
 	}
 	b := calls.to("/places:autocomplete")[0].body
@@ -121,11 +122,11 @@ func TestGoogleSuggestAndDetails(t *testing.T) {
 		t.Errorf("autocomplete body: %v", b)
 	}
 	// The well-known ones, the most reviewed first: 高徳院 178 km away.
-	if f := found[3]; f.Name != "鎌倉大仏殿高徳院" || f.PlaceID != "ChIJkotokuin00" || f.Street != "鎌倉市長谷４丁目２−２８" || f.Kind != "buddhist_temple" ||
+	if f := found[1]; f.Name != "鎌倉大仏殿高徳院" || f.PlaceID != "ChIJkotokuin00" || f.Street != "鎌倉市長谷４丁目２−２８" || f.Kind != "buddhist_temple" ||
 		f.Category != CategoryCulture || f.Meters == nil || *f.Meters/1000 != 178 || f.Source != SourceGoogle || f.Lat != 0 {
 		t.Errorf("well known: %+v", f)
 	}
-	if f := found[4]; f.Name != "東大寺大仏殿" {
+	if f := found[2]; f.Name != "東大寺大仏殿" {
 		t.Errorf("second well known: %+v", f)
 	}
 	// Text Search is asked anywhere in Japan, not near the person.
@@ -329,5 +330,50 @@ func TestSuggestWithoutWellKnown(t *testing.T) {
 	json.Unmarshal(rec.Body.Bytes(), &found)
 	if len(found) != 1 || found[0].PlaceID != "ChIJishimatsu1" {
 		t.Errorf("found %+v", found)
+	}
+}
+
+func TestOrdered(t *testing.T) {
+	at := func(name string, km float64) FoundPlace {
+		m := int(km * 1000)
+		return FoundPlace{Name: name, PlaceID: "id-" + name, Meters: &m, Category: CategoryCulture}
+	}
+	eat := func(name string, km float64) FoundPlace {
+		f := at(name, km)
+		f.Category = CategoryEat
+		return f
+	}
+	names := func(ps []FoundPlace) string {
+		var n []string
+		for _, p := range ps {
+			n = append(n, p.Name)
+		}
+		return strings.Join(n, ", ")
+	}
+	for _, c := range []struct {
+		q                string
+		suggested, known []FoundPlace
+		want             string
+	}{
+		// Nearest first, whatever order Google gave.
+		{"ラーメン", []FoundPlace{at("Q", 1.9), at("三太", 0.5), at("山まさか", 4.4), at("驍", 1.3)}, nil, "三太, 驍, Q, 山まさか"},
+		// Nothing near: the well-known places before what's 100 km away.
+		{"大仏", []FoundPlace{at("野球場", 100.6), at("大仏殿", 172.8)}, []FoundPlace{at("高徳院", 178), at("牛久大仏", 267)}, "高徳院, 牛久大仏, 野球場, 大仏殿"},
+		// The place named just what was typed comes first among the near ones,
+		// not a road marker nearer by; 20 km is still near.
+		{"舘山寺", []FoundPlace{at("舘山寺", 13.1), at("舘山寺街道道標", 4.1), at("舘山寺温泉", 12.5)}, nil, "舘山寺, 舘山寺街道道標, 舘山寺温泉"},
+		{"浜松城", []FoundPlace{at("浜松城出丸跡", 1.1), at("浜松城 ", 1.4)}, nil, "浜松城 , 浜松城出丸跡"},
+		// Not a place to eat: one so named is likely a chain's branch.
+		{"sukiya", []FoundPlace{eat("Sukiya 鍛冶町", 0.7), eat("Sukiya", 5.4), eat("Sukiya 駅南", 0.5)}, nil, "Sukiya 駅南, Sukiya 鍛冶町, Sukiya"},
+		// A well-known place Autocomplete also suggested comes once, where Autocomplete put it.
+		{"鎌倉大仏", []FoundPlace{at("高徳院", 178), at("大仏殿跡", 178)}, []FoundPlace{at("高徳院", 178)}, "高徳院, 大仏殿跡"},
+		{"一蘭", []FoundPlace{at("一蘭 浜松店", 4.9), at("一蘭 豊橋店", 34.3), at("一蘭 新東名", 19.9)}, []FoundPlace{at("一蘭 上野", 230)},
+			"一蘭 浜松店, 一蘭 新東名, 一蘭 上野, 一蘭 豊橋店"},
+		// A well-known place nearby is among the nearby ones, by distance.
+		{"浜松", []FoundPlace{at("浜松駅", 0.6), at("イオンモール浜松市野", 5.4)}, []FoundPlace{at("NEOPASA浜松", 16), at("浜松城", 1.4)}, "浜松駅, 浜松城, イオンモール浜松市野, NEOPASA浜松"},
+	} {
+		if got := names(ordered(c.q, c.suggested, c.known)); got != c.want {
+			t.Errorf("%s: got %s, want %s", c.q, got, c.want)
+		}
 	}
 }

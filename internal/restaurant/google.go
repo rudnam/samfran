@@ -372,8 +372,8 @@ type textPlace struct {
 }
 
 // wellKnown is what Text Search finds for q anywhere in Japan, without
-// regard to where the person is, keeping the well-known places: those with
-// wellKnownReviews or more, the most reviewed first. Like a suggestion, each
+// regard to where the person is, keeping the well-known places that aren't
+// places to eat: those with wellKnownReviews or more, the most reviewed first. Like a suggestion, each
 // has a name and an address line until its details are asked for, and how
 // far it is from near, when given.
 func (g *googlePlaces) wellKnown(ctx context.Context, q string, near *[2]float64) ([]FoundPlace, error) {
@@ -392,7 +392,10 @@ func (g *googlePlaces) wellKnown(ctx context.Context, q string, near *[2]float64
 		return nil, err
 	}
 	places := slices.DeleteFunc(out.Places, func(p textPlace) bool {
-		return p.UserRatingCount < wellKnownReviews || p.DisplayName.Text == "" || !validPlaceID.MatchString(p.ID) || !isPlace(p.Types)
+		return p.UserRatingCount < wellKnownReviews || p.DisplayName.Text == "" || !validPlaceID.MatchString(p.ID) || !isPlace(p.Types) ||
+			// For a place to eat, the well-known ones are a chain's busiest
+			// branches: "一蘭" gave Tokyo's, 213 km away, before Toyohashi's.
+			primaryCategory(p.PrimaryType, p.Types) == CategoryEat
 	})
 	slices.SortStableFunc(places, func(a, b textPlace) int { return cmp.Compare(b.UserRatingCount, a.UserRatingCount) })
 	found := []FoundPlace{}
@@ -414,9 +417,23 @@ func (g *googlePlaces) wellKnown(ctx context.Context, q string, near *[2]float64
 	return found, nil
 }
 
-// suggestions are Autocomplete's, nearest first, then the well-known places
-// it didn't suggest. The two are asked at once; without the well-known ones
-// (Text Search failed), the nearby ones still come.
+// nearbyMeters is how far a suggestion can be and still be near: from
+// Hamamatsu Station, places people think of as in town (浜名湖, 舘山寺,
+// 石松餃子 本店) are 10 to 16 km away; the next town's (一蘭 豊橋店) 34 km.
+const nearbyMeters = 20000
+
+// suggestions are, in order: Autocomplete's within nearbyMeters, one named
+// just what was typed first (浜松城 before 浜松城出丸跡, nearer by) unless
+// it's a place to eat, which is likely one branch of a chain (a すき家 named
+// just "Sukiya"), then the nearest; the well-known places
+// (wellKnown) it didn't suggest, the most reviewed first, or among the
+// nearby ones when they're near too; then the rest of
+// Autocomplete's, farther or with no distance, in Google's order. So
+// "ラーメン" lists the shops in town nearest first, and "大仏" from
+// Hamamatsu starts with 高徳院, not a baseball field 100 km away.
+//
+// The two searches are asked at once; without the well-known places (Text
+// Search failed), the nearby ones still come.
 func (g *googlePlaces) suggestions(ctx context.Context, q string, near *[2]float64, lang, session string) ([]FoundPlace, error) {
 	var (
 		known    []FoundPlace
@@ -432,12 +449,43 @@ func (g *googlePlaces) suggestions(ctx context.Context, q string, near *[2]float
 	if knownErr != nil {
 		slog.WarnContext(ctx, "google places text search failed; nearby suggestions only", "err", knownErr)
 	}
-	for _, k := range known {
-		if !slices.ContainsFunc(found, func(f FoundPlace) bool { return f.PlaceID == k.PlaceID }) {
-			found = append(found, k)
+	return ordered(q, found, known), nil
+}
+
+// ordered puts Autocomplete's suggestions and the well-known places in the
+// order suggestions describes, each place once.
+func ordered(q string, suggested, known []FoundPlace) []FoundPlace {
+	isNear := func(f FoundPlace) bool { return f.Meters != nil && *f.Meters <= nearbyMeters }
+	var nearby, far, rest []FoundPlace
+	for _, f := range suggested {
+		if isNear(f) {
+			nearby = append(nearby, f)
+		} else {
+			rest = append(rest, f)
 		}
 	}
-	return found, nil
+	for _, k := range known {
+		switch {
+		case slices.ContainsFunc(suggested, func(f FoundPlace) bool { return f.PlaceID == k.PlaceID }):
+		case isNear(k):
+			nearby = append(nearby, k)
+		default:
+			far = append(far, k)
+		}
+	}
+	named := func(f FoundPlace) bool {
+		return f.Category != CategoryEat && strings.EqualFold(strings.TrimSpace(f.Name), q)
+	}
+	slices.SortStableFunc(nearby, func(a, b FoundPlace) int {
+		if na, nb := named(a), named(b); na != nb {
+			if na {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(*a.Meters, *b.Meters)
+	})
+	return slices.Concat(nearby, far, rest)
 }
 
 // suggestHandler is GET /api/restaurants/suggest: Google's suggestions when
