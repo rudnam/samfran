@@ -73,11 +73,11 @@ object Samples {
     )
 
     val places = listOf(
-        com.rudnam.samfran.core.model.FoundPlace("すき家 静岡駅南店", "静岡市駿河区", "南町", "fast_food", 34.968, 138.389, category = PlaceCategory.Eat),
-        com.rudnam.samfran.core.model.FoundPlace("すき家 葵区役所前店", "静岡市葵区", "追手町", "fast_food", 34.976, 138.383, category = PlaceCategory.Eat),
-        com.rudnam.samfran.core.model.FoundPlace("Hanabi Grill", "静岡市葵区", "紺屋町", "restaurant", 34.972, 138.387, category = PlaceCategory.Eat),
-        com.rudnam.samfran.core.model.FoundPlace("駿府城公園", "静岡市葵区", "駿府城公園", "park", 34.979, 138.383, category = PlaceCategory.Nature),
-        com.rudnam.samfran.core.model.FoundPlace("静岡浅間神社", "静岡市葵区", "宮ケ崎町", "place_of_worship", 34.983, 138.375, category = PlaceCategory.Culture),
+        com.rudnam.samfran.core.model.FoundPlace("すき家 静岡駅南店", "静岡市駿河区", "南町", "fast_food", 34.968, 138.389, category = PlaceCategory.Eat, meters = 650),
+        com.rudnam.samfran.core.model.FoundPlace("すき家 葵区役所前店", "静岡市葵区", "追手町", "fast_food", 34.976, 138.383, category = PlaceCategory.Eat, meters = 1200),
+        com.rudnam.samfran.core.model.FoundPlace("Hanabi Grill", "静岡市葵区", "紺屋町", "restaurant", 34.972, 138.387, category = PlaceCategory.Eat, meters = 900),
+        com.rudnam.samfran.core.model.FoundPlace("駿府城公園", "静岡市葵区", "駿府城公園", "park", 34.979, 138.383, category = PlaceCategory.Nature, meters = 1800),
+        com.rudnam.samfran.core.model.FoundPlace("静岡浅間神社", "静岡市葵区", "宮ケ崎町", "place_of_worship", 34.983, 138.375, category = PlaceCategory.Culture, meters = 2600),
     )
 
     val settings = ShiftSettings(

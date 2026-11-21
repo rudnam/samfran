@@ -8,6 +8,8 @@ import { href, navigate, replaceRoute } from '../../router';
 import { isMapsLink, parseShared } from '../../share';
 import { categories, categoryHint, categoryName, categoryOf, CategoryTile, Icon, kindPlaceholder } from './categories';
 import { today } from './format';
+import { metersText, whereIfAllowed, type Spot } from './nearby';
+import { findSaved, type SavedMatch } from './saved';
 
 /**
  * Places matching what's typed in the name field, as it's typed: a quarter
@@ -120,8 +122,6 @@ function newSession(): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
-
 const empty: RestaurantFields = { name: '', area: '', cuisine: '', category: 'eat', map_url: '', notes: '' };
 
 /**
@@ -146,8 +146,11 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   // Searching by name, when adding: what's typed, until a place is picked.
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<FoundPlace | null>(null);
-  // Near the bus stop first, if there is one: likely the right town.
-  const [near, setNear] = useState<{ lat: number; lng: number } | null>(null);
+  // Near where they are first, if the site may know (they're often adding the
+  // place they're at); else near the bus stop, if there is one: likely the right town.
+  const [here, setHere] = useState<Spot | null>(null);
+  const [stop, setStop] = useState<Spot | null>(null);
+  const near = here ?? stop;
   // What's already saved, to say so instead of adding it twice.
   const [saved, setSaved] = useState<Restaurant[]>([]);
   // One Google session from typing to picking; a new one after each pick.
@@ -157,13 +160,22 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   useEffect(() => {
     if (id) return;
     api.busStop().then(
-      (s) => s.set && setNear({ lat: s.lat, lng: s.lng }),
+      (s) => s.set && setStop({ lat: s.lat, lng: s.lng }),
       () => {},
     );
+    void whereIfAllowed().then(setHere);
     api.restaurants().then(setSaved, () => {});
   }, [id]);
 
-  const savedNamed = (name: string) => (name.trim() ? saved.find((r) => sameName(r.name, name)) : undefined);
+  /** A suggestion's saved twin: the same place only when it surely is (same name, same spot). */
+  const savedFound = (p: FoundPlace): SavedMatch => findSaved(saved, p.name, p.place_id && !p.lat && !p.lng ? { street: p.street } : p, true);
+  /** What's in the form, saved already? The picked place by where it is; a name typed in, by name (and area, if typed). */
+  const savedTyped = (): SavedMatch =>
+    !fields
+      ? {}
+      : picked && picked.name.trim() === fields.name.trim()
+        ? findSaved(saved, fields.name, picked, true)
+        : findSaved(saved, fields.name, { area: fields.area }, false);
 
   /** Fills in the form from a place with its details. Area and Food only when empty: what they typed stays. */
   function fillFrom(p: FoundPlace, food: string) {
@@ -352,9 +364,10 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             {query && search.found && search.found.length > 0 && (
               <ul className="suggest" aria-label={t('Matching places')}>
                 {search.found.map((p) => {
-                  const already = savedNamed(p.name);
+                  const { same: already, elsewhere } = savedFound(p);
+                  const line = [p.street, p.area].filter(Boolean).join(' · ');
                   return (
-                    <li key={`${p.name}${p.lat}${p.lng}`}>
+                    <li key={p.place_id || `${p.name}${p.lat}${p.lng}`}>
                       {already ? (
                         <a className="suggest-row" href={href('restaurant', { id: already.id })}>
                           <CategoryTile category={categoryOf(p.category)} size="sm" />
@@ -368,8 +381,16 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                           <CategoryTile category={categoryOf(p.category)} size="sm" />
                           <span className="suggest-text">
                             <strong>{p.name}</strong>
-                            {(p.street || p.area) && <span className="hint">{[p.street, p.area].filter(Boolean).join(' · ')}</span>}
+                            {line && <span className="hint">{line}</span>}
+                            {elsewhere && (
+                              <span className="hint">
+                                {elsewhere.area
+                                  ? t('You have one in {area}', { area: elsewhere.area })
+                                  : t('You have one with this name')}
+                              </span>
+                            )}
                           </span>
+                          {p.meters != null && <span className="suggest-meters">{metersText(p.meters)}</span>}
                         </button>
                       )}
                     </li>
@@ -380,7 +401,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             {!id && (
               <span className="hint" id="place-search-hint">
                 {(() => {
-                  const dup = savedNamed(fields.name);
+                  const { same: dup, elsewhere } = savedTyped();
                   if (dup) {
                     return (
                       <>
@@ -388,6 +409,13 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                       </>
                     );
                   }
+                  const another = elsewhere && (
+                    <>
+                      {' '}
+                      {elsewhere.area ? t('You have another one, in {area}:', { area: elsewhere.area }) : t('You have another one:')}{' '}
+                      <a href={href('restaurant', { id: elsewhere.id })}>{elsewhere.name}</a>
+                    </>
+                  );
                   if (picked && !query) {
                     return (
                       <>
@@ -398,22 +426,27 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
                         <button type="button" className="link" onClick={() => setPicked(null)}>
                           {t('Not this one')}
                         </button>
+                        {another}
                       </>
                     );
                   }
-                  if (query && search.failed) return t('The place search isn’t answering. Just type the name.');
-                  if (query && search.found?.length === 0) return t('Not found? Just type its name.');
+                  if (query && search.failed) return <>{t('The place search isn’t answering. Just type the name.')}{another}</>;
+                  if (query && search.found?.length === 0) return <>{t('Not found? Just type its name.')}{another}</>;
                   if (query && search.found?.length) {
                     return (
                       <>
                         {t('Tap the place, or keep typing your own name for it.')}{' '}
-                        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-                          {t('Places from OpenStreetMap')}
-                        </a>
+                        {search.found.some((p) => p.source === 'google') ? (
+                          <span>{t('Places from Google Maps')}</span>
+                        ) : (
+                          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                            {t('Places from OpenStreetMap')}
+                          </a>
+                        )}
                       </>
                     );
                   }
-                  return null;
+                  return another ?? null;
                 })()}
               </span>
             )}

@@ -215,18 +215,18 @@ class FoodViewModelTest {
 
     @Test
     fun `a place shared from Maps fills the form, and a link alone looks up the name`() = runTest {
-        val shared = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "Hanabi Grill\nhttps://maps.app.goo.gl/AbC")), food, bus, clock)
+        val shared = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "Hanabi Grill\nhttps://maps.app.goo.gl/AbC")), food, bus, alarm, clock)
         assertEquals("Hanabi Grill", shared.state.value.fields?.name)
         assertEquals("https://maps.app.goo.gl/AbC", shared.state.value.fields?.mapUrl)
 
         food.lookupName = "Menya Kaze"
-        val linkOnly = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "https://maps.app.goo.gl/xyz")), food, bus, clock)
+        val linkOnly = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(shared = "https://maps.app.goo.gl/xyz")), food, bus, alarm, clock)
         assertEquals("Menya Kaze", linkOnly.state.value.fields?.name)
     }
 
     @Test
     fun `adding a place you've been to logs the visit and the rating, then opens it`() = runTest {
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         assertFalse(vm.state.value.ready)
         vm.set(vm.state.value.fields!!.copy(name = "Gyoza Ou"))
         vm.setStars(5)
@@ -239,7 +239,7 @@ class FoodViewModelTest {
 
     @Test
     fun `want to go adds no visit`() = runTest {
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, alarm, clock)
         vm.set(vm.state.value.fields!!.copy(name = "Later Place"))
         vm.setStars(4) // ignored: no visit, no rating
         vm.save()
@@ -250,7 +250,7 @@ class FoodViewModelTest {
 
     @Test
     fun `typing a name searches, picking fills in the area and food and links to that branch, and a place on the list says so`() = runTest {
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         vm.setName("すき")
         advanceTimeBy(300)
         assertEquals(2, vm.state.value.found?.size)
@@ -264,33 +264,72 @@ class FoodViewModelTest {
         assertEquals("https://www.google.com/maps/search/%E3%81%99%E3%81%8D%E5%AE%B6%20%E9%9D%99%E5%B2%A1%E9%A7%85%E5%8D%97%E5%BA%97/@34.968,138.389,17z", added.mapUrl)
 
         // What they typed in Kind stays when they pick a place.
-        val typed = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val typed = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         typed.set(com.rudnam.samfran.core.model.RestaurantFields(cuisine = "Gyudon"))
         typed.pick(com.rudnam.samfran.core.testing.Samples.places[1], "Fast food")
         assertEquals("Gyudon", typed.state.value.fields?.cuisine)
 
-        val again = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val again = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         again.setName("hanabi grill ")
         assertEquals(12L, again.state.value.duplicate?.id)
     }
 
     @Test
+    fun `one name in two towns - the saved one is the same only where it is, and the search is asked from where the phone is`() = runTest {
+        // Saved in Hamamatsu; the search finds the one in Shizuoka.
+        val hamamatsu = com.rudnam.samfran.core.model.Restaurant(50, "すき家 静岡駅南店", area = "浜松市 中央区", lat = 34.70, lng = 137.73)
+        food.list.value = food.list.value!! + hamamatsu
+        alarm.here = 34.97 to 138.38
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
+        vm.setName("すき")
+        advanceTimeBy(300)
+        assertEquals(34.97 to 138.38, food.searchedNear)
+        val shizuoka = vm.state.value.found!!.first()
+        assertNull(vm.state.value.savedFor(shizuoka).same)
+        assertEquals(50L, vm.state.value.savedFor(shizuoka).elsewhere?.id)
+        vm.pick(shizuoka, "Fast food")
+        assertNull(vm.state.value.duplicate)
+        assertEquals(50L, vm.state.value.elsewhere?.id)
+
+        // Saved where the search puts it (a few metres off): the same place.
+        val here = com.rudnam.samfran.core.model.Restaurant(51, "すき家 静岡駅南店", area = "静岡市駿河区", lat = 34.9681, lng = 138.3891)
+        food.list.value = food.list.value!! + here
+        assertEquals(51L, vm.state.value.savedFor(shizuoka).same?.id)
+        assertEquals(51L, vm.state.value.duplicate?.id)
+
+        // Typed in by hand: another town is another place; no town, maybe the same, as before.
+        val typed = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
+        typed.set(com.rudnam.samfran.core.model.RestaurantFields(name = "すき家 静岡駅南店", area = "豊橋市"))
+        assertNull(typed.state.value.duplicate)
+        assertTrue(typed.state.value.elsewhere != null)
+        typed.set(com.rudnam.samfran.core.model.RestaurantFields(name = "すき家 静岡駅南店"))
+        assertTrue(typed.state.value.duplicate != null)
+
+        // Without location permission: from the bus stop.
+        alarm.here = null
+        val noLocation = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
+        noLocation.setName("すき")
+        advanceTimeBy(300)
+        assertEquals(bus.stops.first()?.last?.let { it.lat to it.lng }, food.searchedNear)
+    }
+
+    @Test
     fun `a picked place sets the category, unless one was picked by hand, and it's saved`() = runTest {
         val park = com.rudnam.samfran.core.testing.Samples.places.first { it.category == PlaceCategory.Nature }
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, alarm, clock)
         assertEquals(PlaceCategory.Eat, vm.state.value.fields?.category)
         vm.pick(park, "Park")
         assertEquals(PlaceCategory.Nature, vm.state.value.fields?.category)
         vm.save()
         assertEquals(PlaceCategory.Nature, food.list.value!!.first { it.id == vm.state.value.savedId }.category)
 
-        val byHand = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, clock)
+        val byHand = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(want = true)), food, bus, alarm, clock)
         byHand.setCategory(PlaceCategory.Fun)
         byHand.pick(park, "Park")
         assertEquals(PlaceCategory.Fun, byHand.state.value.fields?.category)
 
         // Editing keeps the category, and can change it.
-        val edit = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(id = 21)), food, bus, clock)
+        val edit = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute(id = 21)), food, bus, alarm, clock)
         edit.state.first { it.fields != null }
         assertEquals(PlaceCategory.Culture, edit.state.value.fields?.category)
         edit.setCategory(PlaceCategory.Nature)
@@ -307,7 +346,7 @@ class FoodViewModelTest {
                 placeId = "ChIJ1", food = "中華料理店", googleMapUrl = "https://maps.google.com/?cid=123",
             ),
         )
-        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val vm = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         vm.setName("石松")
         advanceTimeBy(300)
         vm.pick(vm.state.value.found!!.single(), "")
@@ -321,7 +360,7 @@ class FoodViewModelTest {
         assertEquals("https://maps.google.com/?cid=123", added.mapUrl)
 
         // Details that don't come: the name stays, and it says why.
-        val failing = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, clock)
+        val failing = PlaceFormViewModel(SavedStateHandle(PlaceFormRoute()), food, bus, alarm, clock)
         failing.pick(com.rudnam.samfran.core.model.FoundPlace("どこか", "", "", "restaurant", 0.0, 0.0, placeId = "ChIJunknown"), "")
         assertEquals("どこか", failing.state.value.fields?.name)
         assertTrue(failing.state.value.problem is Outcome.Refused)

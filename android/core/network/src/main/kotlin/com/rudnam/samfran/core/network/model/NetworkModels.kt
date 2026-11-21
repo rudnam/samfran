@@ -207,11 +207,15 @@ data class NetworkFoundPlace(
     val food: String = "",
     @SerialName("map_url") val mapUrl: String = "",
     val category: String = "",
+    val meters: Int? = null,
+    val source: String = "",
 )
 
 fun NetworkFoundPlace.asModel() = com.rudnam.samfran.core.model.FoundPlace(
     name, area, street, kind, lat, lng, placeId, food, mapUrl,
     category = category.takeIf { it.isNotEmpty() }?.let(PlaceCategory::of),
+    meters = meters,
+    source = source,
 )
 
 @Serializable

@@ -52,7 +52,8 @@ import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.PlaceCategory
-import com.rudnam.samfran.core.model.named
+import com.rudnam.samfran.core.model.FoundPlace
+import com.rudnam.samfran.core.model.distanceText
 import com.rudnam.samfran.core.ui.DateField
 import com.rudnam.samfran.core.ui.StarPicker
 import com.rudnam.samfran.core.ui.SubPage
@@ -292,7 +293,8 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
             Column {
                 found.forEachIndexed { i, p ->
                     if (i > 0) androidx.compose.material3.HorizontalDivider(color = colors.divider)
-                    val already = state.saved.named(p.name)
+                    val match = state.savedFor(p)
+                    val already = match.same
                     Row(
                         Modifier
                             .fillMaxWidth()
@@ -306,13 +308,18 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
                             Text(p.name, style = MaterialTheme.typography.titleSmall)
                             val line = if (already != null) stringResource(R.string.already_on_list) else p.where
                             if (line.isNotBlank()) Hint(line)
+                            match.elsewhere?.let { other ->
+                                Hint(if (other.area.isNotBlank()) stringResource(R.string.you_have_one_in, other.area) else stringResource(R.string.you_have_one_named))
+                            }
                         }
+                        p.meters?.let { Hint(distanceText(it.toDouble())) }
                     }
                 }
             }
         }
         val dup = state.duplicate
         val picked = state.picked
+        val credit = stringResource(if (found.orEmpty().any { it.source == FoundPlace.SOURCE_GOOGLE }) R.string.places_google else R.string.places_osm)
         when {
             dup != null -> Row(verticalAlignment = Alignment.CenterVertically) {
                 Hint(stringResource(R.string.already_on_list_colon))
@@ -325,7 +332,15 @@ private fun PlaceSuggestions(state: PlaceFormUiState, actions: PlaceFormActions,
             }
             state.query.isNotEmpty() && state.searchFailed -> Hint(stringResource(R.string.place_search_failed))
             state.query.isNotEmpty() && found?.isEmpty() == true -> Hint(stringResource(R.string.place_not_found))
-            state.query.isNotEmpty() && !found.isNullOrEmpty() -> Hint(stringResource(R.string.tap_the_place) + " " + stringResource(R.string.places_osm))
+            state.query.isNotEmpty() && !found.isNullOrEmpty() -> Hint(stringResource(R.string.tap_the_place) + " " + credit)
+        }
+        // A place with this name on the list, somewhere else: said, and a way to it.
+        val other = state.elsewhere
+        if (dup == null && other != null && (state.query.isEmpty() || found?.isEmpty() == true || state.searchFailed)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Hint(if (other.area.isNotBlank()) stringResource(R.string.another_one_in, other.area) else stringResource(R.string.another_one), Modifier.weight(1f, fill = false))
+                LinkButton(other.name, { onOpen(other.id) })
+            }
         }
     }
 }

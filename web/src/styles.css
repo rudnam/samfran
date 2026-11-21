@@ -693,6 +693,8 @@ button.danger:not(.link) { background: var(--danger); color: var(--surface); }
 .suggest-icon { font-size: 1.15rem; flex: none; }
 .suggest-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .suggest-text strong { font-weight: 600; }
+/* How far a found place is, at the row's end. */
+.suggest-meters { margin-left: auto; padding-left: 8px; flex: none; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 
 /* ---------- Motion ---------- */
 /* A page rises into place when it opens (App.tsx keys .enter by page). The

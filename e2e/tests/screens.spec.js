@@ -98,11 +98,12 @@ for (const [name, viewport] of [
     await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
-          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', category: 'eat', lat: 34.704, lng: 137.734 },
-          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', category: 'eat', lat: 34.703, lng: 137.73 },
-          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', category: 'eat', lat: 34.71, lng: 137.72 },
-          { name: 'Gyoza Park', area: 'Hamamatsu Naka', street: '', kind: 'park', category: 'nature', lat: 34.72, lng: 137.72 },
-          { name: 'Gyoza Shrine', area: 'Hamamatsu Kita', street: '', kind: 'place_of_worship', category: 'culture', lat: 34.8, lng: 137.7 },
+          // The one saved (Station East), another branch of it, and others, each with how far.
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Chuo', street: 'Kajimachi', kind: 'restaurant', category: 'eat', lat: 34.7032, lng: 137.737, meters: 240 },
+          { name: 'Gyoza no Ōshō', area: 'Hamamatsu Chuo', street: 'Sunayama', kind: 'restaurant', category: 'eat', lat: 34.703, lng: 137.73, meters: 450 },
+          { name: 'Gyoza Café', area: 'Hamamatsu Naka', street: '', kind: 'cafe', category: 'eat', lat: 34.71, lng: 137.72, meters: 1500 },
+          { name: 'Gyoza Park', area: 'Hamamatsu Naka', street: '', kind: 'park', category: 'nature', lat: 34.72, lng: 137.72, meters: 2300 },
+          { name: 'Gyoza Komachi', area: 'Hamamatsu Kita', street: 'Miyakoda', kind: 'restaurant', category: 'eat', lat: 34.8, lng: 137.7, meters: 11400 },
         ],
       }),
     );
@@ -113,6 +114,30 @@ for (const [name, viewport] of [
     await expect(page.getByLabel('Kind')).toHaveValue('Park');
     await expect(page.getByRole('radio', { name: 'Nature & parks' })).toHaveAttribute('aria-checked', 'true');
     await shot('5c-add-picked');
+    // From Google, as the server answered "大仏" near Hamamatsu: nothing
+    // near, so the well-known places (Text Search) come first, then
+    // Autocomplete's far ones. Two are both named 大仏殿, and none has a
+    // position yet.
+    const google = (name, street, kind, category, meters, id) => ({ name, area: '', street, kind, category, lat: 0, lng: 0, meters, place_id: id, source: 'google' });
+    await page.route('**/api/restaurants/suggest?*', (route) =>
+      route.fulfill({
+        json: [
+          google('鎌倉大仏殿高徳院', '鎌倉市長谷４丁目２−２８', 'buddhist_temple', 'culture', 178000, 'ChIJkotokuin00'),
+          google('牛久大仏', '牛久市久野町２０８３', 'buddhist_temple', 'culture', 267000, 'ChIJushiku0000'),
+          google('大仏山公園 野球場', '三重県玉城町世古', 'athletic_field', 'fun', 101000, 'ChIJbaseball00'),
+          google('大仏殿', '奈良県奈良市雑司町４０６−１', 'buddhist_temple', 'culture', 173000, 'ChIJdaibutsuden1'),
+          google('大仏殿', '福井県勝山市片瀬５０−１−１', 'buddhist_temple', 'culture', 152000, 'ChIJdaibutsuden2'),
+        ],
+      }),
+    );
+    await page.goto('/app/#/add');
+    await page.reload(); // a fresh form, not the one just filled in
+    await page.getByLabel('Name', { exact: true }).fill('大仏');
+    const far = page.getByRole('list', { name: 'Matching places' }).getByRole('listitem');
+    await expect(far).toHaveCount(5);
+    await expect(far.nth(0)).toContainText('鎌倉大仏殿高徳院');
+    await expect(far.nth(0)).toContainText('178 km');
+    await shot('5d-add-search-well-known');
 
     // Shifts, with a few days of this month.
     const d = new Date();

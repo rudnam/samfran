@@ -73,6 +73,10 @@ async function standAt(page, lat, lng) {
           ? fail({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3, message: 'denied' })
           : ok({ coords: { latitude: lat, longitude: lng, accuracy: 20 }, timestamp: Date.now() }),
       );
+    // Allowed already (or not): the add form only uses a location it may have without asking.
+    const query = navigator.permissions.query.bind(navigator.permissions);
+    navigator.permissions.query = (d) =>
+      d.name === 'geolocation' ? Promise.resolve({ state: lat === null ? 'denied' : 'granted' }) : query(d);
   }, [lat ?? null, lng ?? null]);
 }
 

@@ -55,6 +55,11 @@
     <string name="name_search_hint">入力して検索（例: すき家、浜松城）</string>
     <string name="tap_the_place">場所をタップするか、そのまま名前を入力してください。</string>
     <string name="places_osm">場所の情報: OpenStreetMap</string>
+    <string name="places_google">場所の情報: Google マップ</string>
+    <string name="you_have_one_in">%1$sのものを登録済み</string>
+    <string name="you_have_one_named">同じ名前の場所を登録済み</string>
+    <string name="another_one_in">%1$sにも同じ名前の場所があります:</string>
+    <string name="another_one">同じ名前の場所がほかにもあります:</string>
     <string name="place_not_found">見つからなければ、名前をそのまま入力してください。</string>
     <string name="place_search_failed">場所の検索が応答しません。名前をそのまま入力してください。</string>
     <string name="already_on_list">もう登録済み</string>

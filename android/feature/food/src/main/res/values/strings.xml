@@ -56,6 +56,11 @@
     <string name="name_search_hint">Type to search, e.g. すき家, 浜松城</string>
     <string name="tap_the_place">Tap the place, or keep typing your own name for it.</string>
     <string name="places_osm">Places from OpenStreetMap.</string>
+    <string name="places_google">Places from Google Maps.</string>
+    <string name="you_have_one_in">You have one in %1$s</string>
+    <string name="you_have_one_named">You have one with this name</string>
+    <string name="another_one_in">You have another one, in %1$s:</string>
+    <string name="another_one">You have another one:</string>
     <string name="place_not_found">Not found? Just type its name.</string>
     <string name="place_search_failed">The place search isn’t answering. Just type the name.</string>
     <string name="already_on_list">Already on your list</string>
