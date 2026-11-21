@@ -6,6 +6,8 @@ import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.SoundAfter
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.McpToken
@@ -346,6 +348,12 @@ data class NetworkBusStop(
     @SerialName("alert_meters") val alertMeters: Int = 800,
     val shifts: List<String> = emptyList(),
     val ask: Boolean = false,
+    /** Missing from an older server (or the phone's copy of its answer): a bus stop. */
+    val kind: String = "bus",
+    /** How the phone buzzes at this stop; missing from an older server, the person's. */
+    val buzz: String? = null,
+    /** Seconds of buzzing before the sound joins in here (0: never); missing from an older server, a minute. */
+    @SerialName("sound_after") val soundAfter: Int = SoundAfter.DEFAULT,
 )
 
 @Serializable
@@ -357,7 +365,11 @@ data class NetworkBusStops(
 
 fun NetworkBusStops.asModel(): BusStops {
     val b = Buzz.from(buzz)
-    return BusStops(stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, b, it.id, it.shifts, it.ask) }, lastId, b)
+    return BusStops(
+        stops.map { BusStop(true, it.name, it.lat, it.lng, it.alertMeters, it.buzz?.let(Buzz::from) ?: b, it.id, it.shifts, it.ask, StopKind.from(it.kind), it.soundAfter) },
+        lastId,
+        b,
+    )
 }
 
 @Serializable
@@ -370,10 +382,13 @@ data class NetworkBusStopInput(
     val shifts: List<String>? = null,
     /** Left out (null), a changed stop keeps its own; a new one asks. */
     val ask: Boolean? = null,
+    /** "bus" or "train". Left out (null), a changed stop keeps its own; a new one is a bus stop. */
+    val kind: String? = null,
+    /** Left out (null), a changed stop keeps its own; a new one buzzes strong. */
+    val buzz: String? = null,
+    /** Left out (null), a changed stop keeps its own; a new one's is a minute. */
+    @SerialName("sound_after") val soundAfter: Int? = null,
 )
-
-@Serializable
-data class NetworkBuzz(val buzz: String)
 
 @Serializable
 data class NetworkFoundStop(

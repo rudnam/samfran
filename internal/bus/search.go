@@ -5,7 +5,8 @@ package bus
 // Photon (photon.komoot.io), a search-as-you-type geocoder over OpenStreetMap
 // data. (OpenStreetMap's own Nominatim forbids autocomplete.) Results near
 // lat/lng, when given, come first. A stop usually has two entries, one each
-// side of the road; they come back as one.
+// side of the road; they come back as one. A name and its town ("新林 知立")
+// finds that town's stops of the name first, however common the name.
 //
 // What goes to Photon: the text typed and the position of the stop already
 // chosen, if any; never the phone's position. The Bus tab credits
@@ -16,6 +17,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -76,11 +78,101 @@ func (s *Searcher) Search(ctx context.Context, q string, near *[2]float64) ([]Fo
 	}
 	s.mu.Unlock()
 
-	v := url.Values{"q": {q}, "limit": {"20"}, "osm_tag": {"highway:bus_stop", "railway:station", "railway:halt"}}
-	if near != nil {
-		v.Set("lat", strconv.FormatFloat(near[0], 'f', 4, 64))
-		v.Set("lon", strconv.FormatFloat(near[1], 'f', 4, 64))
+	found, err := s.stops(ctx, q, near, maxResults)
+	if err != nil {
+		return nil, err
 	}
+	// "新林 知立" or "shinbayashi chiryu": a common name, and the town it's in.
+	// Photon matches the words against names, so it can miss that; find the
+	// town (the last word, or else the first) and the stops named the rest
+	// near it, and put those first.
+	if words := strings.Fields(q); len(words) >= 2 {
+		n := len(words)
+		for _, split := range [][2]string{
+			{strings.Join(words[:n-1], " "), words[n-1]},
+			{strings.Join(words[1:], " "), words[0]},
+		} {
+			if local := s.inTown(ctx, split[0], split[1]); len(local) > 0 {
+				found = merge(local, found)
+				break
+			}
+		}
+	}
+
+	s.mu.Lock()
+	if s.cache == nil || len(s.cache) >= cacheEntries {
+		s.cache = map[string]cached{} // simplest eviction: start again
+	}
+	s.cache[key] = cached{found, time.Now()}
+	s.mu.Unlock()
+	return found, nil
+}
+
+// townRadius is how far from a town's middle its stops can be.
+const townRadius = 15000.0 // meters
+
+// inTown is the stops named name in or near the town (city, ward,
+// district) named town, in Photon's order (the closest matches to the name
+// first). None if there's no such town, or
+// Photon doesn't answer: the search as a whole still has its answer.
+func (s *Searcher) inTown(ctx context.Context, name, town string) []Found {
+	if utf8.RuneCountInString(name) < 2 {
+		return nil
+	}
+	places, err := s.photon(ctx, url.Values{"q": {town}, "limit": {"1"}, "layer": {"city", "district", "locality", "county"}})
+	if err != nil || len(places) == 0 || len(places[0].Geometry.Coordinates) != 2 {
+		return nil
+	}
+	c := places[0].Geometry.Coordinates
+	at := [2]float64{c[1], c[0]}
+	found, err := s.stops(ctx, name, &at, photonLimit)
+	if err != nil {
+		return nil
+	}
+	local := []Found{}
+	for _, f := range found {
+		// A stop in another town by that name.
+		if geo.Meters(at[0], at[1], f.Lat, f.Lng) <= townRadius {
+			local = append(local, f)
+		}
+	}
+	return local
+}
+
+// merge is first, then the stops in rest that aren't in it, up to maxResults.
+func merge(first, rest []Found) []Found {
+	out := slices.Clone(first)
+	for _, f := range rest {
+		if !slices.ContainsFunc(out, func(o Found) bool { return o.same(f) }) {
+			out = append(out, f)
+		}
+	}
+	return out[:min(len(out), maxResults)]
+}
+
+// same is whether two results are one stop: one name, close together (the
+// two sides of a road).
+func (f Found) same(o Found) bool {
+	return f.Name == o.Name && f.Kind == o.Kind && geo.Meters(f.Lat, f.Lng, o.Lat, o.Lng) < sameStop
+}
+
+// feature is one of Photon's answers.
+type feature struct {
+	Geometry struct {
+		Coordinates []float64 `json:"coordinates"`
+	} `json:"geometry"`
+	Properties struct {
+		Name     string `json:"name"`
+		OSMKey   string `json:"osm_key"`
+		City     string `json:"city"`
+		District string `json:"district"`
+		Street   string `json:"street"`
+		State    string `json:"state"`
+	} `json:"properties"`
+}
+
+// photon asks Photon.
+func (s *Searcher) photon(ctx context.Context, v url.Values) ([]feature, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.base+"?"+v.Encode(), nil)
 	if err != nil {
 		return nil, err
@@ -95,26 +187,31 @@ func (s *Searcher) Search(ctx context.Context, q string, near *[2]float64) ([]Fo
 		return nil, httpx.Errorf(http.StatusBadGateway, "the stop search isn’t answering; try again in a moment")
 	}
 	var body struct {
-		Features []struct {
-			Geometry struct {
-				Coordinates []float64 `json:"coordinates"`
-			} `json:"geometry"`
-			Properties struct {
-				Name     string `json:"name"`
-				OSMKey   string `json:"osm_key"`
-				City     string `json:"city"`
-				District string `json:"district"`
-				Street   string `json:"street"`
-				State    string `json:"state"`
-			} `json:"properties"`
-		} `json:"features"`
+		Features []feature `json:"features"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(nil, res.Body, 1<<20)).Decode(&body); err != nil {
 		return nil, err
 	}
+	return body.Features, nil
+}
+
+// photonLimit is how many answers to ask Photon for: a stop is often two.
+const photonLimit = 20
+
+// stops are up to max bus stops and stations named q, near ones first when near is given.
+func (s *Searcher) stops(ctx context.Context, q string, near *[2]float64, max int) ([]Found, error) {
+	v := url.Values{"q": {q}, "limit": {strconv.Itoa(photonLimit)}, "osm_tag": {"highway:bus_stop", "railway:station", "railway:halt"}}
+	if near != nil {
+		v.Set("lat", strconv.FormatFloat(near[0], 'f', 4, 64))
+		v.Set("lon", strconv.FormatFloat(near[1], 'f', 4, 64))
+	}
+	features, err := s.photon(ctx, v)
+	if err != nil {
+		return nil, err
+	}
 	found := []Found{}
 next:
-	for _, f := range body.Features {
+	for _, f := range features {
 		p, c := f.Properties, f.Geometry.Coordinates
 		if p.Name == "" || len(c) != 2 {
 			continue
@@ -123,8 +220,9 @@ next:
 		if p.OSMKey == "railway" {
 			kind = "train"
 		}
+		this := Found{Name: p.Name, Kind: kind, Lat: c[1], Lng: c[0]}
 		for _, o := range found {
-			if o.Name == p.Name && o.Kind == kind && geo.Meters(o.Lat, o.Lng, c[1], c[0]) < sameStop {
+			if o.same(this) {
 				continue next // the other side of the road
 			}
 		}
@@ -137,18 +235,12 @@ next:
 		if len(area) == 0 && p.State != "" {
 			area = append(area, p.State)
 		}
-		found = append(found, Found{Name: p.Name, Area: strings.Join(area, " "), Kind: kind, Lat: c[1], Lng: c[0]})
-		if len(found) == maxResults {
+		this.Area = strings.Join(area, " ")
+		found = append(found, this)
+		if len(found) == max {
 			break
 		}
 	}
-
-	s.mu.Lock()
-	if s.cache == nil || len(s.cache) >= cacheEntries {
-		s.cache = map[string]cached{} // simplest eviction: start again
-	}
-	s.cache[key] = cached{found, time.Now()}
-	s.mu.Unlock()
 	return found, nil
 }
 

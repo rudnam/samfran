@@ -1,22 +1,22 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="trip_title">降りるバス停を見ています</string>
+    <string name="trip_title">降りる駅・バス停を見ています</string>
     <string name="trip_title_named">%1$sを見ています</string>
     <string name="trip_starting">現在地を確認しています…</string>
     <string name="trip_distance">あと%1$s</string>
     <string name="trip_stop">止める</string>
-    <string name="channel_trip">バスの移動中</string>
-    <string name="channel_alarm">バス停が近いとき</string>
+    <string name="channel_trip">乗車中</string>
+    <string name="channel_alarm">降りる場所が近いとき</string>
     <string name="alarm_title">次で降ります</string>
     <string name="alarm_text">降りる準備をしましょう。</string>
     <string name="alarm_text_named">もうすぐ%1$sです。</string>
     <string name="alarm_stop">止める</string>
     <string name="channel_shift_end">シフトが終わったとき</string>
-    <string name="shift_end_title">バスアラームを開始しますか？</string>
-    <string name="shift_end_text">シフトが終わりました。降りるバス停の手前で振動します。</string>
+    <string name="shift_end_title">乗り過ごしアラームを開始しますか？</string>
+    <string name="shift_end_text">シフトが終わりました。降りる駅・バス停の手前で振動します。</string>
     <string name="shift_end_text_named">シフトが終わりました。%1$sの手前で振動します。</string>
-    <string name="shift_end_start">バスアラームを開始</string>
-    <string name="shift_end_other">別のバス停</string>
+    <string name="shift_end_start">アラームを開始</string>
+    <string name="shift_end_other">別の場所</string>
     <string name="channel_changes">相手による変更</string>
     <string name="notify_change_someone">誰か</string>
     <string name="notify_change_added_been">%1$sさんが%2$sを追加しました</string>
@@ -24,13 +24,13 @@
     <string name="notify_change_visit">%1$sさんが%2$sに行きました</string>
     <string name="notify_change_rated">%1$sさんが%2$sを★%3$dと評価しました</string>
     <string name="notify_change_shifts">%1$sさんがシフトを保存しました</string>
-    <string name="notify_bus_started">%1$sさんが%2$sまでのバスアラームを開始しました</string>
+    <string name="notify_bus_started">%1$sさんが%2$sまでの乗り過ごしアラームを開始しました</string>
     <plurals name="notify_change_more">
         <item quantity="other">ほか%d件の変更</item>
     </plurals>
     <string name="tab_food">おでかけ</string>
     <string name="tab_shifts">シフト</string>
-    <string name="tab_bus">バス</string>
+    <string name="tab_bus">のりもの</string>
     <string name="tab_us">ふたり</string>
     <plurals name="new_changes">
         <item quantity="other">新しい変更が%d件</item>

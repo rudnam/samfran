@@ -5,7 +5,6 @@ import com.rudnam.samfran.core.network.model.NetworkAppCode
 import com.rudnam.samfran.core.network.model.NetworkAuthOptions
 import com.rudnam.samfran.core.network.model.NetworkBusStops
 import com.rudnam.samfran.core.network.model.NetworkBusStopInput
-import com.rudnam.samfran.core.network.model.NetworkBuzz
 import com.rudnam.samfran.core.network.model.NetworkCredentials
 import com.rudnam.samfran.core.network.model.NetworkDemo
 import com.rudnam.samfran.core.network.model.NetworkDownloads
@@ -111,7 +110,6 @@ internal interface SamFranApi {
     @PUT("api/bus/stops/{id}") suspend fun changeBusStop(@Path("id") id: Long, @Body body: NetworkBusStopInput): NetworkBusStops
     @DELETE("api/bus/stops/{id}") suspend fun deleteBusStop(@Path("id") id: Long): NetworkBusStops
     @POST("api/bus/stops/{id}/use") suspend fun useBusStop(@Path("id") id: Long): NetworkBusStops
-    @PUT("api/bus/buzz") suspend fun setBuzz(@Body body: NetworkBuzz): NetworkBusStops
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
 
     @GET("api/activity") suspend fun activity(@Query("bus") bus: Int? = null): List<NetworkActivity>
@@ -204,7 +202,6 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun changeBusStop(id: Long, body: NetworkBusStopInput) = call { api.changeBusStop(id, body) }
     suspend fun deleteBusStop(id: Long) = call { api.deleteBusStop(id) }
     suspend fun useBusStop(id: Long) = call { api.useBusStop(id) }
-    suspend fun setBuzz(buzz: String) = call { api.setBuzz(NetworkBuzz(buzz)) }
     suspend fun searchStops(q: String, lat: Double?, lng: Double?) = call { api.searchStops(q, lat, lng) }
 
     suspend fun activity() = call { api.activity() }

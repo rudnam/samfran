@@ -59,6 +59,9 @@ type savedStop struct {
 	Name        string
 	Lat, Lng    float64
 	AlertMeters int `json:"alert_meters"`
+	Kind        string
+	Buzz        string
+	SoundAfter  int `json:"sound_after"`
 	Shifts      []string
 	Ask         bool
 }
@@ -95,6 +98,7 @@ func TestSavedStops(t *testing.T) {
 		{"name": "x"},
 		{"name": "x", "lat": 35.0, "lng": 137.0, "alert_meters": 50},
 		{"name": "x", "lat": 35.0, "lng": 137.0, "shifts": []string{"Lunch"}},
+		{"name": "x", "lat": 35.0, "lng": 137.0, "kind": "ferry"},
 	} {
 		if code := sam.do("POST", "/api/bus/stops", bad, nil); code != 400 {
 			t.Errorf("%v: %d", bad, code)
@@ -104,14 +108,14 @@ func TestSavedStops(t *testing.T) {
 	// The first stop is the one used last.
 	if code := sam.do("POST", "/api/bus/stops", map[string]any{"name": " Aoi ", "lat": 34.97, "lng": 138.38, "shifts": []string{"Late", "Early"}}, &all); code != 201 ||
 		len(all.Stops) != 1 || all.Stops[0].Name != "Aoi" || all.LastID != all.Stops[0].ID || all.Stops[0].AlertMeters != 800 ||
-		len(all.Stops[0].Shifts) != 2 || all.Stops[0].Shifts[0] != "Early" {
+		len(all.Stops[0].Shifts) != 2 || all.Stops[0].Shifts[0] != "Early" || all.Stops[0].Kind != "bus" {
 		t.Fatalf("first: %d %+v", code, all)
 	}
 	aoi := all.Stops[0].ID
 	// A second takes Early from the first, and isn't the one used last.
-	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Station", "lat": 34.97, "lng": 138.39, "alert_meters": 600, "shifts": []string{"Early", "Middle"}}, &all)
+	sam.do("POST", "/api/bus/stops", map[string]any{"name": "Station", "lat": 34.97, "lng": 138.39, "alert_meters": 600, "shifts": []string{"Early", "Middle"}, "kind": "train"}, &all)
 	station := all.named("Station")
-	if len(all.Stops) != 2 || all.Stops[0].ID != aoi || all.LastID != aoi ||
+	if len(all.Stops) != 2 || station.Kind != "train" || all.Stops[0].ID != aoi || all.LastID != aoi ||
 		len(all.named("Aoi").Shifts) != 1 || all.named("Aoi").Shifts[0] != "Late" || len(station.Shifts) != 2 {
 		t.Fatalf("second: %+v", all)
 	}
@@ -122,8 +126,28 @@ func TestSavedStops(t *testing.T) {
 
 	// Changing a stop without shifts keeps them; with them, it takes them.
 	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "Shizuoka Station", "lat": 34.97, "lng": 138.39, "alert_meters": 1000}, &all)
-	if s := all.named("Shizuoka Station"); s.AlertMeters != 1000 || len(s.Shifts) != 2 {
+	if s := all.named("Shizuoka Station"); s.AlertMeters != 1000 || len(s.Shifts) != 2 || s.Kind != "train" {
 		t.Errorf("changed: %+v", s)
+	}
+	// Each stop buzzes its own way: strong to start with, kept by a change that leaves it out.
+	if all.named("Aoi").Buzz != "strong" || all.named("Shizuoka Station").Buzz != "strong" || all.named("Aoi").SoundAfter != 60 {
+		t.Errorf("buzz and sound to start with: %+v", all)
+	}
+	// So is the sound: off at one stop, kept by a change that leaves it out.
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "sound_after": 0}, &all)
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38}, &all)
+	if all.named("Aoi").SoundAfter != 0 || all.named("Shizuoka Station").SoundAfter != 60 {
+		t.Errorf("one stop's sound: %+v", all)
+	}
+	if code := sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", aoi), map[string]any{"name": "Aoi", "lat": 34.97, "lng": 138.38, "sound_after": 45}, nil); code != 400 {
+		t.Errorf("a stop's sound must be one of them: %d", code)
+	}
+	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "Shizuoka Station", "lat": 34.97, "lng": 138.39, "alert_meters": 1000, "buzz": "strongest"}, &all)
+	if all.named("Shizuoka Station").Buzz != "strongest" || all.named("Aoi").Buzz != "strong" {
+		t.Errorf("one stop's buzz: %+v", all)
+	}
+	if code := sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "x", "lat": 34.97, "lng": 138.39, "buzz": "loud"}, nil); code != 400 {
+		t.Errorf("a stop's buzz must be one of them: %d", code)
 	}
 	sam.do("PUT", fmt.Sprintf("/api/bus/stops/%d", station.ID), map[string]any{"name": "Shizuoka Station", "lat": 34.97, "lng": 138.39, "shifts": []string{"Late"}}, &all)
 	if a, s := all.named("Aoi"), all.named("Shizuoka Station"); len(a.Shifts) != 0 || len(s.Shifts) != 1 || s.Shifts[0] != "Late" {
@@ -168,6 +192,15 @@ func TestSavedStops(t *testing.T) {
 	}
 	if sam.do("PUT", "/api/bus/buzz", map[string]any{"buzz": "gentle"}, &all); all.Buzz != "gentle" {
 		t.Errorf("buzz: %+v", all)
+	}
+	// As older apps set it: every stop's.
+	for _, x := range all.Stops {
+		if x.Buzz != "gentle" {
+			t.Errorf("an older app's buzz is every stop's: %+v", x)
+		}
+	}
+	if code := sam.do("PUT", "/api/bus/buzz", map[string]any{}, nil); code != 400 {
+		t.Errorf("no buzz: %d", code)
 	}
 
 	// Each person's own: another's stop is a 404.

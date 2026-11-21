@@ -39,7 +39,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 
-/** The bus-stop alarm: [BusTripService] does the watching. */
+/** The ride alarm: [BusTripService] does the watching. */
 @Singleton
 class AndroidBusAlarm @Inject constructor(@ApplicationContext private val context: Context) : BusAlarm {
     override val status: StateFlow<com.rudnam.samfran.core.model.TripStatus> = BusTripService.status
@@ -51,6 +51,7 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
             .putExtra(BusTripService.EXTRA_RADIUS, stop.alertMeters.toFloat())
             .putExtra(BusTripService.EXTRA_NAME, stop.name)
             .putExtra(BusTripService.EXTRA_BUZZ, stop.buzz.api)
+            .putExtra(BusTripService.EXTRA_SOUND_AFTER, stop.soundAfter)
         ContextCompat.startForegroundService(context, i)
     }
 
@@ -61,6 +62,9 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
     override fun stopBuzz() = BusTripService.stopBuzz(context)
 
     override fun test(stopName: String, buzz: Buzz) = BusTripService.ring(context, stopName, buzz)
+
+    /** Six seconds of the alarm sound, rising faster than on a ride so it's heard at full volume. */
+    override fun hearSound() = BusTripService.sound(context, riseMs = 4_000, forMs = 6_000)
 
     @SuppressLint("MissingPermission") // checked first
     override suspend fun here(): Pair<Double, Double>? {

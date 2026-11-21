@@ -21,6 +21,7 @@ import com.rudnam.samfran.core.model.AppUpdate
 import com.rudnam.samfran.core.model.AuthOptions
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
+import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
@@ -240,9 +241,8 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
     private fun now(): BusStops = stopsFlow.value ?: BusStops()
 
     private fun set(all: BusStops): Outcome<BusStops> {
-        val b = all.copy(stops = all.stops.map { it.copy(buzz = all.buzz) })
-        stopsFlow.value = b
-        return Outcome.Done(b)
+        stopsFlow.value = all
+        return Outcome.Done(all)
     }
 
     /** Each kind of shift on one stop at most: [id] takes [kinds] from the others. */
@@ -253,7 +253,10 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         next?.let { return it }
         val all = now()
         val id = (all.stops.maxOfOrNull { it.id } ?: 0) + 1
-        val s = BusStop(true, stop.name.trim(), stop.lat, stop.lng, stop.alertMeters, all.buzz, id, stop.shifts.orEmpty(), stop.ask ?: false)
+        val s = BusStop(
+            set = true, name = stop.name.trim(), lat = stop.lat, lng = stop.lng, alertMeters = stop.alertMeters, buzz = stop.buzz ?: Buzz.Strong,
+            id = id, shifts = stop.shifts.orEmpty(), ask = stop.ask ?: false, kind = stop.kind ?: StopKind.Bus, soundAfter = stop.soundAfter ?: 60,
+        )
         return set(take(all.copy(stops = all.stops + s, lastId = if (all.stops.isEmpty()) id else all.lastId), id, stop.shifts))
     }
 
@@ -262,7 +265,7 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         val all = now()
         val changed = all.copy(
             stops = all.stops.map {
-                if (it.id != id) it else it.copy(name = stop.name.trim(), lat = stop.lat, lng = stop.lng, alertMeters = stop.alertMeters, shifts = stop.shifts ?: it.shifts, ask = stop.ask ?: it.ask)
+                if (it.id != id) it else it.copy(name = stop.name.trim(), lat = stop.lat, lng = stop.lng, alertMeters = stop.alertMeters, shifts = stop.shifts ?: it.shifts, ask = stop.ask ?: it.ask, kind = stop.kind ?: it.kind, buzz = stop.buzz ?: it.buzz, soundAfter = stop.soundAfter ?: it.soundAfter)
             },
         )
         return set(take(changed, id, stop.shifts))
@@ -280,8 +283,6 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         used += id
         return set(now().copy(lastId = id))
     }
-
-    override suspend fun setBuzz(buzz: Buzz): Outcome<BusStops> = next ?: set(now().copy(buzz = buzz))
 
     override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>> =
         next ?: Outcome.Done(found.filter { it.name.contains(query) })
@@ -305,6 +306,10 @@ class FakeBusAlarm(status: TripStatus = TripStatus()) : BusAlarm {
     override fun test(stopName: String, buzz: Buzz) {
         tests += stopName
         testBuzz = buzz
+    }
+    var heard = 0
+    override fun hearSound() {
+        heard++
     }
     override suspend fun here() = here
 }

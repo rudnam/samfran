@@ -3,7 +3,7 @@ package com.rudnam.samfran.core.model
 import java.util.Locale
 import kotlin.math.roundToInt
 
-/** One of the places the signed-in person gets off the bus (GET /api/bus/stops), and how the phone buzzes there. */
+/** One of the places the signed-in person gets off the bus or the train (GET /api/bus/stops), and how the phone buzzes there. */
 data class BusStop(
     /** False until a stop is chosen. */
     val set: Boolean,
@@ -12,14 +12,18 @@ data class BusStop(
     val lng: Double = 0.0,
     /** Buzz this many metres before the stop. */
     val alertMeters: Int = 800,
-    /** How the phone buzzes there (the person's, at every stop). */
+    /** How the phone buzzes there. */
     val buzz: Buzz = Buzz.Strong,
     /** The server's id for it; 0 for none. */
     val id: Long = 0,
     /** The kinds of shift it's the stop for ([ShiftKinds]); each is on one stop at most. */
     val shifts: List<String> = emptyList(),
-    /** Ask "Start bus alarm?" when a shift whose stop this is ends. Off until switched on. */
+    /** Ask "Start the ride alarm?" when a shift whose stop this is ends. Off until switched on. */
     val ask: Boolean = false,
+    /** A bus stop or a train station. */
+    val kind: StopKind = StopKind.Bus,
+    /** If the buzz isn't stopped, the alarm sound joins in after this many seconds (0: never). */
+    val soundAfter: Int = SoundAfter.DEFAULT,
 ) {
     /** The stop on Google Maps. */
     val mapLink: String get() = mapLink(lat, lng)
@@ -33,6 +37,7 @@ data class BusStops(
     val stops: List<BusStop> = emptyList(),
     /** The stop used last: the one to go to when no shift says which. 0 when there are none. */
     val lastId: Long = 0,
+    /** How older apps buzz, at every stop; each stop has its own ([BusStop.buzz]). */
     val buzz: Buzz = Buzz.Strong,
 ) {
     /** The stop used last (or the first). */
@@ -81,6 +86,25 @@ enum class Buzz(val api: String, val onMs: Long, val offMs: Long, val full: Bool
     }
 }
 
+/** A bus stop or a train station ("kind" in /api/bus/stops). */
+enum class StopKind(val api: String) {
+    Bus("bus"),
+    Train("train"),
+    ;
+
+    companion object {
+        /** An unknown one (from a newer server) is a bus stop. */
+        fun from(api: String?): StopKind = entries.firstOrNull { it.api == api } ?: Bus
+    }
+}
+
+/** How long it buzzes before the alarm sound joins in, if it isn't stopped ("sound_after" in /api/bus/stops). */
+object SoundAfter {
+    /** The choices, in seconds; 0 is never. */
+    val choices = listOf(0, 30, 60, 120)
+    const val DEFAULT = 60
+}
+
 /** A stop or station whose name matches what's typed (GET /api/bus/search). */
 data class FoundStop(
     val name: String,
@@ -89,7 +113,9 @@ data class FoundStop(
     val train: Boolean,
     val lat: Double,
     val lng: Double,
-)
+) {
+    val kind: StopKind get() = if (train) StopKind.Train else StopKind.Bus
+}
 
 /** A trip on the phone (the app's BusTripService). */
 data class TripStatus(
@@ -100,18 +126,36 @@ data class TripStatus(
     val buzzing: Boolean = false,
 )
 
-/** What a buzz distance means on a ride, roughly: city bus stops are 300–500 m apart. */
-enum class Early { RightBefore, OneStop, TwoStops, Plenty }
+/**
+ * What a buzz distance means on a ride, roughly: on a bus, in stops (city
+ * bus stops are 300–500 m apart); on a train, in minutes.
+ */
+enum class Early { RightBefore, OneStop, TwoStops, OneMinute, OneToTwoMinutes, TwoToThreeMinutes, Plenty }
 
+/** The website words them the same way (early, in web/src/features/bus/BusPage.tsx). */
 object Distances {
-    /** The choices for how far before the stop to buzz. */
-    val choices = listOf(400, 600, 800, 1000, 1500, 2000)
+    /** The choices for how far before the stop to buzz: stations are further apart, and trains faster. */
+    fun choices(kind: StopKind): List<Int> = when (kind) {
+        StopKind.Bus -> listOf(400, 600, 800, 1000, 1500, 2000)
+        StopKind.Train -> listOf(1000, 1500, 2000, 3000, 4000, 5000)
+    }
 
-    fun early(meters: Int): Early = when {
-        meters <= 400 -> Early.RightBefore
-        meters <= 800 -> Early.OneStop
-        meters <= 1500 -> Early.TwoStops
-        else -> Early.Plenty
+    /** The distance a new stop of the kind starts with. */
+    fun default(kind: StopKind): Int = if (kind == StopKind.Train) 2000 else 800
+
+    fun early(meters: Int, kind: StopKind = StopKind.Bus): Early = when (kind) {
+        StopKind.Bus -> when {
+            meters <= 400 -> Early.RightBefore
+            meters <= 800 -> Early.OneStop
+            meters <= 1500 -> Early.TwoStops
+            else -> Early.Plenty
+        }
+        StopKind.Train -> when {
+            meters <= 1000 -> Early.OneMinute
+            meters <= 2000 -> Early.OneToTwoMinutes
+            meters <= 3000 -> Early.TwoToThreeMinutes
+            else -> Early.Plenty
+        }
     }
 
     /**

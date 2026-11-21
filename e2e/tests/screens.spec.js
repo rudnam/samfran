@@ -207,19 +207,23 @@ for (const [name, viewport] of [
     await expect(page.getByText('No shifts for this month')).toBeVisible();
     await shot('6e-shifts-empty-month');
 
-    // The bus alarm: first time, then with a stop chosen.
-    await page.getByRole('link', { name: 'Bus', exact: true }).click();
+    // The ride alarm: first time, then with a stop chosen.
+    await page.getByRole('link', { name: 'Ride', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'How it works' })).toBeVisible();
     await shot('7b-bus-setup');
     expect((await page.request.put('/api/bus/stop', { data: { name: '葵西小学校入口', lat: 34.76966, lng: 137.71207, alert_meters: 800 } })).status()).toBe(200);
-    expect((await page.request.post('/api/bus/stops', { data: { name: '静岡駅', lat: 34.9717, lng: 138.3889, shifts: ['Early', 'Middle'] } })).status()).toBe(201);
+    expect((await page.request.post('/api/bus/stops', { data: { name: '静岡駅', lat: 34.9717, lng: 138.3889, shifts: ['Early', 'Middle'], kind: 'train', alert_meters: 2000 } })).status()).toBe(201);
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await shot('7d-bus-settings');
-    await page.getByRole('button', { name: '‹ Bus alarm' }).click();
+    await page.getByRole('button', { name: 'Change 静岡駅' }).click();
+    await expect(page.getByRole('button', { name: /^Buzz before/ })).toBeVisible();
+    await shot('7e-bus-stop');
+    await page.getByRole('button', { name: '‹ Settings' }).click();
+    await page.getByRole('button', { name: '‹ Ride alarm' }).click();
 
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
@@ -231,7 +235,7 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Places' }).click();
     await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
     await shot('10-food-dark');
-    await page.getByRole('link', { name: 'Bus', exact: true }).click();
+    await page.getByRole('link', { name: 'Ride', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('11-bus-dark');
 
