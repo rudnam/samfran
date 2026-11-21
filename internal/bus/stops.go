@@ -31,6 +31,9 @@ type SavedStop struct {
 	Kind string `json:"kind"`
 	// Buzz is how the phone buzzes at this stop: one of Buzzes.
 	Buzz string `json:"buzz"`
+	// SoundAfter is how many seconds the phone buzzes before it adds its
+	// alarm sound, if the buzz isn't stopped: one of SoundAfters; 0 never.
+	SoundAfter int `json:"sound_after"`
 	// Shifts are the kinds of shift this is the stop for (ShiftKinds); each
 	// kind is on at most one of a person's stops.
 	Shifts []string `json:"shifts"`
@@ -49,15 +52,12 @@ type Stops struct {
 	// stop's. Setting it (PUT /api/bus/buzz, as older apps do) sets every
 	// stop's too.
 	Buzz string `json:"buzz"`
-	// SoundAfter is how many seconds the phone buzzes before it adds its
-	// alarm sound, if the buzz isn't stopped: one of SoundAfters; 0 never.
-	SoundAfter int `json:"sound_after"`
 }
 
 // Kinds are the kinds of stop: a bus stop, or a train station.
 var Kinds = []string{"bus", "train"}
 
-// SoundAfters are the choices for Stops.SoundAfter, in seconds.
+// SoundAfters are the choices for SavedStop.SoundAfter, in seconds.
 var SoundAfters = []int{0, 30, 60, 120}
 
 const defaultSoundAfter = 60
@@ -91,12 +91,12 @@ type querier interface {
 }
 
 func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error) {
-	all := Stops{Stops: []SavedStop{}, Buzz: defaultBuzz, SoundAfter: defaultSoundAfter}
-	if err := q.QueryRowContext(ctx, `SELECT buzz, sound_after FROM bus_stops WHERE user_id = $1`, user).Scan(&all.Buzz, &all.SoundAfter); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	all := Stops{Stops: []SavedStop{}, Buzz: defaultBuzz}
+	if err := q.QueryRowContext(ctx, `SELECT buzz FROM bus_stops WHERE user_id = $1`, user).Scan(&all.Buzz); err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return all, err
 	}
 	// The one used last comes first here, then they're put in the order they were added.
-	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, kind, buzz, shifts, ask FROM bus_saved_stops
+	rows, err := q.QueryContext(ctx, `SELECT id, name, lat, lng, alert_meters, kind, buzz, sound_after, shifts, ask FROM bus_saved_stops
 		WHERE user_id = $1 ORDER BY used_at DESC, id DESC`, user)
 	if err != nil {
 		return all, err
@@ -104,7 +104,7 @@ func (h *Handler) load(ctx context.Context, q querier, user int64) (Stops, error
 	defer rows.Close()
 	for rows.Next() {
 		var x SavedStop
-		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, &x.Kind, &x.Buzz, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
+		if err := rows.Scan(&x.ID, &x.Name, &x.Lat, &x.Lng, &x.AlertMeters, &x.Kind, &x.Buzz, &x.SoundAfter, (*pq.StringArray)(&x.Shifts), &x.Ask); err != nil {
 			return all, err
 		}
 		if all.LastID == 0 {
@@ -131,14 +131,11 @@ func inOrder(kinds []string) []string {
 	return out
 }
 
-// settings are how the phone alarms, at every stop: each left out (nil)
-// stays as it was.
+// settings are how the phone alarms, at every stop, as older apps set
+// it: left out (nil), it stays as it was.
 type settings struct {
-	Buzz       *string `json:"buzz"`
-	SoundAfter *int    `json:"sound_after"`
+	Buzz *string `json:"buzz"`
 }
-
-func (in settings) any() bool { return in.Buzz != nil || in.SoundAfter != nil }
 
 // change runs f in a transaction with the person's stops as they were, then
 // sets the settings given, and copies the stop used last into bus_stops
@@ -173,17 +170,14 @@ func (h *Handler) change(ctx context.Context, user int64, f func(*sql.Tx, Stops)
 	if set.Buzz != nil {
 		after.Buzz = *set.Buzz
 	}
-	if set.SoundAfter != nil {
-		after.SoundAfter = *set.SoundAfter
-	}
 	if last := after.legacy(); last.Set {
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO bus_stops (user_id, name, lat, lng, alert_meters, buzz, sound_after) VALUES ($1, $2, $3, $4, $5, $6, $7)
-			ON CONFLICT (user_id) DO UPDATE SET name = $2, lat = $3, lng = $4, alert_meters = $5, buzz = $6, sound_after = $7, updated_at = now()`,
-			user, last.Name, last.Lat, last.Lng, last.AlertMeters, after.Buzz, after.SoundAfter); err != nil {
+			INSERT INTO bus_stops (user_id, name, lat, lng, alert_meters, buzz) VALUES ($1, $2, $3, $4, $5, $6)
+			ON CONFLICT (user_id) DO UPDATE SET name = $2, lat = $3, lng = $4, alert_meters = $5, buzz = $6, updated_at = now()`,
+			user, last.Name, last.Lat, last.Lng, last.AlertMeters, after.Buzz); err != nil {
 			return Stops{}, err
 		}
-	} else if set.any() {
+	} else if set.Buzz != nil {
 		// No stop to keep it with yet.
 		return Stops{}, httpx.Errorf(http.StatusBadRequest, "choose a stop first")
 	}
@@ -225,6 +219,8 @@ type savedInput struct {
 	Kind *string `json:"kind"`
 	// Left out, a changed stop keeps its own (a new one is "strong").
 	Buzz *string `json:"buzz"`
+	// Left out, a changed stop keeps its own (a new one's is a minute).
+	SoundAfter *int `json:"sound_after"`
 }
 
 func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput, error) {
@@ -240,6 +236,9 @@ func (h *Handler) readSaved(w http.ResponseWriter, r *http.Request) (savedInput,
 	}
 	if in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz) {
 		return in, errBuzz
+	}
+	if in.SoundAfter != nil && !slices.Contains(SoundAfters, *in.SoundAfter) {
+		return in, errSound
 	}
 	if in.Shifts != nil {
 		for _, k := range *in.Shifts {
@@ -289,9 +288,9 @@ func (h *Handler) addStop(w http.ResponseWriter, r *http.Request) error {
 		// A new stop isn't the one used last, unless it's the first.
 		var id int64
 		if err := tx.QueryRowContext(r.Context(), `
-			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind, buzz)
-			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong')) RETURNING id`,
-			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind, in.Buzz).Scan(&id); err != nil {
+			INSERT INTO bus_saved_stops (user_id, name, lat, lng, alert_meters, shifts, used_at, ask, kind, buzz, sound_after)
+			VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() ELSE '-infinity' END, COALESCE($8, false), COALESCE($9, 'bus'), COALESCE($10, 'strong'), COALESCE($11, $12)) RETURNING id`,
+			user, in.Name, *in.Lat, *in.Lng, in.AlertMeters, pq.Array(kinds), len(before.Stops) == 0, in.Ask, in.Kind, in.Buzz, in.SoundAfter, defaultSoundAfter).Scan(&id); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, &kinds)
@@ -338,8 +337,9 @@ func (h *Handler) changeStop(w http.ResponseWriter, r *http.Request) error {
 	}
 	return h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
 		if _, err := tx.ExecContext(r.Context(), `UPDATE bus_saved_stops SET name = $3, lat = $4, lng = $5, alert_meters = $6,
-			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask), kind = COALESCE($9, kind), buzz = COALESCE($10, buzz) WHERE user_id = $1 AND id = $2`,
-			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask, in.Kind, in.Buzz); err != nil {
+			shifts = COALESCE($7, shifts), ask = COALESCE($8, ask), kind = COALESCE($9, kind), buzz = COALESCE($10, buzz),
+			sound_after = COALESCE($11, sound_after) WHERE user_id = $1 AND id = $2`,
+			user, id, in.Name, *in.Lat, *in.Lng, in.AlertMeters, nullArray(in.Shifts), in.Ask, in.Kind, in.Buzz, in.SoundAfter); err != nil {
 			return err
 		}
 		return takeShifts(r.Context(), tx, user, id, in.Shifts)
@@ -389,17 +389,14 @@ func (h *Handler) logStarted(r *http.Request, stop string) {
 	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
 }
 
-// setBuzz changes how the phone alarms: {buzz?, sound_after?}, at least one.
+// setBuzz is how older apps set how the phone buzzes: {buzz}, at every stop.
 func (h *Handler) setBuzz(w http.ResponseWriter, r *http.Request) error {
 	var in settings
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
 	}
-	if !in.any() || in.Buzz != nil && !slices.Contains(Buzzes, *in.Buzz) {
+	if in.Buzz == nil || !slices.Contains(Buzzes, *in.Buzz) {
 		return errBuzz
-	}
-	if in.SoundAfter != nil && !slices.Contains(SoundAfters, *in.SoundAfter) {
-		return errSound
 	}
 	all, err := h.change(r.Context(), account.UserFrom(r).ID, func(*sql.Tx, Stops) error { return nil }, in)
 	if err != nil {

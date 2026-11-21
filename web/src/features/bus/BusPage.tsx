@@ -13,7 +13,7 @@
 // see what it does before relying on it.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
-import { t, type Key } from '../../i18n';
+import { t, tx, type Key } from '../../i18n';
 import { labelOf } from '../shifts/codes';
 import { confirmDialog } from '../../components/Overlay';
 import { StopMap } from './StopMap';
@@ -106,7 +106,7 @@ type View =
 
 /** A new stop at a place picked: the usual distance for its kind, a strong buzz, no shifts. */
 function draftAt(p: Picked): Draft {
-  return { ...p, alert_meters: defaultMeters[p.kind], buzz: 'strong', shifts: [], ask: false };
+  return { ...p, alert_meters: defaultMeters[p.kind], buzz: 'strong', sound_after: 60, shifts: [], ask: false };
 }
 
 export function BusPage() {
@@ -176,7 +176,7 @@ export function BusPage() {
     // Shown at once (a switch flips as it's tapped); the server's answer then replaces it.
     setAll((a) => a && { ...a, stops: a.stops.map((x) => (x.id === s.id ? next : x)) });
     try {
-      setAll(await api.changeBusStop(s.id, { name: next.name, lat: next.lat, lng: next.lng, alert_meters: next.alert_meters, kind: next.kind, buzz: next.buzz, shifts: next.shifts, ask: next.ask }));
+      setAll(await api.changeBusStop(s.id, { name: next.name, lat: next.lat, lng: next.lng, alert_meters: next.alert_meters, kind: next.kind, buzz: next.buzz, sound_after: next.sound_after, shifts: next.shifts, ask: next.ask }));
     } catch (err) {
       setError(errorMessage(err));
       undo();
@@ -210,17 +210,6 @@ export function BusPage() {
       setView(after.stops.length ? { page: 'settings' } : null);
     } catch (err) {
       setError(errorMessage(err));
-    }
-  }
-
-  async function setSound(on: boolean) {
-    setError('');
-    setAll((a) => a && { ...a, sound_after: on ? 60 : 0 });
-    try {
-      setAll(await api.setAlarm({ sound_after: on ? 60 : 0 }));
-    } catch (err) {
-      setError(errorMessage(err));
-      undo();
     }
   }
 
@@ -306,7 +295,7 @@ export function BusPage() {
       {first && !view && <HowItWorks />}
 
       {all && shown?.page === 'settings' && (
-        <SettingsPage all={all} added={added} onOpen={(id) => setView(id === 'new' ? { page: 'where', id: 'new' } : { page: 'stop', id })} onSound={setSound} />
+        <SettingsPage all={all} added={added} onOpen={(id) => setView(id === 'new' ? { page: 'where', id: 'new' } : { page: 'stop', id })} />
       )}
 
       {all && shown?.page === 'where' && (
@@ -577,8 +566,8 @@ function Choices<T extends string | number>({ label, choices, value, onPick, cla
   );
 }
 
-/** Settings: the stops (each opens its page), whether a sound joins in, and how it works. */
-function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: number | 'new') => void; onSound: (on: boolean) => void }) {
+/** Settings: the stops (each opens its page), and how it works. */
+function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: number | 'new') => void }) {
   const { all } = p;
   return (
     <>
@@ -613,18 +602,18 @@ function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: num
           </button>
         )}
       </div>
-      <div className="card stack tight">
-        <label className="switch">
-          <span className="grow">
-            <strong className="block">{t('Add sound if I don’t stop it')}</strong>
-            <span className="muted small">{t('After a minute of buzzing, the phone’s alarm sound plays too, getting louder. Even on silent.')}</span>
-          </span>
-          <input type="checkbox" role="switch" checked={all.sound_after > 0} onChange={(e) => p.onSound(e.target.checked)} />
-        </label>
-      </div>
       <details className="card how-fold">
         <summary>{t('How it works')}</summary>
         <Steps />
+        <p className="muted small">
+          {tx('Stops and stations found by name come from {osm}.', {
+            osm: (
+              <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+                OpenStreetMap
+              </a>
+            ),
+          })}
+        </p>
       </details>
     </>
   );
@@ -666,6 +655,13 @@ function StopPage(p: {
         <Row icon={<VehicleIcon kind={stop.kind} size={20} />} label={t('Where')} value={name} onClick={p.onWhere} />
         <Row icon={<RulerIcon />} label={t('Buzz before')} value={km(stop.alert_meters)} onClick={() => setOpen('distance')} />
         <Row icon={<BellIcon />} label={t('How it buzzes')} value={t(buzzOf(stop.buzz).label)} onClick={() => setOpen('buzz')} />
+        <label className="switch setting-switch">
+          <span className="grow">
+            <span className="block setting-label">{t('Add sound if I don’t stop it')}</span>
+            <span className="muted small">{t('After a minute of buzzing, the phone’s alarm sound plays too, getting louder. Even on silent.')}</span>
+          </span>
+          <input type="checkbox" role="switch" checked={stop.sound_after > 0} onChange={(e) => p.onChange({ sound_after: e.target.checked ? 60 : 0 })} />
+        </label>
       </div>
       <div className="card setting-list">
         <Row icon={<CalendarIcon />} label={t('Use after')} value={stop.shifts.length ? stop.shifts.map(labelOf).join('・') : t('None')} onClick={() => setOpen('shifts')} />
@@ -811,12 +807,6 @@ function WherePage({ first, title, near, onPick }: { first: boolean; title: stri
         )}
         {query && search.failed && <p className="hint">{t('The stop search isn’t answering. Paste a Google Maps link instead.')}</p>}
         {query && search.found?.length === 0 && <p className="hint">{t('No stops by that name. Try fewer characters, written as on the sign. For a common name, add the town: 新林 知立.')}</p>}
-        {query && !!search.found?.length && (
-          <a className="osm small" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-            {t('Stops from OpenStreetMap')}
-          </a>
-        )}
-
         <details className="other-ways">
           <summary>{t('Can’t find it? Other ways')}</summary>
           <div className="stack tight">

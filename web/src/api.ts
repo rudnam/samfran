@@ -261,8 +261,6 @@ export const api = {
   addBusStop: (s: BusStopInput) => request<BusStops>('POST', '/api/bus/stops', s),
   changeBusStop: (id: number, s: BusStopInput) => request<BusStops>('PUT', `/api/bus/stops/${id}`, s),
   deleteBusStop: (id: number) => request<BusStops>('DELETE', `/api/bus/stops/${id}`),
-  /** How the phone alarms, at every stop: each left out stays as it was. */
-  setAlarm: (s: { buzz?: Buzz; sound_after?: number }) => request<BusStops>('PUT', '/api/bus/buzz', s),
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
@@ -414,6 +412,8 @@ export interface SavedStop {
   kind: StopKind;
   /** How the phone buzzes at this stop. */
   buzz: Buzz;
+  /** Seconds of buzzing before the phone's alarm sound joins in here, if it isn't stopped: 0 (never), 30, 60 or 120. */
+  sound_after: number;
   /** The kinds of shift it's the stop for; each is on one stop at most. */
   shifts: ShiftLabel[];
   /** The Android app asks "Start bus alarm?" when a shift whose stop this is ends. */
@@ -427,8 +427,6 @@ export interface BusStops {
   last_id: number;
   /** How older apps buzz, at every stop (each stop has its own now). */
   buzz: Buzz;
-  /** Seconds of buzzing before the phone's alarm sound joins in, if it isn't stopped: 0 (never), 30, 60 or 120. */
-  sound_after: number;
 }
 
 export interface BusStopInput {
@@ -444,6 +442,8 @@ export interface BusStopInput {
   kind?: StopKind;
   /** Left out, a changed stop keeps its own; a new one buzzes strong. */
   buzz?: Buzz;
+  /** Left out, a changed stop keeps its own; a new one's is a minute. */
+  sound_after?: number;
 }
 
 /** How the phone buzzes at the stop: gentle (as it always did), strong (full strength, longer buzzes), strongest (hardly a pause). */

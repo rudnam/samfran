@@ -405,7 +405,7 @@ export const ja = {
   '{n} new changes': '新しい変更が{n}件',
   'Matching stops': '見つかった駅・バス停',
   'The stop search isn’t answering. Paste a Google Maps link instead.': '駅・バス停の検索が応答しません。Googleマップのリンクを貼り付けてください。',
-  'Stops from OpenStreetMap': 'データ: OpenStreetMap',
+  'Stops and stations found by name come from {osm}.': '名前で探す駅・バス停のデータは{osm}のものです。',
   // The bus alarm, redone: how it works, a practice run, the ride
   // Several stops, picked by the shift
   'Get off at': '降りる駅・バス停',

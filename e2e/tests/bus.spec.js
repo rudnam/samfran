@@ -52,7 +52,7 @@ test('choose the first stop from a Google Maps link, then try a practice run', a
   await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
 });
 
-test('a saved stop changes as it is changed, with its own buzz, and the sound can be switched off', async ({ page }) => {
+test('a saved stop changes as it is changed, with its own buzz and sound', async ({ page }) => {
   await signUp(page);
   expect((await page.request.post('/api/bus/stops', { data: { name: 'Kamijima Station', lat: 34.7111, lng: 137.7265, alert_meters: 1000 } })).status()).toBe(201);
   await page.getByRole('link', { name: 'Ride', exact: true }).click();
@@ -66,17 +66,17 @@ test('a saved stop changes as it is changed, with its own buzz, and the sound ca
   await how.getByRole('radio', { name: 'Strongest' }).click();
   await expect(page.getByRole('button', { name: /^How it buzzes\s*Strongest/ })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stop.png'), fullPage: true });
-  await page.reload();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  // The sound if it isn't stopped: on, until switched off; and kept.
+  // The sound if it isn't stopped: on, until switched off for the stop; and kept.
   const sound = page.getByRole('switch', { name: /Add sound if I don’t stop it/ });
   await expect(sound).toBeChecked();
-  await page.screenshot({ path: test.info().outputPath('bus-settings.png'), fullPage: true });
   await sound.uncheck();
   await page.reload();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(sound).not.toBeChecked();
+  await page.screenshot({ path: test.info().outputPath('bus-settings.png'), fullPage: true });
+  await page.getByText('How it works').click();
+  await expect(page.getByRole('link', { name: 'OpenStreetMap' })).toBeVisible();
   await page.getByRole('button', { name: 'Change Kamijima Station' }).click();
+  await expect(sound).not.toBeChecked();
   await expect(page.getByRole('button', { name: /^How it buzzes\s*Strongest/ })).toBeVisible();
   await page.getByRole('button', { name: '‹ Settings' }).click();
   await page.getByRole('button', { name: '‹ Ride alarm' }).click();
@@ -115,7 +115,8 @@ test('find the stop by typing part of its name', async ({ page }) => {
   await expect(list.getByRole('listitem')).toHaveCount(2);
   // The icon says bus stop or station; there's no other text.
   await expect(list.getByRole('img', { name: 'Bus stop' })).toHaveCount(2);
-  await expect(page.getByRole('link', { name: 'Stops from OpenStreetMap' })).toBeVisible();
+  // OpenStreetMap is credited in How it works, not under every search.
+  await expect(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('bus-search.png'), fullPage: true });
   await list.getByRole('button', { name: /葵西小学校入口/ }).click();
 
