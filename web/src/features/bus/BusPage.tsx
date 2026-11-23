@@ -793,12 +793,15 @@ function WherePage({ first, title, near, onPick }: { first: boolean; title: stri
             {search.found.map((f) => (
               <li key={`${f.name}${f.lat}${f.lng}`}>
                 <button type="button" onClick={() => onPick(pickOf(f))}>
-                  <span className="kind-tile" role="img" aria-label={f.kind === 'train' ? t('Station') : t('Bus stop')}>
+                  <span className={`kind-tile ${f.kind}`} aria-hidden="true">
                     <VehicleIcon kind={f.kind} size={22} />
                   </span>
                   <span className="grow">
                     <strong className="block">{f.name}</strong>
-                    {f.area && <span className="muted small">{f.area}</span>}
+                    <span className="small">
+                      <span className={`kind-name ${f.kind}`}>{f.kind === 'train' ? t('Station') : t('Bus stop')}</span>
+                      {f.area && <span className="muted"> · {f.area}</span>}
+                    </span>
                   </span>
                 </button>
               </li>

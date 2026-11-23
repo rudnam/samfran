@@ -752,12 +752,17 @@ private fun WherePage(state: BusUiState, actions: BusActions, onHere: () -> Unit
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Box(Modifier.size(38.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
-                                LineIcon(vehicle(s.kind), stringResource(if (s.train) R.string.kind_train else R.string.kind_bus), size = 22.dp, tint = colors.accentInk)
+                            // Bus stops green, stations blue, and named, so the two can be told apart at a glance.
+                            val tile = if (s.train) colors.tileBlue else colors.tileGreen
+                            Box(Modifier.size(38.dp).clip(MaterialTheme.shapes.small).background(tile.bg), contentAlignment = Alignment.Center) {
+                                LineIcon(vehicle(s.kind), null, size = 22.dp, tint = tile.ink)
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                if (s.area.isNotBlank()) Hint(s.area)
+                                Row {
+                                    Text(stringResource(if (s.train) R.string.kind_train else R.string.kind_bus), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = tile.ink)
+                                    if (s.area.isNotBlank()) Text(" · ${s.area}", style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
+                                }
                             }
                         }
                     }

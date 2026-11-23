@@ -102,6 +102,7 @@ test('find the stop by typing part of its name', async ({ page }) => {
         ? [
             { name: '葵西小学校入口', area: '浜松市 中央区 磐田細江線', kind: 'bus', lat: 34.76966, lng: 137.71207 },
             { name: '葵西三丁目', area: '浜松市 中央区', kind: 'bus', lat: 34.772, lng: 137.715 },
+            { name: '葵西小前', area: '浜松市 中央区', kind: 'train', lat: 34.774, lng: 137.717 },
           ]
         : [],
     });
@@ -112,9 +113,11 @@ test('find the stop by typing part of its name', async ({ page }) => {
   await expect(page.getByText('No stops by that name.')).toBeVisible();
   await page.getByLabel('Stop or station').fill('葵西小');
   const list = page.getByRole('list', { name: 'Matching stops' });
-  await expect(list.getByRole('listitem')).toHaveCount(2);
-  // The icon says bus stop or station; there's no other text.
-  await expect(list.getByRole('img', { name: 'Bus stop' })).toHaveCount(2);
+  await expect(list.getByRole('listitem')).toHaveCount(3);
+  // Each says in words whether it's a bus stop or a station, in its own colour.
+  await expect(list.getByText('Bus stop', { exact: true })).toHaveCount(2);
+  await expect(list.getByText('Station', { exact: true })).toHaveCount(1);
+  await expect(list.getByRole('button', { name: /葵西小前/ }).locator('.kind-tile.train')).toBeVisible();
   // OpenStreetMap is credited in How it works, not under every search.
   await expect(page.getByRole('link', { name: 'OpenStreetMap' })).toHaveCount(0);
   await page.screenshot({ path: test.info().outputPath('bus-search.png'), fullPage: true });
