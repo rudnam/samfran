@@ -73,6 +73,10 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: /Hanabi Grill/ }).click();
     await expect(page.getByRole('heading', { name: 'Hanabi Grill' })).toBeVisible();
     await shot('4-restaurant');
+    await page.getByLabel('Add a comment').fill('The demi-glace was even better than last time. Next time: the cheese one.');
+    await page.getByRole('button', { name: 'Post' }).click();
+    await expect(page.getByRole('list', { name: 'Comments' }).getByRole('listitem')).toHaveCount(1);
+    await shot('4a-comments');
     await page.getByRole('button', { name: 'Delete this place' }).click();
     await expect(page.getByRole('dialog', { name: 'Delete Hanabi Grill?' })).toBeVisible();
     await shot('4b-delete-dialog');

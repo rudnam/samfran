@@ -479,6 +479,13 @@ export const ja = {
   'Code of {name}': '{name}のコード',
   'Remove {name}': '{name}を削除',
   'Their name': '名前',
+  'Comments': 'コメント',
+  'No comments yet. How was it?': 'まだコメントはありません。どうでしたか？',
+  'Add a comment': 'コメントを書く',
+  'Post': '投稿',
+  'Delete your comment': '自分のコメントを削除',
+  'Delete your comment?': 'コメントを削除しますか？',
+  'commented on {name}': '{name}にコメントしました',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -498,6 +505,9 @@ export const jaServer = {
   'this email is already invited by someone else': 'このメールアドレスはすでにほかの人から招待されています',
   'no such invitation': '招待が見つかりません',
   'no such restaurant': '場所が見つかりません',
+  'no such comment': 'コメントが見つかりません',
+  'a comment must be 1 to {max} characters': 'コメントは1〜{max}文字にしてください',
+  'mark it as been before commenting': 'コメントするには、先に行ったことにしてください',
   'no such visit': '訪問の記録が見つかりません',
   'a name must be 1 to {max} characters': '店名は1〜{max}文字にしてください',
   'an area must be at most {max} characters': 'エリアは{max}文字以内にしてください',

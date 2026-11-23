@@ -507,3 +507,37 @@ test('order: newest, best rated or by name, and remembered', async ({ page }) =>
   await pickOrder(page, 'Newest');
   await expect(been.first()).toContainText('Bento Box');
 });
+
+test('comments: once you have been, say how it was; only your own can be deleted', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('link', { name: 'Add a place' }).first().click();
+  await page.getByRole('radio', { name: 'Want to go' }).check();
+  await page.getByLabel('Name', { exact: true }).fill('Kaze Ramen');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Kaze Ramen' })).toBeVisible();
+  // Not been yet: nothing to comment on.
+  await expect(page.getByRole('heading', { name: 'Comments' })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Mark as been' }).click();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('heading', { name: 'Comments' })).toBeVisible();
+  await expect(page.getByText('No comments yet. How was it?')).toBeVisible();
+  const post = page.getByRole('button', { name: 'Post' });
+  await expect(post).toBeDisabled();
+  await page.getByLabel('Add a comment').fill('The broth was perfect.\nGet the extra egg.');
+  await post.click();
+  const list = page.getByRole('list', { name: 'Comments' });
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+  await expect(list).toContainText('You');
+  await expect(list).toContainText('Get the extra egg.');
+  await expect(page.getByLabel('Add a comment')).toHaveValue('');
+
+  // Still there after a reload.
+  await page.reload();
+  await expect(list.getByRole('listitem')).toHaveCount(1);
+
+  // Deleting asks first.
+  await list.getByRole('button', { name: 'Delete your comment' }).click();
+  await page.getByRole('dialog', { name: 'Delete your comment?' }).getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText('No comments yet. How was it?')).toBeVisible();
+});

@@ -54,6 +54,17 @@ export interface Visit {
   added_by: string;
 }
 
+/** Something one of you said about a place you've been to. */
+export interface Comment {
+  id: number;
+  body: string;
+  /** The writer's name. */
+  by: string;
+  /** Written by the signed-in person, who alone can delete it. */
+  me: boolean;
+  created_at: string;
+}
+
 /** A place to go: a restaurant, park, shrine… (it began as a list of restaurants). */
 export interface Restaurant {
   id: number;
@@ -78,6 +89,8 @@ export interface Restaurant {
   ratings: Rating[];
   /** Newest first; only from restaurant(id). */
   visits?: Visit[];
+  /** Oldest first; only from restaurant(id), and left out when there are none. */
+  comments?: Comment[];
   /** The visits with a note, newest first, for searching. */
   visit_notes?: { visited_on: string; note: string }[];
 }
@@ -264,6 +277,8 @@ export const api = {
   activity: () => request<ActivityEntry[]>('GET', '/api/activity'),
   /** 0 clears the rating. */
   rate: (id: number, stars: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/rating`, { stars }),
+  addComment: (id: number, body: string) => request<Restaurant>('POST', `/api/restaurants/${id}/comments`, { body }),
+  deleteComment: (id: number, comment: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/comments/${comment}`),
 };
 
 export type ShiftKind = 'work' | 'off' | 'leave' | 'training' | 'other';

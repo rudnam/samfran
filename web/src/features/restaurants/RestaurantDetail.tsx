@@ -1,4 +1,5 @@
-// One place: both ratings, notes, and whether you've been (and when).
+// One place: both ratings, notes, whether you've been (and when), and, once
+// you have, what each of you said about it.
 import { BackLink } from '../../components/BackLink';
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
@@ -9,6 +10,7 @@ import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
 import { categoryName, categoryOf, CategoryTile } from './categories';
+import { Comments } from './Comments';
 import { mapLink, shortDate, today } from './format';
 
 export function RestaurantDetail({ id }: { id: number }) {
@@ -199,6 +201,8 @@ export function RestaurantDetail({ id }: { id: number }) {
           <p className="prewrap">{r.notes}</p>
         </div>
       )}
+
+      {beenOn && <Comments place={r} onChange={setR} />}
 
       <button type="button" className="link danger" disabled={busy} onClick={remove}>
         {t('Delete this place')}

@@ -36,6 +36,7 @@ const (
 	maxURL     = 2000
 	maxNotes   = 5000
 	maxNote    = 1000
+	maxComment = 1000
 )
 
 // Rating is one person's rating of a restaurant.
@@ -59,6 +60,15 @@ type VisitNote struct {
 	Note      string `json:"note"`
 }
 
+// Comment is something one of you said about a place you've been to.
+type Comment struct {
+	ID        int64     `json:"id"`
+	Body      string    `json:"body"`
+	By        string    `json:"by"`
+	Me        bool      `json:"me"` // written by the person asking, who alone can delete it
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Restaurant struct {
 	ID       int64  `json:"id"`
 	Name     string `json:"name"`
@@ -80,6 +90,8 @@ type Restaurant struct {
 	VisitNotes []VisitNote `json:"visit_notes,omitempty"`
 	// Visits, newest first, only when one restaurant is asked for.
 	Visits []Visit `json:"visits,omitempty"`
+	// Comments, oldest first, only when one restaurant is asked for.
+	Comments []Comment `json:"comments,omitempty"`
 }
 
 // Fields are what a person types in about a restaurant.
@@ -224,7 +236,66 @@ func (s *Store) Get(ctx context.Context, spaceID, me, id int64) (Restaurant, err
 		}
 		r.Visits = append(r.Visits, v)
 	}
-	return r, rows.Err()
+	if err := rows.Err(); err != nil {
+		return r, err
+	}
+	r.Comments, err = s.comments(ctx, me, id)
+	return r, err
+}
+
+// comments are a restaurant's comments, oldest first.
+func (s *Store) comments(ctx context.Context, me, id int64) ([]Comment, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT c.id, c.body, c.user_id, c.created_at, coalesce(m.display_name, ''), u.email
+		FROM restaurant_comments c JOIN users u ON u.id = c.user_id LEFT JOIN space_members m ON m.user_id = c.user_id
+		WHERE c.restaurant_id = $1 ORDER BY c.created_at, c.id`, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Comment{}
+	for rows.Next() {
+		var c Comment
+		var uid int64
+		var name, email string
+		if err := rows.Scan(&c.ID, &c.Body, &uid, &c.CreatedAt, &name, &email); err != nil {
+			return nil, err
+		}
+		c.By, c.Me = space.DisplayName(name, email), uid == me
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// errNotBeen is AddComment's answer for a place nobody has been to yet.
+var errNotBeen = errors.New("not been yet")
+
+// AddComment adds the user's comment to one of the space's restaurants that
+// has been visited: db.ErrNotFound for none, errNotBeen for one not yet been to.
+func (s *Store) AddComment(ctx context.Context, spaceID, by, id int64, body string) error {
+	var exists, been bool
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT EXISTS (SELECT 1 FROM restaurants WHERE id = $1 AND space_id = $2),
+			EXISTS (SELECT 1 FROM restaurant_visits WHERE restaurant_id = $1)`, id, spaceID).Scan(&exists, &been); err != nil {
+		return err
+	}
+	if !exists {
+		return db.ErrNotFound
+	}
+	if !been {
+		return errNotBeen
+	}
+	_, err := s.db.ExecContext(ctx, `INSERT INTO restaurant_comments (restaurant_id, user_id, body) VALUES ($1, $2, $3)`, id, by, body)
+	return err
+}
+
+// DeleteComment removes the user's own comment on one of the space's
+// restaurants; another's, or one not there, is db.ErrNotFound.
+func (s *Store) DeleteComment(ctx context.Context, spaceID, userID, id, commentID int64) error {
+	res, err := s.db.ExecContext(ctx, `
+		DELETE FROM restaurant_comments c USING restaurants r
+		WHERE c.id = $4 AND c.user_id = $3 AND c.restaurant_id = r.id AND r.id = $1 AND r.space_id = $2`, id, spaceID, userID, commentID)
+	return oneRow(res, err)
 }
 
 func (s *Store) Create(ctx context.Context, spaceID, by int64, f Fields) (int64, error) {
@@ -450,6 +521,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("PUT /api/restaurants/{id}/been", h.setBeen)
 	route("DELETE /api/restaurants/{id}/been", h.clearBeen)
 	route("PUT /api/restaurants/{id}/rating", h.rate)
+	route("POST /api/restaurants/{id}/comments", h.addComment)
+	route("DELETE /api/restaurants/{id}/comments/{comment}", h.deleteComment)
 }
 
 var errNoSuch = httpx.Errorf(http.StatusNotFound, "no such restaurant") // the words installed apps translate
@@ -804,3 +877,48 @@ func (h *Handler) rate(w http.ResponseWriter, r *http.Request) error {
 	h.log(r, "rated", id, map[string]any{"stars": in.Stars})
 	return h.respond(w, r, http.StatusOK, id)
 }
+
+func (h *Handler) addComment(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	if !ok {
+		return errNoSuch
+	}
+	var in struct {
+		Body string `json:"body"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	body := strings.TrimSpace(in.Body)
+	if body == "" || utf8.RuneCountInString(body) > maxComment {
+		return httpx.Errorf(http.StatusBadRequest, "a comment must be 1 to %d characters", maxComment)
+	}
+	err := h.store.AddComment(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id, body)
+	switch {
+	case errors.Is(err, db.ErrNotFound):
+		return errNoSuch
+	case errors.Is(err, errNotBeen):
+		return httpx.Errorf(http.StatusConflict, "mark it as been before commenting")
+	case err != nil:
+		return err
+	}
+	h.log(r, "commented", id, nil)
+	return h.respond(w, r, http.StatusCreated, id)
+}
+
+func (h *Handler) deleteComment(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	comment, ok2 := pathID(r, "comment")
+	if !ok || !ok2 {
+		return errNoComment
+	}
+	err := h.store.DeleteComment(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id, comment)
+	if errors.Is(err, db.ErrNotFound) {
+		return errNoComment
+	} else if err != nil {
+		return err
+	}
+	return h.respond(w, r, http.StatusOK, id)
+}
+
+var errNoComment = httpx.Errorf(http.StatusNotFound, "no such comment")
