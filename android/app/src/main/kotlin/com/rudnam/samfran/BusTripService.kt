@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -17,6 +18,7 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -54,6 +56,9 @@ class BusTripService : Service(), LocationListener {
     private var radius = 800f
     private var buzz = Buzz.Strong
     private var soundAfter = 0
+
+    /** The first distance the phone knew this ride, where the progress line starts (-1: none yet). */
+    private var from = -1f
     private var locations: LocationManager? = null
     private val handler = Handler(Looper.getMainLooper())
     private val timeout = Runnable { stopSelf() }
@@ -71,8 +76,9 @@ class BusTripService : Service(), LocationListener {
         stopName = intent.getStringExtra(EXTRA_NAME).orEmpty()
         buzz = Buzz.from(intent.getStringExtra(EXTRA_BUZZ))
         soundAfter = intent.getIntExtra(EXTRA_SOUND_AFTER, 0)
+        from = -1f
         channels(this)
-        val n = tripNotification(getString(R.string.trip_starting))
+        val n = tripNotification(-1f)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(TRIP_NOTIFICATION, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         } else {
@@ -101,6 +107,7 @@ class BusTripService : Service(), LocationListener {
         val d = FloatArray(1)
         Location.distanceBetween(here.latitude, here.longitude, lat, lng, d)
         state.update { it.copy(distance = d[0]) }
+        if (from < 0) from = d[0]
         if (d[0] <= radius) {
             // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
             locations?.removeUpdates(this)
@@ -108,7 +115,7 @@ class BusTripService : Service(), LocationListener {
             return
         }
         getSystemService(NotificationManager::class.java)
-            .notify(TRIP_NOTIFICATION, tripNotification(getString(R.string.trip_distance, Distances.format(d[0]))))
+            .notify(TRIP_NOTIFICATION, tripNotification(d[0]))
     }
 
     @Deprecated("Deprecated in Java")
@@ -127,21 +134,45 @@ class BusTripService : Service(), LocationListener {
         super.onDestroy()
     }
 
-    private fun tripNotification(text: String): Notification {
+    /**
+     * The ride's notification, [distance] metres from the stop (-1: not known yet).
+     * On Android 16 and later it asks to be a Live Update, as Google Maps'
+     * directions are: a chip in the status bar with the distance left, and
+     * a progress line in the notification, on the lock screen too.
+     */
+    private fun tripNotification(distance: Float): Notification {
         val open = Intent(this, MainActivity::class.java).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         val stop = Intent(this, BusTripService::class.java).setAction(ACTION_STOP)
         val title = if (stopName.isEmpty()) getString(R.string.trip_title) else getString(R.string.trip_title_named, stopName)
-        return Notification.Builder(this, TRIP_CHANNEL)
+        val left = if (distance < 0) null else Distances.format(distance)
+        val b = Notification.Builder(this, TRIP_CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_bus)
             .setContentTitle(title)
-            .setContentText(text)
+            .setContentText(if (left == null) getString(R.string.trip_starting) else getString(R.string.trip_distance, left))
+            .setCategory(Notification.CATEGORY_NAVIGATION)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE))
             .addAction(
                 Notification.Action.Builder(null, getString(R.string.trip_stop), PendingIntent.getService(this, 1, stop, PendingIntent.FLAG_IMMUTABLE)).build(),
             )
-            .build()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
+            // What setRequestPromotedOngoing (Android 16 QPR2) sets, which 16.0 reads too.
+            b.addExtras(Bundle().apply { putBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, true) })
+            if (left != null) b.setShortCriticalText(left)
+            val style = Notification.ProgressStyle()
+                .setStyledByProgress(false)
+                .setProgressTrackerIcon(Icon.createWithResource(this, R.drawable.ic_stat_bus))
+                .setProgressSegments(listOf(Notification.ProgressStyle.Segment(PROGRESS_MAX)))
+            if (left == null) {
+                style.setProgressIndeterminate(true)
+            } else {
+                style.setProgress((Distances.progress(from, distance, radius.toInt()) * PROGRESS_MAX).toInt())
+            }
+            b.setStyle(style)
+        }
+        return b.build()
     }
 
     companion object {
@@ -158,6 +189,8 @@ class BusTripService : Service(), LocationListener {
         private const val TRIP_NOTIFICATION = 1
         private const val ALARM_NOTIFICATION = 2
         private const val MAX_TRIP_MS = 3 * 60 * 60 * 1000L
+        private const val PROGRESS_MAX = 1000
+        private const val EXTRA_REQUEST_PROMOTED_ONGOING = "android.requestPromotedOngoing"
         private const val MAX_BUZZ_MS = 10 * 60 * 1000L
         private val main = Handler(Looper.getMainLooper())
         private val autoStop = Any()
