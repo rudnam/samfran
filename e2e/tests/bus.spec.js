@@ -167,13 +167,16 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await page.getByRole('button', { name: 'Add stop' }).click();
   // Back in Settings, with the new one marked.
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Change 静岡駅' })).toContainText('Just added');
+  await expect(page.getByRole('button', { name: 'Change 静岡駅' })).toContainText('Station · Just added');
   await page.screenshot({ path: test.info().outputPath('bus-stops-added.png'), fullPage: true });
 
   // Today's shift is late, so it's that stop, and the page says why.
   await page.reload();
   const picker = page.getByRole('radiogroup', { name: 'Get off at' });
   await expect(picker.getByRole('radio', { name: /静岡駅/ })).toHaveAttribute('aria-checked', 'true');
+  // Each chip says whether it's a station or a bus stop.
+  await expect(picker.getByRole('radio', { name: /静岡駅/ }).getByRole('img', { name: 'Station' })).toBeVisible();
+  await expect(picker.getByRole('radio', { name: /葵西小学校入口/ }).getByRole('img', { name: 'Bus stop' })).toBeVisible();
   await expect(page.getByText(/^遅番 until \d\d:\d\d, so it’s 静岡駅\.$/)).toBeVisible();
   await expect(page.getByText('Buzzes 2.0 km before the stop. About one to two minutes early.')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stops.png'), fullPage: true });

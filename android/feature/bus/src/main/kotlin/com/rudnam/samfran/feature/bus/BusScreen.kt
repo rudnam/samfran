@@ -392,6 +392,31 @@ private fun RouteLine(progress: Float, kind: StopKind) {
 
 private fun vehicle(kind: StopKind) = if (kind == StopKind.Train) SamFranIcons.train else SamFranIcons.bus
 
+/** Bus stops green, stations blue (.kind-tile on the web), so the two can be told apart at a glance. */
+@Composable
+private fun kindColors(kind: StopKind) = if (kind == StopKind.Train) SamFranTheme.colors.tileBlue else SamFranTheme.colors.tileGreen
+
+@Composable
+private fun kindName(kind: StopKind) = stringResource(if (kind == StopKind.Train) R.string.kind_train else R.string.kind_bus)
+
+/** A bus or a train in its colour on a rounded tile: in the search, and in the list of stops. */
+@Composable
+private fun KindTile(kind: StopKind) {
+    val c = kindColors(kind)
+    Box(Modifier.size(38.dp).clip(MaterialTheme.shapes.small).background(c.bg), contentAlignment = Alignment.Center) {
+        LineIcon(vehicle(kind), null, size = 22.dp, tint = c.ink)
+    }
+}
+
+/** "Bus stop" or "Station" in its colour, then what else there is to say, quieter. */
+@Composable
+private fun KindLine(kind: StopKind, rest: String?) {
+    Row {
+        Text(kindName(kind), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = kindColors(kind).ink)
+        if (!rest.isNullOrBlank()) Text(" · $rest", style = MaterialTheme.typography.bodySmall, color = SamFranTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 /** What a buzz distance means on a ride. */
 private fun earlyText(e: Early) = when (e) {
     Early.RightBefore -> R.string.early_right_before
@@ -489,6 +514,10 @@ private fun StopChips(all: BusStops, stop: BusStop, actions: BusActions) {
             ) {
                 val ink = if (on) colors.accentText else colors.text
                 if (on) Text("✓", color = ink, fontWeight = FontWeight.Bold)
+                val k = kindColors(s.kind)
+                Box(Modifier.size(22.dp).clip(CircleShape).background(k.bg), contentAlignment = Alignment.Center) {
+                    LineIcon(vehicle(s.kind), kindName(s.kind), size = 14.dp, tint = k.ink, stroke = 2.4f)
+                }
                 Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, color = ink, fontWeight = FontWeight.SemiBold)
                 if (s.shifts.isNotEmpty()) {
                     Text(
@@ -527,7 +556,7 @@ private fun ChooseCard(all: BusStops, stop: BusStop, actions: BusActions, onStar
     }
 }
 
-/** The stops: one line each, its icon saying bus stop or station, and the shifts it's for; a tap opens it. */
+/** The stops: one line each, saying bus stop or station in its colour, and the shifts it's for; a tap opens it. */
 @Composable
 private fun StopsCard(all: BusStops, added: Long?, actions: BusActions) {
     val colors = SamFranTheme.colors
@@ -545,13 +574,17 @@ private fun StopsCard(all: BusStops, added: Long?, actions: BusActions) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                LineIcon(vehicle(s.kind), null, size = 20.dp, tint = colors.muted)
+                KindTile(s.kind)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, style = MaterialTheme.typography.titleMedium)
-                    when {
-                        s.id == added -> Hint(stringResource(R.string.just_added))
-                        s.shifts.isNotEmpty() -> Hint(stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) }))
-                    }
+                    KindLine(
+                        s.kind,
+                        when {
+                            s.id == added -> stringResource(R.string.just_added)
+                            s.shifts.isNotEmpty() -> stringResource(R.string.after_shifts, s.shifts.joinToString("・") { ShiftCodes.labelOf(it) })
+                            else -> null
+                        },
+                    )
                 }
                 LineIcon(SamFranIcons.chevronRight, null, size = 18.dp, tint = colors.muted)
             }
@@ -752,17 +785,10 @@ private fun WherePage(state: BusUiState, actions: BusActions, onHere: () -> Unit
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            // Bus stops green, stations blue, and named, so the two can be told apart at a glance.
-                            val tile = if (s.train) colors.tileBlue else colors.tileGreen
-                            Box(Modifier.size(38.dp).clip(MaterialTheme.shapes.small).background(tile.bg), contentAlignment = Alignment.Center) {
-                                LineIcon(vehicle(s.kind), null, size = 22.dp, tint = tile.ink)
-                            }
+                            KindTile(s.kind)
                             Column(Modifier.weight(1f)) {
                                 Text(s.name, style = MaterialTheme.typography.titleSmall)
-                                Row {
-                                    Text(stringResource(if (s.train) R.string.kind_train else R.string.kind_bus), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = tile.ink)
-                                    if (s.area.isNotBlank()) Text(" · ${s.area}", style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
-                                }
+                                KindLine(s.kind, s.area)
                             }
                         }
                     }

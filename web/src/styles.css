@@ -736,7 +736,6 @@ button.link.back { align-self: flex-start; padding-left: 0; }
 button.link.start { align-self: flex-start; padding-left: 0; }
 button.link.inline { padding: 0; }
 .stop-list li { padding: 0; }
-.stop-kind { display: flex; color: var(--muted); }
 .stop-list li.just-added { background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 12px; margin: 0 -10px; padding: 0 10px; }
 .stop-map.small { height: 150px; margin: 0; }
 @media (min-width: 720px) { .stop-map.small { height: 200px; } }
@@ -759,6 +758,10 @@ button.link.inline { padding: 0; }
 .kind-name { font-weight: 700; }
 .kind-name.bus { color: var(--tile-green-ink); }
 .kind-name.train { color: var(--tile-blue-ink); }
+/* The same, small, at the front of a stop's chip on the ride: its own background, so it reads on a picked chip too. */
+.kind-dot { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: none; border-radius: 999px; }
+.kind-dot.bus { background: var(--tile-green); color: var(--tile-green-ink); }
+.kind-dot.train { background: var(--tile-blue); color: var(--tile-blue-ink); }
 .stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }
 .page-head.with-action > button { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }
 
