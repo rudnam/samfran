@@ -67,6 +67,11 @@ function buzzOf(b: Buzz | undefined) {
   return buzzes.find((x) => x.buzz === b) ?? buzzes[1];
 }
 
+/** "Bus stop" or "Station", as each is named beside its green or blue icon. */
+function kindName(kind: StopKind): string {
+  return kind === 'train' ? t('Station') : t('Bus stop');
+}
+
 function km(m: number): string {
   return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`;
 }
@@ -479,6 +484,9 @@ function RideCard(p: {
           {p.all.stops.map((s) => (
             <button key={s.id} type="button" role="radio" aria-checked={s.id === stop.id} className={s.id === stop.id ? 'on' : ''} onClick={() => p.onPick(s)}>
               {s.id === stop.id && <span aria-hidden="true">✓ </span>}
+              <span className={`kind-dot ${s.kind}`} role="img" aria-label={kindName(s.kind)}>
+                <VehicleIcon kind={s.kind} size={14} />
+              </span>
               {s.name || t('Unnamed stop')}
               {s.shifts.length > 0 && <span className="stop-tag">{s.shifts.map(labelOf).join('・')}</span>}
             </button>
@@ -578,16 +586,19 @@ function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: num
           {all.stops.map((s) => (
             <li key={s.id} className={s.id === p.added ? 'just-added' : undefined}>
               <button type="button" className="stop-row" aria-label={t('Change {stop}', { stop: s.name || t('Unnamed stop') })} onClick={() => p.onOpen(s.id)}>
-                <span className="stop-kind" aria-hidden="true">
-                  <VehicleIcon kind={s.kind} size={20} />
+                <span className={`kind-tile ${s.kind}`} aria-hidden="true">
+                  <VehicleIcon kind={s.kind} size={22} />
                 </span>
                 <span className="grow">
                   <strong className="block">{s.name || t('Unnamed stop')}</strong>
-                  {s.id === p.added ? (
-                    <span className="muted small">{t('Just added')}</span>
-                  ) : (
-                    s.shifts.length > 0 && <span className="muted small">{t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>
-                  )}
+                  <span className="small">
+                    <span className={`kind-name ${s.kind}`}>{kindName(s.kind)}</span>
+                    {s.id === p.added ? (
+                      <span className="muted"> · {t('Just added')}</span>
+                    ) : (
+                      s.shifts.length > 0 && <span className="muted"> · {t('After {shifts}', { shifts: s.shifts.map(labelOf).join('・') })}</span>
+                    )}
+                  </span>
                 </span>
                 <span aria-hidden="true" className="muted">
                   ›
@@ -793,12 +804,15 @@ function WherePage({ first, title, near, onPick }: { first: boolean; title: stri
             {search.found.map((f) => (
               <li key={`${f.name}${f.lat}${f.lng}`}>
                 <button type="button" onClick={() => onPick(pickOf(f))}>
-                  <span className="kind-tile" role="img" aria-label={f.kind === 'train' ? t('Station') : t('Bus stop')}>
+                  <span className={`kind-tile ${f.kind}`} aria-hidden="true">
                     <VehicleIcon kind={f.kind} size={22} />
                   </span>
                   <span className="grow">
                     <strong className="block">{f.name}</strong>
-                    {f.area && <span className="muted small">{f.area}</span>}
+                    <span className="small">
+                      <span className={`kind-name ${f.kind}`}>{kindName(f.kind)}</span>
+                      {f.area && <span className="muted"> · {f.area}</span>}
+                    </span>
                   </span>
                 </button>
               </li>
