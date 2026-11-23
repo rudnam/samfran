@@ -228,3 +228,71 @@ func TestRestaurantValidation(t *testing.T) {
 		t.Errorf("bad id: %d, want 404", code)
 	}
 }
+
+func TestRestaurantComments(t *testing.T) {
+	ts := newTestServer(t)
+	fran, sam, other := newClient(t, ts), newClient(t, ts), newClient(t, ts)
+	fran.signup("fran@example.com")
+	fran.do("POST", "/api/space/invites", map[string]string{"email": "sam@example.com"}, nil)
+	sam.signup("sam@example.com") // joins fran's space
+	other.signup("other@example.com")
+
+	type commentsJSON struct {
+		Comments []struct {
+			ID   int64  `json:"id"`
+			Body string `json:"body"`
+			By   string `json:"by"`
+			Me   bool   `json:"me"`
+		} `json:"comments"`
+	}
+	var place restaurantJSON
+	fran.do("POST", "/api/restaurants", map[string]string{"name": "Kaze Ramen"}, &place)
+	path := "/api/restaurants/" + itoa(place.ID)
+
+	// Not been yet: nothing to comment on.
+	if code := fran.do("POST", path+"/comments", map[string]string{"body": "can't wait"}, nil); code != 409 {
+		t.Errorf("comment before been: %d, want 409", code)
+	}
+	fran.do("PUT", path+"/been", map[string]string{"visited_on": "2026-11-01"}, nil)
+	for _, body := range []string{"", "   ", strings.Repeat("あ", 1001)} {
+		if code := fran.do("POST", path+"/comments", map[string]string{"body": body}, nil); code != 400 {
+			t.Errorf("comment %q: %d, want 400", body, code)
+		}
+	}
+
+	var c commentsJSON
+	if code := fran.do("POST", path+"/comments", map[string]string{"body": " The broth was perfect "}, &c); code != 201 ||
+		len(c.Comments) != 1 || c.Comments[0].Body != "The broth was perfect" || !c.Comments[0].Me {
+		t.Fatalf("fran comments: %d %+v", code, c)
+	}
+	if code := sam.do("POST", path+"/comments", map[string]string{"body": "Too salty for me"}, &c); code != 201 ||
+		len(c.Comments) != 2 || c.Comments[0].Me || c.Comments[0].By != "fran" || !c.Comments[1].Me || c.Comments[1].By != "sam" {
+		t.Fatalf("sam comments: %d %+v", code, c)
+	}
+	franID, samID := c.Comments[0].ID, c.Comments[1].ID
+
+	// Only the writer can delete a comment.
+	if code := sam.do("DELETE", path+"/comments/"+itoa(franID), nil, nil); code != 404 {
+		t.Errorf("sam deletes fran's comment: %d, want 404", code)
+	}
+	// Another space sees and touches none of it.
+	if code := other.do("POST", path+"/comments", map[string]string{"body": "hi"}, nil); code != 404 {
+		t.Errorf("other space comments: %d, want 404", code)
+	}
+	if code := other.do("DELETE", path+"/comments/"+itoa(samID), nil, nil); code != 404 {
+		t.Errorf("other space deletes: %d, want 404", code)
+	}
+	if code := sam.do("DELETE", path+"/comments/"+itoa(samID), nil, &c); code != 200 || len(c.Comments) != 1 || c.Comments[0].ID != franID {
+		t.Fatalf("sam deletes own: %d %+v", code, c)
+	}
+
+	// The list doesn't carry them; going back to want to go keeps them.
+	var list []commentsJSON
+	if fran.do("GET", "/api/restaurants", nil, &list); len(list) != 1 || len(list[0].Comments) != 0 {
+		t.Errorf("list carries comments: %+v", list)
+	}
+	fran.do("DELETE", path+"/been", nil, nil)
+	if fran.do("GET", path, nil, &c); len(c.Comments) != 1 {
+		t.Errorf("comments after not been: %+v", c)
+	}
+}

@@ -63,6 +63,8 @@ function describe(e: ActivityEntry): string {
       return t('moved {name} back to want to go', { name });
     case 'rated':
       return Number(d.stars) > 0 ? t('rated {name} ★{stars}', { name, stars: Number(d.stars) }) : t('cleared their rating of {name}', { name });
+    case 'commented':
+      return t('commented on {name}', { name });
     case 'invited':
       return t('invited {email}', { email: String(d.email) });
     case 'invite_link':
