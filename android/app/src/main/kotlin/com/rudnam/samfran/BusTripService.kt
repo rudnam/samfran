@@ -18,6 +18,7 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -157,7 +158,8 @@ class BusTripService : Service(), LocationListener {
                 Notification.Action.Builder(null, getString(R.string.trip_stop), PendingIntent.getService(this, 1, stop, PendingIntent.FLAG_IMMUTABLE)).build(),
             )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            b.setRequestPromotedOngoing(true)
+            // What setRequestPromotedOngoing (Android 16 QPR2) sets, which 16.0 reads too.
+            b.addExtras(Bundle().apply { putBoolean(EXTRA_REQUEST_PROMOTED_ONGOING, true) })
             if (left != null) b.setShortCriticalText(left)
             val style = Notification.ProgressStyle()
                 .setStyledByProgress(false)
@@ -188,6 +190,7 @@ class BusTripService : Service(), LocationListener {
         private const val ALARM_NOTIFICATION = 2
         private const val MAX_TRIP_MS = 3 * 60 * 60 * 1000L
         private const val PROGRESS_MAX = 1000
+        private const val EXTRA_REQUEST_PROMOTED_ONGOING = "android.requestPromotedOngoing"
         private const val MAX_BUZZ_MS = 10 * 60 * 1000L
         private val main = Handler(Looper.getMainLooper())
         private val autoStop = Any()
