@@ -9,7 +9,7 @@ import { StarPicker } from '../../components/Stars';
 import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
-import { categoryName, categoryOf, CategoryTile } from './categories';
+import { categoryName, categoryOf, CategoryTile, Icon } from './categories';
 import { Comments } from './Comments';
 import { mapLink, shortDate, today } from './format';
 
@@ -135,9 +135,11 @@ export function RestaurantDetail({ id }: { id: number }) {
             </button>
           )}
           <a className="button secondary" href={mapLink(r)} target="_blank" rel="noreferrer">
+            <Icon name="map" size={20} />
             {t('Open in Maps')}
           </a>
           <a className="button secondary" href={href('edit', { id: r.id })}>
+            <Icon name="edit" size={20} />
             {t('Edit')}
           </a>
         </div>

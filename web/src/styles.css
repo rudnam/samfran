@@ -220,12 +220,20 @@ button, a.button {
      dark mode), whatever that colour is: the main orange, a pill, a chip. */
   button:hover:not(:disabled), a.button:hover { filter: brightness(var(--hover-shade)); }
   /* These have a hover colour of their own. */
-  button.secondary:hover:not(:disabled), a.button.secondary:hover { background: var(--sunken); filter: none; }
   button.link:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 6%, transparent); filter: none; }
 }
 button:active:not(:disabled), a.button:active { transform: scale(0.97); }
 button:disabled { opacity: 0.4; cursor: default; }
-button.secondary, a.button.secondary { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--border); }
+/* Everything but the main action: beige, like Android's buttons, with an icon where Android has one. */
+button.secondary, a.button.secondary { background: var(--sunken); color: var(--text); }
+/* A column of actions under a card (Shifts), each the full width, as on Android. */
+.actions { display: flex; flex-direction: column; gap: 10px; }
+.actions > .button, .actions > button { width: 100%; }
+/* An icon alone at the top right of a page (Settings), as on Android. */
+button.icon-button { background: none; padding: 0; color: var(--text); }
+.icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 999px; color: var(--text); text-decoration: none; transition: background 0.15s; }
+@media (hover: hover) { .icon-button:hover:not(:disabled) { background: var(--sunken); filter: none; } }
+.icon-button:active { background: var(--sunken); }
 .card input, .card textarea { background: var(--bg); }
 button.link { background: none; color: var(--accent-ink); padding: 6px; font-weight: 600; white-space: nowrap; border-radius: 8px; }
 button.link.quiet { color: var(--muted); font-weight: 500; }
@@ -279,9 +287,10 @@ select.language { width: auto; padding: 6px 10px; }
 .count { font-variant-numeric: tabular-nums; }
 .search { background: var(--surface); }
 
-.cards { list-style: none; margin: 0; padding: 0 14px; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
-.cards li + li { border-top: 1px solid var(--divider); }
-.spot { display: flex; align-items: center; gap: 12px; padding: 14px 10px; margin: 0 -10px; border-radius: 14px; color: inherit; text-decoration: none; transition: background 0.15s; }
+.cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+/* Each place its own card, as on Android. */
+.cards li { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+.spot { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: var(--radius-lg); color: inherit; text-decoration: none; transition: background 0.15s; }
 @media (hover: hover) { .spot:hover { background: color-mix(in srgb, var(--sunken) 60%, transparent); } }
 .spot:active { background: var(--sunken); }
 /* The list's rows come in one after another. */
@@ -372,10 +381,11 @@ select.language { width: auto; padding: 6px 10px; }
 .empty { text-align: center; padding: 40px 16px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
 .empty-title { font-weight: 800; font-size: 1.1rem; }
 
-/* Add: a round button above the tab bar on phones, a labelled one in the header on wide screens. */
+/* Add: a labelled button above the tab bar on phones, as on Android; one in the header on wide screens. */
 .fab {
   position: fixed; right: 20px; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 5;
-  width: 56px; height: 56px; border-radius: 18px; background: var(--accent); color: var(--accent-text);
+  height: 56px; padding: 0 22px 0 18px; gap: 10px; border-radius: 18px; background: var(--accent); color: var(--accent-text);
+  font-weight: 700; text-decoration: none;
   display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lift);
   transition: transform 0.15s var(--ease-out);
 }
@@ -605,7 +615,9 @@ select { width: 100%; }
 .cal-day.night { background: #dcd6ff; color: #2f2480; }
 .cal-day.training { background: #dfe4ea; color: #37404c; }
 .cal-day.leave { background: #eef7f2; color: #4f7a63; }
-.cal-day.off, .cal-day.other { color: var(--muted); }
+/* A day off is only its number and 休, as on Android, so the days worked stand out. */
+.cal-day.off { background: none; color: var(--muted); }
+.cal-day.other { color: var(--muted); }
 .cal-day.none { background: none; box-shadow: inset 0 0 0 1px var(--divider); color: var(--muted); }
 .cal-day.today { box-shadow: inset 0 0 0 2.5px var(--heart); }
 button.cal-day { transition: transform 0.15s var(--ease-out), outline-color 0.15s; }
@@ -768,7 +780,7 @@ button.link.inline { padding: 0; }
 .kind-dot.bus { background: var(--tile-green); color: var(--tile-green-ink); }
 .kind-dot.train { background: var(--tile-blue); color: var(--tile-blue-ink); }
 .stop-row { display: flex; width: 100%; align-items: center; gap: 12px; background: none; color: var(--text); padding: 12px 0; text-align: left; font-weight: inherit; border-radius: 0; }
-.page-head.with-action > button { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }
+.page-head.with-action > button:not(.icon-button) { flex: none; white-space: nowrap; padding: 8px 14px; font-size: 0.9rem; }
 
 /* A quiet line of text choices: Share via Google Calendar · Other calendars. */
 .row.tight-row { gap: 8px; align-self: flex-start; }
@@ -781,3 +793,14 @@ button.link.inline { padding: 0; }
 .comment-head button.link { padding: 0; margin-left: auto; }
 .comments .prewrap { margin: 0; }
 button.end { align-self: flex-end; }
+
+/* Us › This device: each choice says what it's set to, with a ›, as Android's rows do; still the browser's own list when tapped. */
+.device select.language {
+  appearance: none; -webkit-appearance: none; border: 0; box-shadow: none; background-color: transparent;
+  font-weight: 700; text-align: right; padding: 8px 26px 8px 10px; border-radius: 8px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237a6c5f' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 6l6 6-6 6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 4px center;
+}
+@media (hover: hover) { .device select.language:hover { background-color: var(--sunken); } }
+.device .row.spread { min-height: 44px; }
+.device select.language:focus-visible { box-shadow: 0 0 0 2.5px var(--accent-ink); }

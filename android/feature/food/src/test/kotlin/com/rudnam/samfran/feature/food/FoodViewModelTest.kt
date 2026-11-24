@@ -205,6 +205,23 @@ class FoodViewModelTest {
     }
 
     @Test
+    fun `a comment is posted, the box empties, and your own can be deleted`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, space, clock, backgroundScope)
+        watch(vm.state)
+        vm.setDraft("   ")
+        vm.postComment() // nothing to say: nothing sent
+        assertTrue(vm.state.value.place!!.comments.isEmpty())
+        vm.setDraft("  The harami was perfect  ")
+        vm.postComment()
+        assertEquals(listOf("The harami was perfect"), vm.state.value.place!!.comments.map { it.body })
+        assertEquals("", vm.state.value.draft)
+        vm.deleteComment(vm.state.value.place!!.comments.single().id)
+        assertTrue(vm.state.value.place!!.comments.isEmpty())
+        vm.setDraft("x".repeat(MAX_COMMENT + 5))
+        assertEquals(MAX_COMMENT, vm.state.value.draft.length)
+    }
+
+    @Test
     fun `deleting a place closes its page`() = runTest {
         val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, space, clock, backgroundScope)
         watch(vm.state)

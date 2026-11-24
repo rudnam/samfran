@@ -15,6 +15,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
 import { t, tx, type Key } from '../../i18n';
 import { labelOf } from '../shifts/codes';
+import { Icon } from '../../components/Icon';
 import { confirmDialog } from '../../components/Overlay';
 import { StopMap } from './StopMap';
 
@@ -251,8 +252,8 @@ export function BusPage() {
             <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
           </div>
           {ready && !buzzing && (
-            <button type="button" className="secondary" onClick={() => setView({ page: 'settings' })}>
-              {t('Settings')}
+            <button type="button" className="icon-button" onClick={() => setView({ page: 'settings' })} aria-label={t('Settings')} title={t('Settings')}>
+              <Icon name="settings" />
             </button>
           )}
         </header>

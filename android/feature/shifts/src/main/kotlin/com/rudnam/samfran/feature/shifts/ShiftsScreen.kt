@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.YearMonth
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.designsystem.component.CardTitle
 import com.rudnam.samfran.core.designsystem.component.CodeChip
@@ -112,17 +114,27 @@ fun ShiftsScreen(
             }
             state.next?.let { next ->
                 item(key = "next") {
-                    SamFranCard {
+                    // Yellow, and a tap opens its day, as on the website.
+                    val yellow = SamFranTheme.colors.tileYellow
+                    SamFranCard(
+                        color = yellow.bg,
+                        onClick = {
+                            if (state.shown != YearMonth.from(next.date)) actions.showMonth(YearMonth.from(next.date))
+                            actions.pick(next.date)
+                        },
+                        padding = PaddingValues(start = 18.dp, end = 10.dp, top = 14.dp, bottom = 14.dp),
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Dot(next.tone.dot(), size = 12)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Eyebrow(stringResource(R.string.next_shift))
+                                Eyebrow(stringResource(R.string.next_shift), color = yellow.ink)
                                 Text(
                                     listOf(Dates.day(next.date, locale), next.workplaceLabel, next.times).filter(String::isNotEmpty).joinToString(" · "),
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                             }
                             CodeChip(next.code)
+                            LineIcon(SamFranIcons.chevronRight, null, tint = yellow.ink.copy(alpha = 0.6f))
                         }
                     }
                 }

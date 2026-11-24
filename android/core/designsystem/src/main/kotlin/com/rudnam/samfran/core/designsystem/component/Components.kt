@@ -62,17 +62,21 @@ fun SamFranCard(
     onClick: (() -> Unit)? = null,
     padding: PaddingValues = PaddingValues(horizontal = 18.dp, vertical = 16.dp),
     spacing: Int = 12,
+    /** A tinted card (the next shift) has its own colour and no border. */
+    color: Color? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = SamFranTheme.colors
     val shape = MaterialTheme.shapes.large
+    val fill = color ?: colors.surface
+    val border = if (color == null) BorderStroke(1.dp, colors.border) else null
     val inner: @Composable () -> Unit = {
         Column(Modifier.padding(padding), verticalArrangement = Arrangement.spacedBy(spacing.dp), content = content)
     }
     if (onClick != null) {
-        Surface(onClick = onClick, modifier = modifier, shape = shape, color = colors.surface, border = BorderStroke(1.dp, colors.border), content = inner)
+        Surface(onClick = onClick, modifier = modifier, shape = shape, color = fill, border = border, content = inner)
     } else {
-        Surface(modifier = modifier, shape = shape, color = colors.surface, border = BorderStroke(1.dp, colors.border), content = inner)
+        Surface(modifier = modifier, shape = shape, color = fill, border = border, content = inner)
     }
 }
 
@@ -158,7 +162,13 @@ fun PrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifi
         interactionSource = interaction,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
-        colors = ButtonDefaults.buttonColors(containerColor = colors.accent, contentColor = colors.accentText),
+        // Not ready yet (nothing typed): a faded orange, as the website fades a button, not Material's grey.
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colors.accent,
+            contentColor = colors.accentText,
+            disabledContainerColor = colors.accent.copy(alpha = 0.4f),
+            disabledContentColor = colors.accentText.copy(alpha = 0.8f),
+        ),
         contentPadding = PaddingValues(horizontal = 20.dp),
     ) {
         Text(text, style = if (big) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelLarge, textAlign = TextAlign.Center)
@@ -176,7 +186,12 @@ fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
         interactionSource = interaction,
         enabled = enabled,
         shape = MaterialTheme.shapes.small,
-        colors = ButtonDefaults.buttonColors(containerColor = colors.sunken, contentColor = colors.text),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = colors.sunken,
+            contentColor = colors.text,
+            disabledContainerColor = colors.sunken.copy(alpha = 0.5f),
+            disabledContentColor = colors.text.copy(alpha = 0.4f),
+        ),
         contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
         if (icon != null) {

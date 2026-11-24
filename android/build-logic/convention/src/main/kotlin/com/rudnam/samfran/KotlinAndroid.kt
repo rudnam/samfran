@@ -57,6 +57,8 @@ internal fun Project.configureKotlinAndroid(android: CommonExtension) {
     if (!file("src/test").exists()) {
         tasks.withType<Test>().configureEach { failOnNoDiscoveredTests.set(false) }
     }
+    robolectricOffline()
+    oneKspAtATime()
     dependencies.add("coreLibraryDesugaring", libs.findLibrary("android-desugarJdkLibs").get())
     extensions.configure<KotlinAndroidProjectExtension> {
         compilerOptions {

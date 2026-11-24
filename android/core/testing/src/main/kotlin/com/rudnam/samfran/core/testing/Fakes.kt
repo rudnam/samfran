@@ -139,6 +139,12 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
         r.copy(ratings = (if (stars > 0) listOf(com.rudnam.samfran.core.model.Rating("Fran", true, stars)) else emptyList()) + others)
     }
 
+    override suspend fun addComment(id: Long, body: String) = change(id) {
+        it.copy(comments = it.comments + com.rudnam.samfran.core.model.Comment(System.nanoTime(), body.trim(), "Fran", true, java.time.Instant.now()))
+    }
+
+    override suspend fun deleteComment(id: Long, comment: Long) = change(id) { r -> r.copy(comments = r.comments.filter { it.id != comment }) }
+
     override suspend fun lookup(url: String, position: Boolean): Outcome<MapLookup> =
         next ?: Outcome.Done(MapLookup(lookupName, if (position) 34.97 else null, if (position) 138.38 else null, false))
 

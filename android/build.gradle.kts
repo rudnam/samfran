@@ -19,6 +19,24 @@ allprojects {
     }
 }
 
+// Robolectric's Android jars, one per SDK the tests run on, downloaded by Gradle into one folder
+// that every module's tests read offline (build-logic's Steady.kt says why). A new Robolectric
+// wants new ones: its tests then fail, naming the jar; put that version in the catalog.
+// One configuration each: in one, Gradle would keep only the newer version of the same module.
+val robolectricJarsFor = listOf(
+    libs.androidAll.api36, // @Config(sdk = [36])
+    libs.androidAll.api37, // the rest: compileSdk
+).mapIndexed { i, jar ->
+    configurations.create("robolectricSdk$i") {
+        isCanBeConsumed = false
+        isTransitive = false
+    }.also { dependencies.add(it.name, jar) }
+}
+tasks.register<Sync>("robolectricJars") {
+    from(robolectricJarsFor)
+    into(layout.buildDirectory.dir("robolectric-sdk"))
+}
+
 // Android Lint over every module: ./gradlew lintNative, as CI runs it.
 tasks.register("lintNative") {
     group = "verification"

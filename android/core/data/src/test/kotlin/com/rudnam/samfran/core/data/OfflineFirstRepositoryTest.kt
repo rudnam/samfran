@@ -114,6 +114,26 @@ class OfflineFirstRepositoryTest {
     }
 
     @Test
+    fun `a comment is sent trimmed and the place comes back with it`() = runTest(UnconfinedTestDispatcher()) {
+        val food = OfflineFirstFoodRepository(network, documents, backgroundScope, UnconfinedTestDispatcher(testScheduler))
+        answer(body = list)
+        food.refresh()
+        server.takeRequest()
+        answer(body = """{"id":15,"name":"Sushi Kiyo","visit_count":1,"last_visit":"2026-11-16","ratings":[],"comments":[{"id":4,"body":"So fresh","by":"Fran","me":true,"created_at":"2026-11-16T12:00:00Z"}]}""")
+        val r = food.addComment(15, "  So fresh ")
+        assertTrue(r is Outcome.Done)
+        val sent = server.takeRequest()
+        assertEquals("POST", sent.method)
+        assertEquals("/api/restaurants/15/comments", sent.url.encodedPath)
+        assertEquals("""{"body":"So fresh"}""", sent.body?.utf8())
+        val c = food.restaurant(15).first()!!.comments.single()
+        assertEquals(listOf("So fresh", "Fran"), listOf(c.body, c.by))
+        assertTrue(c.me)
+        // The list keeps its summary: no comments in it.
+        assertTrue(food.restaurants.first()!!.first { it.id == 15L }.comments.isEmpty())
+    }
+
+    @Test
     fun `a refusal says why, in the server's words`() = runTest(UnconfinedTestDispatcher()) {
         val food = OfflineFirstFoodRepository(network, documents, backgroundScope, UnconfinedTestDispatcher(testScheduler))
         answer(400, """{"error":"a name must be 1 to 200 characters"}""")

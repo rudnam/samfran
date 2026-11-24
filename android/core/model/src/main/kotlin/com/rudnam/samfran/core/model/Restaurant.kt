@@ -18,6 +18,17 @@ data class Visit(
     val addedBy: String,
 )
 
+/** Something one of you said about a place you've been to. */
+data class Comment(
+    val id: Long,
+    val body: String,
+    /** The writer's name. */
+    val by: String,
+    /** Written by the signed-in person, who alone can delete it. */
+    val me: Boolean,
+    val createdAt: Instant,
+)
+
 /** A visit's note, for searching ("where did we have that?"). */
 data class VisitNote(val visitedOn: LocalDate, val note: String)
 
@@ -66,6 +77,8 @@ data class Restaurant(
     val visits: List<Visit>? = null,
     /** The visits with a note, newest first. */
     val visitNotes: List<VisitNote> = emptyList(),
+    /** Oldest first; only on one place's page. */
+    val comments: List<Comment> = emptyList(),
 ) {
     val been: Boolean get() = visitCount > 0
 

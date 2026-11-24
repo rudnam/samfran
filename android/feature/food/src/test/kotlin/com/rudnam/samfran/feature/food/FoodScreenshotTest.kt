@@ -51,6 +51,9 @@ class FoodScreenshotTest {
         override fun undoNotBeen() {}
         override fun commitNotBeen() {}
         override fun delete() {}
+        override fun setDraft(text: String) {}
+        override fun postComment() {}
+        override fun deleteComment(id: Long) {}
     }
     private val form = object : PlaceFormActions {
         override fun set(fields: RestaurantFields) {}
@@ -111,6 +114,15 @@ class FoodScreenshotTest {
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
     fun placePageJapanese() = shot("place-ja") { PlaceScreen(hanabi, place, {}, {}, {}) }
+
+    @Test
+    fun placeComments() = shot("place-comments") {
+        val talk = listOf(
+            com.rudnam.samfran.core.model.Comment(1, "The harami was perfect. Let's sit by the window next time.", "Sam", false, java.time.Instant.parse("2026-11-14T12:40:00Z")),
+            com.rudnam.samfran.core.model.Comment(2, "Agreed! Booking for December.", "Fran", true, java.time.Instant.parse("2026-11-14T13:05:00Z")),
+        )
+        PlaceScreen(hanabi.copy(place = hanabi.place!!.copy(comments = talk), draft = "Their lunch set is cheaper"), place, {}, {}, {})
+    }
 
     @Test
     fun placeChangeDate() = shot("place-change-date") { PlaceScreen(hanabi.copy(picking = hanabi.place!!.lastVisit), place, {}, {}, {}) }
