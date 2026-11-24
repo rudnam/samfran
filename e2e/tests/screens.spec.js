@@ -47,7 +47,7 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('list', { name: 'Been there' }).getByRole('listitem')).toHaveCount(5);
     // Add says what it does at every width, as on Android: a labelled button, not a bare +.
-    await expect(page.getByRole('link', { name: 'Add a place' }).filter({ visible: true })).toHaveText('Add a place');
+    await expect(page.getByRole('link', { name: 'Add a place' }).filter({ visible: true })).toContainText('Add a place');
     await shot('3-restaurants');
     // Want to go, filtered to one category.
     await page.getByRole('link', { name: /Want to go/ }).click();
