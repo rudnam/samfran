@@ -22,13 +22,18 @@ data class AuthOptions(
     val reset: Boolean,
 )
 
-/** A newer build of the app the server offers (GET /api/downloads). */
+/**
+ * A newer build of the app: the one the server offers (GET /api/downloads),
+ * or for a copy installed from the Play Store, the one Play has.
+ */
 data class AppUpdate(
     val versionCode: Int,
-    /** e.g. "2.0.9"; may be empty. */
+    /** e.g. "2.0.9"; may be empty (Play doesn't say). */
     val name: String,
-    /** Where to download it. */
+    /** Where to download it; empty when it comes from Play. */
     val url: String,
+    /** Installed through Play's own update screen rather than downloaded. */
+    val fromPlay: Boolean = false,
 )
 
 /** A connection from Claude (or another MCP client). */
