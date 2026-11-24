@@ -382,7 +382,7 @@ test('see everyone there during a shift, not only those on the same one', async 
   }));
   expect(bars).toHaveLength(3);
   expect(new Set(bars.map(String)).size).toBe(1);
-  await page.screenshot({ path: test.info().outputPath('everyone-there.png'), animations: 'disabled' });
+  await detail.screenshot({ path: test.info().outputPath('everyone-there.png'), animations: 'disabled' });
 
   // A night shift from the day before shows on an early shift.
   await cal.getByRole('button', { name: /^2 / }).click();
