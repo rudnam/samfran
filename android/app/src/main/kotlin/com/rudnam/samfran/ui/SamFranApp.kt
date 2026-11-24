@@ -95,6 +95,8 @@ fun SamFranApp(
     links: Flow<AppLink>,
     shell: ShellActions,
     appState: SamFranAppState = rememberSamFranAppState(),
+    /** Update tapped on a copy from the Play Store: Play's own update screen. */
+    onPlayUpdate: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val state by shell.shell.collectAsStateWithLifecycle()
@@ -118,7 +120,7 @@ fun SamFranApp(
             if (signedIn && tab != null) {
                 Banners(
                     state,
-                    onUpdate = { state.update?.let { context.openWeb(it.url) } },
+                    onUpdate = { state.update?.let { if (it.fromPlay) onPlayUpdate() else context.openWeb(it.url) } },
                     shell = shell,
                     onLeaveDemo = {
                         appState.signUpNext = true
