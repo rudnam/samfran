@@ -412,3 +412,37 @@ test('see everyone there during a shift, not only those on the same one', async 
   expect(sent.days[0].people.map((p) => p.name).sort()).toEqual(['タナカ ユイ', 'ヤマダ ハナ']);
   expect(sent.days[1].people).toEqual([{ name: 'ヨル タロウ', code: '22F', day_offset: -1 }]);
 });
+
+test('the next shift stays above every month, and opens its day when tapped', async ({ page }) => {
+  await signUp(page);
+  // A shift on the 10th of next month: nothing left this month, so that's the next one.
+  const [y, m] = thisMonth().split('-').map(Number);
+  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
+  await page.goto(`/#/shifts/edit?month=${next}`);
+  const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
+  await days.nth(9).getByRole('combobox').fill('13F');
+  await page.getByRole('button', { name: /^Save / }).click();
+  await expect(page.getByRole('link', { name: /^Edit / })).toBeVisible();
+
+  // Back to this month with the arrows, as well as from the tab: the card is there each time.
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  const card = page.getByRole('link', { name: /Next shift/ });
+  await expect(card).toContainText('遅番 · 13:00–22:00');
+  await page.getByRole('link', { name: 'Previous month' }).click();
+  await expect(card).toBeVisible();
+  await page.getByRole('link', { name: 'Next month' }).click();
+  await expect(page).toHaveURL(new RegExp(`month=${thisMonth()}`));
+  await expect(card).toBeVisible();
+
+  // Tapping it opens its month with its day picked.
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`month=${next}&day=${next}-10`));
+  const cal = page.getByRole('group', { name: 'Calendar' });
+  await expect(cal.getByRole('button', { name: /^10 / })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.cal-detail')).toContainText('13F');
+  await page.screenshot({ path: test.info().outputPath('next-shift-opened.png') });
+
+  // In the list, its row is the one marked.
+  await page.getByRole('radio', { name: 'List' }).click();
+  await expect(page.getByRole('list', { name: 'Shifts' }).locator('li[aria-current="date"]')).toContainText('13F');
+});
