@@ -375,6 +375,14 @@ test('see everyone there during a shift, not only those on the same one', async 
   await expect(there.nth(0)).toContainText('9:00–18:00');
   await expect(there.nth(1)).toContainText('Sam');
   await expect(there.nth(2)).toContainText('タナカ ユイ');
+  // The bars line up even though "9:00–18:00" is narrower than "13:00–22:00".
+  const bars = await detail.locator('.there-bar').evaluateAll((els) => els.map((el) => {
+    const r = el.getBoundingClientRect();
+    return [Math.round(r.left), Math.round(r.width)];
+  }));
+  expect(bars).toHaveLength(3);
+  expect(new Set(bars.map(String)).size).toBe(1);
+  await page.screenshot({ path: test.info().outputPath('everyone-there.png'), animations: 'disabled' });
 
   // A night shift from the day before shows on an early shift.
   await cal.getByRole('button', { name: /^2 / }).click();
