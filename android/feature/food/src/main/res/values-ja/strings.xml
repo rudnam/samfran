@@ -145,4 +145,10 @@
     <string name="search">検索</string>
     <string name="all_places">すべての場所</string>
     <string name="category_is">カテゴリ: %s</string>
+    <!-- Comments on a place (web/src/features/restaurants/Comments.tsx). -->
+    <string name="comments">コメント</string>
+    <string name="no_comments">まだコメントはありません。どうでしたか？</string>
+    <string name="add_comment">コメントを書く</string>
+    <string name="post">投稿</string>
+    <string name="delete_comment_title">コメントを削除しますか？</string>
 </resources>

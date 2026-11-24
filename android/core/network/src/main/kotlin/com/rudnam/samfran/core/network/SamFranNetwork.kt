@@ -27,6 +27,7 @@ import com.rudnam.samfran.core.network.model.NetworkShiftMonth
 import com.rudnam.samfran.core.network.model.NetworkShiftSettings
 import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.NetworkSpace
+import com.rudnam.samfran.core.network.model.NetworkCommentInput
 import com.rudnam.samfran.core.network.model.NetworkStars
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
@@ -87,6 +88,8 @@ internal interface SamFranApi {
     @DELETE("api/restaurants/{id}") suspend fun deleteRestaurant(@Path("id") id: Long): Response<Unit>
     @PUT("api/restaurants/{id}/been") suspend fun setBeen(@Path("id") id: Long, @Body body: NetworkBeen): NetworkRestaurant
     @DELETE("api/restaurants/{id}/been") suspend fun clearBeen(@Path("id") id: Long): NetworkRestaurant
+    @POST("api/restaurants/{id}/comments") suspend fun addComment(@Path("id") id: Long, @Body body: NetworkCommentInput): NetworkRestaurant
+    @DELETE("api/restaurants/{id}/comments/{comment}") suspend fun deleteComment(@Path("id") id: Long, @Path("comment") comment: Long): NetworkRestaurant
     @PUT("api/restaurants/{id}/rating") suspend fun rate(@Path("id") id: Long, @Body body: NetworkStars): NetworkRestaurant
     @POST("api/restaurants/lookup") suspend fun lookup(@Body body: NetworkLookup): NetworkLookupResult
     @GET("api/restaurants/search") suspend fun searchPlaces(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<com.rudnam.samfran.core.network.model.NetworkFoundPlace>
@@ -152,6 +155,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun setBeen(id: Long, visitedOn: String) = call { api.setBeen(id, NetworkBeen(visitedOn)) }
     suspend fun clearBeen(id: Long) = call { api.clearBeen(id) }
     suspend fun rate(id: Long, stars: Int) = call { api.rate(id, NetworkStars(stars)) }
+    suspend fun addComment(id: Long, body: String) = call { api.addComment(id, NetworkCommentInput(body)) }
+    suspend fun deleteComment(id: Long, comment: Long) = call { api.deleteComment(id, comment) }
     suspend fun lookup(url: String, position: Boolean) = call { api.lookup(NetworkLookup(url, position)) }
     suspend fun searchPlaces(q: String, lat: Double?, lng: Double?) = call { api.searchPlaces(q, lat, lng) }
     suspend fun suggestPlaces(q: String, lat: Double?, lng: Double?, session: String) = call { api.suggestPlaces(q, lat, lng, session) }

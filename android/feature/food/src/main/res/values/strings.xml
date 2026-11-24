@@ -149,4 +149,10 @@
     <string name="search">Search</string>
     <string name="all_places">All places</string>
     <string name="category_is">Category: %s</string>
+    <!-- Comments on a place (web/src/features/restaurants/Comments.tsx). -->
+    <string name="comments">Comments</string>
+    <string name="no_comments">No comments yet. How was it?</string>
+    <string name="add_comment">Add a comment</string>
+    <string name="post">Post</string>
+    <string name="delete_comment_title">Delete your comment?</string>
 </resources>

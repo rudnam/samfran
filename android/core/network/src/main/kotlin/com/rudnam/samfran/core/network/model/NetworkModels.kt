@@ -13,6 +13,7 @@ import com.rudnam.samfran.core.model.Invite
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
 import com.rudnam.samfran.core.model.Member
+import com.rudnam.samfran.core.model.Comment
 import com.rudnam.samfran.core.model.Rating
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.ShiftCoworker
@@ -136,7 +137,21 @@ data class NetworkRestaurant(
     val ratings: List<NetworkRating> = emptyList(),
     val visits: List<NetworkVisit>? = null,
     @SerialName("visit_notes") val visitNotes: List<NetworkVisitNote>? = null,
+    val comments: List<NetworkComment>? = null,
 )
+
+@Serializable
+data class NetworkComment(
+    val id: Long,
+    val body: String,
+    val by: String = "",
+    val me: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+)
+
+/** A new comment (POST /api/restaurants/{id}/comments). */
+@Serializable
+data class NetworkCommentInput(val body: String)
 
 fun NetworkRestaurant.asModel() = Restaurant(
     id = id,
@@ -155,6 +170,9 @@ fun NetworkRestaurant.asModel() = Restaurant(
     ratings = ratings.map { Rating(it.name, it.me, it.stars) },
     visits = visits?.map { Visit(it.id, LocalDate.parse(it.visitedOn), it.note, it.addedBy) },
     visitNotes = visitNotes.orEmpty().map { VisitNote(LocalDate.parse(it.visitedOn), it.note) },
+    comments = comments.orEmpty().map { c ->
+        Comment(c.id, c.body, c.by, c.me, c.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: Instant.EPOCH)
+    },
 )
 
 /** What a person types in about a place; a new one may carry a first visit and the creator's rating. */

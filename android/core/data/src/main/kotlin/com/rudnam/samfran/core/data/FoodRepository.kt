@@ -51,6 +51,12 @@ interface FoodRepository {
     /** The signed-in person's rating; 0 clears it. */
     suspend fun rate(id: Long, stars: Int): Outcome<Restaurant>
 
+    /** Says something about a place you've been to. */
+    suspend fun addComment(id: Long, body: String): Outcome<Restaurant>
+
+    /** Takes back one of your own comments. */
+    suspend fun deleteComment(id: Long, comment: Long): Outcome<Restaurant>
+
     /** The place's name (and, with [position], where it is) from a Google Maps link. */
     suspend fun lookup(url: String, position: Boolean = false): Outcome<MapLookup>
 
@@ -113,6 +119,10 @@ internal class OfflineFirstFoodRepository @Inject constructor(
 
     override suspend fun rate(id: Long, stars: Int) = changed { network.rate(id, stars) }
 
+    override suspend fun addComment(id: Long, body: String) = changed { network.addComment(id, body.trim()) }
+
+    override suspend fun deleteComment(id: Long, comment: Long) = changed { network.deleteComment(id, comment) }
+
     override suspend fun lookup(url: String, position: Boolean) = outcome(io) {
         network.lookup(url.trim(), position).let { MapLookup(it.name, it.lat, it.lng, it.foundByName) }
     }
@@ -133,7 +143,7 @@ internal class OfflineFirstFoodRepository @Inject constructor(
             val fresh = block()
             documents.put(Keys.restaurant(fresh.id), NetworkRestaurant.serializer(), fresh)
             val list = documents.get(Keys.RESTAURANTS, listSerializer).orEmpty()
-            val summary = fresh.copy(visits = null, visitNotes = list.firstOrNull { it.id == fresh.id }?.visitNotes)
+            val summary = fresh.copy(visits = null, comments = null, visitNotes = list.firstOrNull { it.id == fresh.id }?.visitNotes)
             val updated = if (list.any { it.id == fresh.id }) list.map { if (it.id == fresh.id) summary else it } else list + summary
             documents.put(Keys.RESTAURANTS, listSerializer, updated)
             fresh.asModel()

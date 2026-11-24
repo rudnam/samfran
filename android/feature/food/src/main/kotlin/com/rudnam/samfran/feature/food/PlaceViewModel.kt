@@ -35,6 +35,8 @@ data class PlaceUiState(
     val picking: LocalDate? = null,
     /** "Not been yet" just chosen: shown so, and saved once Undo's time is up. */
     val clearing: Boolean = false,
+    /** The comment being written. */
+    val draft: String = "",
     /** The place is gone (deleted here): the page closes. */
     val deleted: Boolean = false,
     val today: LocalDate = LocalDate.now(),
@@ -55,7 +57,14 @@ interface PlaceActions {
     fun undoNotBeen()
     fun commitNotBeen()
     fun delete()
+    fun setDraft(text: String)
+    /** Posts [PlaceUiState.draft], which empties once it's saved. */
+    fun postComment()
+    fun deleteComment(id: Long)
 }
+
+/** As the server's. */
+const val MAX_COMMENT = 1000
 
 @HiltViewModel
 class PlaceViewModel @Inject constructor(
@@ -122,6 +131,16 @@ class PlaceViewModel @Inject constructor(
         local.update { it.copy(clearing = false) } // a "not been yet" waiting goes with the place
         change({ food.delete(id) }) { it.copy(deleted = true) }
     }
+
+    override fun setDraft(text: String) = local.update { it.copy(draft = text.take(MAX_COMMENT)) }
+
+    override fun postComment() {
+        val text = local.value.draft.trim()
+        if (text.isEmpty()) return
+        change({ food.addComment(id, text) }) { it.copy(draft = "") }
+    }
+
+    override fun deleteComment(id: Long) = change({ food.deleteComment(this.id, id) })
 
     override fun onCleared() {
         commitNotBeen()

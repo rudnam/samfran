@@ -1,14 +1,15 @@
 package com.rudnam.samfran.feature.food
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -24,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,9 +38,9 @@ import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
 import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import com.rudnam.samfran.core.designsystem.component.Skeleton
-import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.Comment
 import com.rudnam.samfran.core.model.Tone
 import com.rudnam.samfran.core.ui.Avatar
 import com.rudnam.samfran.core.ui.DateField
@@ -80,12 +83,8 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
     val colors = SamFranTheme.colors
     val locale = currentLocale
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
-    SubPage(
-        onBack = onBack,
-        actions = {
-            if (state.place != null) IconButton(onClick = onEdit) { LineIcon(SamFranIcons.edit, stringResource(R.string.edit)) }
-        },
-    ) {
+    // Edit is the button beside Open in Maps, as on the website, not a second pencil up here.
+    SubPage(onBack = onBack) {
         val place = state.place
         if (place == null) {
             if (state.loaded) state.problem?.problem()?.let { ErrorText(it) } ?: ErrorText(stringResource(R.string.place_gone)) else Skeleton(rows = 5)
@@ -154,6 +153,8 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
             }
         }
 
+        if (state.beenOn != null) Comments(state, actions)
+
         LinkButton(stringResource(R.string.delete_this_place), { confirmDelete = true }, enabled = !state.busy, danger = true)
     }
 
@@ -169,6 +170,61 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
                 }) { Text(stringResource(R.string.delete), color = colors.danger) }
             },
             dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) } },
+            containerColor = colors.surface,
+        )
+    }
+}
+
+/** What the two of you said about it, oldest first, and a box to add to it (web/src/features/restaurants/Comments.tsx). */
+@Composable
+private fun Comments(state: PlaceUiState, actions: PlaceActions) {
+    val colors = SamFranTheme.colors
+    val locale = currentLocale
+    val comments = state.place?.comments.orEmpty()
+    var deleting by rememberSaveable { mutableStateOf<Long?>(null) }
+    SamFranCard {
+        CardTitle(stringResource(R.string.comments))
+        if (comments.isEmpty()) {
+            Hint(stringResource(R.string.no_comments))
+        } else {
+            comments.forEach { c: Comment ->
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Avatar(c.by, state.space?.toneOf(c.by) ?: Tone.B)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(if (c.me) stringResource(R.string.you) else c.by, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                            Text(Dates.moment(c.createdAt, locale), style = MaterialTheme.typography.bodySmall, color = colors.muted, modifier = Modifier.weight(1f))
+                            if (c.me) LinkButton(stringResource(R.string.delete), { deleting = c.id }, enabled = !state.busy, quiet = true)
+                        }
+                        Text(c.body, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+        }
+        OutlinedTextField(
+            value = state.draft,
+            onValueChange = actions::setDraft,
+            placeholder = { Text(stringResource(R.string.add_comment)) },
+            minLines = 2,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            PrimaryButton(stringResource(R.string.post), actions::postComment, enabled = !state.busy && state.draft.isNotBlank())
+        }
+    }
+
+    deleting?.let { id ->
+        AlertDialog(
+            onDismissRequest = { deleting = null },
+            title = { Text(stringResource(R.string.delete_comment_title)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleting = null
+                    actions.deleteComment(id)
+                }) { Text(stringResource(R.string.delete), color = colors.danger) }
+            },
+            dismissButton = { TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.cancel)) } },
             containerColor = colors.surface,
         )
     }

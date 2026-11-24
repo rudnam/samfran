@@ -6,6 +6,7 @@ import { api, errorMessage, type ReadProgress, type ShiftDay, type ShiftMonth } 
 import { t } from '../../i18n';
 import { href, navigate } from '../../router';
 import { useCached } from '../../cache';
+import { Icon } from '../../components/Icon';
 import { Skeleton } from '../../components/Overlay';
 import { addMonths, dayName, labelOf, monthName, shrinkPhoto, timesOf } from './codes';
 import { EveryoneToggle, WhoThere } from './WhoThere';
@@ -91,8 +92,8 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
           <div>
             <h1 className="display">{data?.settings.person_name ? t('{name}’s shifts', { name: who }) : t('Shifts')}</h1>
           </div>
-          <a className="button secondary" href={href('shifts/settings')}>
-            {t('Settings')}
+          <a className="icon-button" href={href('shifts/settings')} aria-label={t('Settings')} title={t('Settings')}>
+            <Icon name="settings" />
           </a>
         </div>
       </header>
@@ -181,7 +182,7 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
       </div>
 
       {reading && <ReadingCard progress={reading} />}
-      <div className="row wrap">
+      <div className="actions">
         <input
           ref={fileInput}
           type="file"
@@ -192,21 +193,25 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
         />
         {filled && (
           <a className="button secondary" href={href('shifts/edit', { month: shown })}>
+            <Icon name="edit" size={20} />
             {t('Edit {month}', { month: monthName(shown) })}
           </a>
         )}
         {data?.settings.reader && !reading && (
           <button type="button" className={filled ? 'secondary' : ''} disabled={!!needsName} onClick={() => fileInput.current?.click()}>
+            <Icon name="camera" size={20} />
             {filled ? t('Read a new sheet') : t('Read a photo of the sheet')}
           </button>
         )}
         {data && !filled && (
           <a className="button secondary" href={href('shifts/edit', { month: shown })}>
+            <Icon name="edit" size={20} />
             {t('Enter by hand')}
           </a>
         )}
         {data && !data.settings.feed_path && (
           <a className="button secondary" href={href('shifts/calendar')}>
+            <Icon name="calendar" size={20} />
             {t('Add to Google Calendar')}
           </a>
         )}
