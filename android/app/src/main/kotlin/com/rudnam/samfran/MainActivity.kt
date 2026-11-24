@@ -26,9 +26,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.rudnam.samfran.core.data.GoogleReturn
 import com.rudnam.samfran.core.data.GoogleReturns
+import com.rudnam.samfran.core.data.PlayStoreUpdates
 import com.rudnam.samfran.core.datastore.Appearance
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.Shared
+import com.rudnam.samfran.core.ui.openWeb
 import com.rudnam.samfran.feature.shifts.SheetPhotos
 import com.rudnam.samfran.ui.AppLink
 import com.rudnam.samfran.ui.SamFranApp
@@ -53,6 +55,8 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var googleReturns: GoogleReturns
 
     @Inject lateinit var sheetPhotos: SheetPhotos
+
+    @Inject lateinit var playUpdates: PlayStoreUpdates
 
     /** Where the camera is saving a photo of the shift sheet; kept if Android remakes the activity meanwhile. */
     private var cameraUri: Uri? = null
@@ -105,8 +109,16 @@ class MainActivity : AppCompatActivity() {
                     signedIn = ready.signedIn,
                     links = links.receiveAsFlow(),
                     shell = viewModel,
+                    onPlayUpdate = ::updateFromPlay,
                 )
             }
+        }
+    }
+
+    /** Play's update screen; if Play has nothing to install after all, the app's Play Store page. */
+    private fun updateFromPlay() {
+        lifecycleScope.launch {
+            if (!playUpdates.start(this@MainActivity)) openWeb("https://play.google.com/store/apps/details?id=$packageName")
         }
     }
 
