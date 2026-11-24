@@ -67,7 +67,12 @@ class UsScreenshotTest {
         alerts = true,
     )
 
-    private fun screen(state: UsUiState): @Composable () -> Unit = { UsScreen(state, actions, {}, {}, {}, {}) }
+    // The real language picker reads the app's locale, which a test can't set: a stand-in shows what it looks like.
+    private fun screen(state: UsUiState): @Composable () -> Unit = {
+        UsScreen(state, actions, {}, {}, {}, {}) {
+            com.rudnam.samfran.core.ui.ChoicePicker(listOf(com.rudnam.samfran.core.ui.Choice("", "Auto")), "", {}, "Language")
+        }
+    }
 
     @Test
     fun us() = shot("us", content = screen(us))

@@ -138,7 +138,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
 
       <ActivityCard />
 
-      <div className="card stack">
+      <div className="card stack device">
         <h2>{t('This device')}</h2>
         <div className="row spread">
           <span>{t('Language')}</span>

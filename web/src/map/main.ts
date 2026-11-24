@@ -77,6 +77,7 @@ function start() {
     fullscreenControl: false,
     clickableIcons: false,
     gestureHandling: 'greedy',
+    backgroundColor: '#ece6dc', // warm, like the page, until the map is drawn
   });
   map.addListener('click', () => tell({ type: 'select', id: null }));
   draw();
