@@ -32,12 +32,12 @@ async function loadNext(): Promise<{ day: ShiftDay | null }> {
   return { day: upcoming(cur) ?? upcoming(await api.shifts(addMonths(cur.month, 1))) };
 }
 
-export function ShiftsPage({ month }: { month?: string }) {
+export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
   const { data, error: loadError } = useCached(`shifts:${month ?? ''}`, () => api.shifts(month), errorMessage);
-  // The next shift, only on the current month's page. Cached like the month,
-  // and the month waits for it, so its card never drops in above a calendar
+  // The next shift, above every month: tapping it opens its day. Cached, and
+  // the month waits for it, so its card never drops in above a calendar
   // that's already showing.
-  const nextShift = useCached(`shifts-next:${month ?? ''}`, () => (month ? Promise.resolve({ day: null }) : loadNext()), errorMessage);
+  const nextShift = useCached('shifts-next', loadNext, errorMessage);
   const next = nextShift.data?.day ?? null;
   const ready = data !== null && (nextShift.data !== null || nextShift.error !== '');
   const [readError, setError] = useState('');
@@ -98,7 +98,7 @@ export function ShiftsPage({ month }: { month?: string }) {
       </header>
 
       {next && (
-        <div className="next-shift" role="status">
+        <a className="next-shift" href={href('shifts', { month: next.date.slice(0, 7), day: next.date })}>
           <span className={`shift-dot ${tone(next)}`} aria-hidden="true" />
           <span className="grow">
             <span className="eyebrow">{t('Next shift')}</span>
@@ -107,7 +107,8 @@ export function ShiftsPage({ month }: { month?: string }) {
             </strong>
           </span>
           <span className="code-chip">{next.code}</span>
-        </div>
+          <span className="chevron" aria-hidden="true">›</span>
+        </a>
       )}
 
       {error && (
@@ -146,8 +147,9 @@ export function ShiftsPage({ month }: { month?: string }) {
         )}
         {ready && data && data.days.length > 0 && view === 'calendar' && (
           <ShiftCalendar
-            key={data.month}
+            key={`${data.month}:${day ?? ''}`}
             month={data.month}
+            pick={day}
             days={data.days}
             closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]}
             who={me}
@@ -158,7 +160,11 @@ export function ShiftsPage({ month }: { month?: string }) {
         {ready && data && data.days.length > 0 && view === 'list' && (
           <ul className="shift-list" aria-label={t('Shifts')}>
             {data.days.map((d) => (
-              <li key={d.date} className={d.kind === 'work' ? '' : 'quiet'}>
+              <li
+                key={d.date}
+                className={[d.kind === 'work' ? '' : 'quiet', d.date === day ? 'picked' : ''].join(' ').trim() || undefined}
+                aria-current={d.date === day ? 'date' : undefined}
+              >
                 <span className="shift-date">{dayName(d.date)}</span>
                 <span className={`shift-dot ${tone(d)}`} aria-hidden="true" />
                 <span className="grow">

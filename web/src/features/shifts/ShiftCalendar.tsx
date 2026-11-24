@@ -37,15 +37,18 @@ export function ShiftCalendar({
   closing,
   who,
   everyone,
+  pick,
 }: {
   month: string;
+  /** A day to open with (the next shift's), instead of today. */
+  pick?: string;
   days: ShiftDay[];
   closing: number[];
   who: string;
   everyone: boolean;
 }) {
   const now = today();
-  const [picked, setPicked] = useState(now.startsWith(month) ? now : '');
+  const [picked, setPicked] = useState(pick?.startsWith(month) ? pick : now.startsWith(month) ? now : '');
   const byDate = new Map(days.map((d) => [d.date, d]));
   const dates = datesOf(month);
   const [y, m] = month.split('-').map(Number);
