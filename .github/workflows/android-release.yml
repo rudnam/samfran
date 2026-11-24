@@ -2,8 +2,9 @@
 # android/build.sh, publishes the APK on samfran.rudnam.com with
 # android/publish.sh (phones on a build that checks are offered it, see
 # UpdateRepository in android/core/data), and keeps both files as a GitHub release,
-# android-<versionCode>, whose .aab goes to the Play Console by hand. The
-# versionCode is one above the published APK (android/version.sh).
+# android-<versionCode>, whose .aab android-play.yml then sends to the Play
+# Console (the track PLAY_TRACK names, else internal testing). The versionCode
+# is one above the published APK (android/version.sh).
 #
 # It runs:
 #   - by itself, once CI has passed on main, when the commit came from a pull
@@ -81,6 +82,8 @@ jobs:
     environment: android-release
     permissions:
       contents: write # the GitHub release
+    outputs:
+      tag: ${{ steps.keep.outputs.tag }}
     env:
       AWS_REGION: ap-southeast-2
       # The upload key's certificate (android/README.md); the build must be signed with it.
@@ -153,12 +156,25 @@ jobs:
         run: ./android/publish.sh
 
       - name: Keep the files as a GitHub release
+        id: keep
         run: |
           tag=android-$SAMFRAN_VERSION_CODE
           cp android/samfran.apk "samfran-$SAMFRAN_VERSION_NAME.apk"
           cp android/samfran.aab "samfran-$SAMFRAN_VERSION_NAME.aab"
           gh release create "$tag" --target "$SHA" \
             --title "Android $SAMFRAN_VERSION_NAME" \
-            --notes "versionCode $SAMFRAN_VERSION_CODE, published on samfran.rudnam.com. Upload the .aab in the Play Console for a Play Store release." \
+            --notes "versionCode $SAMFRAN_VERSION_CODE, published on samfran.rudnam.com. The .aab goes to the Play Console (android-play.yml), on the track PLAY_TRACK names." \
             "samfran-$SAMFRAN_VERSION_NAME.apk" "samfran-$SAMFRAN_VERSION_NAME.aab"
           echo "GitHub release: $tag" >> "$GITHUB_STEP_SUMMARY"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  # Its own job, so a failed upload can be retried (android-play.yml, by
+  # hand) without building a new version.
+  play:
+    needs: release
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/android-play.yml
+    with:
+      tag: ${{ needs.release.outputs.tag }}

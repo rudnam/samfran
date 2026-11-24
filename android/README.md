@@ -62,7 +62,7 @@ The site offers the APK at `/download/samfran.apk`, and `GET /api/downloads` tel
 ./android/build.sh && ./android/publish.sh    # by hand, signed in with aws login --profile rudnam-ec2
 ```
 
-**GitHub Actions does it for you**: `.github/workflows/android-release.yml` builds, signs and publishes a release once CI passes on `main` for a pull request labelled `android-release` (`android-release-label.yml` adds the label to every pull request that changes the app; remove it to merge without a release), or when you run it by hand (Actions › Android release). It keeps the `.apk` and `.aab` as a GitHub release, `android-<versionCode>`. It needs, once, an **`android-release` environment** limited to the `main` branch, with:
+**GitHub Actions does it for you**: `.github/workflows/android-release.yml` builds, signs and publishes a release once CI passes on `main` for a pull request labelled `android-release` (`android-release-label.yml` adds the label to every pull request that changes the app; remove it to merge without a release), or when you run it by hand (Actions › Android release). It keeps the `.apk` and `.aab` as a GitHub release, `android-<versionCode>`, and sends the `.aab` to the Play Store (below). It needs, once, an **`android-release` environment** limited to the `main` branch, with:
 
 | Kind | Name | Value |
 |---|---|---|
@@ -72,6 +72,22 @@ The site offers the APK at `/download/samfran.apk`, and `GET /api/downloads` tel
 | Variable | `ANDROID_UPLOAD_CERT_SHA256` | The key's certificate, 64 hex digits without colons: `keytool -list -v -keystore android/keystore/samfran.jks -alias samfran` (the SHA256 line) |
 
 The release checks the APK is signed with that certificate before publishing it.
+
+### Play Store
+
+SamFran is in the Play Console (developer account *rudnam*, as RudWallet) as `com.rudnam.samfran`, with Play App Signing: Google holds the key that signs what Play delivers, and `keystore/samfran.jks` is the *upload* key. So a copy from Play and the APK from samfran.rudnam.com are signed differently and don't install over each other: to switch, uninstall one first (everything is on the server; only signing in again is lost). Play's copies also need Play's app signing certificate (Play Console › Test and release › App integrity, its SHA-1) added to the Google Maps key's Android restriction, beside the upload key's; and, should the app ever verify https links, its SHA-256 in the server's `ANDROID_CERT_FINGERPRINTS`.
+
+After each release, the **Play upload** workflow (`.github/workflows/android-play.yml`, called by **Android release**) sends the release's `.aab` with `android/play-upload.sh` to the track the `android-release` environment's variable `PLAY_TRACK` names, or to **internal testing** if it's unset (the testers are the emails on that track's list; they get it within minutes, as a Play Store update). Promoting a build to another track is done in the Play Console. A personal account needs a closed test with at least 12 testers for 14 days before production opens; internal testing needs none of that. To send a release again, e.g. after a failed upload: Actions › **Play upload** › Run workflow, on `main`, with its tag (`android-35`). The very first `.aab` has to be uploaded by hand in the Play Console (done: versionCode 40); the API only takes later ones. Testers opt in once at https://play.google.com/apps/internaltest/4700129288045289290.
+
+It uses no key. The job asks GitHub for an OIDC token and trades it, through Google's workload identity federation, for a 15-minute token as RudWallet's service account `play-publisher@wallet-app-511308.iam.gserviceaccount.com` (Google Cloud project *wallet-app*, `wallet-app-511308`). There, the workload identity provider `rudnam-samfran` accepts this repository's tokens only in the `android-release` environment on `refs/heads/main`, and this repository may act as the service account (`roles/iam.workloadIdentityUser`). In the Play Console (Users and permissions), the service account may view SamFran and release it to testing tracks, not to production. The `android-release` environment's variables name the two:
+
+| Kind | Name | Value |
+|---|---|---|
+| Variable | `GCP_WORKLOAD_IDENTITY_PROVIDER` | `projects/990294301112/locations/global/workloadIdentityPools/github/providers/rudnam-samfran` (pool `github`, beside RudWallet's provider) |
+| Variable | `PLAY_SERVICE_ACCOUNT` | `play-publisher@wallet-app-511308.iam.gserviceaccount.com` |
+| Variable | `PLAY_TRACK` | Optional: the track's ID (`alpha` is closed testing). Unset, internal testing |
+
+Without the first two, the upload only warns, and the `.aab` on the GitHub release can be uploaded by hand.
 
 ## Native app
 
@@ -122,7 +138,7 @@ The stop's map (`StopMap`) is Google's native map (Maps SDK for Android through 
 
 ### Google Maps key
 
-The key isn't in the repository (it's public). Make it once in a Google Cloud project with billing turned on: enable **Maps SDK for Android**, create an API key, and restrict it to Android apps, adding `com.rudnam.samfran` with the release key's SHA-1 (`keytool -list -v -keystore android/keystore/samfran.jks -alias samfran`) and, for debug builds, `com.rudnam.samfran.preview` with `~/.android/debug.keystore`'s SHA-1 (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`). Maps on Android cost nothing. Then put it in `~/.gradle/gradle.properties` as `samfran.mapsKey=…` (or `SAMFRAN_MAPS_KEY` in the environment) and in the `android-release` environment's `ANDROID_MAPS_KEY` secret. Pull-request builds don't get it, so their screenshots and preview APKs show the web map.
+The key isn't in the repository (it's public). Make it once in a Google Cloud project with billing turned on: enable **Maps SDK for Android**, create an API key, and restrict it to Android apps, adding `com.rudnam.samfran` with the release key's SHA-1 (and Play's app signing SHA-1, "Play Store" above) (`keytool -list -v -keystore android/keystore/samfran.jks -alias samfran`) and, for debug builds, `com.rudnam.samfran.preview` with `~/.android/debug.keystore`'s SHA-1 (`keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android`). Maps on Android cost nothing. Then put it in `~/.gradle/gradle.properties` as `samfran.mapsKey=…` (or `SAMFRAN_MAPS_KEY` in the environment) and in the `android-release` environment's `ANDROID_MAPS_KEY` secret. Pull-request builds don't get it, so their screenshots and preview APKs show the web map.
 
 Permissions: location (asked on the first trip, or when choosing the stop by standing at it), notifications (Android 13+), a location foreground service, and Live Updates (not asked; switched off in the app's notification settings).
 
