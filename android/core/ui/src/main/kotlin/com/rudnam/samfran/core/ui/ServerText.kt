@@ -111,6 +111,21 @@ object ServerText {
         "the stop search isn’t answering; try again in a moment" to "駅・バス停の検索が応答しません。少し待ってからもう一度お試しください",
         "kind must be bus or train" to "種類はバスか電車にしてください",
         "sound_after must be 0, 30, 60 or 120" to "音を鳴らすまでの時間は0・30・60・120秒のどれかにしてください",
+        "a push token is needed" to "プッシュ通知のトークンが必要です",
+        "an app's package name is needed, like com.example.app" to "アプリのパッケージ名が必要です（例: com.example.app）",
+        "an app's name must be at most {max} characters" to "アプリ名は{max}文字以内にしてください",
+        "invite your partner first: they're the one to ask" to "先にパートナーを招待してください。許可をもらう相手です",
+        "you can lock up to {max} apps" to "ロックできるアプリは{max}個までです",
+        "that app is locked already" to "そのアプリはすでにロックされています",
+        "minutes must be from 1 to {max}" to "時間は1〜{max}分にしてください",
+        "a message must be at most {max} characters" to "メッセージは{max}文字以内にしてください",
+        "kind must be open or remove" to "種類はopenかremoveにしてください",
+        "no such locked app" to "そのロック中のアプリはありません",
+        "no such request" to "そのリクエストはありません",
+        "you can't answer your own request" to "自分のリクエストには答えられません",
+        "this request has expired" to "このリクエストは期限切れです",
+        "this request was already answered or cancelled" to "このリクエストはすでに回答済みか、取り消されています",
+        "only the one who asked can take a request back" to "リクエストを取り消せるのは送った本人だけです",
     )
 }
 
