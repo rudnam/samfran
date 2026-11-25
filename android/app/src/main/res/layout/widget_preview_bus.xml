@@ -13,8 +13,7 @@
         android:layout_width="28dp"
         android:layout_height="28dp"
         android:importantForAccessibility="no"
-        android:src="@drawable/ic_stat_bus"
-        android:tint="@color/widget_on_accent" />
+        android:src="@drawable/widget_preview_bus_icon" />
 
     <TextView
         android:layout_width="wrap_content"

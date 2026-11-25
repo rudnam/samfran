@@ -104,6 +104,17 @@ class WidgetScreenshotTest {
     }
 
     private fun shot(name: String, size: DpSize, content: @Composable () -> Unit) = runTest {
+        try {
+            draw(name, size, content)
+        } catch (e: Throwable) {
+            // Gradle prints only the exception's class; the whole of it goes beside the screenshots.
+            java.io.File("build/outputs/roborazzi").mkdirs()
+            java.io.File("build/outputs/roborazzi/widget-$name-error.txt").writeText(e.stackTraceToString())
+            throw e
+        }
+    }
+
+    private suspend fun draw(name: String, size: DpSize, content: @Composable () -> Unit) {
         val views = Fixed(content).compose(context, size = size)
         val density = context.resources.displayMetrics.density
         val w = (size.width.value * density).roundToInt()
