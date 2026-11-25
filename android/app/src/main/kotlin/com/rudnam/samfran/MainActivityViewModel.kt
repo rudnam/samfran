@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudnam.samfran.core.data.ActivityRepository
+import com.rudnam.samfran.core.data.AppLocks
+import com.rudnam.samfran.core.data.LocksRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.SpaceRepository
@@ -31,9 +33,14 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import javax.inject.Inject
 
-/** The app. */
+/** The app. Firebase starts here when the build has it (locked apps' push messages). */
 @HiltAndroidApp
-class SamFranApplication : Application()
+class SamFranApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        com.rudnam.samfran.background.Push.start(this)
+    }
+}
 
 /**
  * What the app as a whole shows: who's signed in, how it looks, the Us
@@ -51,6 +58,8 @@ class MainActivityViewModel @Inject constructor(
     private val activity: ActivityRepository,
     private val spaces: SpaceRepository,
     private val clock: Clock,
+    private val appLocks: AppLocks,
+    private val locks: LocksRepository,
 ) : ViewModel(), ShellActions {
     val uiState: StateFlow<MainUiState> = combine(session.token, preferences.preferences) { token, prefs ->
         MainUiState.Ready(signedIn = token != null, appearance = prefs.appearance)
@@ -71,6 +80,7 @@ class MainActivityViewModel @Inject constructor(
         viewModelScope.launch {
             signedIn.drop(1).filter { !it }.collect {
                 reminders.turnOff()
+                appLocks.turnOff()
                 user.signOut()
             }
         }
@@ -84,6 +94,8 @@ class MainActivityViewModel @Inject constructor(
                 spaces.refresh()
                 activity.refresh()
                 reminders.sync(now = true)
+                locks.refresh()
+                appLocks.sync()
             }
         }
     }
@@ -95,6 +107,8 @@ class MainActivityViewModel @Inject constructor(
         viewModelScope.launch {
             reminders.sync()
             activity.refresh()
+            locks.refresh()
+            appLocks.sync()
             checkForUpdate()
         }
     }
@@ -120,6 +134,7 @@ class MainActivityViewModel @Inject constructor(
     override fun leaveDemo() {
         viewModelScope.launch {
             reminders.turnOff()
+            appLocks.turnOff()
             user.signOut()
         }
     }

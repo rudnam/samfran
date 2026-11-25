@@ -50,4 +50,5 @@ internal object Keys {
     const val SPACE = "space"
     const val BUS_STOPS = "bus-stops"
     const val ACTIVITY = "activity"
+    const val LOCKS = "locks"
 }

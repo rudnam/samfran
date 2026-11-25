@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rudnam/samfran/internal/mailer"
+	"github.com/rudnam/samfran/internal/push"
 	"github.com/rudnam/samfran/internal/shift"
 )
 
@@ -86,6 +87,13 @@ type Config struct {
 	// Mailer is not read from the environment; tests set a fake. When nil,
 	// one is built from the SMTP settings.
 	Mailer mailer.Sender
+	// FirebaseServiceAccount, when set, sends push notifications to the
+	// Android app through Firebase Cloud Messaging (internal/push): a
+	// service account's JSON key, or that JSON in base64.
+	FirebaseServiceAccount string
+	// Push is not read from the environment; tests set a fake. When nil,
+	// one is made from FirebaseServiceAccount.
+	Push push.Sender
 }
 
 // Load reads the configuration through getenv (os.Getenv in production) and
@@ -116,6 +124,7 @@ func Load(getenv func(string) string) (Config, error) {
 		GooglePlacesAPIKey:      r.str("GOOGLE_PLACES_API_KEY", ""),
 		GoogleMapsBrowserKey:    r.str("GOOGLE_MAPS_BROWSER_KEY", ""),
 		LocatePlaces:            r.bool("LOCATE_PLACES", true),
+		FirebaseServiceAccount:  r.str("FIREBASE_SERVICE_ACCOUNT", ""),
 	}
 	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
@@ -133,6 +142,11 @@ func Load(getenv func(string) string) (Config, error) {
 		}
 		if c.PublicOrigin == "" {
 			r.errs = append(r.errs, errors.New("SMTP_HOST needs PUBLIC_ORIGIN, which the emailed links point to"))
+		}
+	}
+	if c.FirebaseServiceAccount != "" {
+		if _, err := push.NewFCM(c.FirebaseServiceAccount); err != nil {
+			r.errs = append(r.errs, err)
 		}
 	}
 	return c, errors.Join(r.errs...)
