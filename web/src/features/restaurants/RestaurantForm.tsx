@@ -129,6 +129,8 @@ const empty: RestaurantFields = { name: '', area: '', cuisine: '', category: 'ea
  * want-to-go side. shared is text shared from Google Maps, to fill it in.
  */
 export function RestaurantForm({ id, want, shared }: { id?: number; want?: boolean; shared?: string }) {
+  // The place's name as saved, for the way back while editing.
+  const [savedName, setSavedName] = useState('');
   const [fields, setFields] = useState<RestaurantFields | null>(() => {
     if (id) return null;
     const s = shared ? parseShared(shared) : null;
@@ -215,7 +217,10 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   useEffect(() => {
     if (!id) return;
     api.restaurant(id).then(
-      (r) => setFields({ name: r.name, area: r.area, cuisine: r.cuisine, category: categoryOf(r.category), map_url: r.map_url, notes: r.notes }),
+      (r) => {
+        setSavedName(r.name);
+        setFields({ name: r.name, area: r.area, cuisine: r.cuisine, category: categoryOf(r.category), map_url: r.map_url, notes: r.notes });
+      },
       (err) => setError(errorMessage(err)),
     );
   }, [id]);
@@ -330,7 +335,8 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const back = id ? href('restaurant', { id }) : href(want ? 'want' : 'home');
   return (
     <section className="stack">
-      <BackLink href={back} label={id ? 'Back' : 'Our spots'} />
+      {/* Editing goes back to the place, named as it's saved (not as it's being retyped). */}
+      <BackLink href={back} label={id ? 'Back' : 'Our places'} text={id ? savedName || undefined : undefined} />
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
       {!fields && !error && <p className="muted">{t('Loading…')}</p>}
       {fields && (
@@ -338,7 +344,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
           {!id && (
             <div className="segmented" role="radiogroup" aria-label={t('Have you been?')}>
               <button type="button" role="radio" aria-checked={been} className={been ? 'on' : ''} onClick={() => setBeen(true)}>
-                {t('We’ve been')}
+                {t('Been there')}
               </button>
               <button type="button" role="radio" aria-checked={!been} className={!been ? 'on' : ''} onClick={() => setBeen(false)}>
                 {t('Want to go')}

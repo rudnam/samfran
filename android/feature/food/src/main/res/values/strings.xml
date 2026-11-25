@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="our_spots">Our spots</string>
+    <string name="our_places">Our places</string>
     <plurals name="n_places">
         <item quantity="one">%d place</item>
         <item quantity="other">%d places</item>
@@ -17,7 +17,6 @@
     <string name="added_by">Added by %s</string>
     <string name="add_a_place">Add a place</string>
     <string name="edit_place">Edit place</string>
-    <string name="weve_been">We’ve been</string>
     <string name="name">Name</string>
     <string name="area">Area</string>
     <string name="area_hint">e.g. Station East</string>

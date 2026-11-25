@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="our_spots">ふたりのスポット</string>
+    <string name="our_places">ふたりのおでかけ</string>
     <plurals name="n_places">
         <item quantity="other">%dか所</item>
     </plurals>
@@ -16,7 +16,6 @@
     <string name="added_by">%sが追加</string>
     <string name="add_a_place">場所を追加</string>
     <string name="edit_place">場所を編集</string>
-    <string name="weve_been">行った</string>
     <string name="name">名前</string>
     <string name="area">エリア</string>
     <string name="area_hint">例: 駅東</string>

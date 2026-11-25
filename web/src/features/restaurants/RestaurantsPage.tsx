@@ -151,7 +151,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
     <section className="stack">
       <header className="page-head">
         <div className="row spread">
-          <h1 className="display">{t('Our spots')}</h1>
+          <h1 className="display">{t('Our places')}</h1>
           <a className="button add-wide" href={addHref}>
             + {t('Add a place')}
           </a>

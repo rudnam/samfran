@@ -20,7 +20,7 @@ test('a short page and a long one line up: room is kept for the scrollbar', asyn
 
   // Places, empty: shorter than the window, so it has nothing to scroll.
   await page.getByRole('navigation').getByRole('link', { name: 'Places', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight), 'Places is shorter than the window').toBe(true);
   expect(await where()).toEqual(long);

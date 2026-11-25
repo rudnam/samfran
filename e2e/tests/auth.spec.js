@@ -7,7 +7,7 @@ test('sign up, sign out and sign in again', async ({ page }) => {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Us', exact: true }).click();
   await page.getByRole('button', { name: 'Sign out' }).click();
@@ -16,10 +16,10 @@ test('sign up, sign out and sign in again', async ({ page }) => {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
 
   await page.reload(); // the session survives a reload
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
 });
 
 test('a wrong password shows an error', async ({ page }) => {
@@ -75,7 +75,7 @@ test('a forgotten password is reset with the emailed link, which signs out every
   await page.getByLabel('New password').fill('a brand new password');
   await page.getByRole('button', { name: 'Save password' }).click();
   await expect(page.getByRole('status')).toHaveText('Your new password is saved.');
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
   await expect(page).not.toHaveURL(/token=/);
   expect((await request.get('/api/me')).status()).toBe(401);
 
@@ -85,7 +85,7 @@ test('a forgotten password is reset with the emailed link, which signs out every
   await page.getByRole('button', { name: 'Save password' }).click();
   await expect(page.getByRole('alert')).toHaveText('this link has expired or was already used; ask for a new one');
   await page.getByRole('button', { name: 'Back to sign in' }).click();
-  await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible(); // still signed in with the new password
+  await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible(); // still signed in with the new password
 });
 
 test('Continue with Google sends the browser to Google', async ({ page }) => {

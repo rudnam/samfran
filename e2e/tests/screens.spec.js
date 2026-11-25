@@ -91,7 +91,7 @@ for (const [name, viewport] of [
     await shot('4d-undo');
     await page.getByRole('button', { name: 'Undo' }).click();
     // A want-to-go place: Mark as been asks when.
-    await page.getByRole('link', { name: 'Our spots' }).click();
+    await page.getByRole('link', { name: 'Our places' }).click();
     await page.getByRole('link', { name: /Want to go/ }).click();
     await page.getByRole('link', { name: /Blue Sky Café/ }).click();
     await page.getByRole('button', { name: 'Mark as been' }).click();
@@ -239,7 +239,7 @@ for (const [name, viewport] of [
     await page.getByLabel('Appearance').selectOption('dark');
     await shot('9-us-dark');
     await page.getByRole('link', { name: 'Places' }).click();
-    await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
     await shot('10-food-dark');
     await page.getByRole('link', { name: 'Ride', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();

@@ -116,7 +116,7 @@ fun FoodListScreen(state: FoodListUiState, actions: FoodListActions, onOpen: (Lo
     Box(Modifier.fillMaxSize()) {
         PullToRefreshBox(isRefreshing = state.refreshing, onRefresh = actions::refresh, modifier = Modifier.fillMaxSize()) {
             TabPage(bottomSpace = 96, userScrollEnabled = !mapHeld) {
-                item(key = "head") { PageTitle(stringResource(R.string.our_spots)) }
+                item(key = "head") { PageTitle(stringResource(R.string.our_places)) }
                 item(key = "tabs") {
                     Segmented(
                         options = listOf(stringResource(R.string.been_there), stringResource(R.string.want_to_go)),

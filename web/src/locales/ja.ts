@@ -63,7 +63,7 @@ export const ja = {
   Us: 'ふたり',
 
   // Places
-  'Our spots': 'ふたりのスポット',
+  'Our places': 'ふたりのおでかけ',
   Lists: 'リスト',
   'Been there': '行った',
   'Want to go': '行きたい',
@@ -82,7 +82,6 @@ export const ja = {
   Back: '戻る',
   'Edit place': '場所を編集',
   'Have you been?': '行ったことがありますか？',
-  'We’ve been': '行った',
   Name: '名前',
   Area: 'エリア',
   'e.g. Station East': '例: 駅東',

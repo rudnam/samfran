@@ -90,7 +90,7 @@ export function RestaurantDetail({ id }: { id: number }) {
   if (!r) {
     return (
       <section className="stack">
-        <BackLink href={href('home')} label="Our spots" />
+        <BackLink href={href('home')} label="Our places" />
         {error ? (
           <p role="alert" className="error">
             {error}
@@ -108,7 +108,7 @@ export function RestaurantDetail({ id }: { id: number }) {
   const beenOn = clearing ? null : r.last_visit;
   return (
     <section className="stack">
-      <BackLink href={href(beenOn ? 'home' : 'want')} label="Our spots" />
+      <BackLink href={href(beenOn ? 'home' : 'want')} label="Our places" />
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
         <p className="lead place-kind">

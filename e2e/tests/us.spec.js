@@ -25,7 +25,7 @@ test('invite your partner, who then sees and rates the same places', async ({ pa
   await sam.getByLabel('Email').fill(uniqueEmail());
   await sam.getByLabel('Password').fill(PASSWORD);
   await sam.getByRole('button', { name: 'Create account' }).click();
-  await expect(sam.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+  await expect(sam.getByRole('heading', { name: 'Our places' })).toBeVisible();
   await sam.getByRole('link', { name: /Gyoza Komachi/ }).click();
   await expect(sam.getByText('Not rated yet')).toHaveCount(0);
   await expect(sam.locator('.rating-row').nth(1)).toContainText('Fran'); // Fran's rating, by name

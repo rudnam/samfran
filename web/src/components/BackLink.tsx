@@ -1,4 +1,4 @@
-// "‹ Our spots" above a page: the way back, named after where it goes.
+// "‹ Our places" above a page: the way back, named after where it goes.
 import { t, type Key } from '../i18n';
 
 /** [text], when given, names the place instead: a stop's own name, say. */
