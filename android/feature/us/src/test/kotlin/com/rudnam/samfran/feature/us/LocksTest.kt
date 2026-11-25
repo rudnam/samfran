@@ -101,16 +101,13 @@ class LocksScreenshotTest {
     private val cover = LockCoverUiState(packageName = "com.instagram.android", label = "Instagram", lock = LockSamples.instagram, partner = "Sam", minutes = 15, message = "Mum sent photos")
 
     // The app's own icon, as on a phone that has it: a stand-in for Instagram's, given to Robolectric's package manager.
-    private fun coverScreen(state: LockCoverUiState): @Composable () -> Unit = {
-        val context = androidx.compose.ui.platform.LocalContext.current
-        androidx.compose.runtime.remember {
-            val icon = android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.BL_TR,
-                intArrayOf(0xFFF9A23B.toInt(), 0xFFE1306C.toInt(), 0xFF833AB4.toInt()),
-            ).apply { cornerRadius = 22f; setSize(96, 96) }
-            org.robolectric.Shadows.shadowOf(context.packageManager).setApplicationIcon("com.instagram.android", icon)
-        }
-        LockCover(state, coverActions) {}
+    private fun coverScreen(state: LockCoverUiState): @Composable () -> Unit {
+        val icon = android.graphics.drawable.GradientDrawable(
+            android.graphics.drawable.GradientDrawable.Orientation.BL_TR,
+            intArrayOf(0xFFF9A23B.toInt(), 0xFFE1306C.toInt(), 0xFF833AB4.toInt()),
+        ).apply { cornerRadius = 22f; setSize(96, 96) }
+        org.robolectric.Shadows.shadowOf(org.robolectric.RuntimeEnvironment.getApplication().packageManager).setApplicationIcon("com.instagram.android", icon)
+        return { LockCover(state, coverActions) {} }
     }
 
     @Test
