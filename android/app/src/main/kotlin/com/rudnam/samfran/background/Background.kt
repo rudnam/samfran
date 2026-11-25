@@ -24,6 +24,7 @@ import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.newestId
+import com.rudnam.samfran.widget.Widgets
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -179,10 +180,13 @@ class AndroidReminders @Inject constructor(
     @Volatile private var last = 0L
 
     override suspend fun sync(now: Boolean) {
+        // The widgets draw from the phone's copy, which may have just changed.
+        Widgets.update(context)
         if (!now && clock.millis() - last < 5 * 60 * 1000) return
         last = clock.millis()
         movePhoneSwitch()
         if (allowed) sendShiftEnds() else ShiftPrompt.save(context, emptyList(), 0)
+        Widgets.update(context) // with the shifts and stops just fetched
         if (alerts.value) {
             ActivityJob.schedule(context, true)
             (activity.refresh() as? Outcome.Done)?.value?.newestId()?.let { newest ->
@@ -207,6 +211,7 @@ class AndroidReminders @Inject constructor(
         ShiftPrompt.save(context, emptyList(), 0)
         ActivityJob.schedule(context, false)
         alerts.value = false
+        Widgets.update(context) // signed out: nothing to show
     }
 }
 

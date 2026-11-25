@@ -45,8 +45,8 @@ import javax.inject.Inject
  * The app's one activity. It draws edge to edge, keeps the splash screen
  * until the session is known, and routes what opens the app: Google sign-in
  * coming back (<package>://auth) to the sign-in page, its own notifications
- * (<package>://bus?start=1, ://us) and a place shared from Google Maps to the
- * app's navigation.
+ * and widgets (<package>://bus?start=1, ://us, ://shifts) and a place shared
+ * from Google Maps to the app's navigation.
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -181,6 +181,7 @@ class MainActivity : AppCompatActivity() {
             )
             data?.scheme == packageName && data.host == "us" -> links.trySend(AppLink.Us)
             data?.scheme == packageName && data.host == "locks" -> links.trySend(AppLink.Locks)
+            data?.scheme == packageName && data.host == "shifts" -> links.trySend(AppLink.Shifts)
             else -> return
         }
         // Handled: not again if the activity is remade.

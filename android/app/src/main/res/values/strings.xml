@@ -77,4 +77,26 @@
     <string name="notify_check_restarted">SamFran wasn’t watching on %1$s’s phone from %2$s to %3$s</string>
     <string name="notify_check_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
     <string name="notify_check_quiet_text">SamFran may have been uninstalled, or stopped.</string>
+    <!-- The home-screen widgets (widget/). -->
+    <string name="widget_next_shift">Next shift</string>
+    <string name="widget_next_shift_of">%1$s’s next shift</string>
+    <string name="widget_shift">On shift</string>
+    <string name="widget_shift_of">%1$s’s shift</string>
+    <string name="widget_shift_description">The next shift and the week ahead</string>
+    <string name="widget_now">Now</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_tomorrow">Tomorrow</string>
+    <string name="widget_until">until %1$s</string>
+    <string name="widget_with">With %1$s</string>
+    <string name="widget_no_shifts">No shifts coming up</string>
+    <string name="widget_open_app">Open SamFran to see it here</string>
+    <string name="widget_bus">Ride alarm</string>
+    <string name="widget_bus_description">Start the ride alarm in one tap</string>
+    <string name="widget_on_bus">I’m on the bus</string>
+    <string name="widget_on_train">I’m on the train</string>
+    <string name="widget_to_stop">to %1$s</string>
+    <string name="widget_riding">On the way</string>
+    <string name="widget_nearly">Your stop is next</string>
+    <string name="widget_preview_times" translatable="false">13:00–22:00</string>
+    <string name="widget_choose_stop">Choose your stop</string>
 </resources>

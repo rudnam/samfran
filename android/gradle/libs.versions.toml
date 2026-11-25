@@ -35,6 +35,7 @@ work = "2.12.0"
 mapsCompose = "9.0.1"
 playAppUpdate = "2.1.0"
 firebaseMessaging = "24.1.0"
+glance = "1.2.0"
 
 [libraries]
 androidx-browser = { module = "androidx.browser:browser", version.ref = "androidxBrowser" }
@@ -87,6 +88,7 @@ androidAll-api36 = { module = "org.robolectric:android-all-instrumented", versio
 androidAll-api37 = { module = "org.robolectric:android-all-instrumented", version = "17-robolectric-15733970-i7" }
 roborazzi = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+androidx-glance-appwidget = { module = "androidx.glance:glance-appwidget", version.ref = "glance" }
 maps-compose = { module = "com.google.maps.android:maps-compose", version.ref = "mapsCompose" }
 play-app-update = { module = "com.google.android.play:app-update-ktx", version.ref = "playAppUpdate" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging", version.ref = "firebaseMessaging" }

@@ -27,7 +27,7 @@ enum class TopLevelDestination(@StringRes val label: Int, val icon: String, val 
     Us(R.string.tab_us, SamFranIcons.us, UsRoute),
 }
 
-/** What opens a page from outside the app: its notifications, and a place shared from Google Maps. */
+/** What opens a page from outside the app: its notifications and widgets, and a place shared from Google Maps. */
 sealed interface AppLink {
     /** The Bus tab; [start]: from "Start bus alarm?", which starts the trip. */
     /** [start] the trip (to [stop], by id, when given), or [pick] which stop first. */
@@ -37,6 +37,8 @@ sealed interface AppLink {
 
     /** Us › Locked apps: a locked app's notification. */
     data object Locks : AppLink
+    /** The Shifts tab (from the Next shift widget). */
+    data object Shifts : AppLink
 
     /** Add a place, filled in with text shared from Maps. */
     data class AddPlace(val shared: String) : AppLink
@@ -75,6 +77,7 @@ class SamFranAppState(val navController: NavHostController) {
                 navigateToTab(TopLevelDestination.Us)
                 navController.navigate(LocksRoute) { launchSingleTop = true }
             }
+            AppLink.Shifts -> navigateToTab(TopLevelDestination.Shifts)
             is AppLink.AddPlace -> navController.navigate(PlaceFormRoute(shared = link.shared))
         }
     }

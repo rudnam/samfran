@@ -2,4 +2,11 @@
 <resources>
     <color name="paper">#17120E</color>
     <color name="accent">#FF9A4D</color>
+    <!-- The widgets' previews in the widget picker (the theme's colours). -->
+    <color name="widget_surface">#221B15</color>
+    <color name="widget_text">#F7EFE4</color>
+    <color name="widget_muted">#AE9F8F</color>
+    <color name="widget_accent">#FF9A4D</color>
+    <color name="widget_on_accent">#1C1714</color>
+    <color name="widget_accent_ink">#FFB27A</color>
 </resources>

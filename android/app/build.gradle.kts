@@ -124,6 +124,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     // Push notifications (PushService), set up in code from BuildConfig rather than google-services.json.
     implementation(libs.firebase.messaging)
+    // The home-screen widgets (widget/).
+    implementation(libs.androidx.glance.appwidget)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)
