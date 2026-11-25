@@ -133,7 +133,7 @@ class LocksScreenshotTest {
     fun coverDenied() = shot("cover-denied", content = coverScreen(cover.copy(request = LockSamples.franDenied)))
 
     @Test
-    fun coverEmergencyWait() = shot("cover-emergency-wait", content = coverScreen(cover.copy(emergencyIn = 42)))
+    fun coverEmergencyWait() = shot("cover-emergency-hidden", content = coverScreen(cover.copy(emergencyIn = 12)))
 
     @Test
     fun coverEmergency() = shot("cover-emergency", content = coverScreen(cover.copy(confirmEmergency = true)))
@@ -232,7 +232,7 @@ class LockCoverViewModelTest {
         vm.show("com.instagram.android", "Instagram")
         vm.state.first { it.lock != null }
         vm.setMinutes(5)
-        // Not for the first minute.
+        // Not for the first 30 seconds.
         vm.openWithoutAsking()
         vm.confirmEmergency(true)
         assertEquals(false, vm.state.value.confirmEmergency)

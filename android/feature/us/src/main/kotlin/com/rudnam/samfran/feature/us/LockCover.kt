@@ -82,7 +82,7 @@ data class LockCoverUiState(
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
     val confirmEmergency: Boolean = false,
-    /** Seconds before "Open now without asking" can be tapped: it waits a minute after the cover comes up. */
+    /** Seconds before "Open now without asking" shows: it's hidden for the first 30 seconds of the cover. */
     val emergencyIn: Int = 0,
 )
 
@@ -219,7 +219,7 @@ class LockCoverViewModel @Inject constructor(
         var POLL_MS = 4_000L
 
         /** How long the cover is up before it can be opened without asking: a moment to think, or to ask instead. */
-        const val EMERGENCY_WAIT_SECONDS = 60
+        const val EMERGENCY_WAIT_SECONDS = 30
     }
 }
 
@@ -316,9 +316,8 @@ fun LockCover(state: LockCoverUiState, actions: LockCoverActions, onClose: () ->
                 Spacer(Modifier.height(8.dp))
                 LinkButton(stringResource(R.string.not_now), onClose, quiet = true)
                 if (r?.status != LockRequestStatus.Allowed && state.lock != null) {
-                    if (state.emergencyIn > 0) {
-                        LinkButton(stringResource(R.string.cover_emergency_wait, state.emergencyIn), {}, enabled = false, quiet = true)
-                    } else {
+                    // A backup: it only shows once the cover has been up a while.
+                    if (state.emergencyIn == 0) {
                         LinkButton(stringResource(R.string.cover_emergency), { actions.confirmEmergency(true) }, danger = true)
                     }
                 }
