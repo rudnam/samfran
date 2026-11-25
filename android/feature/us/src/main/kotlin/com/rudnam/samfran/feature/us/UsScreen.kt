@@ -49,6 +49,8 @@ import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
 import com.rudnam.samfran.core.designsystem.component.SecondaryButton
+import com.rudnam.samfran.core.designsystem.component.SettingRow
+import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.Tone
@@ -81,6 +83,7 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
         onCopy = { context.copyText(it) },
         onShare = { context.shareText("$join\n$it", "SamFran") },
         onLeaveDemo = navigation::leaveDemo,
+        onLocks = navigation::openLocks,
         languagePicker = { LanguagePicker() },
     )
 }
@@ -94,6 +97,7 @@ fun UsScreen(
     onCopy: (String) -> Unit,
     onShare: (String) -> Unit,
     onLeaveDemo: () -> Unit,
+    onLocks: () -> Unit = {},
     languagePicker: @Composable () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
@@ -203,6 +207,15 @@ fun UsScreen(
                         Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
                     }
                     if (state.alertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
+                }
+                if (!demo) {
+                    SettingRow(
+                        stringResource(R.string.locks),
+                        detail = state.lockedHere?.let { n ->
+                            if (n == 0) stringResource(R.string.locks_none, state.space?.partner?.name ?: stringResource(R.string.someone)) else stringResource(R.string.locks_count, n)
+                        },
+                        onClick = onLocks,
+                    ) { LineIcon(SamFranIcons.lock, null, tint = colors.muted, size = 20.dp) }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(stringResource(R.string.language), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)

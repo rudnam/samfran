@@ -105,7 +105,7 @@ class UsViewModelTest {
     @Test
     fun `opening marks the changes seen, but they stay marked while it's open`() = runTest {
         val activity = FakeActivityRepository(seen = 52)
-        val vm = UsViewModel(FakeUserRepository(), FakeSpaceRepository(), activity, FakeReminders(), TestPreferences.repository())
+        val vm = UsViewModel(FakeUserRepository(), FakeSpaceRepository(), activity, FakeReminders(), TestPreferences.repository(), com.rudnam.samfran.core.testing.FakeLocksRepository())
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         // The preferences load on their own thread: wait for the page's state to be put together.
         assertEquals(52L, vm.state.first { it.activity != null && it.seenAtOpen != null }.seenAtOpen)
@@ -117,7 +117,8 @@ class UsViewModelTest {
         val user = FakeUserRepository()
         val space = FakeSpaceRepository(Samples.spaceAlone)
         val reminders = FakeReminders().apply { alerts.value = true }
-        val vm = UsViewModel(user, space, FakeActivityRepository(), reminders, TestPreferences.repository())
+        val locks = com.rudnam.samfran.core.testing.FakeLocksRepository()
+        val vm = UsViewModel(user, space, FakeActivityRepository(), reminders, TestPreferences.repository(), locks)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         assertEquals("Fran", vm.state.first { it.name != null }.name)
         vm.setName("Francis")
@@ -128,6 +129,8 @@ class UsViewModelTest {
         assertEquals("https://samfran.example/join/abc", vm.state.first { it.invite != null }.invite?.url)
         vm.signOut()
         assertTrue(user.signedOut)
+        // Fran has locked apps: Sam is told they're no longer covered.
+        assertEquals(listOf<Any?>(true, true, false, "signed_out"), locks.checkIns.single())
         assertEquals(false, reminders.alerts.value)
     }
 }

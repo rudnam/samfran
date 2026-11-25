@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
         android:name=".SamFranApplication"
@@ -65,6 +66,47 @@
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
 
+        <!-- Locked apps: the cover over a locked app, in its own task so it doesn't bring the
+             rest of SamFran up, and left out of the recent apps. -->
+        <activity
+            android:name=".LockActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
+            android:taskAffinity="${applicationId}.lock"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/AppTheme.NoActionBar" />
+
+        <!-- Locked apps: watches which app is open, and covers a locked one. -->
+        <service
+            android:name=".LockWatcher"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Covers the apps the user chose to lock until their partner allows them to be opened. It reads which app is in the foreground (usage access) while the screen is on." />
+        </service>
+
+        <!-- Firebase Cloud Messaging: the other person asking to open a locked app, and answers. -->
+        <service
+            android:name=".PushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Allow and Deny on the notification of the other person's asking. -->
+        <receiver android:name=".LockAnswerReceiver" android:exported="false" />
+
+        <!-- The watcher starts again after the phone restarts, or the app is updated. -->
+        <receiver android:name=".LockBoot" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Lets the camera save a photo of the shift sheet into the app's cache (feature:shifts). -->
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -101,4 +143,19 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Setting the shift-end alarm and the changes check again after the phone restarts. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Locked apps: which app is open (usage access, granted by the person in Settings),
+         covering it (display over other apps, likewise), and the watcher's foreground service. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Locked apps: the apps on the phone that open from the launcher, to choose one to lock. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 </manifest>

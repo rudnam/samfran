@@ -66,6 +66,8 @@ import com.rudnam.samfran.feature.food.navigation.foodScreens
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 import com.rudnam.samfran.feature.shifts.navigation.shiftsScreens
 import com.rudnam.samfran.feature.signin.navigation.signInScreen
+import com.rudnam.samfran.feature.us.navigation.LockAppRoute
+import com.rudnam.samfran.feature.us.navigation.LocksRoute
 import com.rudnam.samfran.feature.us.navigation.UsNavigation
 import com.rudnam.samfran.feature.us.navigation.usScreen
 import kotlinx.coroutines.flow.Flow
@@ -189,6 +191,11 @@ fun SamFranApp(
                     override fun leaveDemo() {
                         appState.signUpNext = true
                         shell.leaveDemo()
+                    }
+                    override fun openLocks() = appState.navController.navigate(LocksRoute)
+                    override fun lockApp() = appState.navController.navigate(LockAppRoute)
+                    override fun back() {
+                        appState.navController.popBackStack()
                     }
                 },
                 snackbar = snackbar,

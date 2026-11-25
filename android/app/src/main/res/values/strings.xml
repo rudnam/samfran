@@ -50,4 +50,31 @@
     <string name="confirm_again">Send again</string>
     <!-- No camera app to take a photo of the shift sheet. -->
     <string name="no_camera">No camera app was found. Choose a photo instead.</string>
+    <!-- Locked apps -->
+    <string name="channel_locks">Locked apps</string>
+    <string name="channel_lock_watch">Locked apps: watching</string>
+    <string name="lock_watch_title">Locked apps are covered</string>
+    <string name="lock_watch_text">SamFran covers your locked apps when they open.</string>
+    <string name="notify_lock_request">%1$s asks to open %2$s for %3$d min</string>
+    <string name="notify_lock_remove">%1$s asks to unlock %2$s for good</string>
+    <string name="notify_lock_allowed">%1$s allowed %2$s for %3$d min</string>
+    <string name="notify_lock_unlocked">%1$s unlocked %2$s for good</string>
+    <string name="notify_lock_denied">%1$s said no to %2$s</string>
+    <string name="notify_lock_override">%1$s opened %2$s without asking, for %3$d min</string>
+    <string name="notify_lock_added">%1$s locked %2$s</string>
+    <string name="notify_quoted">“%s”</string>
+    <string name="lock_allow">Allow</string>
+    <string name="lock_deny">Deny</string>
+    <string name="lock_answered_allow">You allowed it</string>
+    <string name="lock_answered_deny">You said no</string>
+    <string name="lock_answer_failed">Couldn’t answer. Open SamFran to try again.</string>
+    <!-- Locked apps: check-ins -->
+    <string name="notify_check_usage">Locked apps on %s’s phone aren’t covered: usage access was turned off</string>
+    <string name="notify_check_overlay">Locked apps on %s’s phone aren’t covered: display over other apps was turned off</string>
+    <string name="notify_check_stopped">Locked apps on %s’s phone aren’t covered: SamFran stopped watching</string>
+    <string name="notify_check_signed_out">%s signed out of SamFran, so locked apps on that phone aren’t covered</string>
+    <string name="notify_check_on">Locked apps on %s’s phone are covered again</string>
+    <string name="notify_check_restarted">SamFran wasn’t watching on %1$s’s phone from %2$s to %3$s</string>
+    <string name="notify_check_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
+    <string name="notify_check_quiet_text">SamFran may have been uninstalled, or stopped.</string>
 </resources>

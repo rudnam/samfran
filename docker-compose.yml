@@ -55,6 +55,8 @@ services:
       MAIL_FROM: ${MAIL_FROM:-}
       # Reading photos of shift sheets (internal/shift).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Push notifications to the Android app (internal/push).
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
       GOOGLE_PLACES_API_KEY: ${GOOGLE_PLACES_API_KEY:-}
       # The places' map on the web page (Maps JavaScript API, restricted to this site).
       GOOGLE_MAPS_BROWSER_KEY: ${GOOGLE_MAPS_BROWSER_KEY:-}

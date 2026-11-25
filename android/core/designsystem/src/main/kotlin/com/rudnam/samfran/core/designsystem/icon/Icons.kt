@@ -48,6 +48,7 @@ object SamFranIcons {
     const val close = "M6 6l12 12M18 6L6 18"
     const val calendar = shifts
     const val list = "M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"
+    const val lock = "M6 11h12v10H6zM8.5 11V7.5a3.5 3.5 0 0 1 7 0V11M12 15v2"
     const val check = "M5 12.5l4.5 4.5L19 7"
     /** The Places tab: a map pin. */
     const val places = "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM14.5 9.5a2.5 2.5 0 1 1-5 0a2.5 2.5 0 1 1 5 0z"

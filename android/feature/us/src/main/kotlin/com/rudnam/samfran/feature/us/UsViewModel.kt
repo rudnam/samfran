@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.InviteLinkMade
+import com.rudnam.samfran.core.data.LocksRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.SpaceRepository
@@ -43,6 +44,8 @@ data class UsUiState(
     val alerts: Boolean = false,
     val alertsBlocked: Boolean = false,
     val appearance: Appearance = Appearance.System,
+    /** How many apps this person has locked; null until known. */
+    val lockedHere: Int? = null,
 ) {
     val myName: String? get() = space?.members?.firstOrNull { it.me }?.name
 }
@@ -68,16 +71,18 @@ class UsViewModel @Inject constructor(
     private val activity: ActivityRepository,
     private val reminders: Reminders,
     private val preferences: UserPreferencesRepository,
+    private val locks: LocksRepository,
 ) : ViewModel(), UsActions {
     private val local = MutableStateFlow(UsUiState(mcpAddress = spaces.mcpAddress))
 
     val state: StateFlow<UsUiState> = combine(
         local,
         combine(user.me, spaces.space, activity.entries) { me, space, entries -> Triple(me, space, entries) },
-        reminders.activityAlerts,
+        combine(reminders.activityAlerts, locks.page) { alerts, page -> alerts to page?.mine?.size },
         preferences.preferences,
-    ) { s, (me, space, entries), alerts, prefs ->
+    ) { s, (me, space, entries), (alerts, locked), prefs ->
         s.copy(
+            lockedHere = locked,
             me = me,
             space = space,
             name = s.name ?: space?.members?.firstOrNull { it.me }?.name,
@@ -91,6 +96,7 @@ class UsViewModel @Inject constructor(
         viewModelScope.launch {
             local.update { it.copy(seenAtOpen = activity.seenUpTo()) }
             spaces.refresh()
+            launch { locks.refresh() }
             activity.refresh().let { r -> if (r is Outcome.Done) activity.markSeen(r.value) }
         }
         viewModelScope.launch {
@@ -147,6 +153,7 @@ class UsViewModel @Inject constructor(
 
     override fun signOut() {
         viewModelScope.launch {
+            locks.signingOut()
             reminders.turnOff()
             user.signOut()
         }

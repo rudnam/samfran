@@ -15,12 +15,14 @@ import (
 
 	"github.com/rudnam/samfran/internal/account"
 	"github.com/rudnam/samfran/internal/activity"
+	"github.com/rudnam/samfran/internal/applock"
 	"github.com/rudnam/samfran/internal/bus"
 	"github.com/rudnam/samfran/internal/config"
 	"github.com/rudnam/samfran/internal/demo"
 	"github.com/rudnam/samfran/internal/httpx"
 	"github.com/rudnam/samfran/internal/mailer"
 	"github.com/rudnam/samfran/internal/mcp"
+	"github.com/rudnam/samfran/internal/push"
 	"github.com/rudnam/samfran/internal/restaurant"
 	"github.com/rudnam/samfran/internal/shift"
 	"github.com/rudnam/samfran/internal/space"
@@ -125,6 +127,17 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy})
 	mcpHandler.Log = activities.Log
 	mcpHandler.Register(mux, accounts.RequireUser)
+	pushSender := cfg.Push
+	if pushSender == nil && cfg.FirebaseServiceAccount != "" {
+		if fcm, err := push.NewFCM(cfg.FirebaseServiceAccount); err == nil { // config.Load checked it
+			pushSender = fcm
+		}
+	}
+	notifier := push.NewNotifier(conn, pushSender)
+	push.NewHandler(conn).Register(mux, accounts.RequireUser)
+	lockHandler := applock.NewHandler(applock.NewStore(conn))
+	lockHandler.Notify = notifier.Notify
+	lockHandler.Register(mux, spaceHandler.Require)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

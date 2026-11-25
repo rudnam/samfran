@@ -180,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                 ),
             )
             data?.scheme == packageName && data.host == "us" -> links.trySend(AppLink.Us)
+            data?.scheme == packageName && data.host == "locks" -> links.trySend(AppLink.Locks)
             else -> return
         }
         // Handled: not again if the activity is remade.

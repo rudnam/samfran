@@ -6,6 +6,9 @@ plugins {
     alias(libs.plugins.roborazzi)
 }
 
+/** A Firebase setting: samfran.firebase.<key> in gradle.properties; "" without one. */
+fun firebase(key: String): String = providers.gradleProperty("samfran.firebase.$key").getOrElse("")
+
 android {
     namespace = "com.rudnam.samfran"
 
@@ -23,6 +26,14 @@ android {
         // repository. Without it the stop's map is Google's web map instead (feature/bus StopMap).
         manifestPlaceholders["mapsKey"] = providers.gradleProperty("samfran.mapsKey")
             .orElse(providers.environmentVariable("SAMFRAN_MAPS_KEY")).getOrElse("")
+        // Firebase Cloud Messaging, for locked apps' asking and answers (README.md, "Locked apps"):
+        // the Firebase project's Android app, as samfran.firebase.* in gradle.properties (they
+        // aren't secret: they're in every copy of the app). Without them nothing is pushed, and
+        // the app finds out when it next asks the server.
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"${firebase("projectId")}\"")
+        buildConfigField("String", "FIREBASE_SENDER_ID", "\"${firebase("senderId")}\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"${firebase("apiKey")}\"")
+        buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase("appId")}\"")
     }
 
     androidResources {
@@ -55,6 +66,8 @@ android {
         // can be tried without uninstalling anything. It talks to the same server.
         debug {
             applicationIdSuffix = ".preview"
+            // Firebase knows each package as its own app.
+            buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase("previewAppId")}\"")
         }
         release {
             if (System.getenv("SAMFRAN_KEYSTORE_PASSWORD") != null) signingConfig = signingConfigs.getByName("release")
@@ -70,6 +83,7 @@ android {
             initWith(getByName("release"))
             applicationIdSuffix = ".preview"
             signingConfig = signingConfigs.getByName("preview")
+            buildConfigField("String", "FIREBASE_APP_ID", "\"${firebase("previewAppId")}\"")
             matchingFallbacks += "release"
         }
     }
@@ -108,6 +122,8 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.kotlinx.serialization.json)
+    // Push notifications (PushService), set up in code from BuildConfig rather than google-services.json.
+    implementation(libs.firebase.messaging)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)

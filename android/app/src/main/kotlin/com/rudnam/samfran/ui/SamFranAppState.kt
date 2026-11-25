@@ -16,6 +16,7 @@ import com.rudnam.samfran.feature.food.navigation.FoodRoute
 import com.rudnam.samfran.feature.food.navigation.PlaceFormRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsRoute
 import com.rudnam.samfran.feature.signin.navigation.SignInRoute
+import com.rudnam.samfran.feature.us.navigation.LocksRoute
 import com.rudnam.samfran.feature.us.navigation.UsRoute
 
 /** The four tabs, as on the website. */
@@ -33,6 +34,9 @@ sealed interface AppLink {
     data class Bus(val start: Boolean, val stop: Long = 0, val pick: Boolean = false) : AppLink
 
     data object Us : AppLink
+
+    /** Us › Locked apps: a locked app's notification. */
+    data object Locks : AppLink
 
     /** Add a place, filled in with text shared from Maps. */
     data class AddPlace(val shared: String) : AppLink
@@ -67,6 +71,10 @@ class SamFranAppState(val navController: NavHostController) {
                 launchSingleTop = !link.start && !link.pick
             }
             AppLink.Us -> navigateToTab(TopLevelDestination.Us)
+            AppLink.Locks -> {
+                navigateToTab(TopLevelDestination.Us)
+                navController.navigate(LocksRoute) { launchSingleTop = true }
+            }
             is AppLink.AddPlace -> navController.navigate(PlaceFormRoute(shared = link.shared))
         }
     }

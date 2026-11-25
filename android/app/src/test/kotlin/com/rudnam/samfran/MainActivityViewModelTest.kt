@@ -46,6 +46,7 @@ class MainActivityViewModelTest {
     private fun viewModel() = MainActivityViewModel(
         session, TestPreferences.repository(), FakeUserRepository(), updates, FakeReminders(),
         FakeActivityRepository(), FakeSpaceRepository(), clock,
+        com.rudnam.samfran.core.testing.FakeAppLocks(), com.rudnam.samfran.core.testing.FakeLocksRepository(),
     )
 
     @Test
