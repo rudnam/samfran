@@ -186,8 +186,12 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
   await expect(page.getByText('Buzzes 2.0 km before the stop. About one to two minutes early.')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('bus-stops.png'), fullPage: true });
 
-  // Another for today: one tap, and no reason given.
+  // Another for today: one tap, and no reason given. Picking doesn't change any chip's width (no layout shift).
+  const widths = () => picker.getByRole('radio').evaluateAll((chips) => chips.map((c) => c.getBoundingClientRect().width));
+  const before = await widths();
   await picker.getByRole('radio', { name: /葵西小学校入口/ }).click();
+  await expect(picker.getByRole('radio', { name: /葵西小学校入口/ })).toHaveAttribute('aria-checked', 'true');
+  expect(await widths()).toEqual(before);
   await expect(page.getByText(/so it’s/)).toHaveCount(0);
 
   // Late shifts move to the first stop: the other one loses them. And it asks when they end.

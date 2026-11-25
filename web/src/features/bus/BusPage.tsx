@@ -519,9 +519,9 @@ function RideCard(p: {
         <div className="stop-chips" role="radiogroup" aria-labelledby="get-off-at">
           {p.all.stops.map((s) => (
             <button key={s.id} type="button" role="radio" aria-checked={s.id === stop.id} className={s.id === stop.id ? 'on' : ''} onClick={() => p.onPick(s)}>
-              {s.id === stop.id && <Icon name="check" size={16} />}
+              {/* The picked one's badge shows a check instead of the vehicle (still in the kind's colour), so picking doesn't change any chip's width. */}
               <span className={`kind-dot ${s.kind}`} role="img" aria-label={kindName(s.kind)}>
-                <VehicleIcon kind={s.kind} size={14} />
+                {s.id === stop.id ? <Icon name="check" size={14} /> : <VehicleIcon kind={s.kind} size={14} />}
               </span>
               {s.name || t('Unnamed stop')}
               {s.shifts.length > 0 && <span className="stop-tag">{s.shifts.map(labelOf).join('・')}</span>}
