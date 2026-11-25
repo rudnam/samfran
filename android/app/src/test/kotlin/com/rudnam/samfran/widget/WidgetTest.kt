@@ -1,6 +1,8 @@
 package com.rudnam.samfran.widget
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.view.View
 import android.widget.FrameLayout
@@ -128,7 +130,10 @@ class WidgetScreenshotTest {
         ground.addView(views.apply(context, ground), FrameLayout.LayoutParams(w, h))
         ground.measure(View.MeasureSpec.makeMeasureSpec(w + 2 * pad, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h + 2 * pad, View.MeasureSpec.EXACTLY))
         ground.layout(0, 0, w + 2 * pad, h + 2 * pad)
-        ground.captureRoboImage("build/outputs/roborazzi/widget-$name.png")
+        // Drawn by hand: Roborazzi captures a View only inside an Activity, and a widget has none.
+        val bitmap = Bitmap.createBitmap(ground.width, ground.height, Bitmap.Config.ARGB_8888)
+        ground.draw(Canvas(bitmap))
+        bitmap.captureRoboImage("build/outputs/roborazzi/widget-$name.png")
     }
 
     private val large = DpSize(300.dp, 180.dp)
