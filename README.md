@@ -123,7 +123,7 @@ The same settings turn on **Forgot your password?** on the sign-in page: it emai
 
 ## What it does
 
-Everything in it is shared between you: the places you've been to (restaurants, parks, shrines, onsen…, each marked as been, with when, or not yet, and each person's own 1–5 star rating) and the ones you want to go to, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that buzzes before your bus stop or train station, so you don't sleep past it.
+Everything in it is shared between you: the places you've been to (restaurants, parks, shrines, onsen…, each marked as been, with when, or not yet, and each person's own 1–5 star rating) and the ones you want to go to, and one person's work shifts, read from a photo of the monthly sheet and offered as a calendar feed. And a wake-up alarm on the Android app that buzzes before your bus stop or train station, so you don't sleep past it. And locked apps, on the Android app: each of you can lock apps on your own phone, and opening one asks the other first (for how long and why), who allows or denies it from a notification.
 
 Sign-up is closed in production: only the owner's address (`SIGNUP_EMAILS`) can create an account, and the owner invites their partner from the **Us** tab with an invite link (single use, seven days). Whoever signs up through it, with Google or a password and any email, joins the owner's space.
 

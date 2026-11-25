@@ -47,4 +47,5 @@ internal interface DataModule {
     @Binds fun bus(impl: OfflineFirstBusRepository): BusRepository
     @Binds fun space(impl: OfflineFirstSpaceRepository): SpaceRepository
     @Binds fun activity(impl: OfflineFirstActivityRepository): ActivityRepository
+    @Binds fun locks(impl: OfflineFirstLocksRepository): LocksRepository
 }

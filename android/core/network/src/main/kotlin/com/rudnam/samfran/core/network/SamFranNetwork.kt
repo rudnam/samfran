@@ -29,6 +29,13 @@ import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.NetworkSpace
 import com.rudnam.samfran.core.network.model.NetworkCommentInput
 import com.rudnam.samfran.core.network.model.NetworkStars
+import com.rudnam.samfran.core.network.model.NetworkLockAnswer
+import com.rudnam.samfran.core.network.model.NetworkLockAsk
+import com.rudnam.samfran.core.network.model.NetworkLockInput
+import com.rudnam.samfran.core.network.model.NetworkLockOverride
+import com.rudnam.samfran.core.network.model.NetworkLockPage
+import com.rudnam.samfran.core.network.model.NetworkLockRequest
+import com.rudnam.samfran.core.network.model.NetworkPushToken
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -41,6 +48,7 @@ import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -116,6 +124,16 @@ internal interface SamFranApi {
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
 
     @GET("api/activity") suspend fun activity(@Query("bus") bus: Int? = null): List<NetworkActivity>
+
+    @GET("api/locks") suspend fun locks(): NetworkLockPage
+    @POST("api/locks") suspend fun addLock(@Body body: NetworkLockInput): NetworkLockPage
+    @POST("api/locks/requests") suspend fun askLock(@Body body: NetworkLockAsk): NetworkLockRequest
+    @GET("api/locks/requests/{id}") suspend fun lockRequest(@Path("id") id: Long): NetworkLockRequest
+    @POST("api/locks/requests/{id}/answer") suspend fun answerLock(@Path("id") id: Long, @Body body: NetworkLockAnswer): NetworkLockRequest
+    @DELETE("api/locks/requests/{id}") suspend fun cancelLockRequest(@Path("id") id: Long): NetworkLockRequest
+    @POST("api/locks/{id}/override") suspend fun overrideLock(@Path("id") id: Long, @Body body: NetworkLockOverride): NetworkLockRequest
+    @PUT("api/push/token") suspend fun savePushToken(@Body body: NetworkPushToken): Response<Unit>
+    @HTTP(method = "DELETE", path = "api/push/token", hasBody = true) suspend fun forgetPushToken(@Body body: NetworkPushToken): Response<Unit>
 
     @GET("api/mcp/tokens") suspend fun mcpTokens(): List<NetworkMcpToken>
     @DELETE("api/mcp/tokens/{id}") suspend fun deleteMcpToken(@Path("id") id: Long): Response<Unit>
@@ -213,6 +231,17 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
 
     /** The latest changes and bus alarms started, for the notification check. */
     suspend fun activityWithBus() = call { api.activity(bus = 1) }
+
+    suspend fun locks() = call { api.locks() }
+    suspend fun addLock(packageName: String, label: String) = call { api.addLock(NetworkLockInput(packageName, label)) }
+    suspend fun askLock(lockId: Long, kind: String, minutes: Int, message: String) = call { api.askLock(NetworkLockAsk(lockId, kind, minutes, message)) }
+    suspend fun lockRequest(id: Long) = call { api.lockRequest(id) }
+    /** [minutes] 0: as long as was asked. */
+    suspend fun answerLock(id: Long, allow: Boolean, minutes: Int, reply: String) = call { api.answerLock(id, NetworkLockAnswer(allow, minutes, reply)) }
+    suspend fun cancelLockRequest(id: Long) = call { api.cancelLockRequest(id) }
+    suspend fun overrideLock(id: Long, minutes: Int, message: String) = call { api.overrideLock(id, NetworkLockOverride(minutes, message)) }
+    suspend fun savePushToken(token: String) = call { api.savePushToken(NetworkPushToken(token)).orThrow() }
+    suspend fun forgetPushToken(token: String) = call { api.forgetPushToken(NetworkPushToken(token)).orThrow() }
 
     suspend fun mcpTokens() = call { api.mcpTokens() }
     suspend fun deleteMcpToken(id: Long) = call { api.deleteMcpToken(id).orThrow() }

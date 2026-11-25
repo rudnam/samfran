@@ -46,4 +46,22 @@
     <string name="confirm_sent">送信しました。%1$s の受信箱をご確認ください。</string>
     <string name="confirm_again">再送する</string>
     <string name="no_camera">カメラアプリが見つかりません。写真を選んでください。</string>
+    <!-- Locked apps -->
+    <string name="channel_locks">ロック中のアプリ</string>
+    <string name="channel_lock_watch">ロック中のアプリ：見守り</string>
+    <string name="lock_watch_title">ロック中のアプリを隠しています</string>
+    <string name="lock_watch_text">ロックしたアプリを開くと、SamFranが隠します。</string>
+    <string name="notify_lock_request">%1$sさんが%2$sを%3$d分開きたいそうです</string>
+    <string name="notify_lock_remove">%1$sさんが%2$sのロックを解除したいそうです</string>
+    <string name="notify_lock_allowed">%1$sさんが%2$sを%3$d分許可しました</string>
+    <string name="notify_lock_unlocked">%1$sさんが%2$sのロック解除を許可しました</string>
+    <string name="notify_lock_denied">%1$sさんが%2$sを断りました</string>
+    <string name="notify_lock_override">%1$sさんが%2$sを聞かずに%3$d分開きました</string>
+    <string name="notify_lock_added">%1$sさんが%2$sをロックしました</string>
+    <string name="notify_quoted">「%s」</string>
+    <string name="lock_allow">許可</string>
+    <string name="lock_deny">拒否</string>
+    <string name="lock_answered_allow">許可しました</string>
+    <string name="lock_answered_deny">断りました</string>
+    <string name="lock_answer_failed">返事できませんでした。SamFranを開いてもう一度お試しください。</string>
 </resources>
