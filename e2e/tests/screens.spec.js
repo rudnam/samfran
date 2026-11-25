@@ -222,14 +222,14 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await shot('7d-bus-settings');
     await page.getByRole('button', { name: 'Change 静岡駅' }).click();
     await expect(page.getByRole('button', { name: /^Buzz before/ })).toBeVisible();
     await shot('7e-bus-stop');
-    await page.getByRole('button', { name: '‹ Settings' }).click();
-    await page.getByRole('button', { name: '‹ Ride alarm' }).click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page.getByRole('link', { name: 'Ride alarm', exact: true }).click();
 
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();

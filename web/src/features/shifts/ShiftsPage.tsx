@@ -128,7 +128,7 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
             ›
           </a>
         </div>
-        <div className="toolbar">
+        <div className="view-bar">
         <div className="segmented" role="radiogroup" aria-label={t('View')}>
           <button type="button" role="radio" aria-checked={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => show('calendar')}>
             {t('Calendar')}

@@ -14,6 +14,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
 import { t, tx, type Key } from '../../i18n';
+import { BackLink } from '../../components/BackLink';
+import { href, navigate, replaceRoute, useRoute } from '../../router';
 import { labelOf } from '../shifts/codes';
 import { Icon } from '../../components/Icon';
 import { confirmDialog } from '../../components/Overlay';
@@ -110,6 +112,41 @@ type View =
   | { page: 'new'; draft: Draft }
   | { page: 'where'; id: number | 'new' };
 
+/**
+ * Each view has its own address (#/bus?view=stop&stop=3), so the browser's
+ * and the phone's Back go back through them, as on every other page. A new
+ * stop's draft isn't in the address: without it (a reload), its page is the
+ * search it came from.
+ */
+type ViewAddress = { view: 'settings' } | { view: 'stop' | 'where'; stop: number | 'new' } | { view: 'new' };
+
+function viewHref(v: ViewAddress | null): string {
+  return v ? href('bus', v) : href('bus');
+}
+
+function goTo(v: ViewAddress | null, replace = false) {
+  const params = v ?? undefined;
+  if (replace) replaceRoute('bus', params);
+  else navigate('bus', params);
+}
+
+function viewOf(params: URLSearchParams, draft: Draft | null): View | null {
+  const stop = params.get('stop');
+  const id = stop === 'new' ? 'new' : Number(stop);
+  switch (params.get('view')) {
+    case 'settings':
+      return { page: 'settings' };
+    case 'stop':
+      return id !== 'new' && id > 0 ? { page: 'stop', id } : { page: 'settings' };
+    case 'where':
+      return { page: 'where', id: id === 'new' || id > 0 ? id : 'new' };
+    case 'new':
+      return draft ? { page: 'new', draft } : { page: 'where', id: 'new' };
+    default:
+      return null;
+  }
+}
+
 /** A new stop at a place picked: the usual distance for its kind, a strong buzz, no shifts. */
 function draftAt(p: Picked): Draft {
   return { ...p, alert_meters: defaultMeters[p.kind], buzz: 'strong', sound_after: 60, shifts: [], ask: false };
@@ -118,7 +155,10 @@ function draftAt(p: Picked): Draft {
 export function BusPage() {
   const [all, setAll] = useState<BusStops | null>(null);
   const [error, setError] = useState('');
-  const [view, setView] = useState<View | null>(null);
+  const route = useRoute();
+  // A new stop being set up, before it's added.
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const view = viewOf(route.params, draft);
   const [apk, setApk] = useState<Downloads['android']>(null);
   const [shift, setShift] = useState<ShiftDay | null>(null);
   // A stop picked on this visit, instead of the one for the shift.
@@ -195,11 +235,12 @@ export function BusPage() {
       const after = await api.addBusStop(d);
       const id = Math.max(...after.stops.map((s) => s.id));
       setAll(after);
+      setDraft(null);
       if (first) {
-        setView(null);
+        goTo(null, true);
       } else {
         setAdded(id);
-        setView({ page: 'settings' });
+        goTo({ view: 'settings' }, true);
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -213,38 +254,34 @@ export function BusPage() {
       const after = await api.deleteBusStop(s.id);
       setAll(after);
       if (picked === s.id) setPicked(null);
-      setView(after.stops.length ? { page: 'settings' } : null);
+      goTo(after.stops.length ? { view: 'settings' } : null, true);
     } catch (err) {
       setError(errorMessage(err));
     }
   }
 
-  // Where "‹" goes from each page.
-  const back: { label: Key; to: View | null } | null = !view
+  const editing = view?.page === 'stop' ? all?.stops.find((s) => s.id === view.id) : undefined;
+  const moving = view?.page === 'where' && view.id !== 'new' ? all?.stops.find((s) => s.id === view.id) : undefined;
+  // The way back from each page, named after where it goes.
+  const back: { label: Key; text?: string; to: ViewAddress | null } | null = !view
     ? null
     : view.page === 'settings'
       ? { label: 'Ride alarm', to: null }
       : view.page === 'stop'
-        ? { label: 'Settings', to: { page: 'settings' } }
+        ? { label: 'Settings', to: { view: 'settings' } }
         : view.page === 'new'
-          ? { label: 'Add a stop', to: { page: 'where', id: 'new' } }
+          ? { label: 'Add a stop', to: { view: 'where', stop: 'new' } }
           : view.id === 'new'
             ? first
               ? null
-              : { label: 'Settings', to: { page: 'settings' } }
-            : { label: 'Back', to: { page: 'stop', id: view.id } };
-  const editing = view?.page === 'stop' ? all?.stops.find((s) => s.id === view.id) : undefined;
-  const moving = view?.page === 'where' && view.id !== 'new' ? all?.stops.find((s) => s.id === view.id) : undefined;
+              : { label: 'Settings', to: { view: 'settings' } }
+            : { label: 'Back', text: moving?.name || undefined, to: { view: 'stop', stop: view.id } };
   // The first time, choosing the stop is the page.
   const shown: View | null = first && !view ? { page: 'where', id: 'new' } : view;
 
   return (
     <section className="stack">
-      {back && (
-        <button type="button" className="link back" onClick={() => setView(back.to)}>
-          ‹ {t(back.label)}
-        </button>
-      )}
+      {back && <BackLink href={viewHref(back.to)} label={back.label} text={back.text} />}
       {(!shown || first) && (
         <header className="page-head with-action">
           <div>
@@ -252,9 +289,9 @@ export function BusPage() {
             <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
           </div>
           {ready && !buzzing && (
-            <button type="button" className="icon-button" onClick={() => setView({ page: 'settings' })} aria-label={t('Settings')} title={t('Settings')}>
+            <a className="icon-button" href={viewHref({ view: 'settings' })} aria-label={t('Settings')} title={t('Settings')}>
               <Icon name="settings" />
-            </button>
+            </a>
           )}
         </header>
       )}
@@ -301,7 +338,7 @@ export function BusPage() {
       {first && !view && <HowItWorks />}
 
       {all && shown?.page === 'settings' && (
-        <SettingsPage all={all} added={added} onOpen={(id) => setView(id === 'new' ? { page: 'where', id: 'new' } : { page: 'stop', id })} />
+        <SettingsPage all={all} added={added} onOpen={(id) => goTo(id === 'new' ? { view: 'where', stop: 'new' } : { view: 'stop', stop: id })} />
       )}
 
       {all && shown?.page === 'where' && (
@@ -314,9 +351,10 @@ export function BusPage() {
             if (moving) {
               const meters = distances[p.kind].includes(moving.alert_meters) ? moving.alert_meters : defaultMeters[p.kind];
               void change(moving, { ...p, alert_meters: meters });
-              setView({ page: 'stop', id: moving.id });
+              goTo({ view: 'stop', stop: moving.id }, true);
             } else {
-              setView({ page: 'new', draft: draftAt(p) });
+              setDraft(draftAt(p));
+              goTo({ view: 'new' });
             }
           }}
         />
@@ -326,8 +364,8 @@ export function BusPage() {
         <StopPage
           stop={shown.draft}
           all={all}
-          onChange={(c) => setView({ page: 'new', draft: { ...shown.draft, ...c } })}
-          onWhere={() => setView({ page: 'where', id: 'new' })}
+          onChange={(c) => setDraft({ ...shown.draft, ...c })}
+          onWhere={() => goTo({ view: 'where', stop: 'new' })}
           onAdd={() => add(shown.draft)}
         />
       )}
@@ -339,7 +377,7 @@ export function BusPage() {
           id={editing.id}
           all={all}
           onChange={(c) => change(editing, c)}
-          onWhere={() => setView({ page: 'where', id: editing.id })}
+          onWhere={() => goTo({ view: 'where', stop: editing.id })}
           onRemove={() => remove(editing)}
         />
       )}
