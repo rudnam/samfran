@@ -98,6 +98,9 @@
     <string name="allow_for">Allow for</string>
     <string name="reply_label">Reply (optional)</string>
     <string name="your_apps">Your locked apps</string>
+    <string name="watch_notice">“Locked apps are covered” notification</string>
+    <string name="watch_notice_hint">Turn it off in Android’s settings. Your apps stay covered.</string>
+    <string name="watch_notice_hide">Hide</string>
     <string name="lock_an_app">Lock an app</string>
     <string name="status_locked">Locked</string>
     <string name="status_open_until">Open until %s</string>

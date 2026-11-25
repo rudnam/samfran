@@ -176,6 +176,13 @@ fun LocksScreen(
             if (partner.isNotEmpty()) {
                 SecondaryButton(stringResource(R.string.lock_an_app), onLockApp, icon = SamFranIcons.lock, enabled = state.setup.ready)
             }
+            // Android makes the watcher show a notification; only the person can turn its category off. Gone once they have.
+            if (mine.isNotEmpty() && state.setup.watchNotice) {
+                HorizontalDivider(color = colors.divider)
+                SettingRow(stringResource(R.string.watch_notice), detail = stringResource(R.string.watch_notice_hint), onClick = actions::openWatchNotice) {
+                    LinkButton(stringResource(R.string.watch_notice_hide), actions::openWatchNotice)
+                }
+            }
         }
 
         if (partner.isNotEmpty()) {

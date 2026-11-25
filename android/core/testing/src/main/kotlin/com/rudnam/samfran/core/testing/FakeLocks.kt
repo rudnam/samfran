@@ -167,6 +167,7 @@ class FakeAppLocks(setup: LockSetup = LockSetup(usageAccess = true, overlay = tr
     var syncs = 0
     var openedUsage = false
     var openedOverlay = false
+    var openedWatchNotice = false
 
     override val setup: StateFlow<LockSetup> = setupFlow
     override fun checkSetup() {}
@@ -175,6 +176,9 @@ class FakeAppLocks(setup: LockSetup = LockSetup(usageAccess = true, overlay = tr
     }
     override fun openOverlay() {
         openedOverlay = true
+    }
+    override fun openWatchNotice() {
+        openedWatchNotice = true
     }
     override suspend fun installedApps() = LockSamples.apps
     override suspend fun sync(updated: Boolean) {
