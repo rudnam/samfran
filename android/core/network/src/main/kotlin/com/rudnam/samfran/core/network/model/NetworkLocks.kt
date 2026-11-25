@@ -2,6 +2,7 @@ package com.rudnam.samfran.core.network.model
 
 import com.rudnam.samfran.core.model.AppLock
 import com.rudnam.samfran.core.model.LockPage
+import com.rudnam.samfran.core.model.LockPhone
 import com.rudnam.samfran.core.model.LockRequest
 import com.rudnam.samfran.core.model.LockRequestKind
 import com.rudnam.samfran.core.model.LockRequestStatus
@@ -42,10 +43,35 @@ data class NetworkLockRequest(
 )
 
 @Serializable
+data class NetworkLockPhone(
+    val mine: Boolean = false,
+    val owner: String = "",
+    val covering: Boolean = false,
+    @SerialName("usage_access") val usageAccess: Boolean = false,
+    val overlay: Boolean = false,
+    val watching: Boolean = false,
+    val reason: String = "",
+    @SerialName("checked_at") val checkedAt: String = "",
+    val quiet: Boolean = false,
+)
+
+@Serializable
 data class NetworkLockPage(
     val locks: List<NetworkLock> = emptyList(),
     val requests: List<NetworkLockRequest> = emptyList(),
     val partner: String = "",
+    val phones: List<NetworkLockPhone> = emptyList(),
+)
+
+/** A phone with locked apps saying how it's covering them (PUT /api/locks/check-in). */
+@Serializable
+data class NetworkCheckIn(
+    @SerialName("usage_access") val usageAccess: Boolean,
+    val overlay: Boolean,
+    val watching: Boolean,
+    @SerialName("watching_since") val watchingSince: String? = null,
+    @SerialName("booted_at") val bootedAt: String? = null,
+    val reason: String = "",
 )
 
 @Serializable
@@ -98,8 +124,21 @@ fun NetworkLockRequest.asModel() = LockRequest(
     expiresAt = instant(expiresAt),
 )
 
+fun NetworkLockPhone.asModel() = LockPhone(
+    mine = mine,
+    owner = owner,
+    covering = covering,
+    usageAccess = usageAccess,
+    overlay = overlay,
+    watching = watching,
+    reason = reason,
+    checkedAt = instant(checkedAt) ?: Instant.EPOCH,
+    quiet = quiet,
+)
+
 fun NetworkLockPage.asModel() = LockPage(
     locks = locks.map { it.asModel() },
     requests = requests.map { it.asModel() },
     partner = partner,
+    phones = phones.map { it.asModel() },
 )

@@ -141,4 +141,12 @@
     <string name="cover_emergency_confirm">Open %1$s now for %2$s? %3$s will be told you opened it without asking.</string>
     <string name="open_now">Open now</string>
     <string name="not_now">Not now</string>
+    <!-- Locked apps: the other phone's check-ins -->
+    <string name="phone_covering">%1$s’s phone is covering them · checked in %2$s</string>
+    <string name="phone_off_usage">Not covered: usage access is off on %s’s phone</string>
+    <string name="phone_off_overlay">Not covered: display over other apps is off on %s’s phone</string>
+    <string name="phone_off_stopped">Not covered: SamFran isn’t watching on %s’s phone</string>
+    <string name="phone_off_signed_out">Not covered: %s signed out of SamFran</string>
+    <string name="phone_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
+    <string name="phone_unknown">%s’s phone hasn’t checked in yet</string>
 </resources>

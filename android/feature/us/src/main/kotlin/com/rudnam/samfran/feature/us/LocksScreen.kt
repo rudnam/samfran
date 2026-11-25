@@ -60,6 +60,7 @@ import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.AppLock
 import com.rudnam.samfran.core.model.InstalledApp
 import com.rudnam.samfran.core.model.LockMinutes
+import com.rudnam.samfran.core.model.LockPhone
 import com.rudnam.samfran.core.model.LockRequest
 import com.rudnam.samfran.core.model.LockRequestKind
 import com.rudnam.samfran.core.model.LockRequestStatus
@@ -182,6 +183,7 @@ fun LocksScreen(
                 CardTitle(stringResource(R.string.their_apps, partner))
                 val theirs = page.theirs
                 if (theirs.isEmpty()) Hint(stringResource(R.string.their_none))
+                if (theirs.isNotEmpty()) PhoneStatus(page.partnerPhone, partner)
                 theirs.forEach { lock ->
                     SettingRow(
                         lock.label,
@@ -223,6 +225,23 @@ fun LocksScreen(
             dismissButton = { LinkButton(stringResource(R.string.cancel), { actions.confirmUnlock(null) }, quiet = true) },
         )
     }
+}
+
+/** How the other person's phone last said it was covering their locked apps. */
+@Composable
+private fun PhoneStatus(phone: LockPhone?, partner: String) {
+    val colors = SamFranTheme.colors
+    val locale = currentLocale
+    val (text, ok) = when {
+        phone == null -> stringResource(R.string.phone_unknown, partner) to true
+        phone.quiet -> stringResource(R.string.phone_quiet, partner, Dates.moment(phone.checkedAt, locale)) to false
+        phone.covering -> stringResource(R.string.phone_covering, partner, Dates.moment(phone.checkedAt, locale)) to true
+        phone.reason == "signed_out" -> stringResource(R.string.phone_off_signed_out, partner) to false
+        !phone.usageAccess -> stringResource(R.string.phone_off_usage, partner) to false
+        !phone.overlay -> stringResource(R.string.phone_off_overlay, partner) to false
+        else -> stringResource(R.string.phone_off_stopped, partner) to false
+    }
+    if (ok) Hint(text) else Text(text, style = MaterialTheme.typography.bodyMedium, color = colors.danger, fontWeight = FontWeight.Bold)
 }
 
 @Composable

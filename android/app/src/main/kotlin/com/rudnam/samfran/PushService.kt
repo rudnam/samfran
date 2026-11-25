@@ -30,6 +30,8 @@ import javax.inject.Inject
  * - lock_override: the other person opened an app without asking.
  * - lock_cancelled: a request was taken back; its notification goes.
  * - lock_added: the other person locked an app.
+ * - lock_check: the other person's phone stopped (or started again) covering
+ *   their locked apps, was stopped for a while, or hasn't checked in for a day.
  */
 @AndroidEntryPoint
 class PushService : FirebaseMessagingService() {
@@ -63,6 +65,9 @@ object LockNotifications {
 
     /** Each request's notification is tagged with its id, so its answer or cancelling replaces it. */
     private const val TAG = "lock-request"
+
+    /** The other phone's check-ins share one notification (request ids are never this). */
+    private const val CHECK_NOTIFICATION = -1
 
     fun show(c: Context, data: Map<String, String>) {
         val nm = c.getSystemService(NotificationManager::class.java)
@@ -115,6 +120,27 @@ object LockNotifications {
                 nm.notify(TAG, (label.hashCode() and 0xffff) + 100_000, builder.build())
             }
             "lock_cancelled" -> nm.cancel(TAG, id.toInt())
+            "lock_check" -> {
+                fun at(key: String) = data[key]?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }?.let { when_ ->
+                    when_.atZone(java.time.ZoneId.systemDefault())
+                        .format(java.time.format.DateTimeFormatter.ofLocalizedDateTime(java.time.format.FormatStyle.SHORT))
+                }.orEmpty()
+                val title = when (data["state"]) {
+                    "on" -> c.getString(R.string.notify_check_on, who)
+                    "restarted" -> c.getString(R.string.notify_check_restarted, who, at("from"), at("to"))
+                    "quiet" -> c.getString(R.string.notify_check_quiet, who, at("since"))
+                    else -> when (data["reason"]) {
+                        "usage_access" -> c.getString(R.string.notify_check_usage, who)
+                        "overlay" -> c.getString(R.string.notify_check_overlay, who)
+                        "signed_out" -> c.getString(R.string.notify_check_signed_out, who)
+                        else -> c.getString(R.string.notify_check_stopped, who)
+                    }
+                }
+                builder.setContentTitle(title).setStyle(Notification.BigTextStyle().bigText(title))
+                if (data["state"] == "quiet") builder.setContentText(c.getString(R.string.notify_check_quiet_text))
+                // One at a time: the latest says how it is now.
+                nm.notify(TAG, CHECK_NOTIFICATION, builder.build())
+            }
         }
     }
 
@@ -183,7 +209,7 @@ class LockBoot : BroadcastReceiver() {
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
-                appLocks.sync()
+                appLocks.sync(updated = intent.action == Intent.ACTION_MY_PACKAGE_REPLACED)
             } finally {
                 pending.finish()
             }

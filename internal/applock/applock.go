@@ -8,7 +8,8 @@
 //
 // The server keeps the locks and the requests; the phone does the covering.
 // Both phones hear of a request or an answer at once through internal/push,
-// and the asking phone also asks after its request while it waits.
+// and the asking phone also asks after its request while it waits. Phones
+// check in, and the other person hears when one stops covering (checkin.go).
 //
 // Only you can lock your own apps: the other person sees which are locked,
 // and answers, but can't lock anything of yours.
@@ -91,6 +92,8 @@ type Page struct {
 	// Partner is the other person's name; "" while they haven't joined,
 	// when nothing can be locked (there's nobody to ask).
 	Partner string `json:"partner"`
+	// Phones is how each phone with locked apps last checked in (checkin.go).
+	Phones []Phone `json:"phones"`
 }
 
 // ---------- Store ----------
@@ -228,6 +231,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("GET /api/locks/requests/{id}", h.getRequest)
 	route("POST /api/locks/requests/{id}/answer", h.answer)
 	route("DELETE /api/locks/requests/{id}", h.cancel)
+	route("PUT /api/locks/check-in", h.checkIn)
 }
 
 func (h *Handler) notify(ctx context.Context, userID int64, data map[string]string) {
@@ -254,6 +258,9 @@ func (h *Handler) load(r *http.Request) (Page, error) {
 		return p, err
 	}
 	if p.Requests, err = h.store.Requests(ctx, sp, user); err != nil {
+		return p, err
+	}
+	if p.Phones, err = h.store.Phones(ctx, sp, user); err != nil {
 		return p, err
 	}
 	partner, ok, err := h.store.partner(ctx, sp, user)

@@ -130,14 +130,24 @@ class AndroidAppLocks @Inject constructor(
 
     @Volatile private var lastToken: String? = null
 
-    override suspend fun sync() {
+    override suspend fun sync(updated: Boolean) {
         checkSetup()
         if (session.currentToken() == null) {
             LockWatcher.stop(context)
             return
         }
         val page = locks.page.first()
-        if (page != null && page.mine.isNotEmpty() && state.value.usageAccess) LockWatcher.start(context) else LockWatcher.stop(context)
+        val locked = page != null && page.mine.isNotEmpty()
+        when {
+            locked && state.value.usageAccess -> LockWatcher.start(context, updated)
+            locked -> {
+                // It can't see which app is open: the other person hears that nothing is covered.
+                LockWatcher.stop(context)
+                val s = state.value
+                locks.checkIn(s.usageAccess, s.overlay, watching = false, watchingSince = null, bootedAt = null)
+            }
+            else -> LockWatcher.stop(context)
+        }
         Push.token(context)?.let { token ->
             if (token != lastToken && locks.savePushToken(token) is Outcome.Done) lastToken = token
         }

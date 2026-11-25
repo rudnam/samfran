@@ -8,12 +8,15 @@ import com.rudnam.samfran.core.model.LockRequest
 import com.rudnam.samfran.core.model.LockRequestKind
 import com.rudnam.samfran.core.model.LockSetup
 import com.rudnam.samfran.core.network.SamFranNetwork
+import com.rudnam.samfran.core.network.model.NetworkCheckIn
 import com.rudnam.samfran.core.network.model.NetworkLockPage
 import com.rudnam.samfran.core.network.model.NetworkLockRequest
 import com.rudnam.samfran.core.network.model.asModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
+import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,6 +50,15 @@ interface LocksRepository {
 
     /** This phone's push address, for the other person's asking and answers. */
     suspend fun savePushToken(token: String): Outcome<Unit>
+
+    /**
+     * Tells the server how this phone is covering its locked apps (every 15
+     * minutes, and when that changes); the other person hears when it stops.
+     */
+    suspend fun checkIn(usageAccess: Boolean, overlay: Boolean, watching: Boolean, watchingSince: Instant?, bootedAt: Instant?, reason: String = ""): Outcome<Unit>
+
+    /** Signing out: if this person has locked apps, the other person is told they're no longer covered. */
+    suspend fun signingOut()
 }
 
 @Singleton
@@ -75,6 +87,14 @@ internal class OfflineFirstLocksRepository @Inject constructor(
         changed { network.overrideLock(lockId, minutes, message.trim()) }
 
     override suspend fun savePushToken(token: String) = outcome(io) { network.savePushToken(token) }
+
+    override suspend fun checkIn(usageAccess: Boolean, overlay: Boolean, watching: Boolean, watchingSince: Instant?, bootedAt: Instant?, reason: String) =
+        outcome(io) { network.checkIn(NetworkCheckIn(usageAccess, overlay, watching, watchingSince?.toString(), bootedAt?.toString(), reason)) }
+
+    override suspend fun signingOut() {
+        val mine = page.first()?.mine.orEmpty()
+        if (mine.isNotEmpty()) checkIn(usageAccess = true, overlay = true, watching = false, watchingSince = null, bootedAt = null, reason = "signed_out")
+    }
 
     private suspend fun kept(block: suspend () -> NetworkLockPage) = outcome(io) {
         block().also { documents.put(Keys.LOCKS, NetworkLockPage.serializer(), it) }.asModel()
@@ -110,9 +130,10 @@ interface AppLocks {
 
     /**
      * Starts the watcher while this person has locked apps and the phone
-     * allows it, stops it otherwise, and gives the server this phone's push address.
+     * allows it, stops it otherwise (telling the server, for the other person),
+     * and gives the server this phone's push address. [updated]: after the app was updated.
      */
-    suspend fun sync()
+    suspend fun sync(updated: Boolean = false)
 
     /** Signing out: no more covering or pushes for this person. */
     fun turnOff()

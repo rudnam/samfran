@@ -90,6 +90,9 @@ class LocksScreenshotTest {
     ))
 
     @Test
+    fun locksPartnerNotCovered() = shot("locks-not-covered", content = locksScreen(locks.copy(page = LockSamples.page.copy(phones = listOf(LockSamples.samNotCovering)))))
+
+    @Test
     fun locksUnlocking() = shot("locks-unlock", content = locksScreen(locks.copy(unlocking = LockSamples.instagram)))
 
     @Test

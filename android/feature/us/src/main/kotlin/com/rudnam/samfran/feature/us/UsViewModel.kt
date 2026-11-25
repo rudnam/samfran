@@ -153,6 +153,7 @@ class UsViewModel @Inject constructor(
 
     override fun signOut() {
         viewModelScope.launch {
+            locks.signingOut()
             reminders.turnOff()
             user.signOut()
         }

@@ -68,4 +68,13 @@
     <string name="lock_answered_allow">You allowed it</string>
     <string name="lock_answered_deny">You said no</string>
     <string name="lock_answer_failed">Couldn’t answer. Open SamFran to try again.</string>
+    <!-- Locked apps: check-ins -->
+    <string name="notify_check_usage">Locked apps on %s’s phone aren’t covered: usage access was turned off</string>
+    <string name="notify_check_overlay">Locked apps on %s’s phone aren’t covered: display over other apps was turned off</string>
+    <string name="notify_check_stopped">Locked apps on %s’s phone aren’t covered: SamFran stopped watching</string>
+    <string name="notify_check_signed_out">%s signed out of SamFran, so locked apps on that phone aren’t covered</string>
+    <string name="notify_check_on">Locked apps on %s’s phone are covered again</string>
+    <string name="notify_check_restarted">SamFran wasn’t watching on %1$s’s phone from %2$s to %3$s</string>
+    <string name="notify_check_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
+    <string name="notify_check_quiet_text">SamFran may have been uninstalled, or stopped.</string>
 </resources>

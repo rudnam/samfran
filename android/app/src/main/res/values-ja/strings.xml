@@ -64,4 +64,13 @@
     <string name="lock_answered_allow">許可しました</string>
     <string name="lock_answered_deny">断りました</string>
     <string name="lock_answer_failed">返事できませんでした。SamFranを開いてもう一度お試しください。</string>
+    <!-- Locked apps: check-ins -->
+    <string name="notify_check_usage">%sさんのスマホでロック中のアプリが隠れていません：使用状況へのアクセスがオフにされました</string>
+    <string name="notify_check_overlay">%sさんのスマホでロック中のアプリが隠れていません：他のアプリの上に重ねて表示がオフにされました</string>
+    <string name="notify_check_stopped">%sさんのスマホでロック中のアプリが隠れていません：SamFranの見守りが止まりました</string>
+    <string name="notify_check_signed_out">%sさんがSamFranからログアウトしたため、ロック中のアプリが隠れていません</string>
+    <string name="notify_check_on">%sさんのスマホでロック中のアプリがまた隠れるようになりました</string>
+    <string name="notify_check_restarted">%1$sさんのスマホで%2$s〜%3$sの間、SamFranが見守っていませんでした</string>
+    <string name="notify_check_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
+    <string name="notify_check_quiet_text">SamFranがアンインストールされたか、止められた可能性があります。</string>
 </resources>

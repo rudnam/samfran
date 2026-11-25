@@ -85,7 +85,12 @@ data class LockPage(
     val requests: List<LockRequest>,
     /** The other person's name; "" before they've joined, when nothing can be locked. */
     val partner: String,
+    /** How each phone with locked apps last checked in. */
+    val phones: List<LockPhone> = emptyList(),
 ) {
+    /** The other person's phone, if it has locked apps and has checked in. */
+    val partnerPhone: LockPhone? get() = phones.firstOrNull { !it.mine }
+
     val mine: List<AppLock> get() = locks.filter { it.mine }
     val theirs: List<AppLock> get() = locks.filter { !it.mine }
 
@@ -98,6 +103,21 @@ data class LockPage(
     /** The latest of this person's requests about [lock]. */
     fun latestFor(lock: AppLock): LockRequest? = requests.firstOrNull { it.mine && it.lockId == lock.id }
 }
+
+/** How a phone with locked apps last said it was covering them (the server's check-ins). */
+data class LockPhone(
+    val mine: Boolean,
+    val owner: String,
+    val covering: Boolean,
+    val usageAccess: Boolean,
+    val overlay: Boolean,
+    val watching: Boolean,
+    /** "signed_out" when it stopped on purpose; "" otherwise. */
+    val reason: String,
+    val checkedAt: Instant,
+    /** No check-in for a day. */
+    val quiet: Boolean,
+)
 
 /** An app on this phone that could be locked. */
 data class InstalledApp(val packageName: String, val label: String)

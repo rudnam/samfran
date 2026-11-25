@@ -12,9 +12,13 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import com.rudnam.samfran.core.data.AppLocks
 import com.rudnam.samfran.core.data.LocksRepository
+import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.model.LockPage
+import com.rudnam.samfran.core.model.LockSetup
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +46,17 @@ import javax.inject.Inject
 class LockWatcher : Service() {
     @Inject lateinit var locks: LocksRepository
 
+    @Inject lateinit var appLocks: AppLocks
+
+    /** When this watcher started, for the check-ins: a later start than the last check-in means it was stopped in between. */
+    private var startedAt = 0L
+
+    /** The app was just updated: the first check-in says so, as that stop wasn't anyone's doing. */
+    private var afterUpdate = false
+
+    /** What the last check-in said the phone allows. */
+    private var reported: LockSetup? = null
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var loop: Job? = null
 
@@ -52,6 +67,23 @@ class LockWatcher : Service() {
     private var readUpTo = 0L
     private var lastCover = 0L
     private var lastCovered: String? = null
+    private var ticks = 0
+
+    /** Tells the server how this phone is covering its locked apps (applock's check-ins). */
+    private suspend fun checkIn() {
+        appLocks.checkSetup()
+        val setup = appLocks.setup.value
+        val booted = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+        val r = locks.checkIn(
+            setup.usageAccess, setup.overlay, watching = true,
+            watchingSince = Instant.ofEpochMilli(startedAt), bootedAt = Instant.ofEpochMilli(booted),
+            reason = if (afterUpdate) "updated" else "",
+        )
+        if (r is Outcome.Done) {
+            reported = setup
+            afterUpdate = false
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -69,11 +101,15 @@ class LockWatcher : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (intent?.getBooleanExtra(EXTRA_UPDATED, false) == true) afterUpdate = true
         if (loop == null) {
+            startedAt = System.currentTimeMillis()
             scope.launch { locks.page.collect { page = it } }
             scope.launch {
+                var round = 0
                 while (isActive) {
                     locks.refresh()
+                    if (round++ % (CHECK_IN_MS / REFRESH_MS).toInt() == 0) checkIn()
                     delay(REFRESH_MS)
                 }
             }
@@ -99,6 +135,11 @@ class LockWatcher : Service() {
             }
             if (power.isInteractive && p != null) {
                 runCatching { check(usage, p) } // usage access taken away: nothing to see until it's back
+            }
+            // A permission taken away (or given back) in Settings: the other person hears now, not in 15 minutes.
+            if (++ticks % SETUP_TICKS == 0) {
+                appLocks.checkSetup()
+                if (reported != null && appLocks.setup.value != reported) checkIn()
             }
             delay(TICK_MS)
         }
@@ -132,11 +173,16 @@ class LockWatcher : Service() {
         private const val NOTIFICATION = 21
         private const val TICK_MS = 500L
         private const val REFRESH_MS = 5 * 60 * 1000L
+        private const val CHECK_IN_MS = 15 * 60 * 1000L
+        /** Every 30 seconds, what the phone allows is read again. */
+        private const val SETUP_TICKS = 60
+        private const val EXTRA_UPDATED = "updated"
         private const val COVER_AGAIN_MS = 2_000L
         private const val ACTION_STOP = "com.rudnam.samfran.LOCKS_STOP"
 
-        fun start(c: Context) {
-            runCatching { ContextCompat.startForegroundService(c, Intent(c, LockWatcher::class.java)) }
+        /** [updated]: starting again after the app was updated. */
+        fun start(c: Context, updated: Boolean = false) {
+            runCatching { ContextCompat.startForegroundService(c, Intent(c, LockWatcher::class.java).putExtra(EXTRA_UPDATED, updated)) }
         }
 
         fun stop(c: Context) {

@@ -141,4 +141,12 @@
     <string name="cover_emergency_confirm">%1$sを今すぐ%2$s開きますか？聞かずに開いたことが%3$sに知らされます。</string>
     <string name="open_now">今すぐ開く</string>
     <string name="not_now">今はやめる</string>
+    <!-- Locked apps: the other phone's check-ins -->
+    <string name="phone_covering">%1$sさんのスマホで隠れています・最終確認 %2$s</string>
+    <string name="phone_off_usage">隠れていません：%sさんのスマホで使用状況へのアクセスがオフです</string>
+    <string name="phone_off_overlay">隠れていません：%sさんのスマホで他のアプリの上に重ねて表示がオフです</string>
+    <string name="phone_off_stopped">隠れていません：%sさんのスマホでSamFranが見守っていません</string>
+    <string name="phone_off_signed_out">隠れていません：%sさんがSamFranからログアウトしました</string>
+    <string name="phone_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
+    <string name="phone_unknown">%sさんのスマホからまだ連絡がありません</string>
 </resources>

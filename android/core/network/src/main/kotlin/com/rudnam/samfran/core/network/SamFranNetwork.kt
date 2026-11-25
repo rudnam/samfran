@@ -36,6 +36,7 @@ import com.rudnam.samfran.core.network.model.NetworkLockOverride
 import com.rudnam.samfran.core.network.model.NetworkLockPage
 import com.rudnam.samfran.core.network.model.NetworkLockRequest
 import com.rudnam.samfran.core.network.model.NetworkPushToken
+import com.rudnam.samfran.core.network.model.NetworkCheckIn
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -132,6 +133,7 @@ internal interface SamFranApi {
     @POST("api/locks/requests/{id}/answer") suspend fun answerLock(@Path("id") id: Long, @Body body: NetworkLockAnswer): NetworkLockRequest
     @DELETE("api/locks/requests/{id}") suspend fun cancelLockRequest(@Path("id") id: Long): NetworkLockRequest
     @POST("api/locks/{id}/override") suspend fun overrideLock(@Path("id") id: Long, @Body body: NetworkLockOverride): NetworkLockRequest
+    @PUT("api/locks/check-in") suspend fun checkIn(@Body body: NetworkCheckIn): Response<Unit>
     @PUT("api/push/token") suspend fun savePushToken(@Body body: NetworkPushToken): Response<Unit>
     @HTTP(method = "DELETE", path = "api/push/token", hasBody = true) suspend fun forgetPushToken(@Body body: NetworkPushToken): Response<Unit>
 
@@ -240,6 +242,7 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun answerLock(id: Long, allow: Boolean, minutes: Int, reply: String) = call { api.answerLock(id, NetworkLockAnswer(allow, minutes, reply)) }
     suspend fun cancelLockRequest(id: Long) = call { api.cancelLockRequest(id) }
     suspend fun overrideLock(id: Long, minutes: Int, message: String) = call { api.overrideLock(id, NetworkLockOverride(minutes, message)) }
+    suspend fun checkIn(body: NetworkCheckIn) = call { api.checkIn(body).orThrow() }
     suspend fun savePushToken(token: String) = call { api.savePushToken(NetworkPushToken(token)).orThrow() }
     suspend fun forgetPushToken(token: String) = call { api.forgetPushToken(NetworkPushToken(token)).orThrow() }
 

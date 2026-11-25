@@ -6,6 +6,7 @@ import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.model.AppLock
 import com.rudnam.samfran.core.model.InstalledApp
 import com.rudnam.samfran.core.model.LockPage
+import com.rudnam.samfran.core.model.LockPhone
 import com.rudnam.samfran.core.model.LockRequest
 import com.rudnam.samfran.core.model.LockRequestKind
 import com.rudnam.samfran.core.model.LockRequestStatus
@@ -61,7 +62,11 @@ object LockSamples {
         locks = listOf(instagram, tiktok, youtube),
         requests = listOf(samAsks, franAsks, franAllowed, franDenied, samOverride),
         partner = "Sam",
+        phones = listOf(LockPhone(mine = false, owner = "Sam", covering = true, usageAccess = true, overlay = true, watching = true, reason = "", checkedAt = now.minusSeconds(420), quiet = false)),
     )
+
+    /** Sam turned off usage access. */
+    val samNotCovering = LockPhone(mine = false, owner = "Sam", covering = false, usageAccess = false, overlay = true, watching = true, reason = "", checkedAt = now.minusSeconds(60), quiet = false)
 
     val apps = listOf(
         InstalledApp("com.android.chrome", "Chrome"),
@@ -133,6 +138,17 @@ class FakeLocksRepository(page: LockPage? = LockSamples.page) : LocksRepository 
         )
     }
 
+    val checkIns = mutableListOf<List<Any?>>()
+
+    override suspend fun checkIn(usageAccess: Boolean, overlay: Boolean, watching: Boolean, watchingSince: Instant?, bootedAt: Instant?, reason: String): Outcome<Unit> {
+        checkIns += listOf(usageAccess, overlay, watching, reason)
+        return Outcome.Done(Unit)
+    }
+
+    override suspend fun signingOut() {
+        if (pageFlow.value?.mine.orEmpty().isNotEmpty()) checkIn(true, true, false, null, null, "signed_out")
+    }
+
     override suspend fun savePushToken(token: String): Outcome<Unit> {
         tokens += token
         return Outcome.Done(Unit)
@@ -161,7 +177,7 @@ class FakeAppLocks(setup: LockSetup = LockSetup(usageAccess = true, overlay = tr
         openedOverlay = true
     }
     override suspend fun installedApps() = LockSamples.apps
-    override suspend fun sync() {
+    override suspend fun sync(updated: Boolean) {
         syncs++
     }
     override fun turnOff() {}

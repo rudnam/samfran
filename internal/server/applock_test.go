@@ -275,3 +275,85 @@ func TestPushTokenMovesWithTheSignIn(t *testing.T) {
 	}
 	_ = fake
 }
+
+func TestCheckInsTellThePartner(t *testing.T) {
+	sam, fran, fake, conn := lockPair(t)
+	sam.do("POST", "/api/locks", map[string]string{"package": "com.instagram.android", "label": "Instagram"}, nil)
+	fake.waitFor(t, "fran-phone", "lock_added")
+	checkIn := func(c *client, body map[string]any) {
+		t.Helper()
+		if code := c.do("PUT", "/api/locks/check-in", body, nil); code != 204 {
+			t.Fatalf("check-in: %d", code)
+		}
+	}
+	since := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+	covering := map[string]any{"usage_access": true, "overlay": true, "watching": true, "watching_since": since}
+
+	// The first check-in says nothing; Fran sees Sam's phone covering.
+	checkIn(sam, covering)
+	checkIn(sam, covering)
+	var p struct {
+		Phones []struct {
+			Mine     bool
+			Owner    string
+			Covering bool
+			Quiet    bool
+		}
+	}
+	fran.do("GET", "/api/locks", nil, &p)
+	if len(p.Phones) != 1 || p.Phones[0].Mine || p.Phones[0].Owner != "Sam" || !p.Phones[0].Covering || p.Phones[0].Quiet {
+		t.Fatalf("phones %+v", p.Phones)
+	}
+
+	// Usage access turned off: Fran hears, and again when it's back.
+	checkIn(sam, map[string]any{"usage_access": false, "overlay": true, "watching": true, "watching_since": since})
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "off" || got["reason"] != "usage_access" || got["who"] != "Sam" {
+		t.Errorf("off: %v", got)
+	}
+	checkIn(sam, covering)
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "on" {
+		t.Errorf("on: %v", got)
+	}
+
+	// The watcher started after the last check-in: it was stopped in between.
+	conn.Exec(`UPDATE lock_checkins SET checked_at = now() - interval '40 minutes'`)
+	restarted := time.Now().Add(-10 * time.Minute).UTC().Format(time.RFC3339)
+	checkIn(sam, map[string]any{"usage_access": true, "overlay": true, "watching": true, "watching_since": restarted,
+		"booted_at": time.Now().Add(-48 * time.Hour).UTC().Format(time.RFC3339)})
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "restarted" || got["to"] == "" {
+		t.Errorf("restarted: %v", got)
+	}
+	// ... but not when the phone itself had just started.
+	conn.Exec(`UPDATE lock_checkins SET checked_at = now() - interval '40 minutes'`)
+	checkIn(sam, map[string]any{"usage_access": true, "overlay": true, "watching": true,
+		"watching_since": time.Now().Add(-9 * time.Minute).UTC().Format(time.RFC3339),
+		"booted_at":      time.Now().Add(-10 * time.Minute).UTC().Format(time.RFC3339)})
+
+	// A day without a check-in: Fran hears once, when her own phone checks in.
+	conn.Exec(`UPDATE lock_checkins SET checked_at = now() - interval '25 hours'`)
+	checkIn(fran, map[string]any{"usage_access": true, "overlay": true, "watching": false})
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "quiet" || got["since"] == "" {
+		t.Errorf("quiet: %v", got)
+	}
+	checkIn(fran, map[string]any{"usage_access": true, "overlay": true, "watching": false})
+
+	// Signing out says so.
+	checkIn(sam, covering)
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "on" {
+		t.Errorf("back after quiet: %v", got)
+	}
+	checkIn(sam, map[string]any{"usage_access": true, "overlay": true, "watching": false, "reason": "signed_out"})
+	if got := fake.waitFor(t, "fran-phone", "lock_check"); got["state"] != "off" || got["reason"] != "signed_out" {
+		t.Errorf("signed out: %v", got)
+	}
+
+	// Nothing more was said than the above (no alert after a restart of the phone, nor a second quiet).
+	time.Sleep(200 * time.Millisecond)
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	for _, p := range fake.sent {
+		if p.data["type"] == "lock_check" {
+			t.Errorf("unexpected %v", p.data)
+		}
+	}
+}

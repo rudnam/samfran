@@ -117,7 +117,8 @@ class UsViewModelTest {
         val user = FakeUserRepository()
         val space = FakeSpaceRepository(Samples.spaceAlone)
         val reminders = FakeReminders().apply { alerts.value = true }
-        val vm = UsViewModel(user, space, FakeActivityRepository(), reminders, TestPreferences.repository(), com.rudnam.samfran.core.testing.FakeLocksRepository())
+        val locks = com.rudnam.samfran.core.testing.FakeLocksRepository()
+        val vm = UsViewModel(user, space, FakeActivityRepository(), reminders, TestPreferences.repository(), locks)
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
         assertEquals("Fran", vm.state.first { it.name != null }.name)
         vm.setName("Francis")
@@ -128,6 +129,8 @@ class UsViewModelTest {
         assertEquals("https://samfran.example/join/abc", vm.state.first { it.invite != null }.invite?.url)
         vm.signOut()
         assertTrue(user.signedOut)
+        // Fran has locked apps: Sam is told they're no longer covered.
+        assertEquals(listOf<Any?>(true, true, false, "signed_out"), locks.checkIns.single())
         assertEquals(false, reminders.alerts.value)
     }
 }
