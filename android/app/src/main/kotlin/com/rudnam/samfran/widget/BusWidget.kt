@@ -73,13 +73,14 @@ internal fun BusContent(state: BusWidgetState) {
     val ink = if (ready != null) WidgetColors.accentText else WidgetColors.text
     val soft = if (ready != null) WidgetColors.accentText else WidgetColors.muted
     val icon = if (ready != null) WidgetColors.accentText else WidgetColors.accent
-    WidgetFrame(open, background = if (ready != null) WidgetColors.accent else WidgetColors.surface) {
-        if (LocalSize.current.height < BusWidget.TALL.height) {
+    val oneRow = LocalSize.current.height < BusWidget.TALL.height
+    WidgetFrame(open, background = if (ready != null) WidgetColors.accent else WidgetColors.surface, oneRow = oneRow) {
+        if (oneRow) {
             Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 BusIcon(icon, 22)
                 Spacer(GlanceModifier.width(10.dp))
                 Column {
-                    WidgetText(title, 15.sp, ink, bold = true)
+                    WidgetText(title, 14.sp, ink, bold = true)
                     WidgetText(detail, 12.sp, soft)
                 }
             }

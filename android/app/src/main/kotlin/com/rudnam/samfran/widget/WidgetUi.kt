@@ -70,12 +70,16 @@ internal object WidgetColors {
     }
 }
 
-/** The widget's frame: the app's card, rounded (Android 12+ rounds it to the launcher's corners), opening [open] when tapped. */
+/**
+ * The widget's frame: the app's card, rounded (Android 12+ rounds it to the
+ * launcher's corners), opening [open] when tapped. [oneRow]: one cell high,
+ * where two lines of text only fit with less room above and below.
+ */
 @Composable
-internal fun WidgetFrame(open: Action, background: ColorProvider = WidgetColors.surface, content: @Composable () -> Unit) {
+internal fun WidgetFrame(open: Action, background: ColorProvider = WidgetColors.surface, oneRow: Boolean = false, content: @Composable () -> Unit) {
     Box(
         GlanceModifier.fillMaxSize().appWidgetBackground().cornerRadius(20.dp).background(background)
-            .clickable(open).padding(horizontal = 14.dp, vertical = 12.dp),
+            .clickable(open).padding(horizontal = 14.dp, vertical = if (oneRow) 4.dp else 12.dp),
     ) { content() }
 }
 

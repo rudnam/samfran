@@ -65,14 +65,15 @@ class NextShiftWidgetReceiver : GlanceAppWidgetReceiver() {
 internal fun NextShiftContent(state: ShiftWidgetState) {
     val context = LocalContext.current
     val size = LocalSize.current
-    WidgetFrame(actionStartActivity(Widgets.shiftsLink(context))) {
+    val oneRow = size.height < NextShiftWidget.MEDIUM.height
+    WidgetFrame(actionStartActivity(Widgets.shiftsLink(context)), oneRow = oneRow) {
         when (state) {
             ShiftWidgetState.Empty -> Column(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                 WidgetText(context.getString(R.string.widget_next_shift), 13.sp, WidgetColors.muted, bold = true)
                 WidgetText(context.getString(R.string.widget_open_app), 14.sp, maxLines = 2)
             }
             is ShiftWidgetState.Shifts -> when {
-                size.height < NextShiftWidget.MEDIUM.height || size.width < NextShiftWidget.MEDIUM.width -> CompactShift(context, state)
+                oneRow || size.width < NextShiftWidget.MEDIUM.width -> CompactShift(context, state)
                 else -> FullShift(context, state, week = size.height >= NextShiftWidget.LARGE.height && size.width >= NextShiftWidget.LARGE.width)
             }
         }
@@ -110,8 +111,8 @@ private fun CompactShift(context: Context, state: ShiftWidgetState.Shifts) {
             Spacer(GlanceModifier.width(8.dp))
         }
         Column {
-            WidgetText(headline(context, state, next), 15.sp, bold = true)
-            times(context, state, next).takeIf { it.isNotEmpty() }?.let { WidgetText(it, 13.sp, WidgetColors.muted) }
+            WidgetText(headline(context, state, next), 14.sp, bold = true)
+            times(context, state, next).takeIf { it.isNotEmpty() }?.let { WidgetText(it, 12.sp, WidgetColors.muted) }
         }
     }
 }
