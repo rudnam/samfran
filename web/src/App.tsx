@@ -33,7 +33,7 @@ const demoRequested = (() => {
   if (!params.has('demo')) return false;
   params.delete('demo');
   const qs = params.toString();
-  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+  history.replaceState(history.state, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
   return true;
 })();
 
@@ -315,7 +315,7 @@ function joinNotice(): Notice | null {
   const m = location.hash.match(/^#\/join\??(.*)$/);
   if (!m) return null;
   const p = new URLSearchParams(m[1]);
-  history.replaceState(null, '', location.pathname); // off the join page once read
+  history.replaceState(history.state, '', location.pathname); // off the join page once read
   if (p.has('invalid')) return { message: t('That invite link has expired or was already used. Ask for a new one.'), ok: false };
   const from = p.get('from');
   return {

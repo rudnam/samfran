@@ -11,6 +11,7 @@ import { today } from './format';
 import { metersText, whereIfAllowed, type Spot } from './nearby';
 import { findSaved, type SavedMatch } from './saved';
 import { ErrorText } from '../../components/ErrorText';
+import { useLeaveGuard } from '../../components/LeaveGuard';
 import { Skeleton } from '../../components/Overlay';
 
 /**
@@ -160,6 +161,11 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   // One Google session from typing to picking; a new one after each pick.
   const [session, setSession] = useState(() => newSession());
   const search = usePlaceSearch(query, session, near);
+  // What the form held when it opened (or loaded): leaving with anything else asks first.
+  const form = fields && JSON.stringify([fields, been, visitedOn, stars]);
+  const opened = useRef<string | null>(null);
+  if (opened.current === null && form) opened.current = form;
+  const release = useLeaveGuard(!!form && form !== opened.current);
 
   useEffect(() => {
     if (id) return;
@@ -274,6 +280,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             ...(been ? { visit: { visited_on: visitedOn }, stars: stars || undefined } : {}),
           });
       // Back goes to the list, not to this form.
+      release();
       replaceRoute('restaurant', { id: saved.id });
     } catch (err) {
       setError(errorMessage(err));
@@ -522,7 +529,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             />
           </label>
           <ErrorText message={error} />
-          <div className="row end">
+          <div className="row end sticky-actions">
             <button type="button" className="secondary" onClick={() => navigate(id ? 'restaurant' : want ? 'want' : 'home', id ? { id } : undefined)}>
               {t('Cancel')}
             </button>

@@ -101,6 +101,8 @@ for (const [name, viewport] of [
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
     await shot('5-add');
+    // As it's seen, not the whole page: Add and Cancel stay on screen, above the tab bar on phones.
+    await page.screenshot({ path: test.info().outputPath(`${name}-5-add-in-view.png`), animations: 'disabled' });
     await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
@@ -175,7 +177,11 @@ for (const [name, viewport] of [
       },
     });
     expect(res.status()).toBe(200);
+    // Leaving the form with a name typed in asks first.
     await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`${name}-5e-leave-unsaved.png`), animations: 'disabled' });
+    await page.getByRole('dialog').getByRole('button', { name: 'Leave' }).click();
     await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Calendar' })).toBeVisible();
     await shot('6-shifts');
@@ -202,6 +208,8 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
     await shot('7a-shift-edit-closing');
     await page.goto('/app/#/shifts/calendar');
+    // The month's change isn't saved: going asks first.
+    await page.getByRole('dialog', { name: 'Leave without saving?' }).getByRole('button', { name: 'Leave' }).click();
     await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
     await shot('7a2-google-calendar');
     // Back on Shifts with the link on: a month with shifts, then an empty one.

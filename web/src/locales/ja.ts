@@ -484,6 +484,9 @@ export const ja = {
   'Delete your comment': '自分のコメントを削除',
   'Delete your comment?': 'コメントを削除しますか？',
   'commented on {name}': '{name}にコメントしました',
+  'Leave without saving?': '保存せずに移動しますか？',
+  'What you changed here will be lost.': 'ここで変えた内容は失われます。',
+  'Leave': '移動',
 } as const;
 
 // The server's messages, which are written in English (internal/, the

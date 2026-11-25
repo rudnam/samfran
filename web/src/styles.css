@@ -553,6 +553,8 @@ button.everyone-toggle.on { background: var(--accent); color: var(--accent-text)
 @media (prefers-reduced-motion: reduce) { .steps li.now .step-mark { animation: none; } }
 .sticky-actions { position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); padding: 10px 0; background: linear-gradient(to top, var(--bg) 70%, transparent); }
 @media (min-width: 720px) { .sticky-actions { bottom: 0; } }
+/* In a card (a place's form, Shift settings): fading into the card, not the page. */
+.card .sticky-actions { background: linear-gradient(to top, var(--surface) 70%, transparent); }
 
 .lengths { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 8px; }
 .length { display: flex; align-items: center; gap: 6px; font-weight: 400; }

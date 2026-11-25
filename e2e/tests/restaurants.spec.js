@@ -543,3 +543,45 @@ test('comments: once you have been, say how it was; only your own can be deleted
   await page.getByRole('dialog', { name: 'Delete your comment?' }).getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No comments yet. How was it?')).toBeVisible();
 });
+
+test('leaving a place form with changes asks first; saving or leaving it untouched doesn’t', async ({ page }) => {
+  await signUp(page);
+  // Untouched: the tab just opens.
+  await page.getByRole('link', { name: 'Add a place' }).filter({ visible: true }).click();
+  await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page).toHaveURL(/#\/shifts$/);
+
+  // Typed in: a tab asks, and Cancel stays on the form with what was typed.
+  await page.getByRole('link', { name: 'Places', exact: true }).click();
+  await page.getByRole('link', { name: 'Add a place' }).filter({ visible: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Soba Kanda');
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  const ask = page.getByRole('dialog', { name: 'Leave without saving?' });
+  await expect(ask).toBeVisible();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(/#\/add/);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Soba Kanda');
+
+  // The browser's Back asks too.
+  await page.goBack();
+  await expect(ask).toBeVisible();
+  await expect(page).toHaveURL(/#\/add/);
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Soba Kanda');
+
+  // Adding it goes straight to the place.
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Soba Kanda' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  // Editing: Back, then Leave, goes back to the place, unchanged.
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await page.getByLabel('Notes').fill('Cold soba in summer.');
+  await page.goBack();
+  await ask.getByRole('button', { name: 'Leave' }).click();
+  await expect(page.getByRole('heading', { name: 'Soba Kanda' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/restaurant\?id=/);
+  await expect(page.getByText('Cold soba in summer.')).toHaveCount(0);
+});

@@ -10,6 +10,7 @@ import { clock, datesOf, dayName, explain, hoursAround, labelOf, monthName, norm
 import { isThere, PeopleSheet, personRow, type PersonRow } from './PeopleSheet';
 import { Icon } from '../../components/Icon';
 import { ErrorText } from '../../components/ErrorText';
+import { useLeaveGuard } from '../../components/LeaveGuard';
 import { Skeleton } from '../../components/Overlay';
 
 // The photo reader's answer, handed from ShiftsPage to this page.
@@ -38,6 +39,10 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
   const [closingChanged, setClosingChanged] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // The days as loaded: leaving with them changed, or with a photo's read not yet saved, asks first.
+  const [loaded, setLoaded] = useState('');
+  const days = JSON.stringify([codes, people]);
+  const release = useLeaveGuard(!!base && (fromPhoto || closingChanged || days !== loaded));
 
   useEffect(() => {
     const read = fromPhoto && pendingRead?.month === month ? pendingRead : null;
@@ -45,9 +50,12 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     const load = read ? Promise.resolve(read) : api.shifts(month);
     load.then(
       (m) => {
+        const c = Object.fromEntries(m.days.map((d) => [d.date, d.code]));
+        const p = Object.fromEntries(m.days.map((d) => [d.date, (d.people ?? []).map((x) => personRow(x, fromPhoto))]));
         setBase(m);
-        setCodes(Object.fromEntries(m.days.map((d) => [d.date, d.code])));
-        setPeople(Object.fromEntries(m.days.map((d) => [d.date, (d.people ?? []).map((p) => personRow(p, fromPhoto))])));
+        setCodes(c);
+        setPeople(p);
+        setLoaded(JSON.stringify([c, p]));
         // A photo read doesn't carry the month's closing days; the saved month does.
         (m.closing_days ? Promise.resolve(m) : api.shifts(month)).then(
           (saved) => setClosing(saved.closing_days ?? usualClosing(month, saved.settings.closing_days ?? [15, 31])),
@@ -105,6 +113,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         }))
         .filter((d) => d.code);
       await api.saveShifts(month, days, fromPhoto ? corrections() : undefined, closingChanged && closing ? closing : undefined);
+      release();
       replaceRoute('shifts', { month });
     } catch (err) {
       setError(errorMessage(err));
