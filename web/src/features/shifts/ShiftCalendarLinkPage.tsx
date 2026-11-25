@@ -6,6 +6,8 @@ import { BackLink } from '../../components/BackLink';
 import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
 import { href } from '../../router';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 /** Google Calendar's "add this calendar" page, with the link filled in. */
 export function googleCalendarUrl(feedUrl: string): string {
@@ -40,12 +42,8 @@ export function ShiftCalendarLinkPage() {
     <section className="stack">
       <BackLink href={href('shifts')} label="Shifts" />
       <h1 className="display">{t('Add to Google Calendar')}</h1>
-      {!feedUrl && !error && <p className="muted">{t('Loading…')}</p>}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {!feedUrl && !error && <Skeleton rows={3} />}
+      <ErrorText message={error} />
       {s && feedUrl && (
         <>
           <div className="card stack">

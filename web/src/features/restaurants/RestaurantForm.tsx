@@ -10,6 +10,8 @@ import { categories, categoryHint, categoryName, categoryOf, CategoryTile, Icon,
 import { today } from './format';
 import { metersText, whereIfAllowed, type Spot } from './nearby';
 import { findSaved, type SavedMatch } from './saved';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 /**
  * Places matching what's typed in the name field, as it's typed: a quarter
@@ -338,7 +340,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
       {/* Editing goes back to the place, named as it's saved (not as it's being retyped). */}
       <BackLink href={back} label={id ? 'Back' : 'Our places'} text={id ? savedName || undefined : undefined} />
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
-      {!fields && !error && <p className="muted">{t('Loading…')}</p>}
+      {!fields && !error && <Skeleton rows={6} />}
       {fields && (
         <form className="card stack" onSubmit={submit}>
           {!id && (
@@ -519,11 +521,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               onChange={(e) => set('notes', e.target.value)}
             />
           </label>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
+          <ErrorText message={error} />
           <div className="row end">
             <button type="button" className="secondary" onClick={() => navigate(id ? 'restaurant' : want ? 'want' : 'home', id ? { id } : undefined)}>
               {t('Cancel')}
@@ -534,11 +532,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
           </div>
         </form>
       )}
-      {!fields && error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {!fields && <ErrorText message={error} />}
     </section>
   );
 }

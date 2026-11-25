@@ -6,6 +6,8 @@ import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
 import { t } from '../../i18n';
 import { Avatar, useSpace } from '../../space';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 // What there is to download only changes with the server's settings, so it's
 // asked for once, when the app opens: by the time Us is opened it's known,
@@ -63,15 +65,11 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   return (
     <section className="stack">
       <h1 className="display">{t('Us')}</h1>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
 
       <div className="card stack">
         <h2>{t('The two of you')}</h2>
-        {!space && <p className="muted">{t('Loading…')}</p>}
+        {!space && <Skeleton rows={1} />}
         {space && (
           <ul className="people" aria-label={t('Members')}>
             {space.members.map((m, i) => (
@@ -243,11 +241,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
           <span className="hint">{t('They open it, sign up, and see everything here.')}</span>
         </>
       )}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
     </div>
   );
 }

@@ -153,7 +153,7 @@ test('keep a stop for each kind of shift, and pick another for a day', async ({ 
 
   // A second stop, a station, for late shifts: added from Settings.
   await page.getByRole('link', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: '+ Add a stop' }).click();
+  await page.getByRole('button', { name: 'Add a stop', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Add a stop' })).toBeVisible();
   await page.getByLabel('Stop or station').fill('静岡');
   await page.getByRole('list', { name: 'Matching stops' }).getByRole('button', { name: /静岡駅/ }).click();

@@ -12,6 +12,7 @@ import { Avatar, personTone, useSpace } from '../../space';
 import { categoryName, categoryOf, CategoryTile, Icon } from './categories';
 import { Comments } from './Comments';
 import { mapLink, shortDate, today } from './format';
+import { ErrorText } from '../../components/ErrorText';
 
 export function RestaurantDetail({ id }: { id: number }) {
   const { data: r, error: loadError, set: setR } = useCached(`restaurant:${id}`, () => api.restaurant(id), errorMessage);
@@ -92,9 +93,7 @@ export function RestaurantDetail({ id }: { id: number }) {
       <section className="stack">
         <BackLink href={href('home')} label="Our places" />
         {error ? (
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <ErrorText message={error} />
         ) : (
           <Skeleton rows={5} />
         )}
@@ -167,11 +166,7 @@ export function RestaurantDetail({ id }: { id: number }) {
         </form>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
 
       <div className="card stack">
         <h2>{t('Ratings')}</h2>

@@ -21,6 +21,7 @@ import { initialNotice, type Notice } from './notice';
 import { takeSharedFromUrl } from './share';
 import { href, navigate, replaceRoute, useRoute, type Route } from './router';
 import { SpaceProvider } from './space';
+import { ErrorText } from './components/ErrorText';
 
 /**
  * The introduction page's "Try the demo" opens /app/?demo. Read once when
@@ -192,9 +193,7 @@ export function App() {
           <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>
         )}
         {session.status === 'error' && (
-          <p role="alert" className="error">
-            {t('Could not reach the server: {error}', { error: session.message })}
-          </p>
+          <ErrorText message={t('Could not reach the server: {error}', { error: session.message })} />
         )}
         {resetting && (
           <ResetPasswordForm

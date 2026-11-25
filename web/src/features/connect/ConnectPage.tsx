@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { api, errorMessage, type MCPClientInfo } from '../../api';
 import { t, tx } from '../../i18n';
 import { href, type Route } from '../../router';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 /** Where a Connect request is kept while Google sign-in leaves the page. */
 const pendingKey = 'samfran.connect';
@@ -60,7 +62,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
 
   return (
     <section className="card stack connect">
-      {!client && !error && <p className="muted">{t('Loading…')}</p>}
+      {!client && !error && <Skeleton rows={3} />}
       {client && (
         <>
           <h1 className="display">{t('Connect {app}', { app: client.client_name })}</h1>
@@ -90,9 +92,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
       )}
       {error && (
         <>
-          <p role="alert" className="error">
-            {error}
-          </p>
+          <ErrorText message={error} />
           <a href={href('home')}>{t('Go to SamFran')}</a>
         </>
       )}

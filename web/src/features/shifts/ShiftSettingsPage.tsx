@@ -6,6 +6,9 @@ import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
 import { language } from '../../language';
 import { href } from '../../router';
+import { Icon } from '../../components/Icon';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 const suffix: Record<string, string> = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
 
@@ -65,12 +68,8 @@ export function ShiftSettingsPage() {
     <section className="stack">
       <BackLink href={href('shifts')} label="Shifts" />
       <h1 className="display">{t('Shift settings')}</h1>
-      {!s && !error && <p className="muted">{t('Loading…')}</p>}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {!s && !error && <Skeleton rows={4} />}
+      <ErrorText message={error} />
       {s && (
         <>
           <form className="card stack" onSubmit={save}>
@@ -114,7 +113,8 @@ export function ShiftSettingsPage() {
                   </label>
                 ))}
                 <button type="button" className="secondary" onClick={() => setLengths((l) => [...l, ['', '8']])}>
-                  + {t('Letter')}
+                  <Icon name="add" size={18} />
+                  {t('Letter')}
                 </button>
               </div>
             </div>
@@ -136,13 +136,14 @@ export function ShiftSettingsPage() {
                       ))}
                     </select>
                     <button type="button" className="link quiet" aria-label={t('Remove closing day {n}', { n: i + 1 })} onClick={() => setClosing((c) => c.filter((_, j) => j !== i))}>
-                      ×
+                      <Icon name="close" size={18} />
                     </button>
                   </span>
                 ))}
                 {closing.length < 10 && (
                   <button type="button" className="secondary" onClick={() => setClosing((c) => [...c, 15])}>
-                    + {t('Day')}
+                    <Icon name="add" size={18} />
+                    {t('Day')}
                   </button>
                 )}
               </div>

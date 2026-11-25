@@ -413,7 +413,6 @@ export const ja = {
   // The bus alarm, redone: how it works, a practice run, the ride
   // Several stops, picked by the shift
   'Get off at': '降りる駅・バス停',
-  '+ Add a stop': '＋ 駅・バス停を追加',
   'Add a stop': '駅・バス停を追加',
   '{shift} until {time}, so it’s {stop}.': '{shift}（{time}まで）なので{stop}です。',
   'Your stops': '登録した駅・バス停',
@@ -472,7 +471,7 @@ export const ja = {
   'Names and codes as on the sheet.': '名前とコードは勤務表のとおりに。',
   'Everyone that day': 'この日の人',
   'Nobody yet.': 'まだいません。',
-  '+ Add someone': '＋ 人を追加',
+  'Add someone': '人を追加',
   'Person {n}': '{n}人目',
   'Name of person {n}': '{n}人目の名前',
   'Code of {name}': '{name}のコード',

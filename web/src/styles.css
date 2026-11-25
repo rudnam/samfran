@@ -425,7 +425,9 @@ select.language { width: auto; padding: 6px 10px; }
 .next-shift .eyebrow { color: inherit; opacity: 0.8; }
 .next-shift strong { color: var(--text); }
 a.next-shift { text-decoration: none; }
-a.next-shift .chevron { font-size: 1.4rem; line-height: 1; opacity: 0.6; }
+a.next-shift .chevron { display: flex; opacity: 0.6; }
+/* A row's › at its end (Ride's stops and settings). */
+.row-chevron { display: flex; flex: none; }
 a.next-shift:active { transform: scale(0.99); }
 .with { color: var(--muted); font-weight: 500; line-height: 1.35; }
 .nowrap { white-space: nowrap; }

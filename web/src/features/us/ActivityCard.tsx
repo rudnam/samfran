@@ -7,6 +7,7 @@ import { t } from '../../i18n';
 import { locale } from '../../language';
 import { monthName } from '../shifts/codes';
 import { markSeen, seenUpTo } from './unseen';
+import { ErrorText } from '../../components/ErrorText';
 
 const setting: Record<string, () => string> = {
   person_name: () => t('whose shifts'),
@@ -89,11 +90,7 @@ export function ActivityCard() {
   return (
     <div className="card stack">
       <h2>{t('Recent changes')}</h2>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
       {list && shown.length === 0 && <p className="muted">{t('Nothing yet. Changes either of you make show up here.')}</p>}
       {shown.length > 0 && (
         <ul className="activity" aria-label={t('Recent changes')}>

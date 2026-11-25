@@ -8,6 +8,9 @@ import { t } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { clock, datesOf, dayName, explain, hoursAround, labelOf, monthName, normalize } from './codes';
 import { isThere, PeopleSheet, personRow, type PersonRow } from './PeopleSheet';
+import { Icon } from '../../components/Icon';
+import { ErrorText } from '../../components/ErrorText';
+import { Skeleton } from '../../components/Overlay';
 
 // The photo reader's answer, handed from ShiftsPage to this page.
 let pendingRead: ShiftMonth | null = null;
@@ -113,7 +116,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
     return (
       <section className="stack">
         <BackLink href={href('shifts', { month })} label="Shifts" />
-        {error ? <p role="alert" className="error">{error}</p> : <p className="muted">{t('Loading…')}</p>}
+        {error ? <ErrorText message={error} /> : <Skeleton rows={6} />}
       </section>
     );
   }
@@ -197,11 +200,7 @@ export function ShiftEditor({ month, fromPhoto }: { month: string; fromPhoto: bo
         />
       )}
       {closing && <ClosingDays month={month} days={closing} usual={usualClosing(month, base.settings.closing_days ?? [15, 31])} onChange={changeClosing} />}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
       <div className="row end sticky-actions">
         <a className="button secondary" href={href('shifts', { month })}>
           {t('Cancel')}
@@ -249,13 +248,14 @@ function ClosingDays({ month, days, usual, onChange }: { month: string; days: nu
               ))}
             </select>
             <button type="button" className="link quiet" aria-label={t('Remove closing day {n}', { n: i + 1 })} onClick={() => onChange(days.filter((_, j) => j !== i))}>
-              ×
+              <Icon name="close" size={18} />
             </button>
           </span>
         ))}
         {days.length < 10 && free !== undefined && (
           <button type="button" className="secondary" onClick={() => onChange([...days, free].sort((a, b) => a - b))}>
-            + {t('Day')}
+            <Icon name="add" size={18} />
+            {t('Day')}
           </button>
         )}
       </div>

@@ -13,6 +13,7 @@ import { EveryoneToggle, WhoThere } from './WhoThere';
 import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
 import { googleCalendarUrl } from './ShiftCalendarLinkPage';
+import { ErrorText } from '../../components/ErrorText';
 
 // Calendar or list: remembered on this device.
 type View = 'calendar' | 'list';
@@ -108,24 +109,20 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
             </strong>
           </span>
           <span className="code-chip">{next.code}</span>
-          <span className="chevron" aria-hidden="true">›</span>
+          <span className="chevron"><Icon name="chevronRight" size={22} /></span>
         </a>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
 
       <div className="card stack tight">
         <div className="row spread">
           <a className="link-btn" href={href('shifts', { month: addMonths(shown, -1) })} aria-label={t('Previous month')}>
-            ‹
+            <Icon name="chevronLeft" size={22} />
           </a>
           <h2>{shown && monthName(shown)}</h2>
           <a className="link-btn" href={href('shifts', { month: addMonths(shown, 1) })} aria-label={t('Next month')}>
-            ›
+            <Icon name="chevronRight" size={22} />
           </a>
         </div>
         <div className="view-bar">

@@ -20,6 +20,7 @@ import { labelOf } from '../shifts/codes';
 import { Icon } from '../../components/Icon';
 import { confirmDialog } from '../../components/Overlay';
 import { StopMap } from './StopMap';
+import { ErrorText } from '../../components/ErrorText';
 
 const shiftKinds: ShiftLabel[] = ['Early', 'Middle', 'Late', 'Night'];
 
@@ -296,11 +297,7 @@ export function BusPage() {
         </header>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
 
       {!shown && stop && buzzing && (
         <div className="card stack buzz" role="alertdialog" aria-label={t('Your stop is next')}>
@@ -522,7 +519,7 @@ function RideCard(p: {
         <div className="stop-chips" role="radiogroup" aria-labelledby="get-off-at">
           {p.all.stops.map((s) => (
             <button key={s.id} type="button" role="radio" aria-checked={s.id === stop.id} className={s.id === stop.id ? 'on' : ''} onClick={() => p.onPick(s)}>
-              {s.id === stop.id && <span aria-hidden="true">✓ </span>}
+              {s.id === stop.id && <Icon name="check" size={16} />}
               <span className={`kind-dot ${s.kind}`} role="img" aria-label={kindName(s.kind)}>
                 <VehicleIcon kind={s.kind} size={14} />
               </span>
@@ -566,8 +563,8 @@ function Row({ icon, label, value, onClick }: { icon: ReactNode; label: string; 
       </span>
       <span className="grow setting-label">{label}</span>
       <span className="setting-value">{value}</span>
-      <span aria-hidden="true" className="muted">
-        ›
+      <span className="muted row-chevron">
+        <Icon name="chevronRight" size={18} />
       </span>
     </button>
   );
@@ -639,8 +636,8 @@ function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: num
                     )}
                   </span>
                 </span>
-                <span aria-hidden="true" className="muted">
-                  ›
+                <span className="muted row-chevron">
+                  <Icon name="chevronRight" size={18} />
                 </span>
               </button>
             </li>
@@ -648,7 +645,8 @@ function SettingsPage(p: { all: BusStops; added: number | null; onOpen: (id: num
         </ul>
         {all.stops.length < maxStops && (
           <button type="button" className="link start" onClick={() => p.onOpen('new')}>
-            {t('+ Add a stop')}
+            <Icon name="add" size={18} />
+            {t('Add a stop')}
           </button>
         )}
       </div>
@@ -893,11 +891,7 @@ function WherePage({ first, title, near, onPick }: { first: boolean; title: stri
             )}
           </div>
         </details>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorText message={error} />
       </div>
     </>
   );

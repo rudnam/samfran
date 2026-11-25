@@ -163,7 +163,7 @@ Follow `internal/restaurant`; a feature is about five files:
 2. `internal/<name>/<name>.go`: a `Store` (all the SQL, every query scoped by the space) and a `Handler` with `Register(mux, requireSpace)`, its routes behind `space.Handler.Require`. Handlers return errors: `httpx.Errorf(404, "...")` reaches the user, and anything else becomes a logged 500.
 3. One line in `internal/server/server.go` to register it.
 4. `internal/server/<name>_test.go`: API tests against the real database.
-5. `web/src/api.ts` (types and calls), `web/src/features/<name>/` (the page), and `e2e/tests/<name>.spec.js` (a browser test).
+5. `web/src/api.ts` (types and calls), `web/src/features/<name>/` (the page), and `e2e/tests/<name>.spec.js` (a browser test). Build the page from `web/src/components/` so it looks like the others: `BackLink` for the way back (named after where it goes), `Skeleton` while loading, `ErrorText` for what went wrong, and `Icon` (the paths Android draws too) rather than typed ‹ › × + ✓.
 6. Optionally, sample data for the preview in `e2e/seed/main.go`.
 7. In the Android app, if it should have it: the call in `android/core/network` (`SamFranNetwork`), a repository in `android/core/data`, and the screen in the tab's `android/feature/<tab>`, with its strings in English and Japanese (android/README.md, "Native app").
 
