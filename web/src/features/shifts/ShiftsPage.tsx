@@ -105,11 +105,11 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
           <span className="grow">
             <span className="eyebrow">{t('Next shift')}</span>
             <strong className="block">
-              {dayName(next.date)} · {labelOf(next.label)} · {timesOf(next)}
+              {dayName(next.date)} · {labelOf(next.label)} · <span className="nowrap">{timesOf(next)}</span>
             </strong>
           </span>
           <span className="code-chip">{next.code}</span>
-          <span className="chevron"><Icon name="chevronRight" size={22} /></span>
+          <span className="chevron"><Icon name="chevronRight" size={18} /></span>
         </a>
       )}
 

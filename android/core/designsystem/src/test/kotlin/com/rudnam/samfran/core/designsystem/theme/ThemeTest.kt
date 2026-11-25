@@ -41,6 +41,12 @@ class ThemeTest {
         )) {
             m["tile-$name"] = t.bg; m["tile-$name-ink"] = t.ink
         }
+        for ((name, t) in listOf(
+            "early" to calEarly, "middle" to calMiddle, "late" to calLate,
+            "night" to calNight, "training" to calTraining, "leave" to calLeave,
+        )) {
+            m["cal-$name"] = t.bg; m["cal-$name-ink"] = t.ink
+        }
         return m.mapValues { hex(it.value) }
     }
 
@@ -48,6 +54,16 @@ class ThemeTest {
     fun `light colours are the website's`() {
         val app = LightSamFranColors.asTokens()
         assertEquals(tokens(":root").filterKeys { it in app }, app)
+    }
+
+    @Test
+    fun `shift dots are the website's`() {
+        val app = mapOf(
+            "shift-early" to ShiftDotColors.early, "shift-middle" to ShiftDotColors.middle, "shift-late" to ShiftDotColors.late,
+            "shift-night" to ShiftDotColors.night, "shift-off" to ShiftDotColors.off, "shift-leave" to ShiftDotColors.leave,
+            "shift-training" to ShiftDotColors.training,
+        ).mapValues { hex(it.value) }
+        assertEquals(tokens(":root").filterKeys { it.startsWith("shift-") }, app)
     }
 
     @Test

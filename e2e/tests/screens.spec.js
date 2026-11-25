@@ -244,6 +244,10 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Ride', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('11-bus-dark');
+    // The calendar's shift colours in dark.
+    await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await page.getByRole('radio', { name: 'Calendar' }).click();
+    await shot('12-shifts-dark');
 
     // Nothing may overflow sideways.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
