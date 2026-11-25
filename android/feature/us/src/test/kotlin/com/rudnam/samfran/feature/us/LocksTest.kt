@@ -100,7 +100,18 @@ class LocksScreenshotTest {
 
     private val cover = LockCoverUiState(packageName = "com.instagram.android", label = "Instagram", lock = LockSamples.instagram, partner = "Sam", minutes = 15, message = "Mum sent photos")
 
-    private fun coverScreen(state: LockCoverUiState): @Composable () -> Unit = { LockCover(state, coverActions) {} }
+    // The app's own icon, as on a phone that has it: a stand-in for Instagram's, given to Robolectric's package manager.
+    private fun coverScreen(state: LockCoverUiState): @Composable () -> Unit = {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.remember {
+            val icon = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.BL_TR,
+                intArrayOf(0xFFF9A23B.toInt(), 0xFFE1306C.toInt(), 0xFF833AB4.toInt()),
+            ).apply { cornerRadius = 22f; setSize(96, 96) }
+            org.robolectric.Shadows.shadowOf(context.packageManager).setApplicationIcon("com.instagram.android", icon)
+        }
+        LockCover(state, coverActions) {}
+    }
 
     @Test
     fun coverAsk() = shot("cover-ask", content = coverScreen(cover))
@@ -120,6 +131,9 @@ class LocksScreenshotTest {
 
     @Test
     fun coverDenied() = shot("cover-denied", content = coverScreen(cover.copy(request = LockSamples.franDenied)))
+
+    @Test
+    fun coverEmergencyWait() = shot("cover-emergency-wait", content = coverScreen(cover.copy(emergencyIn = 42)))
 
     @Test
     fun coverEmergency() = shot("cover-emergency", content = coverScreen(cover.copy(confirmEmergency = true)))
@@ -218,6 +232,15 @@ class LockCoverViewModelTest {
         vm.show("com.instagram.android", "Instagram")
         vm.state.first { it.lock != null }
         vm.setMinutes(5)
+        // Not for the first minute.
+        vm.openWithoutAsking()
+        vm.confirmEmergency(true)
+        assertEquals(false, vm.state.value.confirmEmergency)
+        assertTrue(opened.isEmpty())
+        advanceTimeBy(LockCoverViewModel.EMERGENCY_WAIT_SECONDS * 1_000L + 100)
+        assertEquals(0, vm.state.value.emergencyIn)
+        vm.confirmEmergency(true)
+        assertTrue(vm.state.value.confirmEmergency)
         vm.openWithoutAsking()
         testScheduler.advanceUntilIdle()
         assertEquals(listOf("com.instagram.android"), opened)

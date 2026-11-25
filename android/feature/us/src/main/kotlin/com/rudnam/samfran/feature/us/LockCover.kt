@@ -82,6 +82,8 @@ data class LockCoverUiState(
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
     val confirmEmergency: Boolean = false,
+    /** Seconds before "Open now without asking" can be tapped: it waits a minute after the cover comes up. */
+    val emergencyIn: Int = 0,
 )
 
 interface LockCoverActions {
@@ -109,6 +111,7 @@ class LockCoverViewModel @Inject constructor(
 ) : ViewModel(), LockCoverActions {
     private val local = MutableStateFlow(LockCoverUiState())
     private var waiting: Job? = null
+    private var countdown: Job? = null
     private val opens = Channel<String>(Channel.CONFLATED)
 
     /** The app to open now: it's allowed. */
@@ -125,7 +128,14 @@ class LockCoverViewModel @Inject constructor(
     fun show(packageName: String, label: String) {
         if (packageName == local.value.packageName && local.value.request?.pending == true) return
         waiting?.cancel()
-        local.value = LockCoverUiState(packageName = packageName, label = label)
+        local.value = LockCoverUiState(packageName = packageName, label = label, emergencyIn = EMERGENCY_WAIT_SECONDS)
+        countdown?.cancel()
+        countdown = viewModelScope.launch {
+            for (left in EMERGENCY_WAIT_SECONDS - 1 downTo 0) {
+                delay(1_000)
+                local.update { it.copy(emergencyIn = left) }
+            }
+        }
         viewModelScope.launch {
             val r = locks.refresh()
             val page = (r as? Outcome.Done)?.value ?: return@launch
@@ -187,11 +197,12 @@ class LockCoverViewModel @Inject constructor(
 
     override fun askAgain() = local.update { it.copy(request = null, problem = null) }
 
-    override fun confirmEmergency(show: Boolean) = local.update { it.copy(confirmEmergency = show) }
+    override fun confirmEmergency(show: Boolean) = local.update { it.copy(confirmEmergency = show && it.emergencyIn == 0) }
 
     override fun openWithoutAsking() {
         val s = state.value
         val lock = s.lock ?: return
+        if (s.emergencyIn > 0) return
         local.update { it.copy(busy = true, problem = null, confirmEmergency = false) }
         viewModelScope.launch {
             val r = locks.openWithoutAsking(lock.id, s.minutes, s.message)
@@ -206,6 +217,9 @@ class LockCoverViewModel @Inject constructor(
 
     companion object {
         var POLL_MS = 4_000L
+
+        /** How long the cover is up before it can be opened without asking: a moment to think, or to ask instead. */
+        const val EMERGENCY_WAIT_SECONDS = 60
     }
 }
 
@@ -302,7 +316,11 @@ fun LockCover(state: LockCoverUiState, actions: LockCoverActions, onClose: () ->
                 Spacer(Modifier.height(8.dp))
                 LinkButton(stringResource(R.string.not_now), onClose, quiet = true)
                 if (r?.status != LockRequestStatus.Allowed && state.lock != null) {
-                    LinkButton(stringResource(R.string.cover_emergency), { actions.confirmEmergency(true) }, danger = true)
+                    if (state.emergencyIn > 0) {
+                        LinkButton(stringResource(R.string.cover_emergency_wait, state.emergencyIn), {}, enabled = false, quiet = true)
+                    } else {
+                        LinkButton(stringResource(R.string.cover_emergency), { actions.confirmEmergency(true) }, danger = true)
+                    }
                 }
             }
         }

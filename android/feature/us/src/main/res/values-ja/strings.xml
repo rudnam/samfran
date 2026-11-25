@@ -149,4 +149,5 @@
     <string name="phone_off_signed_out">隠れていません：%sさんがSamFranからログアウトしました</string>
     <string name="phone_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
     <string name="phone_unknown">%sさんのスマホからまだ連絡がありません</string>
+    <string name="cover_emergency_wait">%d秒後に、聞かずに今すぐ開けます</string>
 </resources>
