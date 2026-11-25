@@ -10,6 +10,9 @@ import { categories, categoryHint, categoryName, categoryOf, CategoryTile, Icon,
 import { today } from './format';
 import { metersText, whereIfAllowed, type Spot } from './nearby';
 import { findSaved, type SavedMatch } from './saved';
+import { ErrorText } from '../../components/ErrorText';
+import { useLeaveGuard } from '../../components/LeaveGuard';
+import { Skeleton } from '../../components/Overlay';
 
 /**
  * Places matching what's typed in the name field, as it's typed: a quarter
@@ -129,6 +132,8 @@ const empty: RestaurantFields = { name: '', area: '', cuisine: '', category: 'ea
  * want-to-go side. shared is text shared from Google Maps, to fill it in.
  */
 export function RestaurantForm({ id, want, shared }: { id?: number; want?: boolean; shared?: string }) {
+  // The place's name as saved, for the way back while editing.
+  const [savedName, setSavedName] = useState('');
   const [fields, setFields] = useState<RestaurantFields | null>(() => {
     if (id) return null;
     const s = shared ? parseShared(shared) : null;
@@ -156,6 +161,11 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   // One Google session from typing to picking; a new one after each pick.
   const [session, setSession] = useState(() => newSession());
   const search = usePlaceSearch(query, session, near);
+  // What the form held when it opened (or loaded): leaving with anything else asks first.
+  const form = fields && JSON.stringify([fields, been, visitedOn, stars]);
+  const opened = useRef<string | null>(null);
+  if (opened.current === null && form) opened.current = form;
+  const release = useLeaveGuard(!!form && form !== opened.current);
 
   useEffect(() => {
     if (id) return;
@@ -215,7 +225,10 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   useEffect(() => {
     if (!id) return;
     api.restaurant(id).then(
-      (r) => setFields({ name: r.name, area: r.area, cuisine: r.cuisine, category: categoryOf(r.category), map_url: r.map_url, notes: r.notes }),
+      (r) => {
+        setSavedName(r.name);
+        setFields({ name: r.name, area: r.area, cuisine: r.cuisine, category: categoryOf(r.category), map_url: r.map_url, notes: r.notes });
+      },
       (err) => setError(errorMessage(err)),
     );
   }, [id]);
@@ -267,6 +280,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
             ...(been ? { visit: { visited_on: visitedOn }, stars: stars || undefined } : {}),
           });
       // Back goes to the list, not to this form.
+      release();
       replaceRoute('restaurant', { id: saved.id });
     } catch (err) {
       setError(errorMessage(err));
@@ -330,15 +344,16 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
   const back = id ? href('restaurant', { id }) : href(want ? 'want' : 'home');
   return (
     <section className="stack">
-      <BackLink href={back} label={id ? 'Back' : 'Our spots'} />
+      {/* Editing goes back to the place, named as it's saved (not as it's being retyped). */}
+      <BackLink href={back} label={id ? 'Back' : 'Our places'} text={id ? savedName || undefined : undefined} />
       <h1 className="display">{id ? t('Edit place') : t('Add a place')}</h1>
-      {!fields && !error && <p className="muted">{t('Loading…')}</p>}
+      {!fields && !error && <Skeleton rows={6} />}
       {fields && (
         <form className="card stack" onSubmit={submit}>
           {!id && (
             <div className="segmented" role="radiogroup" aria-label={t('Have you been?')}>
               <button type="button" role="radio" aria-checked={been} className={been ? 'on' : ''} onClick={() => setBeen(true)}>
-                {t('We’ve been')}
+                {t('Been there')}
               </button>
               <button type="button" role="radio" aria-checked={!been} className={!been ? 'on' : ''} onClick={() => setBeen(false)}>
                 {t('Want to go')}
@@ -513,12 +528,8 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               onChange={(e) => set('notes', e.target.value)}
             />
           </label>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
-          )}
-          <div className="row end">
+          <ErrorText message={error} />
+          <div className="row end sticky-actions">
             <button type="button" className="secondary" onClick={() => navigate(id ? 'restaurant' : want ? 'want' : 'home', id ? { id } : undefined)}>
               {t('Cancel')}
             </button>
@@ -528,11 +539,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
           </div>
         </form>
       )}
-      {!fields && error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {!fields && <ErrorText message={error} />}
     </section>
   );
 }

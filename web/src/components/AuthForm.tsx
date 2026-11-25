@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
 import { t } from '../i18n';
 import type { Notice } from '../notice';
+import { ErrorText } from './ErrorText';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot';
 
@@ -79,11 +80,7 @@ export function AuthForm({
           {t('Email')}
           <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorText message={error} />
         <button type="submit" disabled={busy}>
           {status ? t('Send again') : t('Send link')}
         </button>
@@ -128,11 +125,7 @@ export function AuthForm({
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
       <button type="submit" disabled={busy}>
         {signingIn ? t('Sign in') : t('Create account')}
       </button>

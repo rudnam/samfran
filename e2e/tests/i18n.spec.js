@@ -41,6 +41,6 @@ test('the list of places is in Japanese too', async ({ page }) => {
   await page.getByRole('link', { name: 'Us', exact: true }).click();
   await page.getByLabel('Language').selectOption('ja');
   await page.getByRole('link', { name: 'おでかけ' }).click();
-  await expect(page.getByRole('heading', { name: 'ふたりのスポット' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'ふたりのおでかけ' })).toBeVisible();
   await expect(page.getByText('まだ場所がありません')).toBeVisible();
 });

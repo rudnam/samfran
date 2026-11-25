@@ -513,10 +513,10 @@ private fun StopChips(all: BusStops, stop: BusStop, actions: BusActions) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 val ink = if (on) colors.accentText else colors.text
-                if (on) Text("✓", color = ink, fontWeight = FontWeight.Bold)
+                // The picked one's badge shows a check instead of the vehicle (still in the kind's colour), so picking doesn't change any chip's width.
                 val k = kindColors(s.kind)
                 Box(Modifier.size(22.dp).clip(CircleShape).background(k.bg), contentAlignment = Alignment.Center) {
-                    LineIcon(vehicle(s.kind), kindName(s.kind), size = 14.dp, tint = k.ink, stroke = 2.4f)
+                    LineIcon(if (on) SamFranIcons.check else vehicle(s.kind), kindName(s.kind), size = 14.dp, tint = k.ink, stroke = 2.4f)
                 }
                 Text(s.name.ifBlank { stringResource(R.string.unnamed_stop) }, color = ink, fontWeight = FontWeight.SemiBold)
                 if (s.shifts.isNotEmpty()) {

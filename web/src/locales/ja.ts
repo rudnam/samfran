@@ -63,7 +63,7 @@ export const ja = {
   Us: 'ふたり',
 
   // Places
-  'Our spots': 'ふたりのスポット',
+  'Our places': 'ふたりのおでかけ',
   Lists: 'リスト',
   'Been there': '行った',
   'Want to go': '行きたい',
@@ -82,7 +82,6 @@ export const ja = {
   Back: '戻る',
   'Edit place': '場所を編集',
   'Have you been?': '行ったことがありますか？',
-  'We’ve been': '行った',
   Name: '名前',
   Area: 'エリア',
   'e.g. Station East': '例: 駅東',
@@ -414,7 +413,6 @@ export const ja = {
   // The bus alarm, redone: how it works, a practice run, the ride
   // Several stops, picked by the shift
   'Get off at': '降りる駅・バス停',
-  '+ Add a stop': '＋ 駅・バス停を追加',
   'Add a stop': '駅・バス停を追加',
   '{shift} until {time}, so it’s {stop}.': '{shift}（{time}まで）なので{stop}です。',
   'Your stops': '登録した駅・バス停',
@@ -473,7 +471,7 @@ export const ja = {
   'Names and codes as on the sheet.': '名前とコードは勤務表のとおりに。',
   'Everyone that day': 'この日の人',
   'Nobody yet.': 'まだいません。',
-  '+ Add someone': '＋ 人を追加',
+  'Add someone': '人を追加',
   'Person {n}': '{n}人目',
   'Name of person {n}': '{n}人目の名前',
   'Code of {name}': '{name}のコード',
@@ -486,6 +484,9 @@ export const ja = {
   'Delete your comment': '自分のコメントを削除',
   'Delete your comment?': 'コメントを削除しますか？',
   'commented on {name}': '{name}にコメントしました',
+  'Leave without saving?': '保存せずに移動しますか？',
+  'What you changed here will be lost.': 'ここで変えた内容は失われます。',
+  'Leave': '移動',
 } as const;
 
 // The server's messages, which are written in English (internal/, the

@@ -31,7 +31,7 @@ function take(): Notice | null {
   const signin = params.get('signin_error');
   const email = params.get('email');
   if (signin === null && email === null) return null;
-  history.replaceState(null, '', location.pathname + location.hash);
+  history.replaceState(history.state, '', location.pathname + location.hash);
   if (signin !== null) return { message: t(signinErrors[signin] ?? signinErrors.failed), ok: false };
   const result = emailResults[email ?? ''] ?? emailResults.failed;
   return { message: t(result.message), ok: result.ok };

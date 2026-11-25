@@ -16,7 +16,7 @@ export function EveryoneToggle({ on, onChange }: { on: boolean; onChange: (on: b
   return (
     <button
       type="button"
-      className={`icon-toggle${on ? ' on' : ''}`}
+      className={`everyone-toggle${on ? ' on' : ''}`}
       aria-pressed={on}
       aria-label={t('Everyone there')}
       title={t('Everyone there')}

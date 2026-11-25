@@ -91,7 +91,7 @@ for (const [name, viewport] of [
     await shot('4d-undo');
     await page.getByRole('button', { name: 'Undo' }).click();
     // A want-to-go place: Mark as been asks when.
-    await page.getByRole('link', { name: 'Our spots' }).click();
+    await page.getByRole('link', { name: 'Our places' }).click();
     await page.getByRole('link', { name: /Want to go/ }).click();
     await page.getByRole('link', { name: /Blue Sky Café/ }).click();
     await page.getByRole('button', { name: 'Mark as been' }).click();
@@ -101,6 +101,8 @@ for (const [name, viewport] of [
     await page.goto('/app/#/add');
     await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
     await shot('5-add');
+    // As it's seen, not the whole page: Add and Cancel stay on screen, above the tab bar on phones.
+    await page.screenshot({ path: test.info().outputPath(`${name}-5-add-in-view.png`), animations: 'disabled' });
     await page.route('**/api/restaurants/suggest?*', (route) =>
       route.fulfill({
         json: [
@@ -175,7 +177,11 @@ for (const [name, viewport] of [
       },
     });
     expect(res.status()).toBe(200);
+    // Leaving the form with a name typed in asks first.
     await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Leave without saving?' })).toBeVisible();
+    await page.screenshot({ path: test.info().outputPath(`${name}-5e-leave-unsaved.png`), animations: 'disabled' });
+    await page.getByRole('dialog').getByRole('button', { name: 'Leave' }).click();
     await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Calendar' })).toBeVisible();
     await shot('6-shifts');
@@ -202,6 +208,8 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Use the usual days' })).toBeVisible();
     await shot('7a-shift-edit-closing');
     await page.goto('/app/#/shifts/calendar');
+    // The month's change isn't saved: going asks first.
+    await page.getByRole('dialog', { name: 'Leave without saving?' }).getByRole('button', { name: 'Leave' }).click();
     await expect(page.getByRole('link', { name: 'Open Google Calendar' })).toBeVisible();
     await shot('7a2-google-calendar');
     // Back on Shifts with the link on: a month with shifts, then an empty one.
@@ -222,14 +230,14 @@ for (const [name, viewport] of [
     await page.reload();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('7c-bus');
-    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await shot('7d-bus-settings');
     await page.getByRole('button', { name: 'Change 静岡駅' }).click();
     await expect(page.getByRole('button', { name: /^Buzz before/ })).toBeVisible();
     await shot('7e-bus-stop');
-    await page.getByRole('button', { name: '‹ Settings' }).click();
-    await page.getByRole('button', { name: '‹ Ride alarm' }).click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page.getByRole('link', { name: 'Ride alarm', exact: true }).click();
 
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
@@ -239,11 +247,15 @@ for (const [name, viewport] of [
     await page.getByLabel('Appearance').selectOption('dark');
     await shot('9-us-dark');
     await page.getByRole('link', { name: 'Places' }).click();
-    await expect(page.getByRole('heading', { name: 'Our spots' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Our places' })).toBeVisible();
     await shot('10-food-dark');
     await page.getByRole('link', { name: 'Ride', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Try it now' })).toBeVisible();
     await shot('11-bus-dark');
+    // The calendar's shift colours in dark.
+    await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await page.getByRole('radio', { name: 'Calendar' }).click();
+    await shot('12-shifts-dark');
 
     // Nothing may overflow sideways.
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

@@ -235,7 +235,7 @@ test('see who else is on the same shift, fix them, and keep them when the shift 
   const sheet = page.getByRole('dialog', { name: /^Who’s there on / });
   await expect(sheet.getByLabel('Name of person 1')).toHaveValue('タナカ ユイ');
   await sheet.getByLabel('Name of person 2').fill('サトウ ミキ');
-  await sheet.getByRole('button', { name: '+ Add someone' }).click();
+  await sheet.getByRole('button', { name: 'Add someone', exact: true }).click();
   await sheet.getByLabel('Name of person 3').fill('ヤマダ ハナ');
   await sheet.getByLabel('Code of ヤマダ ハナ').fill('17D'); // 17:00–1:00: there as the night starts
   await expect(sheet.getByRole('list', { name: 'Everyone that day' }).getByRole('listitem').nth(2)).toContainText('17:00–1:00');

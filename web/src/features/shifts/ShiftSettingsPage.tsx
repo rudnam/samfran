@@ -6,6 +6,10 @@ import { api, errorMessage, type ShiftSettings } from '../../api';
 import { t } from '../../i18n';
 import { language } from '../../language';
 import { href } from '../../router';
+import { Icon } from '../../components/Icon';
+import { ErrorText } from '../../components/ErrorText';
+import { useLeaveGuard } from '../../components/LeaveGuard';
+import { Skeleton } from '../../components/Overlay';
 
 const suffix: Record<string, string> = { one: 'st', two: 'nd', few: 'rd', other: 'th' };
 
@@ -23,17 +27,21 @@ export function ShiftSettingsPage() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  // The settings as saved, to tell whether anything here isn't.
+  const [savedForm, setSavedForm] = useState('');
+  const form = JSON.stringify([person, onSheet, lengths, closing]);
+  useLeaveGuard(!!s && form !== savedForm);
 
   function take(next: ShiftSettings) {
     setS(next);
     setPerson(next.person_name);
     setOnSheet(next.name_on_sheet);
     setClosing(next.closing_days ?? [15, 31]);
-    setLengths(
-      Object.entries(next.lengths)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([k, v]) => [k, String(v)]),
-    );
+    const rows = Object.entries(next.lengths)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([k, v]): [string, string] => [k, String(v)]);
+    setLengths(rows);
+    setSavedForm(JSON.stringify([next.person_name, next.name_on_sheet, rows, next.closing_days ?? [15, 31]]));
   }
 
   useEffect(() => {
@@ -65,12 +73,8 @@ export function ShiftSettingsPage() {
     <section className="stack">
       <BackLink href={href('shifts')} label="Shifts" />
       <h1 className="display">{t('Shift settings')}</h1>
-      {!s && !error && <p className="muted">{t('Loading…')}</p>}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      {!s && !error && <Skeleton rows={4} />}
+      <ErrorText message={error} />
       {s && (
         <>
           <form className="card stack" onSubmit={save}>
@@ -114,7 +118,8 @@ export function ShiftSettingsPage() {
                   </label>
                 ))}
                 <button type="button" className="secondary" onClick={() => setLengths((l) => [...l, ['', '8']])}>
-                  + {t('Letter')}
+                  <Icon name="add" size={18} />
+                  {t('Letter')}
                 </button>
               </div>
             </div>
@@ -136,18 +141,19 @@ export function ShiftSettingsPage() {
                       ))}
                     </select>
                     <button type="button" className="link quiet" aria-label={t('Remove closing day {n}', { n: i + 1 })} onClick={() => setClosing((c) => c.filter((_, j) => j !== i))}>
-                      ×
+                      <Icon name="close" size={18} />
                     </button>
                   </span>
                 ))}
                 {closing.length < 10 && (
                   <button type="button" className="secondary" onClick={() => setClosing((c) => [...c, 15])}>
-                    + {t('Day')}
+                    <Icon name="add" size={18} />
+                    {t('Day')}
                   </button>
                 )}
               </div>
             </div>
-            <div className="row end">
+            <div className="row end sticky-actions">
               <span className="hint grow" role="status">
                 {status}
               </span>

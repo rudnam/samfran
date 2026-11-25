@@ -53,6 +53,6 @@ export function takeSharedFromUrl(): string | null {
   const text = [params.get('title'), params.get('text'), params.get('url')].filter(Boolean).join('\n');
   for (const k of ['title', 'text', 'url']) params.delete(k);
   const qs = params.toString();
-  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+  history.replaceState(history.state, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
   return text || null;
 }

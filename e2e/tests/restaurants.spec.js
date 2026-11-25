@@ -31,6 +31,8 @@ test('add a place, rate it, change when you went, edit and delete it', async ({ 
 
   // Edit keeps what isn't changed.
   await page.getByRole('link', { name: 'Edit' }).click();
+  // Its way back is named after the place, as saved.
+  await expect(page.getByRole('link', { name: 'Taco Loco' })).toHaveAttribute('href', /#\/restaurant\?id=/);
   await page.getByLabel('Notes').fill('Ask for the green salsa.');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Ask for the green salsa.')).toBeVisible();
@@ -38,7 +40,7 @@ test('add a place, rate it, change when you went, edit and delete it', async ({ 
   await expect(page.getByText(/^Been · Jan 15/)).toBeVisible();
 
   // Back on the list, with the rating and the date, and no count of visits.
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   const card = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('★5');
@@ -78,7 +80,7 @@ test('not been yet moves a place back to want to go, with Undo for a few seconds
   await page.reload();
   await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
   await expect(page.getByText(/^Been · /)).toHaveCount(0);
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   await expect(page.getByRole('list', { name: 'Want to go' })).toContainText('Taco Loco');
 });
 
@@ -158,7 +160,7 @@ test('want to go, then been', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Not been yet' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText(/^Been · /)).toBeVisible();
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   await expect(page.getByRole('list', { name: 'Been there' })).toContainText('Blue Sky Café');
 });
 
@@ -231,7 +233,7 @@ test('find a place by typing its name: no Maps link needed', async ({ page }) =>
   );
 
   // Adding it again: the list says it's already saved, and links to it.
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   await page.getByRole('link', { name: 'Add a place' }).first().click();
   await name.fill('すき家');
   await expect(list.getByRole('link', { name: /すき家 浜松駅前店.*Already on your list/ })).toBeVisible();
@@ -368,7 +370,7 @@ test('places of every kind: a category for each, and the list filtered by one', 
   await expect(page.getByText('Nature & parks · Park · 浜松市 中央区')).toBeVisible();
 
   // The list: all three, then one category's; the choice is remembered.
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   const want = page.getByRole('list', { name: 'Want to go' }).getByRole('listitem');
   await expect(want).toHaveCount(3);
   const menu = page.getByRole('button', { name: /^Category:/ });
@@ -391,7 +393,7 @@ test('places of every kind: a category for each, and the list filtered by one', 
   await page.getByRole('radio', { name: 'History & culture' }).click();
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('History & culture · Park · 浜松市 中央区')).toBeVisible();
-  await page.getByRole('link', { name: 'Our spots' }).click();
+  await page.getByRole('link', { name: 'Our places' }).click();
   // Nothing left in Nature on this list: it says so, and offers the rest.
   await expect(page.getByText('Nothing in Nature here.')).toBeVisible();
   await page.getByRole('button', { name: 'Show all' }).click();
@@ -540,4 +542,46 @@ test('comments: once you have been, say how it was; only your own can be deleted
   await list.getByRole('button', { name: 'Delete your comment' }).click();
   await page.getByRole('dialog', { name: 'Delete your comment?' }).getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No comments yet. How was it?')).toBeVisible();
+});
+
+test('leaving a place form with changes asks first; saving or leaving it untouched doesn’t', async ({ page }) => {
+  await signUp(page);
+  // Untouched: the tab just opens.
+  await page.getByRole('link', { name: 'Add a place' }).filter({ visible: true }).click();
+  await expect(page.getByRole('heading', { name: 'Add a place' })).toBeVisible();
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+  await expect(page).toHaveURL(/#\/shifts$/);
+
+  // Typed in: a tab asks, and Cancel stays on the form with what was typed.
+  await page.getByRole('link', { name: 'Places', exact: true }).click();
+  await page.getByRole('link', { name: 'Add a place' }).filter({ visible: true }).click();
+  await page.getByLabel('Name', { exact: true }).fill('Soba Kanda');
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  const ask = page.getByRole('dialog', { name: 'Leave without saving?' });
+  await expect(ask).toBeVisible();
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page).toHaveURL(/#\/add/);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Soba Kanda');
+
+  // The browser's Back asks too.
+  await page.goBack();
+  await expect(ask).toBeVisible();
+  await expect(page).toHaveURL(/#\/add/);
+  await ask.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Soba Kanda');
+
+  // Adding it goes straight to the place.
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Soba Kanda' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
+  // Editing: Back, then Leave, goes back to the place, unchanged.
+  await page.getByRole('link', { name: 'Edit' }).click();
+  await page.getByLabel('Notes').fill('Cold soba in summer.');
+  await page.goBack();
+  await ask.getByRole('button', { name: 'Leave' }).click();
+  await expect(page.getByRole('heading', { name: 'Soba Kanda' })).toBeVisible();
+  await expect(page).toHaveURL(/#\/restaurant\?id=/);
+  await expect(page.getByText('Cold soba in summer.')).toHaveCount(0);
 });

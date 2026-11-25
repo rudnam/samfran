@@ -21,6 +21,7 @@ import { initialNotice, type Notice } from './notice';
 import { takeSharedFromUrl } from './share';
 import { href, navigate, replaceRoute, useRoute, type Route } from './router';
 import { SpaceProvider } from './space';
+import { ErrorText } from './components/ErrorText';
 
 /**
  * The introduction page's "Try the demo" opens /app/?demo. Read once when
@@ -32,7 +33,7 @@ const demoRequested = (() => {
   if (!params.has('demo')) return false;
   params.delete('demo');
   const qs = params.toString();
-  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+  history.replaceState(history.state, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
   return true;
 })();
 
@@ -192,9 +193,7 @@ export function App() {
           <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>
         )}
         {session.status === 'error' && (
-          <p role="alert" className="error">
-            {t('Could not reach the server: {error}', { error: session.message })}
-          </p>
+          <ErrorText message={t('Could not reach the server: {error}', { error: session.message })} />
         )}
         {resetting && (
           <ResetPasswordForm
@@ -316,7 +315,7 @@ function joinNotice(): Notice | null {
   const m = location.hash.match(/^#\/join\??(.*)$/);
   if (!m) return null;
   const p = new URLSearchParams(m[1]);
-  history.replaceState(null, '', location.pathname); // off the join page once read
+  history.replaceState(history.state, '', location.pathname); // off the join page once read
   if (p.has('invalid')) return { message: t('That invite link has expired or was already used. Ask for a new one.'), ok: false };
   const from = p.get('from');
   return {

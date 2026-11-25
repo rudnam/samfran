@@ -4,7 +4,7 @@ export const categories = ['eat', 'nature', 'culture', 'fun', 'relax', 'shopping
 export type Category = (typeof categories)[number];
 
 /** Icon paths, one per category, plus the Places tab's own. */
-export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort' | 'check' | 'edit' | 'camera' | 'calendar' | 'settings', string> = {
+export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort' | 'check' | 'edit' | 'camera' | 'calendar' | 'settings' | 'add' | 'back' | 'chevronLeft' | 'chevronRight' | 'close', string> = {
   eat: 'M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9',
   nature: 'M12 3a5 5 0 0 1 5 5 4 4 0 0 1-1 7.5H8A4 4 0 0 1 7 8a5 5 0 0 1 5-5zM12 15.5V21M12 12.5l-2.5-2M9 21h6',
   culture: 'M3 5c4 1.2 14 1.2 18 0M5 9.5h14M7 6.3V21M17 6.3V21M12 6.5v3',
@@ -27,6 +27,11 @@ export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' |
   camera: 'M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM15.5 13.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z',
   calendar: 'M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zM3 10h18M8 3v4M16 3v4',
   settings: 'M4 7h10M18 7h2M4 17h4M12 17h8M16 7a2 2 0 1 1-4 0a2 2 0 1 1 4 0zM10 17a2 2 0 1 1-4 0a2 2 0 1 1 4 0z',
+  add: 'M12 5v14M5 12h14',
+  back: 'M15 5l-7 7 7 7',
+  chevronLeft: 'M14 6l-6 6 6 6',
+  chevronRight: 'M10 6l6 6-6 6',
+  close: 'M6 6l12 12M18 6L6 18',
 };
 
 

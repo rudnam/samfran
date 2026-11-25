@@ -13,6 +13,7 @@ import { EveryoneToggle, WhoThere } from './WhoThere';
 import { ShiftCalendar, tone } from './ShiftCalendar';
 import { setPendingRead } from './ShiftEditor';
 import { googleCalendarUrl } from './ShiftCalendarLinkPage';
+import { ErrorText } from '../../components/ErrorText';
 
 // Calendar or list: remembered on this device.
 type View = 'calendar' | 'list';
@@ -104,31 +105,27 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
           <span className="grow">
             <span className="eyebrow">{t('Next shift')}</span>
             <strong className="block">
-              {dayName(next.date)} · {labelOf(next.label)} · {timesOf(next)}
+              {dayName(next.date)} · {labelOf(next.label)} · <span className="nowrap">{timesOf(next)}</span>
             </strong>
           </span>
           <span className="code-chip">{next.code}</span>
-          <span className="chevron" aria-hidden="true">›</span>
+          <span className="chevron"><Icon name="chevronRight" size={18} /></span>
         </a>
       )}
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
 
       <div className="card stack tight">
         <div className="row spread">
           <a className="link-btn" href={href('shifts', { month: addMonths(shown, -1) })} aria-label={t('Previous month')}>
-            ‹
+            <Icon name="chevronLeft" size={22} />
           </a>
           <h2>{shown && monthName(shown)}</h2>
           <a className="link-btn" href={href('shifts', { month: addMonths(shown, 1) })} aria-label={t('Next month')}>
-            ›
+            <Icon name="chevronRight" size={22} />
           </a>
         </div>
-        <div className="toolbar">
+        <div className="view-bar">
         <div className="segmented" role="radiogroup" aria-label={t('View')}>
           <button type="button" role="radio" aria-checked={view === 'calendar'} className={view === 'calendar' ? 'on' : ''} onClick={() => show('calendar')}>
             {t('Calendar')}

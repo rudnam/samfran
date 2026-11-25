@@ -105,7 +105,7 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
         SamFranCard(spacing = 14) {
             if (!state.editing) {
                 Segmented(
-                    options = listOf(stringResource(R.string.weve_been), stringResource(R.string.want_to_go)),
+                    options = listOf(stringResource(R.string.been_there), stringResource(R.string.want_to_go)),
                     selected = if (state.been) 0 else 1,
                     onSelect = { actions.setBeen(it == 0) },
                 )

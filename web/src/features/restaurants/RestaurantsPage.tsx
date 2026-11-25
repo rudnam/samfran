@@ -13,6 +13,7 @@ import { categories, categoryName, categoryOf, categoryShort, CategoryTile, Icon
 import { shortDate } from './format';
 import { byDistance, distanceText, useLocation } from './nearby';
 import { PlacesMap } from './PlacesMap';
+import { ErrorText } from '../../components/ErrorText';
 
 export type Tab = 'been' | 'want';
 
@@ -151,9 +152,10 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
     <section className="stack">
       <header className="page-head">
         <div className="row spread">
-          <h1 className="display">{t('Our spots')}</h1>
+          <h1 className="display">{t('Our places')}</h1>
           <a className="button add-wide" href={addHref}>
-            + {t('Add a place')}
+            <Icon name="add" size={20} />
+            {t('Add a place')}
           </a>
         </div>
         <nav className="tabs-seg" aria-label={t('Lists')}>
@@ -228,11 +230,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
         )}
       </header>
 
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
       {list === null && !error && <Skeleton rows={4} />}
       {list !== null && shown.length === 0 && (
         <div className="empty">

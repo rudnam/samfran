@@ -6,6 +6,7 @@ import { confirmDialog } from '../../components/Overlay';
 import { t } from '../../i18n';
 import { locale } from '../../language';
 import { Avatar, personTone, useSpace } from '../../space';
+import { ErrorText } from '../../components/ErrorText';
 
 const maxComment = 1000; // as the server's
 
@@ -77,11 +78,7 @@ export function Comments({ place, onChange }: { place: Restaurant; onChange: (r:
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
+        <ErrorText message={error} />
         <button type="submit" className="end" disabled={busy || !draft.trim()}>
           {t('Post')}
         </button>

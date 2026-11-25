@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
 import { t } from '../i18n';
+import { ErrorText } from './ErrorText';
 
 export function ResetPasswordForm({ token, onDone, onCancel }: { token: string; onDone: (me: Me) => void; onCancel: () => void }) {
   const [password, setPassword] = useState('');
@@ -38,11 +39,7 @@ export function ResetPasswordForm({ token, onDone, onCancel }: { token: string; 
           onChange={(e) => setPassword(e.target.value)}
         />
       </label>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
+      <ErrorText message={error} />
       <button type="submit" disabled={busy || !token}>
         {t('Save password')}
       </button>

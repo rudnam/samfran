@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../i18n';
 import { clock, dayName, hoursAround, normalize, overlaps } from './codes';
+import { Icon } from '../../components/Icon';
 
 /** One person in the editor. read is the name as the photo reader gave it, to learn from a fix. */
 export interface PersonRow {
@@ -92,7 +93,7 @@ export function PeopleSheet({
         {/* Their hours (which day their cell is on comes from the read). */}
         <span className="person-when small">{theirs ? `${clock(theirs[0])}–${clock(theirs[1])}` : '–'}</span>
         <button type="button" className="link quiet" aria-label={t('Remove {name}', { name: label })} onClick={() => onChange(rows.filter((x) => x.key !== r.key))}>
-          ×
+          <Icon name="close" size={18} />
         </button>
       </li>
     );
@@ -132,7 +133,8 @@ export function PeopleSheet({
           <p className="muted small">{t('Nobody yet.')}</p>
         )}
         <button type="button" className="secondary" onClick={onAdd}>
-          {t('+ Add someone')}
+          <Icon name="add" size={18} />
+          {t('Add someone')}
         </button>
         <div className="row end">
           <button type="button" onClick={onClose}>
