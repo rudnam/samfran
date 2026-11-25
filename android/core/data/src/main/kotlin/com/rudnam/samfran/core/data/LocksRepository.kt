@@ -125,6 +125,9 @@ interface AppLocks {
     /** Android's settings page for displaying over other apps. */
     fun openOverlay()
 
+    /** Android's settings page for the watcher's notification, where the person can turn it off (the watcher keeps covering). */
+    fun openWatchNotice()
+
     /** The apps on this phone that open from the launcher, by name, leaving out SamFran itself. */
     suspend fun installedApps(): List<InstalledApp>
 

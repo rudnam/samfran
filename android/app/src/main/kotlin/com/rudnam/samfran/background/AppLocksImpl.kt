@@ -87,7 +87,15 @@ class AndroidAppLocks @Inject constructor(
         usageAccess = usageAccess(),
         overlay = Settings.canDrawOverlays(context),
         notifications = NotificationManagerCompat.from(context).areNotificationsEnabled(),
+        watchNotice = watchNotice(),
     )
+
+    /** Whether the watcher's notification shows: notifications on, and its category exists (the watcher has run) and isn't turned off. */
+    private fun watchNotice(): Boolean {
+        val nm = NotificationManagerCompat.from(context)
+        val channel = nm.getNotificationChannel(LockWatcher.CHANNEL) ?: return false
+        return nm.areNotificationsEnabled() && channel.importance != NotificationManagerCompat.IMPORTANCE_NONE
+    }
 
     private fun usageAccess(): Boolean {
         val ops = context.getSystemService(AppOpsManager::class.java)
@@ -116,6 +124,23 @@ class AndroidAppLocks @Inject constructor(
     override fun openUsageAccess() = openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS, withPackage = Build.VERSION.SDK_INT >= 29)
 
     override fun openOverlay() = openSettings(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, withPackage = true)
+
+    override fun openWatchNotice() {
+        val channel = Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+            .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            .putExtra(Settings.EXTRA_CHANNEL_ID, LockWatcher.CHANNEL)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // Some phones don't have the page for one category: the app's notification settings instead.
+        runCatching { context.startActivity(channel) }.onFailure {
+            runCatching {
+                context.startActivity(
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }
+        }
+    }
 
     override suspend fun installedApps(): List<InstalledApp> = withContext(Dispatchers.IO) {
         val pm = context.packageManager

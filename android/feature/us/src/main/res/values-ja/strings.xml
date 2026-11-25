@@ -98,6 +98,9 @@
     <string name="allow_for">許可する時間</string>
     <string name="reply_label">返事（任意）</string>
     <string name="your_apps">ロック中のアプリ</string>
+    <string name="watch_notice">「ロック中のアプリを隠しています」の通知</string>
+    <string name="watch_notice_hint">Androidの設定でオフにできます。アプリは隠れたままです。</string>
+    <string name="watch_notice_hide">非表示</string>
     <string name="lock_an_app">アプリをロック</string>
     <string name="status_locked">ロック中</string>
     <string name="status_open_until">%sまで開けます</string>

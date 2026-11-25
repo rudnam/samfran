@@ -48,6 +48,7 @@ class LocksScreenshotTest {
     private val locksActions = object : LocksActions {
         override fun openUsageAccess() {}
         override fun openOverlay() {}
+        override fun openWatchNotice() {}
         override fun setAllowMinutes(request: Long, minutes: Int) {}
         override fun setReply(request: Long, reply: String) {}
         override fun answer(request: Long, allow: Boolean) {}
@@ -88,6 +89,13 @@ class LocksScreenshotTest {
     fun locksSetup() = shot("locks-setup", content = locksScreen(
         LocksUiState(page = LockSamples.page.copy(locks = emptyList(), requests = emptyList()), setup = LockSetup(notifications = true), now = LockSamples.now),
     ))
+
+    @Test
+    fun locksWatchNotice() = shot("locks-watch-notice", content = locksScreen(locks.copy(setup = ready.copy(watchNotice = true))))
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h2000dp-xxhdpi")
+    fun locksWatchNoticeJapanese() = shot("locks-watch-notice-ja", content = locksScreen(locks.copy(setup = ready.copy(watchNotice = true))))
 
     @Test
     fun locksPartnerNotCovered() = shot("locks-not-covered", content = locksScreen(locks.copy(page = LockSamples.page.copy(phones = listOf(LockSamples.samNotCovering)))))

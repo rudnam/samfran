@@ -131,6 +131,12 @@ data class LockSetup(
     val usageAccess: Boolean = false,
     val overlay: Boolean = false,
     val notifications: Boolean = false,
+    /**
+     * The watcher's own notification ("Locked apps are covered") shows: its
+     * category is on. Off once the person has turned that category off, or
+     * before the watcher first ran.
+     */
+    val watchNotice: Boolean = false,
 ) {
     val ready: Boolean get() = usageAccess && overlay
 }

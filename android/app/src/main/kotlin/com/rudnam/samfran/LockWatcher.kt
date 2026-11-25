@@ -60,6 +60,9 @@ class LockWatcher : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var loop: Job? = null
 
+    /** startForeground has been called (once is enough while the service runs). */
+    private var foreground = false
+
     @Volatile private var page: LockPage? = null
 
     /** The app in front, as the usage events last said. */
@@ -92,14 +95,18 @@ class LockWatcher : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val n = notification(this)
-        // Android may refuse a foreground service started from the background: then there's no watching until the app opens.
-        val started = runCatching {
-            if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(NOTIFICATION, n)
-        }.isSuccess
-        if (!started) {
-            stopSelf()
-            return START_NOT_STICKY
+        // Only the first start posts the notification: posting it again on every start (each sync) would bring back one the person
+        // swiped away. Android doesn't ask a service that's already in the foreground to call startForeground again.
+        if (!foreground) {
+            val n = notification(this)
+            // Android may refuse a foreground service started from the background: then there's no watching until the app opens.
+            foreground = runCatching {
+                if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIFICATION, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(NOTIFICATION, n)
+            }.isSuccess
+            if (!foreground) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
         }
         if (intent?.getBooleanExtra(EXTRA_UPDATED, false) == true) afterUpdate = true
         if (loop == null) {
@@ -169,7 +176,8 @@ class LockWatcher : Service() {
         /** An activity coming to the front: ACTIVITY_RESUMED from Android 10, the same number as MOVE_TO_FOREGROUND before. */
         @Suppress("DEPRECATION")
         private const val RESUMED = UsageEvents.Event.MOVE_TO_FOREGROUND
-        private const val CHANNEL = "lock_watch"
+        /** The watcher's notification category, which the person can turn off on the Locked apps page ([AppLocks.openWatchNotice]). */
+        const val CHANNEL = "lock_watch"
         private const val NOTIFICATION = 21
         private const val TICK_MS = 500L
         private const val REFRESH_MS = 5 * 60 * 1000L

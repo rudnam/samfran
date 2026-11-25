@@ -49,6 +49,7 @@ data class LocksUiState(
 interface LocksActions {
     fun openUsageAccess()
     fun openOverlay()
+    fun openWatchNotice()
     fun setAllowMinutes(request: Long, minutes: Int)
     fun setReply(request: Long, reply: String)
     fun answer(request: Long, allow: Boolean)
@@ -116,6 +117,8 @@ class LocksViewModel @Inject constructor(
     override fun openUsageAccess() = appLocks.openUsageAccess()
 
     override fun openOverlay() = appLocks.openOverlay()
+
+    override fun openWatchNotice() = appLocks.openWatchNotice()
 
     override fun setAllowMinutes(request: Long, minutes: Int) = local.update { it.copy(allowMinutes = it.allowMinutes + (request to minutes)) }
 
