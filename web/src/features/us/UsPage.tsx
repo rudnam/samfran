@@ -1,6 +1,7 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type Downloads, type Me } from '../../api';
+import { api, errorMessage, type Me } from '../../api';
+import { PLAY_STORE_URL } from '../../playStore';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -9,16 +10,6 @@ import { Avatar, useSpace } from '../../space';
 import { ErrorText } from '../../components/ErrorText';
 import { Skeleton } from '../../components/Overlay';
 
-// What there is to download only changes with the server's settings, so it's
-// asked for once, when the app opens: by the time Us is opened it's known,
-// and the Android app's card is there from the start instead of dropping in
-// and pushing the cards below it down.
-let android: Downloads['android'] = null;
-const downloadsLoaded = api.downloads().then(
-  (d) => (android = d.android),
-  () => null,
-);
-
 export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
   const self = space?.members.find((m) => m.me);
@@ -26,16 +17,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [apk, setApk] = useState(android);
-
-  useEffect(() => {
-    let alive = true;
-    downloadsLoaded.then((a) => alive && setApk(a));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   useEffect(() => {
     if (self) setName(self.name);
   }, [self?.name]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,7 +70,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
                 </span>
                 <span className="grow">
                   <strong>{i.email}</strong>
-                  <span className="muted block small">{t('Invited: they can sign in with this email to join you.')}</span>
+                  <span className="muted block small">{t('Invited')}</span>
                 </span>
                 <button type="button" className="link quiet" disabled={busy} onClick={() => run(async () => setSpace(await api.uninvite(i.email)))}>
                   {t('Cancel')}
@@ -118,21 +99,16 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           </button>
         </span>
         <span className="hint" role="status">
-          {saved ? t('Saved.') : t('Shown next to your ratings.')}
+          {saved && t('Saved.')}
         </span>
       </form>
 
-      {apk && (
-        <div className="card row spread">
-          <span className="grow">
-            <strong className="block">{t('Get the Android app')}</strong>
-            <span className="hint">{t('Share a place from Google Maps to SamFran to add it in one tap.')}</span>
-          </span>
-          <a className="button" href={apk.url} download>
-            {t('Download')}
-          </a>
-        </div>
-      )}
+      <div className="card row spread">
+        <strong className="grow">{t('Get the Android app')}</strong>
+        <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
+          {t('Google Play')}
+        </a>
+      </div>
 
       <ActivityCard />
 
@@ -219,7 +195,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
               {t('Cancel link')}
             </button>
           </div>
-          <span className="hint">{t('Send it to them only: it works once, until {date}. They tap it and sign up with Google or an email and password.', { date: until(open?.expires_at ?? new Date(Date.now() + 7 * 864e5).toISOString()) })}</span>
+          <span className="hint">{t('Works once, until {date}.', { date: until(open?.expires_at ?? new Date(Date.now() + 7 * 864e5).toISOString()) })}</span>
         </>
       ) : open ? (
         <>
@@ -238,7 +214,6 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
           <button type="button" disabled={busy} onClick={make}>
             {t('Create invite link')}
           </button>
-          <span className="hint">{t('They open it, sign up, and see everything here.')}</span>
         </>
       )}
       <ErrorText message={error} />
