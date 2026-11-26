@@ -12,5 +12,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.browser)
     api(libs.androidx.appcompat)
+    // Places' photos (AsyncImage); the app sets up the loader (SamFranApplication).
+    api(libs.coil.compose)
     testImplementation(project(":core:testing"))
 }

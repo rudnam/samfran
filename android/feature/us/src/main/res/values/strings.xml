@@ -148,4 +148,5 @@
     <string name="phone_off_signed_out">Not covered: %s signed out of SamFran</string>
     <string name="phone_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
     <string name="phone_unknown">%s’s phone hasn’t checked in yet</string>
+    <string name="change_photos">added photos of %s</string>
 </resources>

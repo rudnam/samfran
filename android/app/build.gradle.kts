@@ -104,6 +104,9 @@ dependencies {
     implementation(project(":core:datastore"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
+    // Photos load signed in, with the API's own client (SamFranApplication).
+    implementation(project(":core:network"))
+    implementation(libs.coil.network.okhttp)
     implementation(project(":feature:signin"))
     implementation(project(":feature:food"))
     implementation(project(":feature:shifts"))

@@ -58,16 +58,6 @@ internal fun PlaceDestination(navigation: FoodNavigation, snackbar: SnackbarHost
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(state.deleted) { if (state.deleted) navigation.back() }
-    // Not been yet: Undo for a few seconds, then it's saved.
-    val moved = stringResource(R.string.moved_to_want)
-    val undo = stringResource(R.string.undo)
-    LaunchedEffect(state.clearing) {
-        if (!state.clearing) return@LaunchedEffect
-        when (snackbar.showSnackbar(moved, actionLabel = undo, duration = SnackbarDuration.Short)) {
-            SnackbarResult.ActionPerformed -> viewModel.undoNotBeen()
-            SnackbarResult.Dismissed -> viewModel.commitNotBeen()
-        }
-    }
     PlaceScreen(
         state,
         viewModel,
@@ -77,7 +67,7 @@ internal fun PlaceDestination(navigation: FoodNavigation, snackbar: SnackbarHost
     )
 }
 
-/** One place (web/src/features/restaurants/RestaurantDetail.tsx): ratings, notes, and whether you've been (and when). */
+/** One place (web/src/features/restaurants/RestaurantDetail.tsx): whether you've been, each visit with its photos, ratings, notes and comments. */
 @Composable
 fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, onEdit: () -> Unit, onMap: () -> Unit) {
     val colors = SamFranTheme.colors
@@ -94,19 +84,18 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
             Text(place.name, style = MaterialTheme.typography.displaySmall)
             // Its category, then its kind and area, as the website's page says them.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CategoryTile(place.category, size = 32.dp)
+                CategoryTile(place.category, size = 32.dp, cover = place.cover)
                 val line = listOf(stringResource(place.category.title), place.subtitle).filter { it.isNotBlank() }.joinToString(" · ")
                 Text(line, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
             }
             val beenOn = state.beenOn
             if (beenOn != null) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(stringResource(R.string.been_on, Dates.short(beenOn, locale, state.today)), style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                    if (state.picking == null) {
-                        Text(" · ", style = MaterialTheme.typography.bodySmall, color = colors.muted)
-                        LinkButton(stringResource(R.string.change), actions::startPicking, enabled = !state.busy)
-                    }
-                }
+                val date = Dates.short(beenOn, locale, state.today)
+                Text(
+                    if (place.visitCount > 1) stringResource(R.string.been_times, place.visitCount, date) else stringResource(R.string.been_on, date),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.muted,
+                )
             }
             if (beenOn == null && state.picking == null) {
                 PrimaryButton(stringResource(R.string.mark_as_been), actions::startPicking, Modifier.fillMaxWidth(), enabled = !state.busy)
@@ -122,11 +111,12 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     PrimaryButton(stringResource(R.string.save), actions::saveBeen, enabled = !state.busy)
                     SecondaryButton(stringResource(R.string.cancel), actions::cancelPicking, enabled = !state.busy)
-                    if (state.beenOn != null) LinkButton(stringResource(R.string.not_been_yet), actions::notBeen, enabled = !state.busy, quiet = true)
                 }
             }
         }
         state.problem?.problem()?.let { ErrorText(it) }
+
+        if (state.beenOn != null) Visits(state, actions)
 
         SamFranCard {
             CardTitle(stringResource(R.string.ratings))

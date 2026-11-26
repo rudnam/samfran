@@ -111,12 +111,21 @@ fun PlaceCategory.colors(): Pair2 {
 
 /** The category's icon on its colour, as the list, a place's page and the search show it. */
 @Composable
-fun CategoryTile(category: PlaceCategory, modifier: Modifier = Modifier, size: Dp = 48.dp) {
+fun CategoryTile(category: PlaceCategory, modifier: Modifier = Modifier, size: Dp = 48.dp, cover: String? = null) {
     val colors = category.colors()
     Box(
         modifier.size(size).clip(RoundedCornerShape(size * 0.28f)).background(colors.bg),
         contentAlignment = Alignment.Center,
     ) {
         LineIcon(category.icon, null, tint = colors.ink, size = size * 0.48f)
+        // Once it has photos, its newest is its picture, over the icon until it's in.
+        if (cover != null) {
+            coil3.compose.AsyncImage(
+                model = cover,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
     }
 }

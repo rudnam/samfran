@@ -333,6 +333,18 @@ function PhotoViewer({
 
   const go = (step: number) => setIndex((n) => Math.max(0, Math.min(photos.length - 1, Math.min(n, photos.length - 1) + step)));
 
+  // The arrow keys, wherever the focus is (an arrow button that's gone at the end leaves it nowhere).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') go(-1);
+      if (e.key === 'ArrowRight') go(1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // go only reads the photos' count through setIndex's updater.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos.length]);
+
   return (
     <dialog
       ref={box}
@@ -341,10 +353,6 @@ function PhotoViewer({
       onCancel={(e) => {
         e.preventDefault();
         onClose();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'ArrowLeft') go(-1);
-        if (e.key === 'ArrowRight') go(1);
       }}
     >
       <div className="viewer-bar">

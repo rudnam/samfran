@@ -39,13 +39,9 @@
     <string name="you">You</string>
     <string name="not_rated_yet">Not rated yet</string>
     <string name="been_on">Been · %s</string>
-    <string name="change">Change</string>
     <string name="mark_as_been">Mark as been</string>
     <string name="when_did_you_go">When did you go?</string>
-    <string name="not_been_yet">Not been yet</string>
     <string name="delete_this_place">Delete this place</string>
-    <string name="moved_to_want">Moved to Want to go.</string>
-    <string name="undo">Undo</string>
     <string name="delete_place_title">Delete %s?</string>
     <string name="delete_place_body">Its ratings go with it. This can’t be undone.</string>
     <string name="delete">Delete</string>
@@ -150,4 +146,28 @@
     <string name="add_comment">Add a comment</string>
     <string name="post">Post</string>
     <string name="delete_comment_title">Delete your comment?</string>
+    <!-- A place's visits and photos (web/src/features/restaurants/Visits.tsx). -->
+    <string name="visits">Visits</string>
+    <string name="went_again">Went again</string>
+    <string name="note_optional">Note (optional)</string>
+    <string name="note_hint">What you had, how it was</string>
+    <string name="edit_visit">Edit the visit on %s</string>
+    <string name="delete_visit">Delete this visit</string>
+    <string name="delete_visit_title">Delete the visit on %s?</string>
+    <plurals name="delete_visit_photos">
+        <item quantity="one">Its photo goes with it.</item>
+        <item quantity="other">Its %d photos go with it.</item>
+    </plurals>
+    <string name="delete_visit_last">%s goes back to Want to go.</string>
+    <string name="cant_undo">This can’t be undone.</string>
+    <string name="photos_from">Photos from %s</string>
+    <string name="photo_n_of">Photo %1$d of %2$d</string>
+    <string name="add_photos">Add photos</string>
+    <string name="sending_photo">Sending a photo</string>
+    <string name="delete_photo_title">Delete this photo?</string>
+    <string name="delete_photo_body">It’s gone for both of you. This can’t be undone.</string>
+    <string name="close">Close</string>
+    <string name="been_times">Been %1$d times · last %2$s</string>
+    <string name="times_short">%d×</string>
+    <string name="photo_unreadable">That photo can’t be opened here. Choose a JPEG, PNG or WebP picture.</string>
 </resources>
