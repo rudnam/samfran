@@ -27,14 +27,20 @@ import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.rudnam.samfran.core.common.ApplicationScope
+import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.TripStatus
 import com.rudnam.samfran.widget.Widgets
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 /**
  * A ride, by bus or train: while it runs, the phone watches its position
@@ -47,11 +53,21 @@ import kotlinx.coroutines.flow.update
  * It's a foreground service, so it shows a notification for as long as it
  * runs, and Android doesn't stop it while the screen is off. It stops itself
  * after ringing, or after three hours. Positions never leave the phone.
+ * When it ends, however it ends, it tells the server whether it got there
+ * (POST /api/bus/stops/{id}/done), so the other person is told.
  *
  * (The class keeps the Capacitor build's name: a trip running during the
  * update is the same service.)
  */
+@AndroidEntryPoint
 class BusTripService : Service(), LocationListener {
+    @Inject lateinit var bus: BusRepository
+
+    @Inject @ApplicationScope lateinit var appScope: CoroutineScope
+
+    /** The saved stop this ride is to (0: none, or already told), and whether the phone got there. */
+    private var stopId = 0L
+    private var arrived = false
     private var lat = 0.0
     private var lng = 0.0
     private var radius = 800f
@@ -77,6 +93,8 @@ class BusTripService : Service(), LocationListener {
         stopName = intent.getStringExtra(EXTRA_NAME).orEmpty()
         buzz = Buzz.from(intent.getStringExtra(EXTRA_BUZZ))
         soundAfter = intent.getIntExtra(EXTRA_SOUND_AFTER, 0)
+        stopId = intent.getLongExtra(EXTRA_STOP_ID, 0L)
+        arrived = false
         from = -1f
         channels(this)
         val n = tripNotification(-1f)
@@ -113,6 +131,7 @@ class BusTripService : Service(), LocationListener {
         if (d[0] <= radius) {
             // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
             locations?.removeUpdates(this)
+            arrived = true
             ring(this, stopName, buzz, soundAfter)
             Widgets.updateBus(this)
             return
@@ -135,7 +154,16 @@ class BusTripService : Service(), LocationListener {
         locations?.removeUpdates(this)
         stopBuzz(this) // a trip stopped while buzzing stops the buzz too
         Widgets.updateBus(this)
+        tellEnded()
         super.onDestroy()
+    }
+
+    /** Tells the server the ride has ended, once; outlives the service, as the app's scope does. Offline: not told. */
+    private fun tellEnded() {
+        val id = stopId.takeIf { it > 0 } ?: return
+        stopId = 0
+        val got = arrived
+        appScope.launch { bus.done(id, got) }
     }
 
     /**
@@ -187,6 +215,7 @@ class BusTripService : Service(), LocationListener {
         const val EXTRA_NAME = "name"
         const val EXTRA_BUZZ = "buzz"
         const val EXTRA_SOUND_AFTER = "sound_after"
+        const val EXTRA_STOP_ID = "stop_id"
 
         private const val TRIP_CHANNEL = "trip"
         private const val ALARM_CHANNEL = "nearly"

@@ -138,6 +138,7 @@ class ActivityJob : JobService() {
                 "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
                 "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
                 "bus_started" -> c.getString(R.string.notify_bus_started, who, name)
+                "bus_ended" -> c.getString(if (e.details.arrived) R.string.notify_bus_arrived else R.string.notify_bus_stopped, who, name)
                 else -> null
             }
         }

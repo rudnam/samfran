@@ -280,6 +280,7 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
     var found: List<FoundStop> = Samples.found
     var next: Outcome<Nothing>? = null
     val used = mutableListOf<Long>()
+    val done = mutableListOf<Pair<Long, Boolean>>()
 
     override val stops: Flow<BusStops?> = stopsFlow
     override suspend fun refresh(): Outcome<BusStops> = next ?: Outcome.Done(stopsFlow.value ?: BusStops())
@@ -328,6 +329,12 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         next?.let { return it }
         used += id
         return set(now().copy(lastId = id))
+    }
+
+    override suspend fun done(id: Long, arrived: Boolean): Outcome<BusStops> {
+        next?.let { return it }
+        done += id to arrived
+        return Outcome.Done(now())
     }
 
     override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>> =
