@@ -1,7 +1,6 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../../api';
-import { PLAY_STORE_URL } from '../../playStore';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -102,13 +101,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           {saved && t('Saved.')}
         </span>
       </form>
-
-      <div className="card row spread">
-        <strong className="grow">{t('Get the Android app')}</strong>
-        <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
-          {t('Google Play')}
-        </a>
-      </div>
 
       <ActivityCard />
 

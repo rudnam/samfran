@@ -43,11 +43,3 @@ test('the next shift shows up with the month, not after it', async ({ page }) =>
   expect(await page.locator('.next-shift').count()).toBe(1);
   await expect(page.locator('.next-shift')).toContainText('Next shift');
 });
-
-test('the Android app is on Us, from the Play Store', async ({ page }) => {
-  await signUp(page);
-  await page.getByRole('navigation').getByRole('link', { name: 'Us', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Recent changes' })).toBeVisible();
-  await expect(page.getByText('Get the Android app')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Google Play' })).toHaveAttribute('href', 'https://play.google.com/apps/internaltest/4700129288045289290');
-});
