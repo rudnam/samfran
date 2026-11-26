@@ -12,7 +12,8 @@
 // the way a real one does. It vibrates where the browser can, so anyone can
 // see what it does before relying on it.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { api, errorMessage, type BusStops, type Buzz, type Downloads, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
+import { api, errorMessage, type BusStops, type Buzz, type FoundStop, type SavedStop, type ShiftDay, type ShiftLabel, type StopKind } from '../../api';
+import { PLAY_STORE_URL } from '../../playStore';
 import { t, tx, type Key } from '../../i18n';
 import { BackLink } from '../../components/BackLink';
 import { href, navigate, replaceRoute, useRoute } from '../../router';
@@ -160,7 +161,6 @@ export function BusPage() {
   // A new stop being set up, before it's added.
   const [draft, setDraft] = useState<Draft | null>(null);
   const view = viewOf(route.params, draft);
-  const [apk, setApk] = useState<Downloads['android']>(null);
   const [shift, setShift] = useState<ShiftDay | null>(null);
   // A stop picked on this visit, instead of the one for the shift.
   const [picked, setPicked] = useState<number | null>(null);
@@ -169,7 +169,6 @@ export function BusPage() {
 
   useEffect(() => {
     api.busStops().then(setAll, (err) => setError(errorMessage(err)));
-    api.downloads().then((d) => setApk(d.android), () => {});
     api.shifts().then((m) => setShift(homeShift(m.days, Date.now())), () => {});
   }, []);
 
@@ -321,7 +320,6 @@ export function BusPage() {
           }}
           practice={practice}
           practiceLeft={practice?.phase === 'riding' ? Math.max(0, 1 - (now - practice.startedAt) / practiceMs) : 0}
-          apk={apk}
           onPractice={() => {
             setError('');
             setNow(Date.now());
@@ -471,7 +469,6 @@ function RideCard(p: {
   practice: Practice;
   /** 1 to 0, through the pretend ride. */
   practiceLeft: number;
-  apk: Downloads['android'];
   onPractice: () => void;
   onEndPractice: () => void;
 }) {
@@ -542,11 +539,9 @@ function RideCard(p: {
       </button>
       <div className="app-note">
         <p className="small">{t('The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.')}</p>
-        {p.apk && (
-          <a className="button secondary" href={p.apk.url} download>
-            {t('Get the Android app')}
-          </a>
-        )}
+        <a className="button secondary" href={PLAY_STORE_URL} target="_blank" rel="noopener">
+          {t('Get the Android app')}
+        </a>
       </div>
     </div>
   );

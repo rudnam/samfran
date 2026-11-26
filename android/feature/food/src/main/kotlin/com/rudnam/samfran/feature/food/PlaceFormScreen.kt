@@ -101,7 +101,6 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
             state.problem?.problem()?.let { ErrorText(it) } ?: Skeleton(rows = 3)
             return@SubPage
         }
-        if (!state.editing && !state.fromShare) Hint(stringResource(R.string.share_hint))
         SamFranCard(spacing = 14) {
             if (!state.editing) {
                 Segmented(

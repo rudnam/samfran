@@ -191,8 +191,7 @@ export const ja = {
 
   // The Android app
   'Get the Android app': 'Androidアプリを入手',
-  Download: 'ダウンロード',
-  'Share a place from Google Maps to SamFran to add it in one tap.': 'Googleマップで場所を「共有」→ SamFran で、すぐに追加できます。',
+  'Google Play': 'Google Play',
   'Looking up the place…': '場所を調べています…',
 
   // Shifts

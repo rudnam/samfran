@@ -27,7 +27,6 @@
     <string name="paste">貼り付け</string>
     <string name="maps_link_hint">任意です。貼り付けると名前が自動で入ります。</string>
     <string name="looking_up">場所を調べています…</string>
-    <string name="share_hint">Googleマップで場所を「共有」→ SamFran で、すぐに追加できます。</string>
     <string name="notes">メモ</string>
     <string name="notes_hint">おすすめ、行く時期、持ち物など…</string>
     <string name="cancel">キャンセル</string>

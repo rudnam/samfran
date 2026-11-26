@@ -28,7 +28,6 @@
     <string name="paste">Paste</string>
     <string name="maps_link_hint">Optional. Paste one and the name fills itself in.</string>
     <string name="looking_up">Looking up the place…</string>
-    <string name="share_hint">Share a place from Google Maps to SamFran to add it in one tap.</string>
     <string name="notes">Notes</string>
     <string name="notes_hint">What to order, when to go, what to bring…</string>
     <string name="cancel">Cancel</string>

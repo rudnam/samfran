@@ -1,6 +1,7 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type Downloads, type Me } from '../../api';
+import { api, errorMessage, type Me } from '../../api';
+import { PLAY_STORE_URL } from '../../playStore';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -9,16 +10,6 @@ import { Avatar, useSpace } from '../../space';
 import { ErrorText } from '../../components/ErrorText';
 import { Skeleton } from '../../components/Overlay';
 
-// What there is to download only changes with the server's settings, so it's
-// asked for once, when the app opens: by the time Us is opened it's known,
-// and the Android app's card is there from the start instead of dropping in
-// and pushing the cards below it down.
-let android: Downloads['android'] = null;
-const downloadsLoaded = api.downloads().then(
-  (d) => (android = d.android),
-  () => null,
-);
-
 export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
   const self = space?.members.find((m) => m.me);
@@ -26,16 +17,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [apk, setApk] = useState(android);
-
-  useEffect(() => {
-    let alive = true;
-    downloadsLoaded.then((a) => alive && setApk(a));
-    return () => {
-      alive = false;
-    };
-  }, []);
-
   useEffect(() => {
     if (self) setName(self.name);
   }, [self?.name]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -122,17 +103,12 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         </span>
       </form>
 
-      {apk && (
-        <div className="card row spread">
-          <span className="grow">
-            <strong className="block">{t('Get the Android app')}</strong>
-            <span className="hint">{t('Share a place from Google Maps to SamFran to add it in one tap.')}</span>
-          </span>
-          <a className="button" href={apk.url} download>
-            {t('Download')}
-          </a>
-        </div>
-      )}
+      <div className="card row spread">
+        <strong className="grow">{t('Get the Android app')}</strong>
+        <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
+          {t('Google Play')}
+        </a>
+      </div>
 
       <ActivityCard />
 
