@@ -60,7 +60,7 @@
             </intent-filter>
         </receiver>
 
-        <!-- Looks for the other person's changes about every half hour, to notify about them. -->
+        <!-- Looks for the other person's changes about every half hour, to notify about any a push missed (PushService). -->
         <service
             android:name=".ActivityJob"
             android:exported="false"

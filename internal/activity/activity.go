@@ -2,7 +2,9 @@
 // (shifts and their settings, the calendar link, restaurants, invitations):
 // who did it, whether from the app or through Claude, and when. The Us tab
 // shows the latest. Features call Log after a change succeeds; a failure to
-// log is logged and never fails the change.
+// log is logged and never fails the change. Each change also tells the
+// other person's phones at once (Store.Notify, internal/push), which then
+// ask GET /api/activity what's new, as their half-hourly check does.
 package activity
 
 import (
@@ -11,6 +13,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/rudnam/samfran/internal/httpx"
@@ -34,7 +37,14 @@ type Entry struct {
 	Details map[string]any `json:"details"`
 }
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db *sql.DB
+	// Notify, if set, tells a person's phones at once (internal/push).
+	Notify func(ctx context.Context, userID int64, data map[string]string)
+}
+
+// PushType is the push message's type: "something changed, ask what".
+const PushType = "activity"
 
 func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 
@@ -48,10 +58,40 @@ func (s *Store) Log(ctx context.Context, spaceID, userID int64, via, kind string
 		details = map[string]any{}
 	}
 	b, _ := json.Marshal(details)
-	if _, err := s.db.ExecContext(context.WithoutCancel(ctx),
-		`INSERT INTO activity (space_id, user_id, via, kind, details) VALUES ($1, $2, $3, $4, $5)`,
-		spaceID, userID, via, kind, b); err != nil {
+	ctx = context.WithoutCancel(ctx)
+	var id int64
+	if err := s.db.QueryRowContext(ctx,
+		`INSERT INTO activity (space_id, user_id, via, kind, details) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		spaceID, userID, via, kind, b).Scan(&id); err != nil {
 		slog.WarnContext(ctx, "log activity", "kind", kind, "err", err)
+		return
+	}
+	s.notifyOthers(ctx, spaceID, userID, id, kind)
+}
+
+// notifyOthers tells the space's other members' phones about change id.
+// The message carries no details: the phone asks for them, signed in, and
+// words them itself.
+func (s *Store) notifyOthers(ctx context.Context, spaceID, userID, id int64, kind string) {
+	if s.Notify == nil {
+		return
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT user_id FROM space_members WHERE space_id = $1 AND user_id <> $2`, spaceID, userID)
+	if err != nil {
+		slog.WarnContext(ctx, "activity: members", "err", err)
+		return
+	}
+	var others []int64
+	for rows.Next() {
+		var uid int64
+		if rows.Scan(&uid) == nil {
+			others = append(others, uid)
+		}
+	}
+	rows.Close()
+	data := map[string]string{"type": PushType, "id": strconv.FormatInt(id, 10), "kind": kind}
+	for _, uid := range others {
+		s.Notify(ctx, uid, data)
 	}
 }
 
