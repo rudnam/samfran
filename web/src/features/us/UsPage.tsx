@@ -1,8 +1,6 @@
 // The two of you: names, inviting your partner, language and signing out.
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../../api';
-import { PLAY_STORE_URL } from '../../playStore';
-import { Icon } from '../../components/Icon';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -10,9 +8,6 @@ import { t } from '../../i18n';
 import { Avatar, useSpace } from '../../space';
 import { ErrorText } from '../../components/ErrorText';
 import { Skeleton } from '../../components/Overlay';
-
-// The Android app is no use on an iPhone or iPad (which can say it's a Mac).
-const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
@@ -119,16 +114,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           <span>{t('Appearance')}</span>
           <ThemePicker />
         </div>
-        {!iPhone && (
-          <a className="row spread device-link" href={PLAY_STORE_URL} target="_blank" rel="noopener" title={t('Get it on Google Play')}>
-            <span>{t('Android app')}</span>
-            <span className="device-link-value">
-              <PlayLogo />
-              <span className="visually-hidden">{t('Get it on Google Play')}</span>
-              <Icon name="chevronRight" size={16} />
-            </span>
-          </a>
-        )}
         <div className="row spread">
           <span className="muted small">{me.demo ? t('Demo') : me.email}</span>
           <button type="button" className="secondary" onClick={onSignOut}>
@@ -225,17 +210,5 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
       )}
       <ErrorText message={error} />
     </div>
-  );
-}
-
-/** Google Play's four-colour triangle. */
-function PlayLogo() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="#4285F4" d="M3 2.4v19.2L13 12z" />
-      <path fill="#34A853" d="M3 2.4 16.5 9.5 13 12z" />
-      <path fill="#EA4335" d="M3 21.6 13 12l3.5 2.5z" />
-      <path fill="#FBBC04" d="M16.5 9.5 21 12l-4.5 2.5L13 12z" />
-    </svg>
   );
 }
