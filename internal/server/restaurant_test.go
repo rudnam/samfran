@@ -23,9 +23,10 @@ type restaurantJSON struct {
 		Me    bool   `json:"me"`
 		Stars int    `json:"stars"`
 	} `json:"ratings"`
-	Cover      *string `json:"cover"`
-	PhotoCount int     `json:"photo_count"`
-	Visits     []struct {
+	Cover        *string `json:"cover"`
+	CoverPhotoID *int64  `json:"cover_photo_id"`
+	PhotoCount   int     `json:"photo_count"`
+	Visits       []struct {
 		ID        int64  `json:"id"`
 		VisitedOn string `json:"visited_on"`
 		Note      string `json:"note"`

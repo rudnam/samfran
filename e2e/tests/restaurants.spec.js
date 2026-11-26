@@ -157,7 +157,14 @@ test('photos: added to a visit as they were taken, shown in a strip, opened full
   await expect(viewer.getByRole('img', { name: 'Photo 1 of 2' })).toBeVisible();
   await expect(viewer.getByRole('link', { name: 'Download' })).toHaveAttribute('href', photos[0].url);
 
-  // Deleting one asks first.
+  // Any photo can be the place's cover instead of the newest; the viewer says which it is.
+  await expect(viewer.getByRole('button', { name: 'Make cover' })).toBeVisible();
+  await viewer.getByRole('button', { name: 'Make cover' }).click();
+  await expect(viewer.getByRole('button', { name: 'Make cover' })).toHaveCount(0);
+  await expect(viewer.getByText('Cover', { exact: true })).toBeVisible();
+  expect((await (await page.request.get(`/api/restaurants/${id}`)).json()).cover).toBe(photos[0].thumb_url);
+
+  // Deleting one asks first; deleting the cover goes back to the newest.
   await viewer.getByRole('button', { name: 'Delete' }).click();
   await page.getByRole('dialog', { name: 'Delete this photo?' }).getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(viewer.getByRole('img', { name: 'Photo 1 of 1' })).toHaveAttribute('src', photos[1].url);
@@ -165,11 +172,12 @@ test('photos: added to a visit as they were taken, shown in a strip, opened full
   await expect(viewer).toBeHidden();
   await expect(strip.getByRole('button', { name: /^Photo / })).toHaveCount(1);
 
-  // On the list, the place's newest photo is where its category's icon was.
+  // On the list, the place's cover photo is where its category's icon was, with the icon in its corner.
   await page.getByRole('link', { name: 'Our places' }).click();
   const card = page.getByRole('list', { name: 'Been there' }).getByRole('listitem').first();
-  await expect(card.locator('img.tile')).toHaveAttribute('src', photos[1].thumb_url);
-  await expect(card.locator('img.tile')).toHaveJSProperty('complete', true);
+  await expect(card.locator('.tile img')).toHaveAttribute('src', photos[1].thumb_url);
+  await expect(card.locator('.tile img')).toHaveJSProperty('complete', true);
+  await expect(card.locator('.tile .tile-badge')).toBeVisible();
 
   // A visit with photos says they go with it.
   await addPhoto(page, id, place.visits[0].id, { hue: 200 });
@@ -524,7 +532,7 @@ test('without a map key there is no map, and Nearby says why when location is of
   await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
 });
 
-test('order: newest, best rated or by name, and remembered', async ({ page }) => {
+test('order: newest, oldest, best rated or by name, and remembered', async ({ page }) => {
   await signUp(page);
   const today = new Date().toISOString().slice(0, 10);
   // Added in this order, so newest first is the reverse.
@@ -541,6 +549,10 @@ test('order: newest, best rated or by name, and remembered', async ({ page }) =>
   const been = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(been).toHaveText([/Bento Box/, /Unrated Udon/, /Ramen Tsubaki/, /Gyoza Komachi/]);
   await expect(page.getByRole('button', { name: 'Order: Newest' })).toBeVisible();
+
+  // Oldest: the other way round.
+  await pickOrder(page, 'Oldest');
+  await expect(been).toHaveText([/Gyoza Komachi/, /Ramen Tsubaki/, /Unrated Udon/, /Bento Box/]);
 
   // Best rated first; nobody's rated Unrated Udon, so it's last.
   await pickOrder(page, 'Top rated');

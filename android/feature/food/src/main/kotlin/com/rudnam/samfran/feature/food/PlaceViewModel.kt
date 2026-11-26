@@ -8,6 +8,7 @@ import com.rudnam.samfran.core.common.ApplicationScope
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.data.Photos
+import com.rudnam.samfran.core.model.Photo
 import com.rudnam.samfran.core.data.UnreadablePhotoException
 import com.rudnam.samfran.core.data.SpaceRepository
 import com.rudnam.samfran.core.model.Restaurant
@@ -50,6 +51,10 @@ data class PlaceUiState(
     val sending: Map<Long, List<SendingPhoto>> = emptyMap(),
     /** What went wrong sending photos, by visit. */
     val photoProblem: Map<Long, Outcome<Any>> = emptyMap(),
+    /** Photos being saved to the phone, those saved, and what went wrong saving one. */
+    val saving: Set<Long> = emptySet(),
+    val savedPhotos: Set<Long> = emptySet(),
+    val saveProblem: Outcome<Any>? = null,
     /** The comment being written. */
     val draft: String = "",
     /** The place is gone (deleted here): the page closes. */
@@ -82,6 +87,9 @@ interface PlaceActions {
     /** Sends photos picked on the phone to a visit, one after another, as they were taken. */
     fun addPhotos(visit: Long, uris: List<String>)
     fun deletePhoto(photo: Long)
+    fun setCover(photo: Long)
+    /** Saves a photo's original, as it was taken, to the phone's Pictures. */
+    fun savePhoto(photo: Photo)
     fun delete()
     fun setDraft(text: String)
     /** Posts [PlaceUiState.draft], which empties once it's saved. */
@@ -202,6 +210,23 @@ class PlaceViewModel @Inject constructor(
     }
 
     override fun deletePhoto(photo: Long) = change({ food.deletePhoto(id, photo) })
+    override fun setCover(photo: Long) = change({ food.setCover(id, photo) })
+
+    override fun savePhoto(photo: Photo) {
+        if (photo.id in local.value.saving) return
+        local.update { it.copy(saving = it.saving + photo.id, saveProblem = null) }
+        // Outlives the page, like sending: closing the viewer mustn't stop a save half done.
+        appScope.launch {
+            val result = photos.save(photo)
+            local.update { s ->
+                s.copy(
+                    saving = s.saving - photo.id,
+                    savedPhotos = if (result is Outcome.Done) s.savedPhotos + photo.id else s.savedPhotos,
+                    saveProblem = result.takeIf { it !is Outcome.Done },
+                )
+            }
+        }
+    }
 
     override fun delete() = change({ food.delete(id) }) { it.copy(deleted = true) }
 

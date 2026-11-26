@@ -89,8 +89,10 @@ data class Restaurant(
     val lastVisit: LocalDate? = null,
     /** The signed-in person's first. */
     val ratings: List<Rating> = emptyList(),
-    /** Its newest photo's thumbnail (a full address), shown instead of its category's icon; null without photos. */
+    /** Its cover photo's thumbnail (a full address): the one chosen, else the newest; shown instead of its category's icon; null without photos. */
     val cover: String? = null,
+    /** The photo [cover] is; null without photos (or from a server before covers could be chosen). */
+    val coverPhotoId: Long? = null,
     val photoCount: Int = 0,
     /** Newest first; only on one place's page. */
     val visits: List<Visit>? = null,

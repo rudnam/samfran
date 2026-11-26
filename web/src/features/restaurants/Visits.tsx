@@ -122,6 +122,9 @@ export function Visits({ place, onChange }: { place: Restaurant; onChange: (r: R
           photos={open.photos ?? []}
           start={Math.min(viewing.index, (open.photos ?? []).length - 1)}
           date={open.visited_on}
+          coverId={place.cover_photo_id ?? null}
+          busy={busy}
+          onCover={(photo) => run(() => api.setCover(place.id, photo.id))}
           onClose={() => setViewing(null)}
           onDelete={async (photo) => {
             const yes = await confirmDialog({ title: t('Delete this photo?'), body: t('It’s gone for both of you. This can’t be undone.'), confirm: t('Delete'), danger: true });
@@ -310,12 +313,19 @@ function PhotoViewer({
   photos,
   start,
   date,
+  coverId,
+  busy,
+  onCover,
   onClose,
   onDelete,
 }: {
   photos: Photo[];
   start: number;
   date: string;
+  /** The photo the list shows for the place. */
+  coverId: number | null;
+  busy: boolean;
+  onCover: (p: Photo) => void;
   onClose: () => void;
   onDelete: (p: Photo) => void;
 }) {
@@ -360,6 +370,16 @@ function PhotoViewer({
           {shortDate(date)} · {i + 1} / {photos.length}
           {photo.added_by && <span className="muted"> · {photo.added_by}</span>}
         </span>
+        {photo.id === coverId ? (
+          <span className="viewer-cover">
+            <Icon name="check" size={16} />
+            {t('Cover')}
+          </span>
+        ) : (
+          <button type="button" className="secondary small" disabled={busy} onClick={() => onCover(photo)}>
+            {t('Make cover')}
+          </button>
+        )}
         <a className="button secondary small" href={photo.url} target="_blank" rel="noreferrer" download>
           {t('Download')}
         </a>

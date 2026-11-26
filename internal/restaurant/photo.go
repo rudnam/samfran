@@ -147,6 +147,15 @@ func (s *Store) DeletePhoto(ctx context.Context, spaceID, id, photoID int64) err
 	return oneRow(res, err)
 }
 
+// SetCover makes one of the restaurant's photos its cover.
+func (s *Store) SetCover(ctx context.Context, spaceID, id, photoID int64) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE restaurants r SET cover_photo_id = p.id
+		FROM restaurant_photos p
+		WHERE p.id = $3 AND p.restaurant_id = r.id AND r.id = $1 AND r.space_id = $2`, id, spaceID, photoID)
+	return oneRow(res, err)
+}
+
 // photoInfo is what's served about a photo before its bytes.
 type photoInfo struct {
 	contentType, thumbType string
@@ -329,6 +338,28 @@ func (h *Handler) deletePhoto(w http.ResponseWriter, r *http.Request) error {
 }
 
 var errNoPhoto = httpx.Errorf(http.StatusNotFound, "no such photo")
+
+// setCover is PUT /api/restaurants/{id}/cover, {"photo_id": n}: one of its
+// photos becomes the picture the list shows for it.
+func (h *Handler) setCover(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	if !ok {
+		return errNoSuch
+	}
+	var in struct {
+		PhotoID int64 `json:"photo_id"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	err := h.store.SetCover(r.Context(), space.SpaceFrom(r), id, in.PhotoID)
+	if errors.Is(err, db.ErrNotFound) {
+		return errNoPhoto
+	} else if err != nil {
+		return err
+	}
+	return h.respond(w, r, http.StatusOK, id)
+}
 
 // servePhoto is GET /api/photos/{id} (the original, as taken) and
 // GET /api/photos/{id}/thumb.

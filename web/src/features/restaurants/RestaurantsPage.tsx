@@ -1,5 +1,5 @@
 // The list: places you've been (when you went, latest first) and places you want to go,
-// all of them or one category's, newest, nearest, best rated or A–Z first, as a
+// all of them or one category's, newest, oldest, nearest, best rated or A–Z first, as a
 // list or on a map.
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
@@ -22,13 +22,15 @@ const sortKey = 'places.sort';
 const viewKey = 'places.view';
 
 /** The ways to order the list, in the menu's order. */
-const sorts = ['newest', 'nearby', 'rated', 'name'] as const;
+const sorts = ['newest', 'oldest', 'nearby', 'rated', 'name'] as const;
 type Sort = (typeof sorts)[number];
 
 function sortName(s: Sort): string {
   switch (s) {
     case 'newest':
       return t('Newest');
+    case 'oldest':
+      return t('Oldest');
     case 'nearby':
       return t('Nearby');
     case 'rated':
@@ -142,7 +144,15 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
   const filtered = onTab.filter((r) => (activeFilter === 'all' || categoryOf(r.category) === activeFilter) && matches(r, query));
   // Where they are, when the list is nearest first.
   const near = sort === 'nearby' ? here : null;
-  const shown = near ? byDistance(near, filtered) : sort === 'rated' ? byRating(filtered) : sort === 'name' ? byName(filtered) : filtered;
+  const shown = near
+    ? byDistance(near, filtered)
+    : sort === 'rated'
+      ? byRating(filtered)
+      : sort === 'name'
+        ? byName(filtered)
+        : sort === 'oldest'
+          ? [...filtered].reverse()
+          : filtered;
   const onMap = view === 'map' && mapKey !== '';
   // Search is a button until it's wanted; open while there's something typed.
   const searchable = (list?.length ?? 0) > 4;

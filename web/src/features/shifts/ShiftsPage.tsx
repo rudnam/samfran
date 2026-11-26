@@ -1,10 +1,10 @@
 // Sam's shifts: the month, the next shift, reading a photo of the sheet,
 // and fixing days by hand. Adding them to Google Calendar is on
 // ShiftCalendarLinkPage, the settings on ShiftSettingsPage.
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage, type ReadProgress, type ShiftDay, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
-import { href, navigate } from '../../router';
+import { href, navigate, replaceRoute } from '../../router';
 import { useCached } from '../../cache';
 import { Icon } from '../../components/Icon';
 import { Skeleton } from '../../components/Overlay';
@@ -23,6 +23,18 @@ function savedView(): View {
     return localStorage.getItem(viewKey) === 'list' ? 'list' : 'calendar';
   } catch {
     return 'calendar';
+  }
+}
+
+// Whose shifts they are, remembered on this device, so the title is right
+// from the first frame after a reload instead of "Shifts" turning into
+// "Sam's shifts" once the month arrives.
+const nameKey = 'shifts-person';
+function savedName(): string | null {
+  try {
+    return localStorage.getItem(nameKey);
+  } catch {
+    return null;
   }
 }
 
@@ -81,7 +93,16 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
   }
 
   const shown = data?.month ?? month ?? '';
-  const who = data?.settings.person_name || t('Shifts');
+  const personName = data ? data.settings.person_name : savedName();
+  useEffect(() => {
+    if (!data) return;
+    try {
+      localStorage.setItem(nameKey, data.settings.person_name);
+    } catch {
+      // Private browsing: the title just waits for the month.
+    }
+  }, [data]);
+  const who = personName || t('Shifts');
   const me = data?.settings.person_name || t('You');
   const needsName = data && !data.settings.name_on_sheet;
   // A month with shifts is mostly fixed or looked at; an empty one, filled in.
@@ -91,7 +112,8 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
       <header className="page-head">
         <div className="row spread">
           <div>
-            <h1 className="display">{data?.settings.person_name ? t('{name}’s shifts', { name: who }) : t('Shifts')}</h1>
+            {/* Not known yet (the first visit on this device): the title keeps its place, empty. */}
+            <h1 className="display">{personName ? t('{name}’s shifts', { name: who }) : personName === null && !loadError ? '\u00a0' : t('Shifts')}</h1>
           </div>
           <a className="icon-button" href={href('shifts/settings')} aria-label={t('Settings')} title={t('Settings')}>
             <Icon name="settings" />
@@ -145,9 +167,10 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
         )}
         {ready && data && data.days.length > 0 && view === 'calendar' && (
           <ShiftCalendar
-            key={`${data.month}:${day ?? ''}`}
+            key={data.month}
             month={data.month}
             pick={day}
+            onPick={(date) => replaceRoute('shifts', { month: data.month, day: date }, { keepScroll: true })}
             days={data.days}
             closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]}
             who={me}

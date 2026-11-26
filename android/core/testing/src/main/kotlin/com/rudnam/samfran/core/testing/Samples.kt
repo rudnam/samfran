@@ -49,7 +49,7 @@ object Samples {
             12, "Hanabi Grill", "Station East", "Yakiniku", mapUrl = "https://maps.app.goo.gl/hanabi", notes = "Book the window seats. The harami is the one.",
             addedBy = "Sam", visitCount = 4, lastVisit = d("2026-11-14"),
             ratings = listOf(Rating("Fran", true, 5), Rating("Sam", false, 4)),
-            cover = photo(6).thumbUrl, photoCount = 6,
+            cover = photo(2).thumbUrl, coverPhotoId = 2, photoCount = 6, // the cover chosen, not the newest
             visits = listOf(
                 Visit(41, d("2026-11-14"), "Harami and the cold noodles", "Sam", photos = (1L..5L).map(::photo)),
                 Visit(37, d("2026-10-02"), "", "Fran", photos = listOf(photo(6))),

@@ -123,6 +123,7 @@
     <string name="order">Order</string>
     <string name="sort_latest">Latest</string>
     <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
     <string name="sort_nearby">Nearby</string>
     <string name="sort_top_rated">Top rated</string>
     <string name="sort_name">A–Z</string>
@@ -165,6 +166,13 @@
     <string name="add_photos">Add photos</string>
     <string name="sending_photo">Sending a photo</string>
     <string name="delete_photo_title">Delete this photo?</string>
+    <!-- The photo the list shows for a place; any of its photos can be. -->
+    <string name="is_cover">Cover photo</string>
+    <string name="more">More</string>
+    <string name="make_cover">Make cover</string>
+    <string name="download">Download</string>
+    <string name="photo_saved">Saved to Pictures</string>
+    <string name="photo_not_saved">The photo couldn’t be saved on this phone. Is it full?</string>
     <string name="delete_photo_body">It’s gone for both of you. This can’t be undone.</string>
     <string name="close">Close</string>
     <string name="been_times">Been %1$d times · last %2$s</string>

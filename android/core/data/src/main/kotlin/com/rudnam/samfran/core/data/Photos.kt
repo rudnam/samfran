@@ -1,14 +1,20 @@
 package com.rudnam.samfran.core.data
 
+import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
+import com.rudnam.samfran.core.model.Photo
+import com.rudnam.samfran.core.network.SamFranNetwork
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -43,13 +49,66 @@ class UnreadablePhotoException : Exception("that photo can't be opened")
 interface Photos {
     /** The photo at [uri] (from the photo picker), or [UnreadablePhotoException]. */
     suspend fun read(uri: String): PickedPhoto
+
+    /**
+     * Saves a photo's original, exactly as it was taken, to the phone's
+     * Pictures/SamFran, where the gallery shows it. [Outcome.Refused] with
+     * [COULD_NOT_SAVE] when the phone wouldn't keep it.
+     */
+    suspend fun save(photo: Photo): Outcome<Unit>
+
+    companion object {
+        /** The words for a photo the phone wouldn't save; the screen translates them. */
+        const val COULD_NOT_SAVE = "the photo couldn't be saved on this phone"
+    }
 }
+
+/** The phone wouldn't keep a downloaded photo (no room, no permission). */
+private class CouldNotSaveException(cause: Throwable?) : Exception(cause)
 
 @Singleton
 internal class AndroidPhotos @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(SamFranDispatchers.IO) private val io: CoroutineDispatcher,
+    private val network: SamFranNetwork,
 ) : Photos {
+    override suspend fun save(photo: Photo): Outcome<Unit> = try {
+        outcome(io) {
+            network.downloadPhoto(photo.url) { contentType, input ->
+                val mime = contentType?.substringBefore(';')?.trim()?.lowercase()?.takeIf { it.startsWith("image/") } ?: "image/jpeg"
+                val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mime) ?: "jpg"
+                val resolver = context.contentResolver
+                val pending = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                val values = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "samfran-${photo.id}.$ext")
+                    put(MediaStore.Images.Media.MIME_TYPE, mime)
+                    if (pending) {
+                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SamFran")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
+                    }
+                }
+                val collection = if (pending) MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY) else MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                val uri = try {
+                    resolver.insert(collection, values) ?: throw CouldNotSaveException(null)
+                } catch (e: SecurityException) {
+                    throw CouldNotSaveException(e)
+                } catch (e: IllegalArgumentException) {
+                    throw CouldNotSaveException(e)
+                }
+                try {
+                    // Read from the server as it's written: a 40 MB photo is never all in memory.
+                    (resolver.openOutputStream(uri) ?: throw CouldNotSaveException(null)).use { input.copyTo(it) }
+                    if (pending) resolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
+                } catch (e: Throwable) {
+                    resolver.delete(uri, null, null) // never half a photo in the gallery
+                    throw e
+                }
+            }
+        }
+    } catch (e: CouldNotSaveException) {
+        Outcome.Refused(Photos.COULD_NOT_SAVE)
+    }
+
     override suspend fun read(uri: String): PickedPhoto = withContext(io) {
         val u = Uri.parse(uri)
         val resolver = context.contentResolver

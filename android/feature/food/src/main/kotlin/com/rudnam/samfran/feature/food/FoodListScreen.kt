@@ -329,7 +329,8 @@ private fun PlaceRow(
     val colors = SamFranTheme.colors
     SamFranCard(onClick = onClick, padding = androidx.compose.foundation.layout.PaddingValues(14.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            CategoryTile(place.category, cover = place.cover)
+            // Big enough to tell a photo apart, and the same for every row so the names line up.
+            CategoryTile(place.category, size = 60.dp, cover = place.cover)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(place.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {

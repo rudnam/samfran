@@ -100,8 +100,10 @@ export interface Restaurant {
   last_visit: string | null;
   /** The signed-in person's first. */
   ratings: Rating[];
-  /** The newest photo's thumbnail, shown instead of the category's icon; null without photos. */
+  /** The cover photo's thumbnail (the one chosen, else the newest), shown instead of the category's icon; null without photos. */
   cover?: string | null;
+  /** The photo that cover is: the one chosen (setCover), else the newest. Missing from older servers. */
+  cover_photo_id?: number | null;
   photo_count?: number;
   /** Newest first; only from restaurant(id). */
   visits?: Visit[];
@@ -228,6 +230,8 @@ export const api = {
     });
   },
   deletePhoto: (id: number, photo: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/photos/${photo}`),
+  /** Makes one of the place's photos the picture the list shows for it. */
+  setCover: (id: number, photo: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/cover`, { photo_id: photo }),
   /** The place's name from a Google Maps link, '' if it can't be read. */
   /** position: also find lat/lng by the place's name when the link has none (found_by_name). */
   lookupMap: (url: string, position = false) =>

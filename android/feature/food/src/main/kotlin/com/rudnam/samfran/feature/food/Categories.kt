@@ -2,8 +2,12 @@ package com.rudnam.samfran.feature.food
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -109,23 +113,45 @@ fun PlaceCategory.colors(): Pair2 {
     }
 }
 
-/** The category's icon on its colour, as the list, a place's page and the search show it. */
+/**
+ * The category's icon on its colour, as the list, a place's page and the
+ * search show it. Once the place has photos, its cover is its picture,
+ * with the category's icon in the corner so the kind of place still shows.
+ */
 @Composable
 fun CategoryTile(category: PlaceCategory, modifier: Modifier = Modifier, size: Dp = 48.dp, cover: String? = null) {
     val colors = category.colors()
+    if (cover != null) {
+        Box(modifier.size(size)) {
+            Box(
+                Modifier.matchParentSize().clip(RoundedCornerShape(size * 0.28f)).background(colors.bg),
+                contentAlignment = Alignment.Center,
+            ) {
+                // The icon until the photo is in.
+                LineIcon(category.icon, null, tint = colors.ink, size = size * 0.48f)
+                coil3.compose.AsyncImage(
+                    model = cover,
+                    contentDescription = null,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+            val badge = (size * 0.4f).coerceAtLeast(16.dp)
+            Box(
+                Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp).size(badge)
+                    .border(2.dp, SamFranTheme.colors.surface, CircleShape).padding(1.dp)
+                    .clip(CircleShape).background(colors.bg),
+                contentAlignment = Alignment.Center,
+            ) {
+                LineIcon(category.icon, null, tint = colors.ink, size = badge * 0.6f)
+            }
+        }
+        return
+    }
     Box(
         modifier.size(size).clip(RoundedCornerShape(size * 0.28f)).background(colors.bg),
         contentAlignment = Alignment.Center,
     ) {
         LineIcon(category.icon, null, tint = colors.ink, size = size * 0.48f)
-        // Once it has photos, its newest is its picture, over the icon until it's in.
-        if (cover != null) {
-            coil3.compose.AsyncImage(
-                model = cover,
-                contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
     }
 }

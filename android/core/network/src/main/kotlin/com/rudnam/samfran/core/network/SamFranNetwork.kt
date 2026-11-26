@@ -30,6 +30,7 @@ import com.rudnam.samfran.core.network.model.NetworkShiftSettings
 import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.NetworkSpace
 import com.rudnam.samfran.core.network.model.NetworkCommentInput
+import com.rudnam.samfran.core.network.model.NetworkCoverInput
 import com.rudnam.samfran.core.network.model.NetworkStars
 import com.rudnam.samfran.core.network.model.NetworkLockAnswer
 import com.rudnam.samfran.core.network.model.NetworkLockAsk
@@ -41,6 +42,7 @@ import com.rudnam.samfran.core.network.model.NetworkPushToken
 import com.rudnam.samfran.core.network.model.NetworkCheckIn
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import java.io.InputStream
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -59,6 +61,8 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -143,6 +147,8 @@ internal interface SamFranApi {
         @Part photo: MultipartBody.Part,
     ): NetworkRestaurant
     @DELETE("api/restaurants/{id}/photos/{photo}") suspend fun deletePhoto(@Path("id") id: Long, @Path("photo") photo: Long): NetworkRestaurant
+    @Streaming @GET suspend fun photo(@Url url: String): ResponseBody
+    @PUT("api/restaurants/{id}/cover") suspend fun setCover(@Path("id") id: Long, @Body body: NetworkCoverInput): NetworkRestaurant
     @POST("api/restaurants/{id}/comments") suspend fun addComment(@Path("id") id: Long, @Body body: NetworkCommentInput): NetworkRestaurant
     @DELETE("api/restaurants/{id}/comments/{comment}") suspend fun deleteComment(@Path("id") id: Long, @Path("comment") comment: Long): NetworkRestaurant
     @PUT("api/restaurants/{id}/rating") suspend fun rate(@Path("id") id: Long, @Body body: NetworkStars): NetworkRestaurant
@@ -225,6 +231,12 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun updateVisit(id: Long, visit: Long, visitedOn: String, note: String) = call { api.updateVisit(id, visit, NetworkVisitInput(visitedOn, note)) }
     suspend fun deleteVisit(id: Long, visit: Long) = call { api.deleteVisit(id, visit) }
     suspend fun deletePhoto(id: Long, photo: Long) = call { api.deletePhoto(id, photo) }
+    suspend fun setCover(id: Long, photo: Long) = call { api.setCover(id, NetworkCoverInput(photo)) }
+
+    /** Reads a photo's original at [url], as it was taken, handing [write] its kind and bytes as they come. */
+    suspend fun downloadPhoto(url: String, write: (contentType: String?, InputStream) -> Unit) = call {
+        api.photo(url).use { write(it.contentType()?.toString(), it.byteStream()) }
+    }
 
     /**
      * Adds a photo to a visit: [original] exactly as it was taken (read as

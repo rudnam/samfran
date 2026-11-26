@@ -63,6 +63,9 @@ interface FoodRepository {
 
     suspend fun deletePhoto(id: Long, photo: Long): Outcome<Restaurant>
 
+    /** One of the place's photos becomes the picture the list shows for it. */
+    suspend fun setCover(id: Long, photo: Long): Outcome<Restaurant>
+
     /** The signed-in person's rating; 0 clears it. */
     suspend fun rate(id: Long, stars: Int): Outcome<Restaurant>
 
@@ -143,6 +146,7 @@ internal class OfflineFirstFoodRepository @Inject constructor(
     }
 
     override suspend fun deletePhoto(id: Long, photo: Long) = changed { network.deletePhoto(id, photo) }
+    override suspend fun setCover(id: Long, photo: Long) = changed { network.setCover(id, photo) }
 
     override suspend fun rate(id: Long, stars: Int) = changed { network.rate(id, stars) }
 

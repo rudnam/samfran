@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Photos
 import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.testing.FakeBusAlarm
 import com.rudnam.samfran.core.testing.FakeBusRepository
@@ -114,6 +115,8 @@ class FoodViewModelTest {
         assertEquals(listOf(12L, 9L, 20L, 5L, 7L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want) // nobody's rated these: newest first
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+        vm.setOrder(PlaceOrder.Oldest) // the other way round
+        assertEquals(listOf(14L, 15L, 21L, 22L, 23L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Been)
         vm.setOrder(PlaceOrder.Name)
         assertEquals(listOf("Cafe Lune", "Hanabi Grill", "Menya Kaze", "Sumpu Castle Park", "Trattoria Sole"), vm.state.value.shown.map { it.name })
@@ -198,6 +201,25 @@ class FoodViewModelTest {
     }
 
     @Test
+    fun `a photo is saved to the phone as it was taken, and a phone that won't keep it says so`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
+        watch(vm.state)
+        val photo = vm.state.value.place!!.visits!!.first().photos.first()
+        vm.savePhoto(photo)
+        testScheduler.runCurrent()
+        assertEquals(listOf(photo), photos.saved)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
+        assertTrue(vm.state.value.saving.isEmpty())
+
+        photos.nextSave = Outcome.Refused(Photos.COULD_NOT_SAVE)
+        val other = vm.state.value.place!!.visits!!.first().photos[1]
+        vm.savePhoto(other)
+        testScheduler.runCurrent()
+        assertEquals(Outcome.Refused(Photos.COULD_NOT_SAVE), vm.state.value.saveProblem)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
+    }
+
+    @Test
     fun `photos picked go up as they were taken, one after another, and a photo the phone can't open says so`() = runTest {
         val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
@@ -214,8 +236,13 @@ class FoodViewModelTest {
         assertEquals(added.last().thumbUrl, place.cover) // the newest is the place's picture
         assertTrue(vm.state.value.sending.isEmpty())
 
+        // Any photo can be the cover instead; deleting it goes back to the newest.
+        vm.setCover(added.first().id)
+        assertEquals(added.first().thumbUrl, vm.state.value.place!!.cover)
+        assertEquals(added.first().id, vm.state.value.place!!.coverPhotoId)
         vm.deletePhoto(added.first().id)
         assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
+        assertEquals(added.last().id, vm.state.value.place!!.coverPhotoId)
 
         vm.addPhotos(visit, listOf("content://unreadable/3"))
         testScheduler.runCurrent()

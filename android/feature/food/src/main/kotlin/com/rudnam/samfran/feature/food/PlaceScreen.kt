@@ -84,7 +84,7 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
             Text(place.name, style = MaterialTheme.typography.displaySmall)
             // Its category, then its kind and area, as the website's page says them.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CategoryTile(place.category, size = 32.dp, cover = place.cover)
+                CategoryTile(place.category, size = 40.dp, cover = place.cover)
                 val line = listOf(stringResource(place.category.title), place.subtitle).filter { it.isNotBlank() }.joinToString(" · ")
                 Text(line, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
             }

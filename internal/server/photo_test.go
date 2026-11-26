@@ -98,6 +98,24 @@ func TestPlacePhotos(t *testing.T) {
 	if len(list) != 1 || list[0].PhotoCount != 2 || list[0].Cover == nil || *list[0].Cover != r.Visits[0].Photos[1].ThumbURL {
 		t.Errorf("list cover: %+v", list)
 	}
+
+	// The first photo can be chosen as the cover instead; not another
+	// space's, nor another place's.
+	if code := alice.do("PUT", path+"/cover", map[string]int64{"photo_id": p.ID}, &r); code != 200 || r.Cover == nil || *r.Cover != p.ThumbURL || r.CoverPhotoID == nil || *r.CoverPhotoID != p.ID {
+		t.Fatalf("set cover: %d %+v", code, r)
+	}
+	alice.do("GET", "/api/restaurants", nil, &list)
+	if *list[0].Cover != p.ThumbURL {
+		t.Errorf("list ignores the chosen cover: %v", *list[0].Cover)
+	}
+	if code := bob.do("PUT", path+"/cover", map[string]int64{"photo_id": p.ID}, nil); code != 404 {
+		t.Errorf("bob sets alice's cover: %d", code)
+	}
+	var other restaurantJSON
+	alice.do("POST", "/api/restaurants", map[string]any{"name": "Afuri"}, &other)
+	if code := alice.do("PUT", "/api/restaurants/"+itoa(other.ID)+"/cover", map[string]int64{"photo_id": p.ID}, nil); code != 404 {
+		t.Errorf("another place's photo as cover: %d", code)
+	}
 	// Two photos sent together are one change in the Us tab.
 	var changes []struct{ Kind string }
 	alice.do("GET", "/api/activity", nil, &changes)
@@ -122,7 +140,8 @@ func TestPlacePhotos(t *testing.T) {
 	}
 
 	// A photo is deleted on its own, and the rest go with their visit.
-	if code := alice.do("DELETE", path+"/photos/"+itoa(p.ID), nil, &r); code != 200 || r.PhotoCount != 1 {
+	// Deleting the chosen cover goes back to the newest.
+	if code := alice.do("DELETE", path+"/photos/"+itoa(p.ID), nil, &r); code != 200 || r.PhotoCount != 1 || r.Cover == nil || *r.Cover != r.Visits[0].Photos[0].ThumbURL {
 		t.Fatalf("delete photo: %d %+v", code, r)
 	}
 	if code, _, _ := alice.getBytes(p.URL); code != 404 {
