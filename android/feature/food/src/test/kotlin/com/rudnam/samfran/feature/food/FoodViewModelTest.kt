@@ -60,8 +60,8 @@ class FoodViewModelTest {
         assertTrue(s.searchable)
         vm.setQuery("ramen")
         assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
-        vm.setQuery("miso") // only in an old visit's note, which the app no longer shows
-        assertEquals(emptyList<Long>(), vm.state.value.shown.map { it.id })
+        vm.setQuery("miso") // only in a visit's note: "where did we have that?"
+        assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want)
         vm.setQuery("")
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
@@ -202,23 +202,25 @@ class FoodViewModelTest {
         val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
         val visit = vm.state.value.place!!.visits!!.first().id
+        val before = vm.state.value.place!!.visits!!.first().photos.size // the sample's
         vm.addPhotos(visit, listOf("content://media/picker/1", "content://media/picker/2"))
         testScheduler.runCurrent() // they go in the app's scope, past the page
         assertEquals(2, food.sentPhotos.size)
         assertEquals("image/jpeg", food.sentPhotos.first().contentType)
         val place = vm.state.value.place!!
-        assertEquals(2, place.visits!!.first().photos.size)
-        assertEquals(4000, place.visits!!.first().photos.first().width)
-        assertEquals(place.visits!!.first().photos.last().thumbUrl, place.cover)
+        val added = place.visits!!.first().photos.drop(before)
+        assertEquals(2, added.size)
+        assertEquals(4000, added.first().width)
+        assertEquals(added.last().thumbUrl, place.cover) // the newest is the place's picture
         assertTrue(vm.state.value.sending.isEmpty())
 
-        vm.deletePhoto(place.visits!!.first().photos.first().id)
-        assertEquals(1, vm.state.value.place!!.visits!!.first().photos.size)
+        vm.deletePhoto(added.first().id)
+        assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
 
         vm.addPhotos(visit, listOf("content://unreadable/3"))
         testScheduler.runCurrent()
         assertEquals(Outcome.Refused(PlaceViewModel.UNREADABLE), vm.state.value.photoProblem[visit])
-        assertEquals(1, vm.state.value.place!!.visits!!.first().photos.size)
+        assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
     }
 
     @Test
