@@ -149,4 +149,5 @@
     <string name="phone_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
     <string name="phone_unknown">%sさんのスマホからまだ連絡がありません</string>
     <string name="change_photos">%sの写真を追加</string>
+    <string name="change_commented">%sにコメント</string>
 </resources>
