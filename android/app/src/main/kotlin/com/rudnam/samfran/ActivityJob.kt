@@ -20,16 +20,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
- * Tells one of you when the other changes something you share: about every
- * half hour, while the phone is online, it asks the server for the recent
- * changes (GET /api/activity, signed in as the app is) and shows a
- * notification for the other person's new places, visits, ratings, saved
- * shifts and bus alarms started. Android runs it when it suits the battery, so it can be later
- * than that. It asks the server itself rather than being pushed to, which
- * needs no Google services. Switched on from the Us tab.
+ * Tells one of you when the other changes something you share: it asks the
+ * server for the recent changes (GET /api/activity, signed in as the app is)
+ * and shows a notification for the other person's new places, visits,
+ * ratings, saved shifts and bus alarms started. Switched on from the Us tab.
+ *
+ * The server pushes a message the moment a change is made (internal/push,
+ * [PushService]), and that runs the same [check]. This job asks about every
+ * half hour as well, while the phone is online, for whatever a push missed:
+ * a server without Firebase, or a phone that was offline for longer than
+ * the message keeps. Android runs it when it suits the battery, so it can
+ * be later than that.
  *
  * (The class and its job id keep the Capacitor build's: a job scheduled
  * before the update runs this.)
@@ -45,7 +51,7 @@ class ActivityJob : JobService() {
 
     override fun onStartJob(params: JobParameters): Boolean {
         running = scope.launch {
-            runCatching { check() } // offline, signed out, or an answer it can't read: next time
+            runCatching { check(this@ActivityJob, session, activity) } // offline, signed out, or an answer it can't read: next time
             jobFinished(params, false)
         }
         return true
@@ -61,19 +67,6 @@ class ActivityJob : JobService() {
         super.onDestroy()
     }
 
-    private suspend fun check() {
-        val p = ShiftPrompt.prefs(this)
-        if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return
-        val list = (activity.forNotifications() as? Outcome.Done)?.value ?: return
-        val seen = p.getLong(SEEN, 0)
-        val fresh = list.filter { it.id > seen }
-        if (fresh.isEmpty()) return
-        p.edit { putLong(SEEN, fresh.maxOf { it.id }) }
-        // Newest first, as the server lists them.
-        val lines = fresh.filter { !it.me }.mapNotNull { describe(this, it) }
-        if (lines.isNotEmpty()) show(this, lines)
-    }
-
     companion object {
         private const val JOB = 20
         private const val CHANNEL = "changes"
@@ -83,6 +76,34 @@ class ActivityJob : JobService() {
         /** In ShiftPrompt.prefs: alerts are on, and the newest change already shown or notified. */
         const val ALERTS = "alerts"
         const val SEEN = "seen"
+
+        /** In ShiftPrompt.prefs: the newest change seen before the notification showing now, whose changes it lists. */
+        private const val SHOWING_AFTER = "seen_showing_after"
+
+        /** A push and the job at once must not both notify the same change. */
+        private val checking = Mutex()
+
+        /**
+         * Asks for the recent changes and notifies the other person's new
+         * ones. Changes still in the notification from before stay in it,
+         * so a second push adds to it rather than replacing it.
+         */
+        suspend fun check(c: Context, session: SessionStore, activity: ActivityRepository) = checking.withLock {
+            val p = ShiftPrompt.prefs(c)
+            if (!p.getBoolean(ALERTS, false) || session.currentToken() == null) return@withLock
+            val list = (activity.forNotifications() as? Outcome.Done)?.value ?: return@withLock
+            val seen = p.getLong(SEEN, 0)
+            val fresh = list.filter { it.id > seen }
+            if (fresh.isEmpty()) return@withLock
+            val showing = c.getSystemService(NotificationManager::class.java).activeNotifications.any { it.id == NOTIFICATION }
+            val after = if (showing) minOf(p.getLong(SHOWING_AFTER, seen), seen) else seen
+            p.edit { putLong(SEEN, fresh.maxOf { it.id }) }
+            // Newest first, as the server lists them.
+            val lines = list.filter { it.id > after && !it.me }.mapNotNull { describe(c, it) }
+            if (fresh.none { !it.me && describe(c, it) != null }) return@withLock // nothing new to say: leave it as it is
+            p.edit { putLong(SHOWING_AFTER, after) }
+            show(c, lines)
+        }
 
         fun schedule(c: Context, on: Boolean) {
             // The phone refusing the job (a limit, a security rule) must not crash the app: the alerts just won't arrive.

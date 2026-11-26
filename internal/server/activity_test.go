@@ -72,3 +72,38 @@ func TestActivity(t *testing.T) {
 		t.Errorf("other space: %+v", list)
 	}
 }
+
+// Each change tells the other person's phones at once, and not the phones of
+// whoever made it.
+func TestActivityPushesToTheOther(t *testing.T) {
+	sam, fran, fake, _ := lockPair(t)
+
+	var r struct{ ID int64 }
+	if code := sam.do("POST", "/api/restaurants", map[string]any{"name": "Taco Loco"}, &r); code != 201 {
+		t.Fatalf("add: %d", code)
+	}
+	got := fake.waitFor(t, "fran-phone", "activity")
+	if got["kind"] != "restaurant_added" || got["id"] == "" {
+		t.Errorf("push %v", got)
+	}
+	var list []struct {
+		ID   int64
+		Kind string
+	}
+	fran.do("GET", "/api/activity?bus=1", nil, &list)
+	if len(list) == 0 || itoa(list[0].ID) != got["id"] {
+		t.Errorf("push id %s, newest %+v", got["id"], list)
+	}
+
+	fran.do("PUT", "/api/restaurants/"+itoa(r.ID)+"/rating", map[string]int{"stars": 5}, nil)
+	if got := fake.waitFor(t, "sam-phone", "activity"); got["kind"] != "rated" {
+		t.Errorf("push to sam %v", got)
+	}
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	for _, p := range fake.sent {
+		if p.data["type"] == "activity" {
+			t.Errorf("extra push %+v (to whoever made the change?)", p)
+		}
+	}
+}

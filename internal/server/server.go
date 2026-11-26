@@ -134,6 +134,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		}
 	}
 	notifier := push.NewNotifier(conn, pushSender)
+	activities.Notify = notifier.Notify
 	push.NewHandler(conn).Register(mux, accounts.RequireUser)
 	lockHandler := applock.NewHandler(applock.NewStore(conn))
 	lockHandler.Notify = notifier.Notify

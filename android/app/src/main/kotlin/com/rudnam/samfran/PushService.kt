@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.AppLocks
 import com.rudnam.samfran.core.data.LocksRepository
 import com.rudnam.samfran.core.data.Outcome
@@ -32,6 +33,8 @@ import javax.inject.Inject
  * - lock_added: the other person locked an app.
  * - lock_check: the other person's phone stopped (or started again) covering
  *   their locked apps, was stopped for a while, or hasn't checked in for a day.
+ * - activity: the other person changed something you share; [ActivityJob.check]
+ *   asks what and notifies it.
  */
 @AndroidEntryPoint
 class PushService : FirebaseMessagingService() {
@@ -41,6 +44,8 @@ class PushService : FirebaseMessagingService() {
 
     @Inject lateinit var session: SessionStore
 
+    @Inject lateinit var activity: ActivityRepository
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onNewToken(token: String) {
@@ -49,6 +54,10 @@ class PushService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
+        if (data["type"] == "activity") {
+            kotlinx.coroutines.runBlocking { runCatching { ActivityJob.check(this@PushService, session, activity) } }
+            return
+        }
         // Run on this service's own thread, which may block: the notification after the copy is fresh.
         kotlinx.coroutines.runBlocking {
             if (session.currentToken() == null) return@runBlocking
