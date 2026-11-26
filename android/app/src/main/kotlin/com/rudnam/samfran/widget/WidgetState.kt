@@ -1,8 +1,10 @@
 package com.rudnam.samfran.widget
 
+import com.rudnam.samfran.core.model.Member
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftKind
 import com.rudnam.samfran.core.model.ShiftMonth
+import com.rudnam.samfran.core.model.Space
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -13,7 +15,7 @@ sealed interface ShiftWidgetState {
     data object Empty : ShiftWidgetState
 
     data class Shifts(
-        /** Whose shifts they are ("Sam"), or "" when the settings don't say. */
+        /** Whose shifts they are ("Sam"), or "" when the settings don't say or they're the signed-in person's own. */
         val person: String,
         /** The shift on now, or else the next one; null when none is known. */
         val next: ShiftDay?,
@@ -26,6 +28,23 @@ sealed interface ShiftWidgetState {
 }
 
 data class WeekDay(val date: LocalDate, val day: ShiftDay?)
+
+/**
+ * The shifts are the signed-in person's own: "whose shifts" ([person], free
+ * text in the shift settings) names them, by the same name or the same first
+ * name ("Sam" and "Sam Otoru"), and doesn't name the other one of you too.
+ * Unknown (no space on the phone) counts as not.
+ */
+fun isOwnShifts(person: String, space: Space?): Boolean {
+    fun words(name: String) = name.trim().lowercase().split(Regex("\\s+")).filter(String::isNotEmpty)
+    fun names(member: Member?): Boolean {
+        val a = words(person)
+        val b = words(member?.name.orEmpty())
+        return a.isNotEmpty() && b.isNotEmpty() && (a == b || a.first() == b.first())
+    }
+    val me = space?.members?.firstOrNull { it.me } ?: return false
+    return names(me) && !names(space.partner)
+}
 
 /**
  * The widget's view of [months] (this month and, if the phone has it, the
@@ -59,8 +78,8 @@ sealed interface BusWidgetState {
     /** No stop chosen yet. */
     data object NoStop : BusWidgetState
 
-    /** Ready to start a trip to this stop (the shift's, or else the one used last). */
-    data class Ready(val stopId: Long, val stopName: String, val train: Boolean = false) : BusWidgetState
+    /** Ready to start a trip to this stop (the shift's, or else the one used last); [others]: there are more stops to choose from. */
+    data class Ready(val stopId: Long, val stopName: String, val train: Boolean = false, val others: Boolean = false) : BusWidgetState
 
     /** A trip is on; [buzzing] once the stop is near. */
     data class Riding(val stopName: String, val buzzing: Boolean) : BusWidgetState

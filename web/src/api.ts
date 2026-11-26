@@ -156,7 +156,6 @@ export const api = {
   forgotPassword: (email: string) => request<void>('POST', '/api/password/forgot', { email }),
   /** Sets a new password with the emailed link's token, and signs in. */
   resetPassword: (token: string, password: string) => request<Me>('POST', '/api/password/reset', { token, password }),
-  downloads: () => request<Downloads>('GET', '/api/downloads'),
 
   space: () => request<Space>('GET', '/api/space'),
   setMyName: (name: string) => request<Space>('PUT', '/api/space/me', { name }),
@@ -478,11 +477,6 @@ export interface ActivityEntry {
   via: 'app' | 'claude';
   kind: string;
   details: Record<string, unknown>;
-}
-
-/** What the server offers to download: the Android app's APK, or null. */
-export interface Downloads {
-  android: { url: string; size: number; updated: string; version?: number; version_name?: string } | null;
 }
 
 /** A message to show for any thrown value, in the language in use. */

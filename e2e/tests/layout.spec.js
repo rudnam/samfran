@@ -43,17 +43,3 @@ test('the next shift shows up with the month, not after it', async ({ page }) =>
   expect(await page.locator('.next-shift').count()).toBe(1);
   await expect(page.locator('.next-shift')).toContainText('Next shift');
 });
-
-test('the Android app is on Us from the start, not dropped in above what follows', async ({ page }) => {
-  const apk = { android: { url: '/download/samfran.apk', size: 1000, updated: '2026-11-01T00:00:00Z' } };
-  await page.route('**/api/downloads', async (route) => {
-    await new Promise((r) => setTimeout(r, 500));
-    await route.fulfill({ json: apk });
-  });
-  await signUp(page);
-  await page.waitForTimeout(600); // the app has been open a moment, as anyone's has before opening Us
-
-  await page.getByRole('navigation').getByRole('link', { name: 'Us', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Recent changes' })).toBeVisible();
-  expect(await page.getByText('Get the Android app').count()).toBe(1);
-});

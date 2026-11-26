@@ -17,6 +17,13 @@ import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.provideContent
+import androidx.glance.action.Action
+import androidx.glance.action.clickable
+import androidx.glance.background
+import androidx.glance.layout.Box
+import androidx.glance.layout.fillMaxHeight
+import androidx.glance.layout.fillMaxWidth
+import androidx.glance.layout.padding
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -31,7 +38,8 @@ import com.rudnam.samfran.R
 /**
  * The Ride alarm widget: one tap on "I'm on the bus" (or the train) opens the
  * Ride tab and starts the trip to the stop it names (the shift's, or else the
- * one used last), the way "Start the ride alarm?" does. The app starts it rather than the
+ * one used last), the way "Start the ride alarm?" does; with more than one
+ * stop, "Other stop" opens the Ride tab asking which first. The app starts it rather than the
  * widget, so it asks for location when it must and shows the ride with its
  * Stop button. While a trip is on, the widget says so and opens the ride; it
  * has no Stop of its own, so a stray tap on the home screen can't end it.
@@ -74,6 +82,10 @@ internal fun BusContent(state: BusWidgetState) {
     val soft = if (ready != null) WidgetColors.accentText else WidgetColors.muted
     val icon = if (ready != null) WidgetColors.accentText else WidgetColors.accent
     val oneRow = LocalSize.current.height < BusWidget.TALL.height
+    if (ready != null && ready.others) {
+        ReadyWithOthers(title, detail, open, actionStartActivity(Widgets.pickStopLink(context)), oneRow)
+        return
+    }
     WidgetFrame(open, background = if (ready != null) WidgetColors.accent else WidgetColors.surface, oneRow = oneRow) {
         if (oneRow) {
             Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
@@ -90,6 +102,54 @@ internal fun BusContent(state: BusWidgetState) {
                 Spacer(GlanceModifier.height(8.dp))
                 WidgetText(title, 16.sp, ink, bold = true, maxLines = 2)
                 WidgetText(detail, 13.sp, soft, maxLines = 2)
+            }
+        }
+    }
+}
+
+/**
+ * Ready, with more than one stop: the stop it would pick as the big button
+ * (one tap for the usual ride), and "Other stop" to choose another first,
+ * below it, or beside it when the widget is one row high.
+ */
+@Composable
+private fun ReadyWithOthers(title: String, detail: String, start: Action, pick: Action, oneRow: Boolean) {
+    val context = LocalContext.current
+    val other = context.getString(R.string.shift_end_other)
+    WidgetFrame(open = null, background = WidgetColors.accent) {
+        if (oneRow) {
+            Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    GlanceModifier.defaultWeight().fillMaxHeight().clickable(start).padding(start = 14.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BusIcon(WidgetColors.accentText, 22)
+                    Spacer(GlanceModifier.width(10.dp))
+                    Column {
+                        WidgetText(title, 14.sp, WidgetColors.accentText, bold = true)
+                        WidgetText(detail, 12.sp, WidgetColors.accentText)
+                    }
+                }
+                Box(GlanceModifier.width(1.dp).height(32.dp).background(WidgetColors.accentLine)) {}
+                Box(GlanceModifier.fillMaxHeight().clickable(pick).padding(horizontal = 12.dp), contentAlignment = Alignment.Center) {
+                    WidgetText(other, 12.sp, WidgetColors.accentText, bold = true, maxLines = 2)
+                }
+            }
+        } else {
+            Column(GlanceModifier.fillMaxSize()) {
+                Column(
+                    GlanceModifier.defaultWeight().fillMaxWidth().clickable(start).padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BusIcon(WidgetColors.accentText, 28)
+                    Spacer(GlanceModifier.height(8.dp))
+                    WidgetText(title, 16.sp, WidgetColors.accentText, bold = true, maxLines = 2)
+                    WidgetText(detail, 13.sp, WidgetColors.accentText, maxLines = 1)
+                }
+                Box(GlanceModifier.fillMaxWidth().height(1.dp).background(WidgetColors.accentLine)) {}
+                Row(GlanceModifier.fillMaxWidth().clickable(pick).padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    WidgetText("$other ›", 13.sp, WidgetColors.accentText, bold = true)
+                }
             }
         }
     }
