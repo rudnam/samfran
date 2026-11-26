@@ -135,6 +135,7 @@ class ActivityJob : JobService() {
                 "restaurant_added" -> c.getString(if (e.details.been) R.string.notify_change_added_been else R.string.notify_change_added_want, who, name)
                 "visit_logged" -> c.getString(R.string.notify_change_visit, who, name)
                 "photos_added" -> c.getString(R.string.notify_change_photos, who, name)
+                "commented" -> c.getString(R.string.notify_change_commented, who, name)
                 "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
                 "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
                 "bus_started" -> c.getString(R.string.notify_bus_started, who, name)
