@@ -826,11 +826,5 @@ button.end { align-self: flex-end; }
 .device .row.spread { min-height: 44px; }
 .device select.language:focus-visible { box-shadow: 0 0 0 2.5px var(--accent-ink); }
 
-/* Us: the Android app's card. The button goes under the text on a phone. */
-.get-app { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px 14px; }
-.get-app img { border-radius: 12px; box-shadow: var(--shadow); }
-.get-app .small { line-height: 1.35; }
-@media (max-width: 519px) {
-  .get-app { grid-template-columns: auto 1fr; }
-  .get-app .button { grid-column: 1 / -1; }
-}
+/* Us: the Android app's Play Store button, its logo alone. */
+.button.play { padding: 10px 16px; }

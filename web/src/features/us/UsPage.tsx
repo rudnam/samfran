@@ -107,16 +107,12 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
       </form>
 
       {!iPhone && (
-        <section className="card get-app" aria-labelledby="get-app-title">
-          <img src="/icon.svg" alt="" width="52" height="52" />
-          <span className="get-app-text">
-            <strong id="get-app-title" className="block">{t('SamFran for Android')}</strong>
-            <span className="muted small">{t('Ride alarm, locked apps and home-screen widgets')}</span>
-          </span>
-          <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
-            {t('Get it on Google Play')}
+        <div className="card row spread">
+          <strong className="grow">{t('Get the Android app')}</strong>
+          <a className="button secondary play" href={PLAY_STORE_URL} target="_blank" rel="noopener" aria-label={t('Get it on Google Play')} title={t('Get it on Google Play')}>
+            <PlayLogo />
           </a>
-        </section>
+        </div>
       )}
 
       <ActivityCard />
@@ -227,5 +223,17 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
       )}
       <ErrorText message={error} />
     </div>
+  );
+}
+
+/** Google Play's four-colour triangle. */
+function PlayLogo() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M3 2.4v19.2L13 12z" />
+      <path fill="#34A853" d="M3 2.4 16.5 9.5 13 12z" />
+      <path fill="#EA4335" d="M3 21.6 13 12l3.5 2.5z" />
+      <path fill="#FBBC04" d="M16.5 9.5 21 12l-4.5 2.5L13 12z" />
+    </svg>
   );
 }

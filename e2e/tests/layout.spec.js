@@ -48,6 +48,6 @@ test('the Android app is on Us, from the Play Store', async ({ page }) => {
   await signUp(page);
   await page.getByRole('navigation').getByRole('link', { name: 'Us', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Recent changes' })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'SamFran for Android' })).toBeVisible();
+  await expect(page.getByText('Get the Android app')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Get it on Google Play' })).toHaveAttribute('href', 'https://play.google.com/apps/internaltest/4700129288045289290');
 });
