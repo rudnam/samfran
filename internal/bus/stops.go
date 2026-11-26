@@ -376,17 +376,45 @@ func (h *Handler) useStop(w http.ResponseWriter, r *http.Request) error {
 	return err
 }
 
+// rideDone says a ride to the stop has ended: {arrived} is true when the
+// phone got within the stop's alert distance and buzzed, false when the
+// ride was stopped before that (or ran out of time). The history says so
+// ("bus_ended", with the stop's name and arrived), so the other person is
+// told, as when it started.
+func (h *Handler) rideDone(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		Arrived bool `json:"arrived"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	var name string
+	err := h.changeOne(w, r, func(tx *sql.Tx, user, id int64) error {
+		return tx.QueryRowContext(r.Context(), `SELECT name FROM bus_saved_stops WHERE user_id = $1 AND id = $2`, user, id).Scan(&name)
+	})
+	if err == nil {
+		h.logRide(r, activity.BusEnded, map[string]any{"name": name, "arrived": in.Arrived})
+	}
+	return err
+}
+
 func (h *Handler) logStarted(r *http.Request, stop string) {
+	h.logRide(r, activity.BusStarted, map[string]any{"name": stop})
+}
+
+// logRide records a ride starting or ending in the history. It never fails
+// the request: the ride itself has already started or ended on the phone.
+func (h *Handler) logRide(r *http.Request, kind string, details map[string]any) {
 	if h.Log == nil || h.SpaceOf == nil {
 		return
 	}
 	user := account.UserFrom(r).ID
 	spaceID, err := h.SpaceOf(r.Context(), user)
 	if err != nil {
-		slog.WarnContext(r.Context(), "bus_started: find space", "err", err) // the trip has started; don't fail it
+		slog.WarnContext(r.Context(), kind+": find space", "err", err)
 		return
 	}
-	h.Log(r.Context(), spaceID, user, "app", activity.BusStarted, map[string]any{"name": stop})
+	h.Log(r.Context(), spaceID, user, "app", kind, details)
 }
 
 // setBuzz is how older apps set how the phone buzzes: {buzz}, at every stop.

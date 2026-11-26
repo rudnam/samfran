@@ -26,6 +26,8 @@
     <string name="notify_change_rated">%1$s rated %2$s ★%3$d</string>
     <string name="notify_change_shifts">%1$s saved the shifts</string>
     <string name="notify_bus_started">%1$s started the ride alarm to %2$s</string>
+    <string name="notify_bus_arrived">%1$s is nearly at %2$s</string>
+    <string name="notify_bus_stopped">%1$s stopped the ride alarm to %2$s</string>
     <plurals name="notify_change_more">
         <item quantity="one">and %d more change</item>
         <item quantity="other">and %d more changes</item>

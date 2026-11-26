@@ -45,7 +45,7 @@ type Handler struct {
 	db *sql.DB
 	// Stops finds stops by name (search.go).
 	Stops *Searcher
-	// Log and SpaceOf, if set, record a trip starting in the Us tab's
+	// Log and SpaceOf, if set, record a trip starting and ending in the
 	// history (internal/activity), so the other person can be told. Stops
 	// are the person's own, so the routes don't need a space; SpaceOf finds it.
 	Log     func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
@@ -63,6 +63,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("PUT /api/bus/stops/{id}", h.changeStop)
 	route("DELETE /api/bus/stops/{id}", h.deleteStop)
 	route("POST /api/bus/stops/{id}/use", h.useStop)
+	route("POST /api/bus/stops/{id}/done", h.rideDone)
 	route("PUT /api/bus/buzz", h.setBuzz)
 	route("GET /api/bus/search", h.search)
 }
