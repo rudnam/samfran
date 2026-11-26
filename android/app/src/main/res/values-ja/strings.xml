@@ -96,4 +96,5 @@
     <string name="widget_riding">乗車中</string>
     <string name="widget_nearly">次で降ります</string>
     <string name="widget_choose_stop">降りるバス停を選ぶ</string>
+    <string name="notify_change_photos">%1$sさんが%2$sの写真を追加しました</string>
 </resources>

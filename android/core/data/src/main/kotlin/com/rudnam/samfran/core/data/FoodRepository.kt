@@ -5,6 +5,7 @@ import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.RestaurantFields
+import com.rudnam.samfran.core.network.PhotoUpload
 import com.rudnam.samfran.core.network.SamFranNetwork
 import com.rudnam.samfran.core.network.model.NetworkNewVisit
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
@@ -47,6 +48,20 @@ interface FoodRepository {
 
     /** Not been yet: back on the want-to-go list. */
     suspend fun clearBeen(id: Long): Outcome<Restaurant>
+
+    /** Another time you went. */
+    suspend fun addVisit(id: Long, on: LocalDate, note: String): Outcome<Restaurant>
+
+    /** A visit's date and note. */
+    suspend fun updateVisit(id: Long, visit: Long, on: LocalDate, note: String): Outcome<Restaurant>
+
+    /** A visit goes, and its photos; the last one puts the place back on want to go. */
+    suspend fun deleteVisit(id: Long, visit: Long): Outcome<Restaurant>
+
+    /** Sends a photo picked on the phone ([PickedPhoto]) to a visit, as it was taken. */
+    suspend fun addPhoto(id: Long, visit: Long, photo: PickedPhoto, onProgress: (Float) -> Unit = {}): Outcome<Restaurant>
+
+    suspend fun deletePhoto(id: Long, photo: Long): Outcome<Restaurant>
 
     /** The signed-in person's rating; 0 clears it. */
     suspend fun rate(id: Long, stars: Int): Outcome<Restaurant>
@@ -116,6 +131,18 @@ internal class OfflineFirstFoodRepository @Inject constructor(
     override suspend fun setBeen(id: Long, on: LocalDate) = changed { network.setBeen(id, on.toString()) }
 
     override suspend fun clearBeen(id: Long) = changed { network.clearBeen(id) }
+
+    override suspend fun addVisit(id: Long, on: LocalDate, note: String) = changed { network.addVisit(id, on.toString(), note.trim()) }
+
+    override suspend fun updateVisit(id: Long, visit: Long, on: LocalDate, note: String) = changed { network.updateVisit(id, visit, on.toString(), note.trim()) }
+
+    override suspend fun deleteVisit(id: Long, visit: Long) = changed { network.deleteVisit(id, visit) }
+
+    override suspend fun addPhoto(id: Long, visit: Long, photo: PickedPhoto, onProgress: (Float) -> Unit) = changed {
+        network.addPhoto(id, visit, PhotoUpload(photo.name, photo.contentType, photo.size, photo.width, photo.height, photo.open), photo.thumb, onProgress)
+    }
+
+    override suspend fun deletePhoto(id: Long, photo: Long) = changed { network.deletePhoto(id, photo) }
 
     override suspend fun rate(id: Long, stars: Int) = changed { network.rate(id, stars) }
 

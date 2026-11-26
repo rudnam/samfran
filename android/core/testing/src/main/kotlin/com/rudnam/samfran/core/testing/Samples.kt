@@ -41,14 +41,18 @@ object Samples {
 
     val spaceInvited = Space(listOf(Member("Fran", "fran@example.com", me = true)), listOf(Invite("sam@example.com", Instant.parse("2026-11-10T00:00:00Z"))), null)
 
+    /** A photo on a server that isn't there: in screenshots, a grey tile. */
+    fun photo(id: Long) = com.rudnam.samfran.core.model.Photo(id, "https://samfran.test/api/photos/$id", "https://samfran.test/api/photos/$id/thumb", 4032, 3024, "Fran")
+
     val restaurants = listOf(
         Restaurant(
             12, "Hanabi Grill", "Station East", "Yakiniku", mapUrl = "https://maps.app.goo.gl/hanabi", notes = "Book the window seats. The harami is the one.",
             addedBy = "Sam", visitCount = 4, lastVisit = d("2026-11-14"),
             ratings = listOf(Rating("Fran", true, 5), Rating("Sam", false, 4)),
+            cover = photo(6).thumbUrl, photoCount = 6,
             visits = listOf(
-                Visit(41, d("2026-11-14"), "Harami and the cold noodles", "Sam"),
-                Visit(37, d("2026-10-02"), "", "Fran"),
+                Visit(41, d("2026-11-14"), "Harami and the cold noodles", "Sam", photos = (1L..5L).map(::photo)),
+                Visit(37, d("2026-10-02"), "", "Fran", photos = listOf(photo(6))),
                 Visit(30, d("2026-08-21"), "Birthday dinner", "Fran"),
                 Visit(22, d("2026-06-05"), "", "Sam"),
             ),

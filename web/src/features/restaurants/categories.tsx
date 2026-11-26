@@ -96,10 +96,12 @@ export function categoryOf(c: string | undefined): Category {
 }
 
 /** The category's icon on its colour, as the list and the search show it. */
-export function CategoryTile({ category, size = 'md' }: { category: Category; size?: 'sm' | 'md' }) {
+/** A place's category as a tile, or, once it has photos, its newest photo (cover) in its place. */
+export function CategoryTile({ category, size = 'md', cover }: { category: Category; size?: 'sm' | 'md' | 'lg'; cover?: string | null }) {
+  if (cover) return <img className={`tile photo${size === 'md' ? '' : ` ${size}`}`} src={cover} alt="" loading="lazy" decoding="async" />;
   return (
-    <span className={`tile cat-${category}${size === 'sm' ? ' sm' : ''}`} aria-hidden="true">
-      <Icon name={category} size={size === 'sm' ? 18 : 22} />
+    <span className={`tile cat-${category}${size === 'md' ? '' : ` ${size}`}`} aria-hidden="true">
+      <Icon name={category} size={size === 'sm' ? 18 : size === 'lg' ? 30 : 22} />
     </span>
   );
 }

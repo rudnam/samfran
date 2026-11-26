@@ -33,13 +33,31 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import javax.inject.Inject
 
-/** The app. Firebase starts here when the build has it (locked apps' push messages). */
+/**
+ * The app. Firebase starts here when the build has it (locked apps' push
+ * messages). Places' photos load through the API's own client, so they're
+ * asked for signed in, and are kept on the phone once seen (a photo never
+ * changes).
+ */
 @HiltAndroidApp
-class SamFranApplication : Application() {
+class SamFranApplication : Application(), coil3.SingletonImageLoader.Factory {
+    @Inject lateinit var okHttp: dagger.Lazy<okhttp3.OkHttpClient>
+
     override fun onCreate() {
         super.onCreate()
         com.rudnam.samfran.background.Push.start(this)
     }
+
+    override fun newImageLoader(context: coil3.PlatformContext): coil3.ImageLoader =
+        coil3.ImageLoader.Builder(context)
+            .components { add(coil3.network.okhttp.OkHttpNetworkFetcherFactory(callFactory = { okHttp.get() })) }
+            .diskCache {
+                coil3.disk.DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("photos").absolutePath.let { okio.Path.Companion.run { it.toPath() } })
+                    .maxSizeBytes(300L * 1024 * 1024)
+                    .build()
+            }
+            .build()
 }
 
 /**
