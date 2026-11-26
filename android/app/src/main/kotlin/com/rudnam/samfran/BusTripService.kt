@@ -30,6 +30,7 @@ import android.os.VibratorManager
 import com.rudnam.samfran.core.model.Buzz
 import com.rudnam.samfran.core.model.Distances
 import com.rudnam.samfran.core.model.TripStatus
+import com.rudnam.samfran.widget.Widgets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -85,6 +86,7 @@ class BusTripService : Service(), LocationListener {
             startForeground(TRIP_NOTIFICATION, n)
         }
         state.value = TripStatus(running = true, distance = -1f, buzzing = state.value.buzzing)
+        Widgets.updateBus(this)
         val lm = getSystemService(LocationManager::class.java).also { locations = it }
         try {
             lm.removeUpdates(this)
@@ -112,6 +114,7 @@ class BusTripService : Service(), LocationListener {
             // Arrived: stop watching, and buzz until she's up (stopBuzz stops this service).
             locations?.removeUpdates(this)
             ring(this, stopName, buzz, soundAfter)
+            Widgets.updateBus(this)
             return
         }
         getSystemService(NotificationManager::class.java)
@@ -131,6 +134,7 @@ class BusTripService : Service(), LocationListener {
         handler.removeCallbacks(timeout)
         locations?.removeUpdates(this)
         stopBuzz(this) // a trip stopped while buzzing stops the buzz too
+        Widgets.updateBus(this)
         super.onDestroy()
     }
 
@@ -205,6 +209,9 @@ class BusTripService : Service(), LocationListener {
         private var player: MediaPlayer? = null
 
         @Volatile private var stopName = ""
+
+        /** The stop the trip on now is to (for the bus widget). */
+        val currentStopName: String get() = stopName
 
         /** The trip as the Bus tab shows it. */
         internal val state = MutableStateFlow(TripStatus())

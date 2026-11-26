@@ -73,4 +73,25 @@
     <string name="notify_check_restarted">%1$sさんのスマホで%2$s〜%3$sの間、SamFranが見守っていませんでした</string>
     <string name="notify_check_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
     <string name="notify_check_quiet_text">SamFranがアンインストールされたか、止められた可能性があります。</string>
+    <!-- The home-screen widgets (widget/). -->
+    <string name="widget_next_shift">次のシフト</string>
+    <string name="widget_next_shift_of">%1$sの次のシフト</string>
+    <string name="widget_shift">勤務中</string>
+    <string name="widget_shift_of">%1$sのシフト</string>
+    <string name="widget_shift_description">次のシフトと1週間の予定</string>
+    <string name="widget_now">勤務中</string>
+    <string name="widget_today">今日</string>
+    <string name="widget_tomorrow">明日</string>
+    <string name="widget_until">%1$sまで</string>
+    <string name="widget_with">一緒: %1$s</string>
+    <string name="widget_no_shifts">予定のシフトはありません</string>
+    <string name="widget_open_app">SamFranを開くとここに表示されます</string>
+    <string name="widget_bus">乗り過ごしアラーム</string>
+    <string name="widget_bus_description">ワンタップで乗り過ごしアラームを開始</string>
+    <string name="widget_on_bus">バスに乗った</string>
+    <string name="widget_on_train">電車に乗った</string>
+    <string name="widget_to_stop">%1$sまで</string>
+    <string name="widget_riding">乗車中</string>
+    <string name="widget_nearly">次で降ります</string>
+    <string name="widget_choose_stop">降りるバス停を選ぶ</string>
 </resources>
