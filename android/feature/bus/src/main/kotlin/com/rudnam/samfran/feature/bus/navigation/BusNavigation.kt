@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.bus.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.samfran.core.designsystem.component.Page
 import com.rudnam.samfran.feature.bus.BusDestination
 import kotlinx.serialization.Serializable
 
@@ -14,5 +15,5 @@ import kotlinx.serialization.Serializable
 data class BusRoute(val start: Boolean = false, val stop: Long = 0, val pick: Boolean = false)
 
 fun NavGraphBuilder.busScreen(@Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState) {
-    composable<BusRoute> { BusDestination() }
+    composable<BusRoute> { Page { BusDestination() } }
 }

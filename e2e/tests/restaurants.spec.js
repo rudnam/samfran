@@ -532,7 +532,7 @@ test('without a map key there is no map, and Nearby says why when location is of
   await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
 });
 
-test('order: newest, best rated or by name, and remembered', async ({ page }) => {
+test('order: newest, oldest, best rated or by name, and remembered', async ({ page }) => {
   await signUp(page);
   const today = new Date().toISOString().slice(0, 10);
   // Added in this order, so newest first is the reverse.
@@ -549,6 +549,10 @@ test('order: newest, best rated or by name, and remembered', async ({ page }) =>
   const been = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(been).toHaveText([/Bento Box/, /Unrated Udon/, /Ramen Tsubaki/, /Gyoza Komachi/]);
   await expect(page.getByRole('button', { name: 'Order: Newest' })).toBeVisible();
+
+  // Oldest: the other way round.
+  await pickOrder(page, 'Oldest');
+  await expect(been).toHaveText([/Gyoza Komachi/, /Ramen Tsubaki/, /Unrated Udon/, /Bento Box/]);
 
   // Best rated first; nobody's rated Unrated Udon, so it's last.
   await pickOrder(page, 'Top rated');

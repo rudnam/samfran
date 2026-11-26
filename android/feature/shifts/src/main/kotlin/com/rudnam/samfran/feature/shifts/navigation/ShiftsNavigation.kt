@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.shifts.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.samfran.core.designsystem.component.Page
 import com.rudnam.samfran.feature.shifts.ShiftCalendarLinkDestination
 import com.rudnam.samfran.feature.shifts.ShiftEditorDestination
 import com.rudnam.samfran.feature.shifts.ShiftSettingsDestination
@@ -33,8 +34,8 @@ interface ShiftsNavigation {
 }
 
 fun NavGraphBuilder.shiftsScreens(navigation: ShiftsNavigation, @Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState) {
-    composable<ShiftsRoute> { ShiftsDestination(navigation) }
-    composable<ShiftEditRoute> { ShiftEditorDestination(navigation) }
-    composable<ShiftSettingsRoute> { ShiftSettingsDestination(navigation) }
-    composable<ShiftCalendarLinkRoute> { ShiftCalendarLinkDestination(navigation) }
+    composable<ShiftsRoute> { Page { ShiftsDestination(navigation) } }
+    composable<ShiftEditRoute> { Page { ShiftEditorDestination(navigation) } }
+    composable<ShiftSettingsRoute> { Page { ShiftSettingsDestination(navigation) } }
+    composable<ShiftCalendarLinkRoute> { Page { ShiftCalendarLinkDestination(navigation) } }
 }

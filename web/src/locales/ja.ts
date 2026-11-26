@@ -176,6 +176,7 @@ export const ja = {
   Order: '並び順',
   Latest: '最近',
   Newest: '新しい順',
+  Oldest: '古い順',
   Nearby: '近い順',
   'Top rated': '評価の高い順',
   'A–Z': '名前順',

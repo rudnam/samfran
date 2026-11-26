@@ -123,6 +123,7 @@
     <string name="order">Order</string>
     <string name="sort_latest">Latest</string>
     <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
     <string name="sort_nearby">Nearby</string>
     <string name="sort_top_rated">Top rated</string>
     <string name="sort_name">A–Z</string>

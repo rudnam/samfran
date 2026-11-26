@@ -114,6 +114,8 @@ class FoodViewModelTest {
         assertEquals(listOf(12L, 9L, 20L, 5L, 7L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want) // nobody's rated these: newest first
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+        vm.setOrder(PlaceOrder.Oldest) // the other way round
+        assertEquals(listOf(14L, 15L, 21L, 22L, 23L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Been)
         vm.setOrder(PlaceOrder.Name)
         assertEquals(listOf("Cafe Lune", "Hanabi Grill", "Menya Kaze", "Sumpu Castle Park", "Trattoria Sole"), vm.state.value.shown.map { it.name })

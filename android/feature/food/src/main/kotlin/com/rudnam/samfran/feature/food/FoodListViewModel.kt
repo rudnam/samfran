@@ -32,6 +32,7 @@ enum class FoodTab { Been, Want }
 /** How the list is ordered, in the menu's order (web: RestaurantsPage.tsx's sorts). */
 enum class PlaceOrder(val key: String, val title: Int) {
     Newest("newest", R.string.sort_newest),
+    Oldest("oldest", R.string.sort_oldest),
     Nearby("nearby", R.string.sort_nearby),
     TopRated("rated", R.string.sort_top_rated),
     Name("name", R.string.sort_name),
@@ -98,7 +99,7 @@ data class FoodListUiState(
     val near: Pair<Double, Double>? get() = here.takeIf { nearby }
 
     /**
-     * The tab's places in the chosen category that match the search, in the chosen order: newest, nearest
+     * The tab's places in the chosen category that match the search, in the chosen order: newest, oldest, nearest
      * (newest while the phone's place isn't known), best rated (the unrated last), or by name.
      */
     val shown: List<Restaurant>
@@ -106,6 +107,7 @@ data class FoodListUiState(
             .let { list ->
                 when (order) {
                     PlaceOrder.Newest -> list
+                    PlaceOrder.Oldest -> list.reversed()
                     PlaceOrder.Nearby -> near?.let(list::byDistance) ?: list
                     PlaceOrder.TopRated -> list.sortedByDescending { it.averageStars ?: -1.0 }
                     PlaceOrder.Name -> {

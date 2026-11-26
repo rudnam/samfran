@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.EaseOut
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
@@ -153,6 +154,23 @@ fun SamFranApp(
             popExitTransition = {
                 val fade = fadeOut(tween(160))
                 if (initialState.destination.isTab()) fade else fade + slideOutHorizontally(tween(260, easing = EaseOut)) { it / 12 }
+            },
+            // The back gesture: the page follows the finger off to the right, over the one it goes back
+            // to, which slides in a little from the left (Navigation's own shrinks the page to the middle).
+            // These run as far as the gesture has got, so linear: the page moves with the finger.
+            predictivePopEnterTransition = {
+                if (targetState.destination.isTab() && initialState.destination.isTab()) {
+                    fadeIn(tween(220))
+                } else {
+                    slideInHorizontally(tween(300, easing = LinearEasing)) { -it / 4 } + fadeIn(tween(300, easing = LinearEasing), initialAlpha = 0.6f)
+                }
+            },
+            predictivePopExitTransition = {
+                if (targetState.destination.isTab() && initialState.destination.isTab()) {
+                    fadeOut(tween(160))
+                } else {
+                    slideOutHorizontally(tween(300, easing = LinearEasing)) { it }
+                }
             },
         ) {
             signInScreen()

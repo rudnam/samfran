@@ -18,6 +18,19 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
   await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+  // Reloaded, the title is right before the month arrives: no "Shifts" first.
+  let release = () => {};
+  const held = new Promise((r) => (release = r));
+  await page.route('**/api/shifts**', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Shifts', exact: true })).toHaveCount(0);
+  release();
+  await page.unroute('**/api/shifts**');
+  await expect(page.getByText('No shifts for this month')).toBeVisible();
 
   // An empty month: read a photo or enter it by hand; nothing to edit yet.
   await expect(page.getByRole('link', { name: /^Edit / })).toHaveCount(0);
