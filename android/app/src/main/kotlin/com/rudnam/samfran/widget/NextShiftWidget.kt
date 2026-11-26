@@ -154,6 +154,10 @@ private fun FullShift(context: Context, state: ShiftWidgetState.Shifts, week: Bo
     }
 }
 
+/** A weekday over its square: "Su", "Mo", "Tu" in English (one letter leaves T and S twice), 日, 月, 火 in Japanese. */
+private fun weekday(day: java.time.DayOfWeek, locale: java.util.Locale): String =
+    if (locale.language == "ja") day.getDisplayName(DateTextStyle.NARROW, locale) else day.getDisplayName(DateTextStyle.SHORT, locale).take(2)
+
 /** The code as on the sheet ("13F"), on the sunken ground. */
 @Composable
 private fun CodeChip(code: String) {
@@ -162,7 +166,7 @@ private fun CodeChip(code: String) {
     }
 }
 
-/** Today and the six days after it, each a weekday letter over the day's square; today's letter in the accent. */
+/** Today and the six days after it, each a weekday over the day's square; today's in the accent. */
 @Composable
 private fun Week(context: Context, state: ShiftWidgetState.Shifts) {
     val locale = context.resources.configuration.locales[0]
@@ -171,7 +175,7 @@ private fun Week(context: Context, state: ShiftWidgetState.Shifts) {
             Column(GlanceModifier.defaultWeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                 val today = w.date == state.today
                 WidgetText(
-                    w.date.dayOfWeek.getDisplayName(DateTextStyle.NARROW, locale),
+                    weekday(w.date.dayOfWeek, locale),
                     10.sp,
                     if (today) WidgetColors.accentInk else WidgetColors.muted,
                     bold = today,
