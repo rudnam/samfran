@@ -147,7 +147,7 @@ class ActivityJob : JobService() {
             val nm = c.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(NotificationChannel(CHANNEL, c.getString(R.string.channel_changes), NotificationManager.IMPORTANCE_DEFAULT))
             val b = Notification.Builder(c, CHANNEL)
-                .setSmallIcon(R.drawable.ic_stat_bus)
+                .setSmallIcon(R.drawable.ic_stat_changes)
                 .setContentTitle(lines[0])
                 .setContentIntent(ShiftPrompt.open(c, 13, "us"))
                 .setAutoCancel(true)
