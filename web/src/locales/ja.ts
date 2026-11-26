@@ -191,7 +191,9 @@ export const ja = {
 
   // The Android app
   'Get the Android app': 'Androidアプリを入手',
-  'Google Play': 'Google Play',
+  'SamFran for Android': 'Android版SamFran',
+  'Ride alarm, locked apps and home-screen widgets': '乗り過ごしアラーム、アプリのロック、ホーム画面のウィジェット',
+  'Get it on Google Play': 'Google Playで入手',
   'Looking up the place…': '場所を調べています…',
 
   // Shifts

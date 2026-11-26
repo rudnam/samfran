@@ -10,6 +10,9 @@ import { Avatar, useSpace } from '../../space';
 import { ErrorText } from '../../components/ErrorText';
 import { Skeleton } from '../../components/Overlay';
 
+// The Android app is no use on an iPhone or iPad (which can say it's a Mac).
+const iPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const { space, setSpace } = useSpace();
   const self = space?.members.find((m) => m.me);
@@ -103,12 +106,18 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         </span>
       </form>
 
-      <div className="card row spread">
-        <strong className="grow">{t('Get the Android app')}</strong>
-        <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
-          {t('Google Play')}
-        </a>
-      </div>
+      {!iPhone && (
+        <section className="card get-app" aria-labelledby="get-app-title">
+          <img src="/icon.svg" alt="" width="52" height="52" />
+          <span className="get-app-text">
+            <strong id="get-app-title" className="block">{t('SamFran for Android')}</strong>
+            <span className="muted small">{t('Ride alarm, locked apps and home-screen widgets')}</span>
+          </span>
+          <a className="button" href={PLAY_STORE_URL} target="_blank" rel="noopener">
+            {t('Get it on Google Play')}
+          </a>
+        </section>
+      )}
 
       <ActivityCard />
 
