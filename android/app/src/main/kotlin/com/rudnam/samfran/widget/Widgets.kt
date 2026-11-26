@@ -8,6 +8,7 @@ import com.rudnam.samfran.BusTripService
 import com.rudnam.samfran.MainActivity
 import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.ShiftsRepository
+import com.rudnam.samfran.core.data.SpaceRepository
 import com.rudnam.samfran.core.data.valueOrNull
 import com.rudnam.samfran.core.datastore.SessionStore
 import com.rudnam.samfran.core.model.StopKind
@@ -54,6 +55,7 @@ object Widgets {
         fun shifts(): ShiftsRepository
         fun bus(): BusRepository
         fun session(): SessionStore
+        fun space(): SpaceRepository
         fun clock(): Clock
     }
 
@@ -68,7 +70,9 @@ object Widgets {
         if (current == null || current.month < YearMonth.now(clock)) current = d.shifts().refresh(null).valueOrNull ?: current
         current ?: return ShiftWidgetState.Empty
         val next = d.shifts().month(current.month.plusMonths(1)).first()
-        return shiftWidgetState(listOfNotNull(current, next), clock.instant(), clock.zone)
+        val state = shiftWidgetState(listOfNotNull(current, next), clock.instant(), clock.zone)
+        // Your own shifts are "Next shift", not "Sam's next shift".
+        return if (state is ShiftWidgetState.Shifts && isOwnShifts(state.person, d.space().space.first())) state.copy(person = "") else state
     }
 
     /** The trip on now, or the stop a trip would go to: the shift you'd be going home from's, else the one used last (as the Ride tab picks). */
@@ -79,7 +83,7 @@ object Widgets {
         if (trip.running) return BusWidgetState.Riding(BusTripService.currentStopName, trip.buzzing)
         val stops = d.bus().stops.first() ?: d.bus().refresh().valueOrNull ?: return BusWidgetState.Empty
         val stop = stops.pick(d.shifts().homeShift(d.clock().instant())) ?: return BusWidgetState.NoStop
-        return BusWidgetState.Ready(stop.id, stop.name, train = stop.kind == StopKind.Train)
+        return BusWidgetState.Ready(stop.id, stop.name, train = stop.kind == StopKind.Train, others = stops.stops.size > 1)
     }
 
     /** The Shifts tab. */
@@ -88,6 +92,9 @@ object Widgets {
     /** The Ride tab; with [startStop], a trip to that stop starts at once (as "Start the ride alarm?" does). */
     internal fun busLink(context: Context, startStop: Long? = null): Intent =
         link(context, if (startStop == null) "bus" else "bus?start=1&stop=$startStop")
+
+    /** The Ride tab asking where you're getting off, then starting (as "Start the ride alarm?"'s Other stop does). */
+    internal fun pickStopLink(context: Context): Intent = link(context, "bus?pick=1")
 
     private fun link(context: Context, path: String) =
         Intent(Intent.ACTION_VIEW, Uri.parse("${context.packageName}://$path"), context, MainActivity::class.java)

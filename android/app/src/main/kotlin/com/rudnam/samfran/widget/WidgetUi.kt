@@ -42,6 +42,9 @@ internal object WidgetColors {
     val accentInk = ColorProvider(day = l.accentInk, night = d.accentInk)
     val accentText = ColorProvider(day = l.accentText, night = d.accentText)
 
+    /** A thin line on the accent. */
+    val accentLine = ColorProvider(day = l.accentText.copy(alpha = 0.3f), night = d.accentText.copy(alpha = 0.3f))
+
     /** A shift's dot (.shift-dot.*), the same light and dark; null for the kinds without one. */
     fun dot(tone: ShiftTone): ColorProvider? = when (tone) {
         ShiftTone.Early -> ShiftDotColors.early
@@ -73,14 +76,14 @@ internal object WidgetColors {
 /**
  * The widget's frame: the app's card, rounded (Android 12+ rounds it to the
  * launcher's corners), opening [open] when tapped. [oneRow]: one cell high,
- * where two lines of text only fit with less room above and below.
+ * where two lines of text only fit with less room above and below. Without
+ * [open] it has no padding either: the content has its own places to tap.
  */
 @Composable
-internal fun WidgetFrame(open: Action, background: ColorProvider = WidgetColors.surface, oneRow: Boolean = false, content: @Composable () -> Unit) {
-    Box(
-        GlanceModifier.fillMaxSize().appWidgetBackground().cornerRadius(20.dp).background(background)
-            .clickable(open).padding(horizontal = 14.dp, vertical = if (oneRow) 4.dp else 12.dp),
-    ) { content() }
+internal fun WidgetFrame(open: Action?, background: ColorProvider = WidgetColors.surface, oneRow: Boolean = false, content: @Composable () -> Unit) {
+    var m = GlanceModifier.fillMaxSize().appWidgetBackground().cornerRadius(20.dp).background(background)
+    if (open != null) m = m.clickable(open).padding(horizontal = 14.dp, vertical = if (oneRow) 4.dp else 12.dp)
+    Box(m) { content() }
 }
 
 @Composable

@@ -15,7 +15,9 @@ import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.compose
 import androidx.glance.appwidget.provideContent
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.rudnam.samfran.core.model.Member
 import com.rudnam.samfran.core.model.ShiftMonth
+import com.rudnam.samfran.core.model.Space
 import com.rudnam.samfran.core.testing.Samples
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -85,6 +87,28 @@ class ShiftWidgetStateTest {
     @Test
     fun nothingOnThePhone() {
         assertEquals(ShiftWidgetState.Empty, shiftWidgetState(emptyList(), at("2026-11-26T01:00:00Z"), tokyo))
+    }
+}
+
+/** Whether the shifts are the signed-in person's own, so the widget leaves their name off. */
+class OwnShiftsTest {
+    private fun space(me: String, partner: String?) = Space(
+        listOfNotNull(Member(me, "me@example.com", me = true), partner?.let { Member(it, "them@example.com", me = false) }),
+        emptyList(),
+        null,
+    )
+
+    @Test fun samSeesHerOwn() = assertTrue(isOwnShifts("Sam", space("Sam", "Fran")))
+
+    @Test fun franSeesSams() = assertFalse(isOwnShifts("Sam", Samples.space))
+
+    @Test fun sameFirstNameAnyCase() = assertTrue(isOwnShifts("sam", space("Sam Otoru", "Fran")))
+
+    @Test fun bothMatchIsNobodys() = assertFalse(isOwnShifts("Sam", space("Sam A", "Sam B")))
+
+    @Test fun noNameOrNoSpace() {
+        assertFalse(isOwnShifts("", space("Sam", "Fran")))
+        assertFalse(isOwnShifts("Sam", null))
     }
 }
 
@@ -171,6 +195,14 @@ class WidgetScreenshotTest {
     @Test fun busReadyWide() = shot("bus-ready-wide", wide) { BusContent(BusWidgetState.Ready(1, Samples.stop.name)) }
 
     @Test fun busReadyTrain() = shot("bus-ready-train", wide) { BusContent(BusWidgetState.Ready(2, Samples.station.name, train = true)) }
+
+    @Test fun busReadyOthers() = shot("bus-ready-others", square) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
+
+    @Test fun busReadyOthersWide() = shot("bus-ready-others-wide", DpSize(250.dp, 56.dp)) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun busReadyOthersJapanese() = shot("bus-ready-others-ja", square) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
 
     @Test fun busRiding() = shot("bus-riding", square) { BusContent(BusWidgetState.Riding(Samples.stop.name, buzzing = false)) }
 
