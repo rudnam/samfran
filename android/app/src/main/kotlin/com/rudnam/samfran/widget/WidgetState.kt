@@ -78,8 +78,8 @@ sealed interface BusWidgetState {
     /** No stop chosen yet. */
     data object NoStop : BusWidgetState
 
-    /** Ready to start a trip to this stop (the shift's, or else the one used last). */
-    data class Ready(val stopId: Long, val stopName: String, val train: Boolean = false) : BusWidgetState
+    /** Ready to start a trip to this stop (the shift's, or else the one used last); [others]: there are more stops to choose from. */
+    data class Ready(val stopId: Long, val stopName: String, val train: Boolean = false, val others: Boolean = false) : BusWidgetState
 
     /** A trip is on; [buzzing] once the stop is near. */
     data class Riding(val stopName: String, val buzzing: Boolean) : BusWidgetState

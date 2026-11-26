@@ -196,6 +196,14 @@ class WidgetScreenshotTest {
 
     @Test fun busReadyTrain() = shot("bus-ready-train", wide) { BusContent(BusWidgetState.Ready(2, Samples.station.name, train = true)) }
 
+    @Test fun busReadyOthers() = shot("bus-ready-others", square) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
+
+    @Test fun busReadyOthersWide() = shot("bus-ready-others-wide", DpSize(250.dp, 56.dp)) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun busReadyOthersJapanese() = shot("bus-ready-others-ja", square) { BusContent(BusWidgetState.Ready(1, Samples.stop.name, others = true)) }
+
     @Test fun busRiding() = shot("bus-riding", square) { BusContent(BusWidgetState.Riding(Samples.stop.name, buzzing = false)) }
 
     @Test fun busNearly() = shot("bus-nearly", wide) { BusContent(BusWidgetState.Riding(Samples.stop.name, buzzing = true)) }

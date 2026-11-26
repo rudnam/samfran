@@ -83,7 +83,7 @@ object Widgets {
         if (trip.running) return BusWidgetState.Riding(BusTripService.currentStopName, trip.buzzing)
         val stops = d.bus().stops.first() ?: d.bus().refresh().valueOrNull ?: return BusWidgetState.Empty
         val stop = stops.pick(d.shifts().homeShift(d.clock().instant())) ?: return BusWidgetState.NoStop
-        return BusWidgetState.Ready(stop.id, stop.name, train = stop.kind == StopKind.Train)
+        return BusWidgetState.Ready(stop.id, stop.name, train = stop.kind == StopKind.Train, others = stops.stops.size > 1)
     }
 
     /** The Shifts tab. */
@@ -92,6 +92,9 @@ object Widgets {
     /** The Ride tab; with [startStop], a trip to that stop starts at once (as "Start the ride alarm?" does). */
     internal fun busLink(context: Context, startStop: Long? = null): Intent =
         link(context, if (startStop == null) "bus" else "bus?start=1&stop=$startStop")
+
+    /** The Ride tab asking where you're getting off, then starting (as "Start the ride alarm?"'s Other stop does). */
+    internal fun pickStopLink(context: Context): Intent = link(context, "bus?pick=1")
 
     private fun link(context: Context, path: String) =
         Intent(Intent.ACTION_VIEW, Uri.parse("${context.packageName}://$path"), context, MainActivity::class.java)
