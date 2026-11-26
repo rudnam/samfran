@@ -192,6 +192,7 @@ export const ja = {
   // The Android app
   'Get the Android app': 'Androidアプリを入手',
   'Get it on Google Play': 'Google Playで入手',
+  'Android app': 'Androidアプリ',
   'Looking up the place…': '場所を調べています…',
 
   // Shifts

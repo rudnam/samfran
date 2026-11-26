@@ -2,6 +2,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../../api';
 import { PLAY_STORE_URL } from '../../playStore';
+import { Icon } from '../../components/Icon';
 import { ActivityCard } from './ActivityCard';
 import { LanguagePicker } from '../../components/LanguagePicker';
 import { ThemePicker } from '../../components/ThemePicker';
@@ -106,15 +107,6 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         </span>
       </form>
 
-      {!iPhone && (
-        <div className="card row spread">
-          <strong className="grow">{t('Get the Android app')}</strong>
-          <a className="button secondary play" href={PLAY_STORE_URL} target="_blank" rel="noopener" aria-label={t('Get it on Google Play')} title={t('Get it on Google Play')}>
-            <PlayLogo />
-          </a>
-        </div>
-      )}
-
       <ActivityCard />
 
       <div className="card stack device">
@@ -127,6 +119,16 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           <span>{t('Appearance')}</span>
           <ThemePicker />
         </div>
+        {!iPhone && (
+          <a className="row spread device-link" href={PLAY_STORE_URL} target="_blank" rel="noopener" title={t('Get it on Google Play')}>
+            <span>{t('Android app')}</span>
+            <span className="device-link-value">
+              <PlayLogo />
+              <span className="visually-hidden">{t('Get it on Google Play')}</span>
+              <Icon name="chevronRight" size={16} />
+            </span>
+          </a>
+        )}
         <div className="row spread">
           <span className="muted small">{me.demo ? t('Demo') : me.email}</span>
           <button type="button" className="secondary" onClick={onSignOut}>
@@ -229,7 +231,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
 /** Google Play's four-colour triangle. */
 function PlayLogo() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="#4285F4" d="M3 2.4v19.2L13 12z" />
       <path fill="#34A853" d="M3 2.4 16.5 9.5 13 12z" />
       <path fill="#EA4335" d="M3 21.6 13 12l3.5 2.5z" />

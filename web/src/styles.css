@@ -826,5 +826,12 @@ button.end { align-self: flex-end; }
 .device .row.spread { min-height: 44px; }
 .device select.language:focus-visible { box-shadow: 0 0 0 2.5px var(--accent-ink); }
 
-/* Us: the Android app's Play Store button, its logo alone. */
-.button.play { padding: 10px 16px; }
+/* Us › This device: the Android app's row, which opens Google Play; drawn like
+   the language and appearance pickers beside it. */
+.device-link { color: inherit; text-decoration: none; }
+.device-link-value { display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px 8px 10px; border-radius: var(--radius-xs); color: var(--muted); }
+@media (hover: hover) { .device-link:hover .device-link-value { background: var(--sunken); } }
+.device-link:focus-visible { outline: none; }
+.device-link:focus-visible .device-link-value { box-shadow: 0 0 0 2.5px var(--accent-ink); }
+/* Read by screen readers, not shown. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
