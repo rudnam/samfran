@@ -463,6 +463,18 @@ test('the next shift stays above every month, and opens its day when tapped', as
   await expect(page.locator('.cal-detail')).toContainText('13F');
   await page.screenshot({ path: test.info().outputPath('next-shift-opened.png') });
 
+  // Another day tapped goes in the address, without moving the page; the card picks its day again.
+  await page.evaluate(() => window.scrollTo(0, 200));
+  const scrolled = await page.evaluate(() => window.scrollY);
+  await cal.getByRole('button', { name: /^3 / }).click();
+  await expect(page).toHaveURL(new RegExp(`day=${next}-03`));
+  await expect(cal.getByRole('button', { name: /^3 / })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`day=${next}-10`));
+  await expect(cal.getByRole('button', { name: /^10 / })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.cal-detail')).toContainText('13F');
+
   // In the list, its row is the one marked.
   await page.getByRole('radio', { name: 'List' }).click();
   await expect(page.getByRole('list', { name: 'Shifts' }).locator('li[aria-current="date"]')).toContainText('13F');

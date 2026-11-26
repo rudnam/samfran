@@ -40,6 +40,8 @@ object SamFranIcons {
     const val map = "M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14"
     const val edit = "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"
     const val trash = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"
+    /** ⋮: more things to do. Round caps make each zero-length line a dot. */
+    const val more = "M12 5h.01M12 12h.01M12 19h.01"
     const val download = "M12 4v11M7 10l5 5 5-5M5 20h14"
     const val camera = "M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM15.5 13.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z"
     const val settings = "M4 7h10M18 7h2M4 17h4M12 17h8M16 7a2 2 0 1 1-4 0a2 2 0 1 1 4 0zM10 17a2 2 0 1 1-4 0a2 2 0 1 1 4 0z"

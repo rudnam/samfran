@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -299,6 +301,7 @@ private fun PhotoViewer(
     onClose: () -> Unit,
     onDelete: (Photo) -> Unit,
 ) {
+    val colors = SamFranTheme.colors
     // Android 8 and 9 ask before an app adds to Pictures; from 10 it needn't.
     var toSave by remember { mutableStateOf<Photo?>(null) }
     val askStorage = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -335,33 +338,52 @@ private fun PhotoViewer(
                     style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFFF4EFE8),
                 )
-                // The place's cover is the photo the list shows for it; any can be.
-                if (current != null && current.id == coverId) {
-                    Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        LineIcon(SamFranIcons.check, null, tint = Color(0xFFF4EFE8), size = 16.dp)
-                        Text(" " + stringResource(R.string.cover), style = MaterialTheme.typography.labelLarge, color = Color(0xFFF4EFE8))
-                    }
-                } else if (current != null) {
-                    TextButton(onClick = { onCover(current) }, enabled = !busy) {
-                        Text(stringResource(R.string.make_cover), color = Color(0xFFF4EFE8))
+                // Saving to the phone shows here, so it's seen with the menu closed.
+                if (current != null && current.id in saving) {
+                    Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(Modifier.size(20.dp), color = Color(0xFFF4EFE8), strokeWidth = 2.dp)
                     }
                 }
-                // Download: the original, as it was taken, into the phone's Pictures.
+                // What can be done with this photo, behind ⋮, as photo viewers do.
                 if (current != null) {
-                    when (current.id) {
-                        in saving -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(Modifier.size(20.dp), color = Color(0xFFF4EFE8), strokeWidth = 2.dp)
+                    Box {
+                        var menu by remember { mutableStateOf(false) }
+                        IconButton(onClick = { menu = true }) {
+                            LineIcon(SamFranIcons.more, stringResource(R.string.more), tint = Color(0xFFF4EFE8))
                         }
-                        in saved -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                            LineIcon(SamFranIcons.check, stringResource(R.string.photo_saved), tint = Color(0xFFF4EFE8))
-                        }
-                        else -> IconButton(onClick = { save(current) }) {
-                            LineIcon(SamFranIcons.download, stringResource(R.string.download), tint = Color(0xFFF4EFE8))
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }, containerColor = colors.surface) {
+                            // The place's cover is the photo the list shows for it; any can be.
+                            val isCover = current.id == coverId
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (isCover) R.string.is_cover else R.string.make_cover)) },
+                                leadingIcon = { LineIcon(if (isCover) SamFranIcons.check else SamFranIcons.star, null) },
+                                enabled = !isCover && !busy,
+                                onClick = {
+                                    menu = false
+                                    onCover(current)
+                                },
+                            )
+                            // The original, as it was taken, into the phone's Pictures.
+                            val isSaved = current.id in saved
+                            DropdownMenuItem(
+                                text = { Text(stringResource(if (isSaved) R.string.photo_saved else R.string.download)) },
+                                leadingIcon = { LineIcon(if (isSaved) SamFranIcons.check else SamFranIcons.download, null) },
+                                enabled = current.id !in saving && !isSaved,
+                                onClick = {
+                                    menu = false
+                                    save(current)
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete), color = colors.danger) },
+                                leadingIcon = { LineIcon(SamFranIcons.trash, null, tint = colors.danger) },
+                                onClick = {
+                                    menu = false
+                                    confirmDelete = current
+                                },
+                            )
                         }
                     }
-                }
-                IconButton(onClick = { confirmDelete = current }) {
-                    LineIcon(SamFranIcons.trash, stringResource(R.string.delete), tint = Color(0xFFFF9C8F))
                 }
                 IconButton(onClick = onClose) {
                     LineIcon(SamFranIcons.close, stringResource(R.string.close), tint = Color(0xFFF4EFE8))
@@ -379,7 +401,6 @@ private fun PhotoViewer(
         }
     }
     confirmDelete?.let { photo ->
-        val colors = SamFranTheme.colors
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
             title = { Text(stringResource(R.string.delete_photo_title)) },

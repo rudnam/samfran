@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, errorMessage, type ReadProgress, type ShiftDay, type ShiftMonth } from '../../api';
 import { t } from '../../i18n';
-import { href, navigate } from '../../router';
+import { href, navigate, replaceRoute } from '../../router';
 import { useCached } from '../../cache';
 import { Icon } from '../../components/Icon';
 import { Skeleton } from '../../components/Overlay';
@@ -167,9 +167,10 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
         )}
         {ready && data && data.days.length > 0 && view === 'calendar' && (
           <ShiftCalendar
-            key={`${data.month}:${day ?? ''}`}
+            key={data.month}
             month={data.month}
             pick={day}
+            onPick={(date) => replaceRoute('shifts', { month: data.month, day: date }, { keepScroll: true })}
             days={data.days}
             closing={data.closing_days ?? data.settings.closing_days ?? [15, 31]}
             who={me}
