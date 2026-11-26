@@ -433,4 +433,15 @@ class FakePhotos : Photos {
         if ("unreadable" in uri) throw UnreadablePhotoException()
         return PickedPhoto(uri.substringAfterLast('/'), "image/jpeg", 3, 4000, 3000, byteArrayOf(1)) { byteArrayOf(-1, -40, -1).inputStream() }
     }
+
+    /** The photos saved to the phone, in order. */
+    val saved = mutableListOf<Photo>()
+
+    /** What the next save answers; done by default. */
+    var nextSave: Outcome<Unit> = Outcome.Done(Unit)
+
+    override suspend fun save(photo: Photo): Outcome<Unit> {
+        if (nextSave is Outcome.Done) saved += photo
+        return nextSave
+    }
 }

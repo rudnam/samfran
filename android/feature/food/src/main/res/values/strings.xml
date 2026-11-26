@@ -169,6 +169,9 @@
     <!-- The photo the list shows for a place; any of its photos can be. -->
     <string name="cover">Cover</string>
     <string name="make_cover">Make cover</string>
+    <string name="download">Download</string>
+    <string name="photo_saved">Saved to Pictures</string>
+    <string name="photo_not_saved">The photo couldn’t be saved on this phone. Is it full?</string>
     <string name="delete_photo_body">It’s gone for both of you. This can’t be undone.</string>
     <string name="close">Close</string>
     <string name="been_times">Been %1$d times · last %2$s</string>

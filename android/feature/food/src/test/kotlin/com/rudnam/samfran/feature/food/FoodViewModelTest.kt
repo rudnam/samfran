@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Photos
 import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.testing.FakeBusAlarm
 import com.rudnam.samfran.core.testing.FakeBusRepository
@@ -197,6 +198,25 @@ class FoodViewModelTest {
         for (v in vm.state.value.place!!.visits!!) vm.deleteVisit(v.id)
         assertNull(vm.state.value.beenOn)
         assertFalse(food.list.value!!.first { it.id == 12L }.been)
+    }
+
+    @Test
+    fun `a photo is saved to the phone as it was taken, and a phone that won't keep it says so`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
+        watch(vm.state)
+        val photo = vm.state.value.place!!.visits!!.first().photos.first()
+        vm.savePhoto(photo)
+        testScheduler.runCurrent()
+        assertEquals(listOf(photo), photos.saved)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
+        assertTrue(vm.state.value.saving.isEmpty())
+
+        photos.nextSave = Outcome.Refused(Photos.COULD_NOT_SAVE)
+        val other = vm.state.value.place!!.visits!!.first().photos[1]
+        vm.savePhoto(other)
+        testScheduler.runCurrent()
+        assertEquals(Outcome.Refused(Photos.COULD_NOT_SAVE), vm.state.value.saveProblem)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.rudnam.samfran.feature.food
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -22,11 +25,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -56,9 +62,11 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Photos
 import com.rudnam.samfran.core.designsystem.component.CardTitle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.LinkButton
@@ -118,6 +126,10 @@ internal fun Visits(state: PlaceUiState, actions: PlaceActions) {
             coverId = state.place?.coverPhotoId,
             busy = state.busy,
             onCover = { photo -> actions.setCover(photo.id) },
+            saving = state.saving,
+            saved = state.savedPhotos,
+            saveProblem = state.saveProblem,
+            onSave = actions::savePhoto,
             onClose = { viewing = null },
             onDelete = { photo ->
                 if (open.first.photos.size == 1) viewing = null
@@ -280,9 +292,30 @@ private fun PhotoViewer(
     coverId: Long?,
     busy: Boolean,
     onCover: (Photo) -> Unit,
+    saving: Set<Long>,
+    saved: Set<Long>,
+    saveProblem: Outcome<Any>?,
+    onSave: (Photo) -> Unit,
     onClose: () -> Unit,
     onDelete: (Photo) -> Unit,
 ) {
+    // Android 8 and 9 ask before an app adds to Pictures; from 10 it needn't.
+    var toSave by remember { mutableStateOf<Photo?>(null) }
+    val askStorage = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        toSave?.let { if (granted) onSave(it) }
+        toSave = null
+    }
+    val context = LocalContext.current
+    fun save(photo: Photo) {
+        val needsAsking = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        if (needsAsking) {
+            toSave = photo
+            askStorage.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        } else {
+            onSave(photo)
+        }
+    }
     val pager = rememberPagerState(initialPage = start) { photos.size }
     var confirmDelete by remember { mutableStateOf<Photo?>(null) }
     BackHandler(onBack = onClose)
@@ -313,12 +346,35 @@ private fun PhotoViewer(
                         Text(stringResource(R.string.make_cover), color = Color(0xFFF4EFE8))
                     }
                 }
+                // Download: the original, as it was taken, into the phone's Pictures.
+                if (current != null) {
+                    when (current.id) {
+                        in saving -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(Modifier.size(20.dp), color = Color(0xFFF4EFE8), strokeWidth = 2.dp)
+                        }
+                        in saved -> Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                            LineIcon(SamFranIcons.check, stringResource(R.string.photo_saved), tint = Color(0xFFF4EFE8))
+                        }
+                        else -> IconButton(onClick = { save(current) }) {
+                            LineIcon(SamFranIcons.download, stringResource(R.string.download), tint = Color(0xFFF4EFE8))
+                        }
+                    }
+                }
                 IconButton(onClick = { confirmDelete = current }) {
                     LineIcon(SamFranIcons.trash, stringResource(R.string.delete), tint = Color(0xFFFF9C8F))
                 }
                 IconButton(onClick = onClose) {
                     LineIcon(SamFranIcons.close, stringResource(R.string.close), tint = Color(0xFFF4EFE8))
                 }
+            }
+            saveProblem?.let { p ->
+                Text(
+                    if (p is Outcome.Refused && p.message == Photos.COULD_NOT_SAVE) stringResource(R.string.photo_not_saved) else p.problem().orEmpty(),
+                    Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(16.dp)
+                        .background(Color(0xCC000000), RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFFF9C8F),
+                )
             }
         }
     }

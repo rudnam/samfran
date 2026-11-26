@@ -163,6 +163,9 @@
     <string name="delete_photo_title">この写真を削除しますか？</string>
     <string name="cover">カバー</string>
     <string name="make_cover">カバーにする</string>
+    <string name="download">ダウンロード</string>
+    <string name="photo_saved">写真に保存しました</string>
+    <string name="photo_not_saved">この端末に写真を保存できませんでした。空き容量はありますか？</string>
     <string name="delete_photo_body">二人とも見られなくなります。元に戻せません。</string>
     <string name="close">閉じる</string>
     <string name="been_times">%1$d回行った · 最後は%2$s</string>
