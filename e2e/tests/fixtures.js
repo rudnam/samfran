@@ -94,6 +94,55 @@ async function pickOrder(page, name) {
 
 let n = 0;
 /** A unique email per call, so parallel tests never share an account. */
+/**
+ * A JPEG that looks a little like a photo (a sky, a hill, a sun), drawn in
+ * the page, as a Buffer: { name, mimeType, buffer } for setInputFiles or a
+ * multipart upload. hue picks its colours.
+ */
+async function photo(page, { width = 1600, height = 1200, hue = 30, name = 'photo.jpg' } = {}) {
+  const b64 = await page.evaluate(
+    async ({ width, height, hue }) => {
+      const c = document.createElement('canvas');
+      c.width = width;
+      c.height = height;
+      const g = c.getContext('2d');
+      const sky = g.createLinearGradient(0, 0, 0, height);
+      sky.addColorStop(0, `hsl(${hue + 180}, 60%, 72%)`);
+      sky.addColorStop(1, `hsl(${hue + 200}, 50%, 88%)`);
+      g.fillStyle = sky;
+      g.fillRect(0, 0, width, height);
+      g.fillStyle = `hsl(${hue + 40}, 90%, 62%)`;
+      g.beginPath();
+      g.arc(width * 0.72, height * 0.3, height * 0.12, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = `hsl(${hue}, 45%, 38%)`;
+      g.beginPath();
+      g.moveTo(0, height);
+      g.quadraticCurveTo(width * 0.35, height * 0.35, width, height * 0.75);
+      g.lineTo(width, height);
+      g.fill();
+      const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.95));
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let s = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(s);
+    },
+    { width, height, hue },
+  );
+  return { name, mimeType: 'image/jpeg', buffer: Buffer.from(b64, 'base64') };
+}
+
+/** Adds a photo to a visit through the API, as the apps do: a thumbnail, then the original. */
+async function addPhoto(page, placeId, visitId, opts = {}) {
+  const original = await photo(page, opts);
+  const thumb = await photo(page, { ...opts, width: 480, height: Math.round((480 * (opts.height ?? 1200)) / (opts.width ?? 1600)), name: 'thumb.jpg' });
+  const res = await page.request.post(`/api/restaurants/${placeId}/visits/${visitId}/photos`, {
+    multipart: { width: String(opts.width ?? 1600), height: String(opts.height ?? 1200), thumb, photo: original },
+  });
+  if (res.status() !== 201) throw new Error(`add photo: ${res.status()} ${await res.text()}`);
+  return { place: await res.json(), original };
+}
+
 function uniqueEmail() {
   return `user-${Date.now()}-${process.pid}-${n++}@example.com`;
 }
@@ -144,4 +193,4 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, pickOrder, uniqueEmail, PASSWORD, confirmationLink, resetLink };
+module.exports = { test, expect: base.expect, signUp, standAt, pickCategory, pickOrder, photo, addPhoto, uniqueEmail, PASSWORD, confirmationLink, resetLink };

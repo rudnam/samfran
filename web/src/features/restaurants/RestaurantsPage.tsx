@@ -262,7 +262,7 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
           {shown.map((r) => (
             <li key={r.id}>
               <a className="spot" href={href('restaurant', { id: r.id })}>
-                <CategoryTile category={categoryOf(r.category)} />
+                <CategoryTile category={categoryOf(r.category)} cover={r.cover} />
                 <span className="spot-body">
                   <span className="spot-name">{r.name}</span>
                   <span className="spot-line">
@@ -285,11 +285,13 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
                   <span className="spot-when">
                     <strong className="distance">{distanceText(near, r)}</strong>
                     {r.last_visit && <span>{shortDate(r.last_visit)}</span>}
+                    {r.visit_count > 1 && <span>{t('{n}×', { n: r.visit_count })}</span>}
                   </span>
                 ) : (
                   r.last_visit && (
                     <span className="spot-when">
                       <span>{shortDate(r.last_visit)}</span>
+                      {r.visit_count > 1 && <span>{t('{n}×', { n: r.visit_count })}</span>}
                     </span>
                   )
                 )}
@@ -312,7 +314,8 @@ export function RestaurantsPage({ tab }: { tab: Tab }) {
 function matches(r: Restaurant, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  return [r.name, r.area, r.cuisine, r.notes].some((s) => s.toLowerCase().includes(q));
+  // A visit's note too: "where did we have that?"
+  return [r.name, r.area, r.cuisine, r.notes, ...(r.visit_notes ?? []).map((v) => v.note)].some((s) => s.toLowerCase().includes(q));
 }
 
 /** How to order the list: an icon button, the same whichever order (it's a menu, not a toggle), opening a menu of the ways with the current one ticked. */

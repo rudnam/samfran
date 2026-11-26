@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -330,9 +331,9 @@ var toolList = []*tool{
 	{
 		Name:  "log_visit",
 		Title: "Log a visit",
-		Description: "Records that you went to a place on a date. A want-to-go place moves to the been-there list. The apps show one date per place (been, or not yet), " +
-			"so going again just moves that date to the later one; an earlier date than the one it has changes nothing. The optional note is added to the place's notes.",
-		InputSchema: object(map[string]any{"restaurant_id": idArg, "visited_on": dateArg, "note": str("Optional: what you had, how it was. Added to the place's notes.")}, "restaurant_id", "visited_on"),
+		Description: "Records that you went to a place on a date: a visit, with an optional note. A want-to-go place moves to the been-there list; " +
+			"going again adds another visit (the apps list each, with its photos). Logging the same date again changes nothing.",
+		InputSchema: object(map[string]any{"restaurant_id": idArg, "visited_on": dateArg, "note": str("Optional: what you had, how it was.")}, "restaurant_id", "visited_on"),
 		Annotations: adds,
 		run: func(c *call, args json.RawMessage) (any, error) {
 			var in struct {
@@ -356,19 +357,22 @@ var toolList = []*tool{
 			if err != nil {
 				return nil, asToolError(err, "restaurant")
 			}
-			if cur.LastVisit == nil || *cur.LastVisit < on {
-				added, err := c.h.restaurants.SetBeen(ctx, sp, c.userID, in.RestaurantID, on)
-				if err != nil {
+			// The same day again (Claude asked twice): its note, if new, joins that visit's.
+			if i := slices.IndexFunc(cur.Visits, func(v restaurant.Visit) bool { return v.VisitedOn == on }); i >= 0 {
+				v := cur.Visits[i]
+				if note != "" && !strings.Contains(v.Note, note) {
+					joined := strings.TrimSpace(v.Note + "\n" + note)
+					if _, joined, err = restaurant.CheckVisit(on, joined, time.Now()); err == nil {
+						if err := c.h.restaurants.UpdateVisit(ctx, sp, in.RestaurantID, v.ID, on, joined); err != nil {
+							return nil, asToolError(err, "restaurant")
+						}
+					}
+				}
+			} else {
+				if err := c.h.restaurants.AddVisit(ctx, sp, c.userID, in.RestaurantID, on, note); err != nil {
 					return nil, asToolError(err, "restaurant")
 				}
-				kind := "been_date_changed"
-				if added {
-					kind = "visit_logged"
-				}
-				c.log(kind, map[string]any{"name": cur.Name, "date": on})
-			}
-			if err := c.h.restaurants.NoteVisit(ctx, sp, in.RestaurantID, on, note); err != nil {
-				return nil, asToolError(err, "restaurant")
+				c.log("visit_logged", map[string]any{"name": cur.Name, "date": on})
 			}
 			return c.h.restaurants.Get(ctx, sp, c.userID, in.RestaurantID)
 		},

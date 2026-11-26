@@ -23,10 +23,19 @@ type restaurantJSON struct {
 		Me    bool   `json:"me"`
 		Stars int    `json:"stars"`
 	} `json:"ratings"`
-	Visits []struct {
+	Cover      *string `json:"cover"`
+	PhotoCount int     `json:"photo_count"`
+	Visits     []struct {
 		ID        int64  `json:"id"`
 		VisitedOn string `json:"visited_on"`
 		Note      string `json:"note"`
+		Photos    []struct {
+			ID       int64  `json:"id"`
+			URL      string `json:"url"`
+			ThumbURL string `json:"thumb_url"`
+			Width    int    `json:"width"`
+			AddedBy  string `json:"added_by"`
+		} `json:"photos"`
 	} `json:"visits"`
 	VisitNotes []struct {
 		VisitedOn string `json:"visited_on"`
@@ -50,7 +59,7 @@ func TestRestaurants(t *testing.T) {
 	}, &r)
 	if code != 201 || r.Name != "Taco Loco" || r.VisitCount != 1 || r.LastVisit == nil || *r.LastVisit != "2026-10-01" ||
 		len(r.Ratings) != 1 || r.Ratings[0].Stars != 4 || !r.Ratings[0].Me || len(r.Visits) != 1 || r.Visits[0].Note != "great salsa" ||
-		r.Notes != "2026-10-01 · great salsa" { // what's written about a visit shows in the place's notes
+		r.Notes != "" { // a visit's note stays on the visit
 		t.Fatalf("create: %d %+v", code, r)
 	}
 	path := "/api/restaurants/" + itoa(r.ID)
@@ -111,9 +120,24 @@ func TestRestaurants(t *testing.T) {
 
 	// Another visit, newest first.
 	if code := alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-02", "note": "tantanmen"}, &r); code != 201 ||
-		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" ||
-		r.Notes != "2026-10-01 · great salsa\n2026-11-02 · tantanmen" {
+		r.VisitCount != 2 || *r.LastVisit != "2026-11-02" || r.Visits[0].VisitedOn != "2026-11-02" || r.Visits[0].Note != "tantanmen" ||
+		len(r.Visits[0].Photos) != 0 || r.Notes != "" {
 		t.Fatalf("add visit: %d %+v", code, r)
+	}
+	// A visit's date and note change; one field left out keeps its value.
+	if code := alice.do("PATCH", path+"/visits/"+itoa(r.Visits[0].ID), map[string]string{"note": "  tantanmen, extra spicy "}, &r); code != 200 ||
+		r.Visits[0].Note != "tantanmen, extra spicy" || r.Visits[0].VisitedOn != "2026-11-02" {
+		t.Fatalf("edit visit note: %d %+v", code, r.Visits)
+	}
+	if code := alice.do("PATCH", path+"/visits/"+itoa(r.Visits[0].ID), map[string]string{"visited_on": "2026-09-01"}, &r); code != 200 ||
+		*r.LastVisit != "2026-10-01" || r.Visits[1].VisitedOn != "2026-09-01" || r.Visits[1].Note != "tantanmen, extra spicy" {
+		t.Fatalf("edit visit date: %d %+v", code, r.Visits)
+	}
+	if code := alice.do("PATCH", path+"/visits/"+itoa(r.Visits[1].ID), map[string]string{"visited_on": "2999-01-01"}, nil); code != 400 {
+		t.Errorf("visit in the future: %d, want 400", code)
+	}
+	if code := bob.do("PATCH", path+"/visits/"+itoa(r.Visits[1].ID), map[string]string{"note": "x"}, nil); code != 404 {
+		t.Errorf("bob edits alice's visit: %d, want 404", code)
 	}
 	if code := alice.do("DELETE", path+"/visits/"+itoa(r.Visits[1].ID), nil, &r); code != 200 || r.VisitCount != 1 {
 		t.Fatalf("delete visit: %d %+v", code, r)
@@ -139,7 +163,7 @@ func TestRestaurants(t *testing.T) {
 		t.Fatalf("list: %d %+v", code, list)
 	}
 	// The list carries what was written about visits, for searching; a place without notes has none.
-	if n := list[0].VisitNotes; len(n) != 1 || n[0].Note != "tantanmen" || n[0].VisitedOn != "2026-11-02" || len(list[1].VisitNotes) != 0 {
+	if n := list[0].VisitNotes; len(n) != 1 || n[0].Note != "great salsa" || n[0].VisitedOn != "2026-10-01" || len(list[1].VisitNotes) != 0 {
 		t.Errorf("visit notes in the list: %+v", list)
 	}
 
@@ -147,7 +171,7 @@ func TestRestaurants(t *testing.T) {
 	// older ones (as older apps logged them) stay.
 	alice.do("POST", path+"/visits", map[string]string{"visited_on": "2026-11-05"}, &r)
 	if code := alice.do("PUT", path+"/been", map[string]string{"visited_on": "2026-11-08"}, &r); code != 200 ||
-		r.VisitCount != 2 || *r.LastVisit != "2026-11-08" || r.Visits[0].VisitedOn != "2026-11-08" || r.Visits[1].Note != "tantanmen" {
+		r.VisitCount != 2 || *r.LastVisit != "2026-11-08" || r.Visits[0].VisitedOn != "2026-11-08" || r.Visits[1].Note != "great salsa" {
 		t.Fatalf("set been date: %d %+v", code, r)
 	}
 	for _, body := range []any{map[string]string{"visited_on": "yesterday"}, map[string]any{}} {
