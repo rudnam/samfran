@@ -115,6 +115,9 @@ internal fun Visits(state: PlaceUiState, actions: PlaceActions) {
             photos = open.first.photos,
             start = open.second.coerceAtMost(open.first.photos.size - 1),
             title = Dates.short(open.first.visitedOn, locale, state.today),
+            coverId = state.place?.coverPhotoId,
+            busy = state.busy,
+            onCover = { photo -> actions.setCover(photo.id) },
             onClose = { viewing = null },
             onDelete = { photo ->
                 if (open.first.photos.size == 1) viewing = null
@@ -270,7 +273,16 @@ private const val MAX_PICK = 20
  * to zoom; back closes it.
  */
 @Composable
-private fun PhotoViewer(photos: List<Photo>, start: Int, title: String, onClose: () -> Unit, onDelete: (Photo) -> Unit) {
+private fun PhotoViewer(
+    photos: List<Photo>,
+    start: Int,
+    title: String,
+    coverId: Long?,
+    busy: Boolean,
+    onCover: (Photo) -> Unit,
+    onClose: () -> Unit,
+    onDelete: (Photo) -> Unit,
+) {
     val pager = rememberPagerState(initialPage = start) { photos.size }
     var confirmDelete by remember { mutableStateOf<Photo?>(null) }
     BackHandler(onBack = onClose)
@@ -290,6 +302,17 @@ private fun PhotoViewer(photos: List<Photo>, start: Int, title: String, onClose:
                     style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFFF4EFE8),
                 )
+                // The place's cover is the photo the list shows for it; any can be.
+                if (current != null && current.id == coverId) {
+                    Row(Modifier.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        LineIcon(SamFranIcons.check, null, tint = Color(0xFFF4EFE8), size = 16.dp)
+                        Text(" " + stringResource(R.string.cover), style = MaterialTheme.typography.labelLarge, color = Color(0xFFF4EFE8))
+                    }
+                } else if (current != null) {
+                    TextButton(onClick = { onCover(current) }, enabled = !busy) {
+                        Text(stringResource(R.string.make_cover), color = Color(0xFFF4EFE8))
+                    }
+                }
                 IconButton(onClick = { confirmDelete = current }) {
                     LineIcon(SamFranIcons.trash, stringResource(R.string.delete), tint = Color(0xFFFF9C8F))
                 }

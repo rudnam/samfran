@@ -156,6 +156,7 @@ data class NetworkRestaurant(
     @SerialName("last_visit") val lastVisit: String? = null,
     val ratings: List<NetworkRating> = emptyList(),
     val cover: String? = null,
+    @SerialName("cover_photo_id") val coverPhotoId: Long? = null,
     @SerialName("photo_count") val photoCount: Int = 0,
     val visits: List<NetworkVisit>? = null,
     @SerialName("visit_notes") val visitNotes: List<NetworkVisitNote>? = null,
@@ -170,6 +171,10 @@ data class NetworkComment(
     val me: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
 )
+
+/** A place's cover photo (PUT /api/restaurants/{id}/cover). */
+@Serializable
+data class NetworkCoverInput(@SerialName("photo_id") val photoId: Long)
 
 /** A new comment (POST /api/restaurants/{id}/comments). */
 @Serializable
@@ -191,6 +196,7 @@ fun NetworkRestaurant.asModel() = Restaurant(
     lastVisit = lastVisit?.let(LocalDate::parse),
     ratings = ratings.map { Rating(it.name, it.me, it.stars) },
     cover = cover?.let(::onServer),
+    coverPhotoId = coverPhotoId,
     photoCount = photoCount,
     visits = visits?.map { v ->
         Visit(v.id, LocalDate.parse(v.visitedOn), v.note, v.addedBy, v.photos.map { Photo(it.id, onServer(it.url), onServer(it.thumbUrl), it.width, it.height, it.addedBy) })

@@ -851,8 +851,26 @@ button.danger-text { color: var(--danger); }
 }
 @media (hover: hover) { .photo-add:hover { color: var(--text); border-color: var(--muted); } }
 .photo-add:focus-within { outline: 2.5px solid var(--accent-ink); outline-offset: 2px; }
-/* The place's cover: its newest photo where the category's icon was. */
-img.tile.photo { object-fit: cover; background: var(--sunken); }
+/* The place's cover photo where the category's icon was, with the category
+   in the corner. On the list every tile is big enough to tell a photo apart,
+   and the same size, so the names line up. */
+.tile.photo { position: relative; background: var(--sunken); overflow: visible; }
+.tile.photo img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.spot > .tile { width: 60px; height: 60px; }
+.spot > .tile > svg { width: 28px; height: 28px; }
+.tile-badge {
+  position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--surface);
+}
+.tile.photo.sm .tile-badge { width: 16px; height: 16px; right: -3px; bottom: -3px; }
+.tile-badge.cat-eat { background: var(--tile-orange); color: var(--tile-orange-ink); }
+.tile-badge.cat-nature { background: var(--tile-green); color: var(--tile-green-ink); }
+.tile-badge.cat-culture { background: var(--tile-red); color: var(--tile-red-ink); }
+.tile-badge.cat-fun { background: var(--tile-blue); color: var(--tile-blue-ink); }
+.tile-badge.cat-relax { background: var(--tile-purple); color: var(--tile-purple-ink); }
+.tile-badge.cat-shopping { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
+.tile-badge.cat-other { background: var(--sunken); color: var(--muted); }
+.viewer-cover { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; padding: 0 6px; }
 .tile.lg { width: 64px; height: 64px; border-radius: var(--radius); }
 
 /* A visit's photos at full size, one at a time. */

@@ -86,10 +86,12 @@ type Restaurant struct {
 	VisitCount int       `json:"visit_count"`
 	LastVisit  *string   `json:"last_visit"` // YYYY-MM-DD, or null if you haven't been
 	Ratings    []Rating  `json:"ratings"`
-	// Cover is the thumbnail of its newest photo, which the apps show
-	// instead of its category's icon; null without photos.
-	Cover      *string `json:"cover"`
-	PhotoCount int     `json:"photo_count"`
+	// Cover is the thumbnail of the photo you chose for it (SetCover), or
+	// else its newest, which the apps show instead of its category's icon;
+	// null without photos. CoverPhotoID is that photo's id.
+	Cover        *string `json:"cover"`
+	CoverPhotoID *int64  `json:"cover_photo_id"`
+	PhotoCount   int     `json:"photo_count"`
 	// What was written about visits (those with a note), newest first, so a
 	// search can find "where did we have that?".
 	VisitNotes []VisitNote `json:"visit_notes,omitempty"`
@@ -127,7 +129,7 @@ const selectRestaurants = `
 	SELECT r.id, r.name, r.area, r.cuisine, r.category, r.lat, r.lng, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
 		(SELECT count(*) FROM restaurant_visits v WHERE v.restaurant_id = r.id),
 		(SELECT to_char(max(v.visited_on), 'YYYY-MM-DD') FROM restaurant_visits v WHERE v.restaurant_id = r.id),
-		(SELECT max(p.id) FROM restaurant_photos p WHERE p.restaurant_id = r.id),
+		coalesce(r.cover_photo_id, (SELECT max(p.id) FROM restaurant_photos p WHERE p.restaurant_id = r.id)),
 		(SELECT count(*) FROM restaurant_photos p WHERE p.restaurant_id = r.id)
 	FROM restaurants r
 	LEFT JOIN users u ON u.id = r.added_by
@@ -150,8 +152,8 @@ func (s *Store) query(ctx context.Context, me int64, where string, args ...any) 
 			return nil, err
 		}
 		if cover.Valid {
-			u := thumbURL(cover.Int64)
-			r.Cover = &u
+			u, id := thumbURL(cover.Int64), cover.Int64
+			r.Cover, r.CoverPhotoID = &u, &id
 		}
 		if addedEmail != "" {
 			r.AddedBy = space.DisplayName(addedName, addedEmail)
@@ -530,6 +532,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("DELETE /api/restaurants/{id}/visits/{visit}", h.deleteVisit)
 	route("POST /api/restaurants/{id}/visits/{visit}/photos", h.addPhoto)
 	route("DELETE /api/restaurants/{id}/photos/{photo}", h.deletePhoto)
+	route("PUT /api/restaurants/{id}/cover", h.setCover)
 	route("GET /api/photos/{id}", h.servePhoto(false))
 	route("GET /api/photos/{id}/thumb", h.servePhoto(true))
 	route("PUT /api/restaurants/{id}/been", h.setBeen)

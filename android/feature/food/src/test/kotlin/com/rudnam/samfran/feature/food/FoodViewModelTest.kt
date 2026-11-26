@@ -214,8 +214,13 @@ class FoodViewModelTest {
         assertEquals(added.last().thumbUrl, place.cover) // the newest is the place's picture
         assertTrue(vm.state.value.sending.isEmpty())
 
+        // Any photo can be the cover instead; deleting it goes back to the newest.
+        vm.setCover(added.first().id)
+        assertEquals(added.first().thumbUrl, vm.state.value.place!!.cover)
+        assertEquals(added.first().id, vm.state.value.place!!.coverPhotoId)
         vm.deletePhoto(added.first().id)
         assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
+        assertEquals(added.last().id, vm.state.value.place!!.coverPhotoId)
 
         vm.addPhotos(visit, listOf("content://unreadable/3"))
         testScheduler.runCurrent()

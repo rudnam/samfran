@@ -505,6 +505,9 @@ export const ja = {
   'Been {n} times · last {date}': '{n}回行った · 最後は{date}',
   '{n}×': '{n}回',
   'added photos of {name}': '{name}の写真を追加',
+  // A place's cover photo (Visits.tsx).
+  Cover: 'カバー',
+  'Make cover': 'カバーにする',
 } as const;
 
 // The server's messages, which are written in English (internal/, the

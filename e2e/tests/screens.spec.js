@@ -49,14 +49,16 @@ for (const [name, viewport] of [
       expect(res.status()).toBe(201);
       placeIds[name] = (await res.json()).id;
     }
-    // Photos: the newest is the place's picture on the list. Hanabi Grill went twice, with photos each time.
+    // Photos: the cover (chosen, or else the newest) is the place's picture on the list. Hanabi Grill went twice, with photos each time.
     const hanabi = placeIds['Hanabi Grill'];
     const again = await page.request.post(`/api/restaurants/${hanabi}/visits`, {
       data: { visited_on: new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10), note: 'First time. The demi-glace hamburg, and a long wait for a table.' },
     });
     const visitsOf = (await again.json()).visits;
     for (const hue of [20, 35, 10, 50]) await addPhoto(page, hanabi, visitsOf[0].id, { hue });
-    await addPhoto(page, hanabi, visitsOf[1].id, { hue: 160, width: 1200, height: 1600 });
+    const withPhotos = await addPhoto(page, hanabi, visitsOf[1].id, { hue: 160, width: 1200, height: 1600 });
+    // Its cover is chosen: the first photo of its latest visit, not the newest.
+    await page.request.put(`/api/restaurants/${hanabi}/cover`, { data: { photo_id: withPhotos.place.visits[0].photos[0].id } });
     const castle = await (await page.request.get(`/api/restaurants/${placeIds['Castle Park']}`)).json();
     await addPhoto(page, castle.id, castle.visits[0].id, { hue: 110 });
     await page.reload();

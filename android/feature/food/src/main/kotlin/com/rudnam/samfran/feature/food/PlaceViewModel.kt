@@ -82,6 +82,7 @@ interface PlaceActions {
     /** Sends photos picked on the phone to a visit, one after another, as they were taken. */
     fun addPhotos(visit: Long, uris: List<String>)
     fun deletePhoto(photo: Long)
+    fun setCover(photo: Long)
     fun delete()
     fun setDraft(text: String)
     /** Posts [PlaceUiState.draft], which empties once it's saved. */
@@ -202,6 +203,7 @@ class PlaceViewModel @Inject constructor(
     }
 
     override fun deletePhoto(photo: Long) = change({ food.deletePhoto(id, photo) })
+    override fun setCover(photo: Long) = change({ food.setCover(id, photo) })
 
     override fun delete() = change({ food.delete(id) }) { it.copy(deleted = true) }
 

@@ -59,6 +59,7 @@ class FoodScreenshotTest {
         override fun deleteVisit(visit: Long) {}
         override fun addPhotos(visit: Long, uris: List<String>) {}
         override fun deletePhoto(photo: Long) {}
+        override fun setCover(photo: Long) {}
         override fun delete() {}
         override fun setDraft(text: String) {}
         override fun postComment() {}

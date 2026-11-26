@@ -168,10 +168,19 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
         it.withPhotos(it.visits.orEmpty().map { v -> v.copy(photos = v.photos.filter { p -> p.id != photo }) })
     }
 
-    /** With these visits, and the cover and count they make. */
+    override suspend fun setCover(id: Long, photo: Long) = change(id) {
+        chosenCovers[id] = photo
+        it.withPhotos(it.visits.orEmpty())
+    }
+
+    /** The photo chosen as each place's cover. */
+    private val chosenCovers = mutableMapOf<Long, Long>()
+
+    /** With these visits, and the cover (the chosen one, else the newest) and count they make. */
     private fun Restaurant.withPhotos(visits: List<Visit>): Restaurant {
         val all = visits.flatMap { it.photos }
-        return copy(visits = visits, photoCount = all.size, cover = all.maxByOrNull { it.id }?.thumbUrl)
+        val c = all.firstOrNull { p -> p.id == chosenCovers[id] } ?: all.maxByOrNull { it.id }
+        return copy(visits = visits, photoCount = all.size, cover = c?.thumbUrl, coverPhotoId = c?.id)
     }
 
     override suspend fun rate(id: Long, stars: Int) = change(id) { r ->
