@@ -24,6 +24,7 @@
     <string name="notify_change_visit">%1$sさんが%2$sに行きました</string>
     <string name="notify_change_rated">%1$sさんが%2$sを★%3$dと評価しました</string>
     <string name="notify_change_shifts">%1$sさんがシフトを保存しました</string>
+    <string name="notify_change_commented">%1$sさんが%2$sにコメントしました</string>
     <string name="notify_bus_started">%1$sさんが%2$sまでの乗り過ごしアラームを開始しました</string>
     <string name="notify_bus_arrived">%1$sさんがもうすぐ%2$sに着きます</string>
     <string name="notify_bus_stopped">%1$sさんが%2$sまでの乗り過ごしアラームを止めました</string>

@@ -149,4 +149,5 @@
     <string name="phone_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
     <string name="phone_unknown">%s’s phone hasn’t checked in yet</string>
     <string name="change_photos">added photos of %s</string>
+    <string name="change_commented">commented on %s</string>
 </resources>

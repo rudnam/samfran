@@ -135,6 +135,7 @@ class ActivityJob : JobService() {
                 "restaurant_added" -> c.getString(if (e.details.been) R.string.notify_change_added_been else R.string.notify_change_added_want, who, name)
                 "visit_logged" -> c.getString(R.string.notify_change_visit, who, name)
                 "photos_added" -> c.getString(R.string.notify_change_photos, who, name)
+                "commented" -> c.getString(R.string.notify_change_commented, who, name)
                 "rated" -> if (e.details.stars > 0) c.getString(R.string.notify_change_rated, who, name, e.details.stars) else null
                 "shifts_saved" -> c.getString(R.string.notify_change_shifts, who)
                 "bus_started" -> c.getString(R.string.notify_bus_started, who, name)
@@ -147,7 +148,7 @@ class ActivityJob : JobService() {
             val nm = c.getSystemService(NotificationManager::class.java)
             nm.createNotificationChannel(NotificationChannel(CHANNEL, c.getString(R.string.channel_changes), NotificationManager.IMPORTANCE_DEFAULT))
             val b = Notification.Builder(c, CHANNEL)
-                .setSmallIcon(R.drawable.ic_stat_bus)
+                .setSmallIcon(R.drawable.ic_stat_changes)
                 .setContentTitle(lines[0])
                 .setContentIntent(ShiftPrompt.open(c, 13, "us"))
                 .setAutoCancel(true)
