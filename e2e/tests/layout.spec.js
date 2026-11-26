@@ -49,7 +49,7 @@ test('the Android app is on Us, from the Play Store', async ({ page }) => {
   await page.getByRole('navigation').getByRole('link', { name: 'Us', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Recent changes' })).toBeVisible();
   await expect(page.getByText('Get the Android app')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Google Play' })).toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=com.rudnam.samfran');
+  await expect(page.getByRole('link', { name: 'Google Play' })).toHaveAttribute('href', 'https://play.google.com/apps/internaltest/4700129288045289290');
 });
   });
   await signUp(page);

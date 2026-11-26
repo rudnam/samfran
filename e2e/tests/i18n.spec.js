@@ -28,7 +28,7 @@ test('the introduction switches to Japanese and back', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '日本語' }).click();
   await expect(page.getByRole('link', { name: 'ログイン' }).first()).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Google Playで入手' })).toHaveAttribute('href', /play\.google\.com\/store\/apps\/details\?id=com\.rudnam\.samfran/);
+  await expect(page.getByRole('link', { name: 'Google Playで入手' })).toHaveAttribute('href', /play\.google\.com\/apps\/internaltest\//);
   // The app opens in the language picked here.
   await page.getByRole('link', { name: 'ログイン' }).first().click();
   await expect(page.getByRole('heading', { name: 'ログイン' })).toBeVisible();
