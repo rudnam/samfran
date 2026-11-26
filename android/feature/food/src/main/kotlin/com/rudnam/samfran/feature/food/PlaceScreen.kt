@@ -1,12 +1,17 @@
 package com.rudnam.samfran.feature.food
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -23,6 +28,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
 import com.rudnam.samfran.core.designsystem.component.CardTitle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.Hint
@@ -81,10 +89,23 @@ fun PlaceScreen(state: PlaceUiState, actions: PlaceActions, onBack: () -> Unit, 
             return@SubPage
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The cover, big across the top: the original as it was taken, over its thumbnail until it's in.
+            place.cover?.let { thumb ->
+                val original = place.visits.orEmpty().flatMap { it.photos }.firstOrNull { it.id == place.coverPhotoId }?.url
+                Box(
+                    Modifier.fillMaxWidth().aspectRatio(16f / 10f).clip(RoundedCornerShape(20.dp)).background(colors.sunken),
+                ) {
+                    AsyncImage(model = thumb, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+                    if (original != null) {
+                        AsyncImage(model = original, contentDescription = stringResource(R.string.is_cover), contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
             Text(place.name, style = MaterialTheme.typography.displaySmall)
             // Its category, then its kind and area, as the website's page says them.
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                CategoryTile(place.category, size = 40.dp, cover = place.cover)
+                CategoryTile(place.category, size = 40.dp)
                 val line = listOf(stringResource(place.category.title), place.subtitle).filter { it.isNotBlank() }.joinToString(" · ")
                 Text(line, style = MaterialTheme.typography.bodyLarge, color = colors.muted)
             }

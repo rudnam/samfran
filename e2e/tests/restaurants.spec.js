@@ -179,6 +179,8 @@ test('photos: added to a visit as they were taken, shown in a strip, opened full
   await expect(viewer.getByRole('img', { name: 'Photo 1 of 1' })).toHaveAttribute('src', photos[1].url);
   await page.keyboard.press('Escape');
   await expect(viewer).toBeHidden();
+  // The cover is big across the top of the page: the original, as taken.
+  await expect(page.locator('img.place-cover')).toHaveAttribute('src', photos[1].url);
   await expect(strip.getByRole('button', { name: /^Photo / })).toHaveCount(1);
 
   // On the list, the place's cover photo is where its category's icon was, with the icon in its corner.

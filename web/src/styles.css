@@ -870,6 +870,11 @@ button.danger-text { color: var(--danger); }
 .tile-badge.cat-relax { background: var(--tile-purple); color: var(--tile-purple-ink); }
 .tile-badge.cat-shopping { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
 .tile-badge.cat-other { background: var(--sunken); color: var(--muted); }
+/* A place's cover photo, big across the top of its page. */
+.place-cover {
+  display: block; width: 100%; aspect-ratio: 16 / 10; max-height: 420px; object-fit: cover;
+  border-radius: var(--radius-lg); background: var(--sunken) center / cover no-repeat;
+}
 /* The photo viewer's ⋮ menu: light, over the dark viewer. */
 .viewer-menu a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-xs); color: var(--text); font-weight: 600; font-size: var(--text-body); text-decoration: none; }
 .viewer-bar .viewer-menu button.danger-text { color: var(--danger); }
