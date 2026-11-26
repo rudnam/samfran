@@ -155,17 +155,26 @@ test('photos: added to a visit as they were taken, shown in a strip, opened full
   await expect(viewer.getByRole('img', { name: 'Photo 2 of 2' })).toHaveAttribute('src', photos[1].url);
   await page.keyboard.press('ArrowLeft');
   await expect(viewer.getByRole('img', { name: 'Photo 1 of 2' })).toBeVisible();
-  await expect(viewer.getByRole('link', { name: 'Download' })).toHaveAttribute('href', photos[0].url);
+  // What can be done with a photo is behind ⋮; Escape closes the menu before the viewer.
+  const more = viewer.getByRole('button', { name: 'More' });
+  const menu = viewer.getByRole('menu', { name: 'More' });
+  await more.click();
+  await expect(menu.getByRole('menuitem', { name: 'Download' })).toHaveAttribute('href', photos[0].url);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(viewer).toBeVisible();
 
-  // Any photo can be the place's cover instead of the newest; the viewer says which it is.
-  await expect(viewer.getByRole('button', { name: 'Make cover' })).toBeVisible();
-  await viewer.getByRole('button', { name: 'Make cover' }).click();
-  await expect(viewer.getByRole('button', { name: 'Make cover' })).toHaveCount(0);
-  await expect(viewer.getByText('Cover', { exact: true })).toBeVisible();
+  // Any photo can be the place's cover instead of the newest; the menu says which it is.
+  await more.click();
+  await menu.getByRole('menuitem', { name: 'Make cover' }).click();
+  await expect(menu).toHaveCount(0);
+  await more.click();
+  await expect(menu.getByRole('menuitem', { name: 'Cover photo' })).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('photo-menu.png') });
   expect((await (await page.request.get(`/api/restaurants/${id}`)).json()).cover).toBe(photos[0].thumb_url);
 
   // Deleting one asks first; deleting the cover goes back to the newest.
-  await viewer.getByRole('button', { name: 'Delete' }).click();
+  await menu.getByRole('menuitem', { name: 'Delete' }).click();
   await page.getByRole('dialog', { name: 'Delete this photo?' }).getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(viewer.getByRole('img', { name: 'Photo 1 of 1' })).toHaveAttribute('src', photos[1].url);
   await page.keyboard.press('Escape');

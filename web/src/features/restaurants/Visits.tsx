@@ -334,6 +334,15 @@ function PhotoViewer({
   const i = Math.min(index, photos.length - 1);
   const photo = photos[i];
   const swipe = useRef<number | null>(null);
+  // The ⋮ menu; a tap outside it closes it, and so does Escape (before the viewer).
+  const [menu, setMenu] = useState(false);
+  const menuBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const away = (e: Event) => menuBox.current && !menuBox.current.contains(e.target as Node) && setMenu(false);
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [menu]);
 
   useEffect(() => {
     const d = box.current;
@@ -362,7 +371,8 @@ function PhotoViewer({
       aria-label={t('Photos from {date}', { date: shortDate(date) })}
       onCancel={(e) => {
         e.preventDefault();
-        onClose();
+        if (menu) setMenu(false);
+        else onClose();
       }}
     >
       <div className="viewer-bar">
@@ -370,22 +380,51 @@ function PhotoViewer({
           {shortDate(date)} · {i + 1} / {photos.length}
           {photo.added_by && <span className="muted"> · {photo.added_by}</span>}
         </span>
-        {photo.id === coverId ? (
-          <span className="viewer-cover">
-            <Icon name="check" size={16} />
-            {t('Cover')}
-          </span>
-        ) : (
-          <button type="button" className="secondary small" disabled={busy} onClick={() => onCover(photo)}>
-            {t('Make cover')}
+        {/* What can be done with this photo, behind ⋮, as photo viewers have it (and the Android app). */}
+        <div className="cat-menu" ref={menuBox}>
+          <button type="button" className="icon-button" aria-haspopup="menu" aria-expanded={menu} aria-label={t('More')} onClick={() => setMenu(!menu)}>
+            <Icon name="more" size={22} />
           </button>
-        )}
-        <a className="button secondary small" href={photo.url} target="_blank" rel="noreferrer" download>
-          {t('Download')}
-        </a>
-        <button type="button" className="secondary small danger-text" onClick={() => onDelete(photo)}>
-          {t('Delete')}
-        </button>
+          {menu && (
+            <div className="cat-menu-list end viewer-menu" role="menu" aria-label={t('More')}>
+              {photo.id === coverId ? (
+                <button type="button" role="menuitem" disabled>
+                  <Icon name="check" size={18} />
+                  <span className="grow">{t('Cover photo')}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={busy}
+                  onClick={() => {
+                    setMenu(false);
+                    onCover(photo);
+                  }}
+                >
+                  <Icon name="star" size={18} />
+                  <span className="grow">{t('Make cover')}</span>
+                </button>
+              )}
+              <a role="menuitem" href={photo.url} target="_blank" rel="noreferrer" download onClick={() => setMenu(false)}>
+                <Icon name="download" size={18} />
+                <span className="grow">{t('Download')}</span>
+              </a>
+              <button
+                type="button"
+                role="menuitem"
+                className="danger-text"
+                onClick={() => {
+                  setMenu(false);
+                  onDelete(photo);
+                }}
+              >
+                <Icon name="trash" size={18} />
+                <span className="grow">{t('Delete')}</span>
+              </button>
+            </div>
+          )}
+        </div>
         <button type="button" className="icon-button" onClick={onClose} aria-label={t('Close')}>
           <Icon name="close" size={22} />
         </button>

@@ -870,7 +870,11 @@ button.danger-text { color: var(--danger); }
 .tile-badge.cat-relax { background: var(--tile-purple); color: var(--tile-purple-ink); }
 .tile-badge.cat-shopping { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
 .tile-badge.cat-other { background: var(--sunken); color: var(--muted); }
-.viewer-cover { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; padding: 0 6px; }
+/* The photo viewer's ⋮ menu: light, over the dark viewer. */
+.viewer-menu a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-xs); color: var(--text); font-weight: 600; font-size: var(--text-body); text-decoration: none; }
+.viewer-bar .viewer-menu button.danger-text { color: var(--danger); }
+.viewer-menu button:disabled { opacity: 1; color: var(--muted); }
+@media (hover: hover) { .viewer-menu a:hover, .viewer-menu button:hover:not(:disabled) { background: var(--sunken); } }
 .tile.lg { width: 64px; height: 64px; border-radius: var(--radius); }
 
 /* A visit's photos at full size, one at a time. */
