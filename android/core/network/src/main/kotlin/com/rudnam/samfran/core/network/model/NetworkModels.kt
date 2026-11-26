@@ -194,6 +194,10 @@ data class NetworkRestaurantInput(
 @Serializable
 data class NetworkNewVisit(@SerialName("visited_on") val visitedOn: String, val note: String = "")
 
+/** A ride ended (POST /api/bus/stops/{id}/done): whether the phone got to the stop and buzzed. */
+@Serializable
+data class NetworkRideDone(val arrived: Boolean)
+
 /** When you went (PUT /api/restaurants/{id}/been): the one date a place shows. */
 @Serializable
 data class NetworkBeen(@SerialName("visited_on") val visitedOn: String)
@@ -456,6 +460,7 @@ private fun JsonObject.asDetails(): ActivityDetails {
     return ActivityDetails(
         name = this["name"].string(),
         been = (this["been"] as? JsonPrimitive)?.booleanOrNull ?: false,
+        arrived = (this["arrived"] as? JsonPrimitive)?.booleanOrNull ?: false,
         stars = (this["stars"] as? JsonPrimitive)?.intOrNull ?: 0,
         month = this["month"].string(),
         email = this["email"].string(),
