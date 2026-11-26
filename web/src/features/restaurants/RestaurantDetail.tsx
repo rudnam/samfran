@@ -80,13 +80,26 @@ export function RestaurantDetail({ id }: { id: number }) {
   const partner = space?.members.find((m) => !m.me);
   const theirs = r.ratings.find((x) => !x.me);
   const beenOn = r.last_visit;
+  // The cover, big across the top: the original as it was taken, over its
+  // thumbnail until it's in (an older server's place without cover_photo_id
+  // shows just the thumbnail).
+  const coverPhoto = (r.visits ?? []).flatMap((v) => v.photos ?? []).find((p) => p.id === r.cover_photo_id);
   return (
     <section className="stack">
       <BackLink href={href(beenOn ? 'home' : 'want')} label="Our places" />
+      {r.cover && (
+        <img
+          className="place-cover"
+          src={coverPhoto?.url ?? r.cover}
+          style={{ backgroundImage: `url("${r.cover}")` }}
+          alt={t('Cover photo')}
+          decoding="async"
+        />
+      )}
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
         <p className="lead place-kind">
-          <CategoryTile category={categoryOf(r.category)} size="sm" cover={r.cover} />
+          <CategoryTile category={categoryOf(r.category)} size="sm" />
           {[categoryName(categoryOf(r.category)), r.cuisine, r.area].filter(Boolean).join(' · ')}
         </p>
         {beenOn && (
