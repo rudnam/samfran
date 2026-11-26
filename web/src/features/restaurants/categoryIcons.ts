@@ -4,7 +4,7 @@ export const categories = ['eat', 'nature', 'culture', 'fun', 'relax', 'shopping
 export type Category = (typeof categories)[number];
 
 /** Icon paths, one per category, plus the Places tab's own. */
-export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort' | 'check' | 'edit' | 'camera' | 'calendar' | 'settings' | 'add' | 'back' | 'chevronLeft' | 'chevronRight' | 'close', string> = {
+export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' | 'map' | 'search' | 'down' | 'sort' | 'check' | 'edit' | 'camera' | 'calendar' | 'settings' | 'add' | 'back' | 'chevronLeft' | 'chevronRight' | 'close' | 'more' | 'download' | 'trash' | 'star', string> = {
   eat: 'M7 3v8a2 2 0 0 0 2 2v8M5 3v5M9 3v5M17 3c-2 2-2 6 0 9v9',
   nature: 'M12 3a5 5 0 0 1 5 5 4 4 0 0 1-1 7.5H8A4 4 0 0 1 7 8a5 5 0 0 1 5-5zM12 15.5V21M12 12.5l-2.5-2M9 21h6',
   culture: 'M3 5c4 1.2 14 1.2 18 0M5 9.5h14M7 6.3V21M17 6.3V21M12 6.5v3',
@@ -22,6 +22,11 @@ export const iconPaths: Record<Category | 'all' | 'places' | 'nearby' | 'list' |
   down: 'M6 9l6 6 6-6',
   sort: 'M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4',
   check: 'M5 12.5l4.5 4.5L19 7',
+  // ⋮: round caps make each zero-length line a dot.
+  more: 'M12 5h.01M12 12h.01M12 19h.01',
+  download: 'M12 4v11M7 10l5 5 5-5M5 20h14',
+  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13',
+  star: 'M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z',
   // The same as Android's (core/designsystem/…/icon/Icons.kt), for the buttons both apps show.
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4',
   camera: 'M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1zM15.5 13.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0z',

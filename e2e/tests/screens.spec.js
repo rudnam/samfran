@@ -110,6 +110,10 @@ for (const [name, viewport] of [
     await page.getByRole('button', { name: /^Photo 1 of 4/ }).click();
     await expect(page.getByRole('img', { name: 'Photo 1 of 4' })).toHaveJSProperty('complete', true);
     await shot('4f-photo-viewer');
+    await page.getByRole('button', { name: 'More' }).click();
+    await expect(page.getByRole('menu', { name: 'More' })).toBeVisible();
+    await shot('4g-photo-menu');
+    await page.keyboard.press('Escape'); // the menu first, then the viewer
     await page.keyboard.press('Escape');
     // A want-to-go place: Mark as been asks when.
     await page.getByRole('link', { name: 'Our places' }).click();

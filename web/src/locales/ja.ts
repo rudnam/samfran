@@ -507,7 +507,7 @@ export const ja = {
   '{n}×': '{n}回',
   'added photos of {name}': '{name}の写真を追加',
   // A place's cover photo (Visits.tsx).
-  Cover: 'カバー',
+  'Cover photo': 'カバー写真',
   'Make cover': 'カバーにする',
 } as const;
 
