@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bus_alarm">Ride alarm</string>
-    <string name="bus_subtitle">Buzzes before your stop, so you don’t miss it.</string>
     <string name="location_denied">SamFran needs your location to know when you’re near the stop. Allow it in the phone’s settings.</string>
     <string name="your_stop_is_next">Your stop is next</string>
     <string name="practice_run">Practice run</string>
@@ -35,7 +34,6 @@
     <string name="early_plenty">Plenty of time to wake up.</string>
     <string name="on_bus">I’m on the bus</string>
     <string name="try_it_now">Try it now</string>
-    <string name="on_bus_hint">Tap it when you get on. “Try it now” is a six-second practice.</string>
     <string name="buzz_how">How it buzzes</string>
     <string name="buzz_gentle">Gentle</string>
     <string name="buzz_strong">Strong</string>

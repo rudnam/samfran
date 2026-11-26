@@ -89,7 +89,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
                 </span>
                 <span className="grow">
                   <strong>{i.email}</strong>
-                  <span className="muted block small">{t('Invited: they can sign in with this email to join you.')}</span>
+                  <span className="muted block small">{t('Invited')}</span>
                 </span>
                 <button type="button" className="link quiet" disabled={busy} onClick={() => run(async () => setSpace(await api.uninvite(i.email)))}>
                   {t('Cancel')}
@@ -118,7 +118,7 @@ export function UsPage({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
           </button>
         </span>
         <span className="hint" role="status">
-          {saved ? t('Saved.') : t('Shown next to your ratings.')}
+          {saved && t('Saved.')}
         </span>
       </form>
 
@@ -219,7 +219,7 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
               {t('Cancel link')}
             </button>
           </div>
-          <span className="hint">{t('Send it to them only: it works once, until {date}. They tap it and sign up with Google or an email and password.', { date: until(open?.expires_at ?? new Date(Date.now() + 7 * 864e5).toISOString()) })}</span>
+          <span className="hint">{t('Works once, until {date}.', { date: until(open?.expires_at ?? new Date(Date.now() + 7 * 864e5).toISOString()) })}</span>
         </>
       ) : open ? (
         <>
@@ -238,7 +238,6 @@ function InviteLink({ open, onChange }: { open: { expires_at: string } | null; o
           <button type="button" disabled={busy} onClick={make}>
             {t('Create invite link')}
           </button>
-          <span className="hint">{t('They open it, sign up, and see everything here.')}</span>
         </>
       )}
       <ErrorText message={error} />

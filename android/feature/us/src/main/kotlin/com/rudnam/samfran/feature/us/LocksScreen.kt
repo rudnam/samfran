@@ -136,7 +136,7 @@ fun LocksScreen(
                 Hint(stringResource(R.string.setup_hint))
                 SetupRow(stringResource(R.string.setup_usage), stringResource(R.string.setup_usage_hint), state.setup.usageAccess, actions::openUsageAccess)
                 SetupRow(stringResource(R.string.setup_overlay), stringResource(R.string.setup_overlay_hint), state.setup.overlay, actions::openOverlay)
-                SetupRow(stringResource(R.string.setup_notifications), stringResource(R.string.setup_notifications_hint), state.setup.notifications, onNotifications)
+                SetupRow(stringResource(R.string.setup_notifications), null, state.setup.notifications, onNotifications)
             }
         }
 
@@ -252,7 +252,7 @@ private fun PhoneStatus(phone: LockPhone?, partner: String) {
 }
 
 @Composable
-private fun SetupRow(title: String, detail: String, done: Boolean, onAllow: () -> Unit) {
+private fun SetupRow(title: String, detail: String?, done: Boolean, onAllow: () -> Unit) {
     SettingRow(title, detail = detail, onClick = if (done) null else onAllow) {
         if (done) {
             LineIcon(SamFranIcons.check, null, tint = SamFranTheme.colors.accentInk)

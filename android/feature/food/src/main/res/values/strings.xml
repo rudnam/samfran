@@ -27,7 +27,6 @@
     <string name="maps_link">Google Maps link</string>
     <string name="paste">Paste</string>
     <string name="maps_link_hint">Optional. Paste one and the name fills itself in.</string>
-    <string name="maps_link_hint_edit">Optional. Without one, “Open in Maps” searches for the name.</string>
     <string name="looking_up">Looking up the place…</string>
     <string name="share_hint">Share a place from Google Maps to SamFran to add it in one tap.</string>
     <string name="notes">Notes</string>
@@ -66,12 +65,10 @@
     <string name="already_on_list_colon">Already on your list:</string>
     <string name="not_this_one">Not this one</string>
     <string name="check_on_map">Check on the map</string>
-    <string name="maps_link_hint_picked">Optional. The place you picked is already on the map.</string>
     <string name="category">Category</string>
     <string name="category_all">All</string>
     <string name="show_all">Show all</string>
     <string name="nothing_in_category">Nothing in %s here.</string>
-    <string name="category_hint_tie">Two fit? Pick what you’d go there for.</string>
     <!-- Categories: why you'd go (web/src/features/restaurants/categories.tsx) -->
     <string name="cat_eat">Eat &amp; drink</string>
     <string name="cat_nature">Nature &amp; parks</string>

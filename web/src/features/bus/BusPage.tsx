@@ -287,7 +287,6 @@ export function BusPage() {
         <header className="page-head with-action">
           <div>
             <h1 className="display">{t('Ride alarm')}</h1>
-            <p className="subtitle">{t('Buzzes before your stop, so you don’t miss it.')}</p>
           </div>
           {ready && !buzzing && (
             <a className="icon-button" href={viewHref({ view: 'settings' })} aria-label={t('Settings')} title={t('Settings')}>
@@ -541,7 +540,6 @@ function RideCard(p: {
       <button type="button" className="big" onClick={p.onPractice}>
         {t('Try it now')}
       </button>
-      <p className="muted small center">{t('A six-second practice ride, to see what happens.')}</p>
       <div className="app-note">
         <p className="small">{t('The real alarm runs in the SamFran Android app. It uses the phone’s location during the ride, and nothing else.')}</p>
         {p.apk && (
