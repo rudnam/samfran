@@ -75,7 +75,7 @@ Until these steps are done, CI only verifies: the deploy job waits for the repos
 ## Contributing
 
 1. Fork the repository (or branch, if you have write access) and run it locally (Quick start).
-2. Make the change, following `CLAUDE.md` (it applies to people too).
+2. Make the change, following `AGENTS.md` (it applies to people too).
 3. Run `./verify.sh` until it prints `VERIFY PASSED`, and look at the change with `./preview.sh`.
 4. Open a pull request against `main`. CI runs the same checks and attaches screenshots; nothing deploys until it is merged.
 
