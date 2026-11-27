@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"io/fs"
+	"log/slog"
 	"mime"
 	"net/http"
 	"path"
@@ -111,6 +112,24 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	restaurantHandler.Locate = cfg.LocatePlaces
 	restaurantHandler.MapKey = cfg.GoogleMapsBrowserKey
 	restaurantHandler.Register(mux, spaceHandler.Require)
+	pushSender := cfg.Push
+	if pushSender == nil && cfg.FirebaseServiceAccount != "" {
+		if fcm, err := push.NewFCM(cfg.FirebaseServiceAccount); err == nil { // config.Load checked it
+			pushSender = fcm
+		}
+	}
+	notifier := push.NewNotifier(conn, pushSender)
+	push.NewHandler(conn).Register(mux, accounts.RequireUser)
+	notifyShifts := func(ctx context.Context, spaceID int64) {
+		members, err := spaces.Members(ctx, spaceID, 0)
+		if err != nil {
+			slog.WarnContext(ctx, "shifts notify: members", "err", err)
+			return
+		}
+		for _, m := range members {
+			notifier.Notify(ctx, m.UserID, map[string]string{"type": "shifts_changed"})
+		}
+	}
 	reader := cfg.ShiftReader
 	if reader == nil && cfg.AnthropicAPIKey != "" {
 		reader = shift.NewClaude(cfg.AnthropicAPIKey, "")
@@ -118,6 +137,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	shifts := shift.NewStore(conn)
 	shiftHandler := shift.NewHandler(shifts, reader)
 	shiftHandler.Log = activities.Log
+	shiftHandler.Notify = notifyShifts
 	shiftHandler.Register(mux, spaceHandler.Require)
 	activity.NewHandler(activities).Register(mux, spaceHandler.Require, func(r *http.Request) int64 { return account.UserFrom(r).ID })
 	busHandler := bus.NewHandler(conn)
@@ -127,16 +147,9 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	mcpHandler := mcp.NewHandler(mcp.NewStore(conn), spaces, restaurants, shifts,
 		mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy})
 	mcpHandler.Log = activities.Log
+	mcpHandler.Notify = notifyShifts
 	mcpHandler.Register(mux, accounts.RequireUser)
-	pushSender := cfg.Push
-	if pushSender == nil && cfg.FirebaseServiceAccount != "" {
-		if fcm, err := push.NewFCM(cfg.FirebaseServiceAccount); err == nil { // config.Load checked it
-			pushSender = fcm
-		}
-	}
-	notifier := push.NewNotifier(conn, pushSender)
 	activities.Notify = notifier.Notify
-	push.NewHandler(conn).Register(mux, accounts.RequireUser)
 	lockHandler := applock.NewHandler(applock.NewStore(conn))
 	lockHandler.Notify = notifier.Notify
 	lockHandler.Register(mux, spaceHandler.Require)

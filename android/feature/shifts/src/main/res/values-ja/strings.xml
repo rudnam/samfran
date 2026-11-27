@@ -82,4 +82,25 @@
     <string name="code_of">%sのコード</string>
     <string name="their_name">名前</string>
     <string name="remove_person">%sを削除</string>
+    <!-- Meal reminders -->
+    <string name="meal_reminders">食事リマインダー</string>
+    <string name="meal_this_device">この端末</string>
+    <string name="meal_reminders_phone_hint">このスマホで朝食・昼食・夕食の通知を受け取ります。</string>
+    <string name="meal_allow_notifications">スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。</string>
+    <string name="meal_schedule_hint">シフトごとの食事の時刻（ふたりで共有されます）。</string>
+    <string name="meal_status_on">このスマホでオン</string>
+    <string name="meal_status_off">このスマホでオフ</string>
+    <string name="meal_shift_early_label">早番</string>
+    <string name="meal_shift_middle_label">中番</string>
+    <string name="meal_shift_late_label">遅番</string>
+    <string name="meal_shift_night_label">夜勤</string>
+    <string name="meal_shift_off_label">休み・その他</string>
+    <string name="meal_breakfast">朝食</string>
+    <string name="meal_lunch">昼食</string>
+    <string name="meal_dinner">夕食</string>
+    <string name="meal_mode_off">オフ</string>
+    <string name="meal_next_day">翌日</string>
+    <string name="meal_set_time">時刻を設定</string>
+    <string name="meal_turn_off">%sをオフにする</string>
+    <string name="meal_reset_defaults">初期設定に戻す</string>
 </resources>

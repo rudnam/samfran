@@ -169,6 +169,9 @@ var toolList = []*tool{
 			}
 			if d := shift.SettingsChanges(before, st); len(d) > 0 {
 				c.log("shift_settings", d)
+				if c.h.Notify != nil && (d["lengths"] != nil || d["time_zone"] != nil || d["meal_reminders"] != nil) {
+					c.h.Notify(c.r.Context(), sp)
+				}
 			}
 			st.FeedPath = ""
 			return st, nil
@@ -231,6 +234,9 @@ var toolList = []*tool{
 				return nil, asToolError(err, "month")
 			}
 			c.log("shifts_saved", map[string]any{"month": view.Month, "days": len(view.Days)})
+			if c.h.Notify != nil {
+				c.h.Notify(c.r.Context(), sp)
+			}
 			view.Settings.FeedPath = ""
 			return withoutPeople(view), nil
 		},

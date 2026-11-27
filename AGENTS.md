@@ -4,29 +4,34 @@ Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScr
 
 ## Verify your work before calling it done
 
-**Verify on GitHub CI by default**, not on this machine. CI's `verify` job runs `./verify.sh` (go vet, all Go tests, browser tests) on every pull request, and the `android` job runs the Android tests:
+**On local, always run targeted commands first — never run full `./verify.sh` or full test suites locally if a targeted check or CI can do it.** Whenever you want a full check, **use GitHub CI instead**: CI's `verify` job runs `./verify.sh` (go vet, all Go tests, browser tests) on every pull request, and the `android` job runs the Android tests:
 
 1. Commit, push your branch (never `main`), and open a **draft** pull request if the branch doesn't have one yet; the verify job runs on pull requests, not on plain branch pushes.
 2. Follow it with `gh pr checks <number> --watch`.
 3. Download the results with `./ci-results.sh <number>` into `ci-results/pr-<number>/` (`e2e-results`: the browser tests' screenshots and failures; `native-screenshots`: the Android screens). It prints which commit each set is from; wait for CI on your last push. It reads them from the pull request's `ci-pr-<number>` pre-release, which works from a cloud session; `gh run download` fetches the same as artifacts but from a storage host the cloud sandbox blocks. When a browser test fails, read its `test-failed-1.png` before guessing.
 4. Report what CI actually printed. If a job was skipped or couldn't run, say so.
 
-Run `./verify.sh` locally only when the user asks for it, or when you can't push (no remote access, or the user doesn't want a PR yet). Then:
+### Targeted local checks (run these first while working)
+
+Run only the narrowest check for what you changed, and let CI run the full suite:
+
+- **Go:** `go vet ./internal/<pkg>` and `go test ./internal/<pkg> -run <TestName>`. Plain `go test` **skips** DB integration tests (they need `TEST_DATABASE_URL`); use `./verify.sh go` only when local integration tests are specifically needed, otherwise let CI run them.
+- **Web:** `cd web && npm run typecheck` (or `cd web && npm run build` to also verify the Vite bundle; the Docker build type-checks the frontend, so a TypeScript error fails verify).
+- **Browser (E2E):** `./verify.sh e2e tests/<file>.spec.js` or `./verify.sh e2e -g <pattern>` (narrow to the relevant spec or test rather than running all browser tests).
+- **Android:** `cd android && ./gradlew :<module>:testDebugUnitTest --tests '*<TestName>'` (JDK 21 and the Android SDK). `verify.sh` doesn't cover the native Android app (`android/`, android/README.md). Only run full `./gradlew testDebugUnitTest -Proborazzi.test.record=true` locally when explicitly needed for screenshots (draws every screen into each module's `build/outputs/roborazzi/`); otherwise let CI's `android` job run the full suite and keep them as `native-screenshots`.
+
+### Full local verify (last resort only)
+
+Run full `./verify.sh` locally **only** when the user explicitly asks for it, or when you can't push (no remote access, or the user doesn't want a PR yet):
 
 ```sh
-./verify.sh                 # everything: go vet, all Go tests, browser tests
-./verify.sh go              # Go only
+./verify.sh                 # everything: go vet, all Go tests, browser tests (prefer CI)
+./verify.sh go              # Go only (unit + integration tests)
 ./verify.sh e2e -g place    # browser tests only; extra args go to `playwright test`
 ```
 
 - It needs only Docker. It builds the working tree, runs it against a throwaway database, and tears everything down. It ends with `VERIFY PASSED` or `VERIFY FAILED`. Screenshots land in `e2e/test-results/`.
 - **One local verify at a time.** Check `docker compose ls` first: if another folder's `<folder>-verify` project is running (another session verifying a different diff), don't start a second one; use CI.
-
-Quick checks while you work are fine on the host and don't replace verify:
-
-- Plain `go test ./...` **skips** the integration tests (they need `TEST_DATABASE_URL`); only verify runs them.
-- The Docker build type-checks the frontend, so a TypeScript error fails verify. Quick check: `cd web && npm run build`.
-- `verify.sh` doesn't cover the native Android app (`android/`, android/README.md). Locally: `cd android && ./gradlew testDebugUnitTest -Proborazzi.test.record=true` (JDK 21 and the Android SDK), which draws every screen into each module's `build/outputs/roborazzi/`; CI's `android` job runs the same and keeps them as `native-screenshots`.
 
 ## Show the user what changed
 
@@ -40,7 +45,7 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 
 - **Production is on AWS, deployed only by CI** when `main` changes (`.github/workflows/ci.yml`; infrastructure in rudnam/rudnam-infra). Nothing on this machine is production: the Compose project named after this folder is local development. `verify.sh` and `preview.sh` use their own projects (`<folder>-verify`, `<folder>-preview`). Don't push to `main` or run AWS commands against production unless asked.
 - Never edit a migration in `internal/db/migrations/` that may have been deployed; add a new file numbered one above the highest. The number is the version recorded in `schema_migrations`, so never reuse one, even a deleted migration's: a database that ran it would silently skip the new file. Keep each migration compatible with the previous release (README.md, "Production").
-- **Merge `origin/main` into your branch** before choosing a migration number, and again before opening a pull request. Several branches are usually open at once, and they all add to the ends of the same files (`web/src/locales/ja.ts`, `web/src/api.ts`, `web/src/styles.css`, the README's tables), so a branch that falls behind conflicts. Merge rather than rebase a branch you've pushed. A clash between two migrations with the same number isn't a git conflict, so `internal/db`'s tests check for it.
+- **Fetch and merge `origin/main` into your branch before starting work** (worktrees and local branches may be branched from a stale `main`), before choosing a migration number, and again before opening a pull request. Several branches are usually open at once, and they all add to the ends of the same files (`web/src/locales/ja.ts`, `web/src/api.ts`, `web/src/styles.css`, the README's tables), so a branch that falls behind conflicts. Merge rather than rebase a branch you've pushed. A clash between two migrations with the same number isn't a git conflict, so `internal/db`'s tests check for it.
 - **A pull request that changes the Android app (`android/`, not only its tests or docs) gets the `android-release` label**, so merging it releases the app to phones (`.github/workflows/android-release.yml`, android/README.md "Releases and updates"); without it, the change sits on `main` and never reaches anyone. `.github/workflows/android-release-label.yml` adds it when the pull request is opened or pushed to, but check it's there before merging, and add it with `gh pr edit <number> --add-label android-release` if not. A merge without it can still be released by hand (Actions › Android release). Leave it off only if the user says not to release. For user-visible Android changes, include a `## What's new` (and optionally `## 新機能`) bullet list in the PR description — `android/changelog.py` packages those into the update notice and Play Store release notes, and omits PRs without them so technical changes stay internal.
 - **Keep the API backward compatible** once anything but this server's own web page calls it (an installed mobile app, which can be months old, or an MCP client): add fields and endpoints; don't rename, remove or change the meaning of existing ones.
 - Every query on shared data is scoped by space ID (`space.SpaceFrom(r)`) in the feature's `Store`; only truly personal rows (a rating) also carry the user. Another space's row is a 404, not a 403.

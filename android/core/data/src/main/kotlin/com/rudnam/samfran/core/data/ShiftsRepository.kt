@@ -2,6 +2,7 @@ package com.rudnam.samfran.core.data
 
 import com.rudnam.samfran.core.common.Dispatcher
 import com.rudnam.samfran.core.common.SamFranDispatchers
+import com.rudnam.samfran.core.model.DayMeals
 import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftDay
@@ -19,6 +20,7 @@ import com.rudnam.samfran.core.network.model.NetworkShiftMonth
 import com.rudnam.samfran.core.network.model.NetworkShiftSettings
 import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.asModel
+import com.rudnam.samfran.core.network.model.asNetwork
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -39,6 +41,9 @@ interface ShiftsRepository {
 
     /** Working shifts that end from now on (last, this and next month's), soonest first, for "Start bus alarm?". */
     suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>>
+
+    /** Shift settings and all days from last, this and next month, in date order, for meal reminders. */
+    suspend fun upcomingDays(now: Instant): Outcome<Pair<ShiftSettings, List<ShiftDay>>>
 
     /** The shift you'd be going home from now ([com.rudnam.samfran.core.model.homeShift]), from this month as last fetched. */
     suspend fun homeShift(now: Instant): ShiftDay?
@@ -69,7 +74,13 @@ interface ShiftsRepository {
 
     suspend fun refreshSettings(): Outcome<ShiftSettings>
 
-    suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>? = null): Outcome<ShiftSettings>
+    suspend fun saveSettings(
+        personName: String,
+        nameOnSheet: String,
+        lengths: Map<String, Double>,
+        closingDays: List<Int>? = null,
+        mealReminders: Map<String, DayMeals>? = null,
+    ): Outcome<ShiftSettings>
 
     /** Turns the calendar link on (a new address each time) or off. */
     suspend fun feed(on: Boolean): Outcome<ShiftSettings>
@@ -122,6 +133,14 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
             .sortedBy { it.end!!.toInstant() }
     }
 
+    override suspend fun upcomingDays(now: Instant) = outcome(io) {
+        val current = network.shifts(null).also { keep(it, current = true) }.asModel()
+        val prev = network.shifts(current.month.minusMonths(1).toString()).also { keep(it) }.asModel()
+        val next = network.shifts(current.month.plusMonths(1).toString()).also { keep(it) }.asModel()
+        val days = (prev.days + current.days + next.days).sortedBy { it.date }
+        current.settings to days
+    }
+
     override suspend fun homeShift(now: Instant): ShiftDay? {
         val current = documents.get(key(null), serializer)?.asModel() ?: refresh(null).valueOrNull ?: return null
         return homeShift(current.days, now)
@@ -160,8 +179,22 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
 
     override suspend fun refreshSettings() = settingsChange { network.shiftSettings() }
 
-    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>?) = settingsChange {
-        network.saveShiftSettings(NetworkShiftSettingsInput(personName.trim(), nameOnSheet.trim(), lengths, closingDays))
+    override suspend fun saveSettings(
+        personName: String,
+        nameOnSheet: String,
+        lengths: Map<String, Double>,
+        closingDays: List<Int>?,
+        mealReminders: Map<String, DayMeals>?,
+    ) = settingsChange {
+        network.saveShiftSettings(
+            NetworkShiftSettingsInput(
+                personName.trim(),
+                nameOnSheet.trim(),
+                lengths,
+                closingDays,
+                mealReminders?.mapValues { (_, v) -> v.asNetwork() },
+            ),
+        )
     }
 
     override suspend fun feed(on: Boolean) = settingsChange { network.feed(on) }

@@ -82,4 +82,25 @@
     <string name="code_of">Code of %s</string>
     <string name="their_name">Their name</string>
     <string name="remove_person">Remove %s</string>
+    <!-- Meal reminders -->
+    <string name="meal_reminders">Meal reminders</string>
+    <string name="meal_this_device">This device</string>
+    <string name="meal_reminders_phone_hint">Notify on this phone for breakfast, lunch and dinner.</string>
+    <string name="meal_allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
+    <string name="meal_schedule_hint">Shared meal times for each shift. Saved for both of you.</string>
+    <string name="meal_status_on">On on this phone</string>
+    <string name="meal_status_off">Off on this phone</string>
+    <string name="meal_shift_early_label">Early (早番)</string>
+    <string name="meal_shift_middle_label">Middle (中番)</string>
+    <string name="meal_shift_late_label">Late (遅番)</string>
+    <string name="meal_shift_night_label">Night (夜勤)</string>
+    <string name="meal_shift_off_label">Day off (休み・その他)</string>
+    <string name="meal_breakfast">Breakfast</string>
+    <string name="meal_lunch">Lunch</string>
+    <string name="meal_dinner">Dinner</string>
+    <string name="meal_mode_off">Off</string>
+    <string name="meal_next_day">Next day</string>
+    <string name="meal_set_time">Set time</string>
+    <string name="meal_turn_off">Turn off %s</string>
+    <string name="meal_reset_defaults">Reset to defaults</string>
 </resources>

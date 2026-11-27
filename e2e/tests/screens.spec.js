@@ -264,6 +264,12 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await page.getByRole('link', { name: 'Ride alarm', exact: true }).click();
 
+    await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await page.getByRole('link', { name: /Meal reminders/ }).click();
+    await expect(page.getByRole('heading', { name: 'Meal reminders' })).toBeVisible();
+    await shot('7e2-shift-meals');
+
     await page.getByRole('link', { name: 'Us', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'The two of you' })).toBeVisible();
     await shot('8-us');

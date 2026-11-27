@@ -162,6 +162,13 @@ export function ShiftSettingsPage() {
               </button>
             </div>
           </form>
+          <a className="card row spread" href={href('shifts/meals')}>
+            <span className="grow">
+              <strong className="block">{t('Meal reminders')}</strong>
+              <span className="hint">{t('Breakfast, lunch and dinner times for each shift.')}</span>
+            </span>
+            <Icon name="chevronRight" size={20} />
+          </a>
         </>
       )}
     </section>

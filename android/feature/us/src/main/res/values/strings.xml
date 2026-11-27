@@ -38,6 +38,9 @@
     <string name="disconnect">Disconnect</string>
     <string name="this_device">This device</string>
     <string name="tell_me">Tell me about changes</string>
+    <string name="tell_me_hint">A notification when the other one of you adds a place, goes to one, rates one, saves the shifts or starts a ride alarm. It can take half an hour.</string>
+    <string name="meal_reminders">Meal reminders</string>
+    <string name="meal_reminders_hint">Notify on this phone for breakfast, lunch and dinner according to shifts.</string>
     <string name="allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
     <string name="language">Language</string>
     <string name="appearance">Appearance</string>
@@ -56,6 +59,7 @@
     <string name="change_letter_was">set %1$s to %2$s hours (was %3$s)</string>
     <string name="change_letter">set %1$s to %2$s hours</string>
     <string name="change_setting">changed %1$s to “%2$s”</string>
+    <string name="change_meal_reminders">updated meal reminders</string>
     <string name="change_calendar_new">made a new calendar link</string>
     <string name="change_calendar_off">turned off the calendar link</string>
     <string name="change_added_been">added %s (been there)</string>

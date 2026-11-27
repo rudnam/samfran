@@ -261,7 +261,7 @@ export const api = {
     closing_days?: number[],
   ) => request<ShiftMonth>('PUT', '/api/shifts/month', { month, days, corrections, closing_days }),
   shiftSettings: () => request<ShiftSettings>('GET', '/api/shifts/settings'),
-  saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone' | 'closing_days'>>) =>
+  saveShiftSettings: (s: Partial<Pick<ShiftSettings, 'person_name' | 'name_on_sheet' | 'lengths' | 'time_zone' | 'closing_days' | 'meal_reminders'>>) =>
     request<ShiftSettings>('PUT', '/api/shifts/settings', s),
   shiftFeed: (on: boolean) => request<ShiftSettings>(on ? 'POST' : 'DELETE', '/api/shifts/feed'),
   /**
@@ -376,6 +376,23 @@ export type ReadProgress =
   | { stage: 'sending'; sent: number }
   | { stage: 'reading'; name_as_read?: string; days_read: number; days_in_month: number };
 
+export type MealRuleMode = 'fixed' | 'off';
+
+export interface MealRule {
+  mode: MealRuleMode;
+  time?: string;
+}
+
+export interface DayMeals {
+  breakfast: MealRule;
+  lunch: MealRule;
+  dinner: MealRule;
+}
+
+export type MealDayKey = 'Early' | 'Middle' | 'Late' | 'Night' | 'Off';
+
+export type MealReminders = Record<MealDayKey, DayMeals>;
+
 export interface ShiftSettings {
   person_name: string;
   name_on_sheet: string;
@@ -384,6 +401,8 @@ export interface ShiftSettings {
   time_zone: string;
   /** 締め申請通知: days of the month the hours are sent in; 31 means the last day. */
   closing_days: number[];
+  /** Breakfast, lunch and dinner reminder rules per shift kind (and Off). */
+  meal_reminders?: MealReminders;
   /** The calendar feed's path on this site, or "" while it's off. */
   feed_path: string;
   /** Photos can be read on this server. */

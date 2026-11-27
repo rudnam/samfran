@@ -44,6 +44,9 @@ fun describe(e: ActivityEntry): String {
                 }
                 add(stringResource(R.string.change_setting, what, change.second))
             }
+            if (d.mealRemindersChanged) {
+                add(stringResource(R.string.change_meal_reminders))
+            }
         }.joinToString(", ")
         "calendar_link_new" -> stringResource(R.string.change_calendar_new)
         "calendar_link_off" -> stringResource(R.string.change_calendar_off)

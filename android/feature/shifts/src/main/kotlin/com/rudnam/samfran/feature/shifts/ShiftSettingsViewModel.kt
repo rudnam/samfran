@@ -3,13 +3,17 @@ package com.rudnam.samfran.feature.shifts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.model.ShiftSettings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -30,6 +34,7 @@ data class ShiftSettingsUiState(
     val problem: Outcome<Any>? = null,
     /** The calendar link's full address, while it's on. */
     val feedUrl: String = "",
+    val mealRemindersOn: Boolean = false,
 )
 
 interface ShiftSettingsActions {
@@ -48,11 +53,15 @@ interface ShiftSettingsActions {
 @HiltViewModel
 class ShiftSettingsViewModel @Inject constructor(
     private val shifts: ShiftsRepository,
+    private val reminders: Reminders,
 ) : ViewModel(), ShiftSettingsActions {
     private val _state = MutableStateFlow(ShiftSettingsUiState())
     val state: StateFlow<ShiftSettingsUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            reminders.mealReminders.collect { on -> _state.update { it.copy(mealRemindersOn = on) } }
+        }
         viewModelScope.launch {
             shifts.settings.first()?.let(::take)
             when (val r = shifts.refreshSettings()) {
@@ -98,7 +107,11 @@ class ShiftSettingsViewModel @Inject constructor(
     override fun save() {
         val s = _state.value
         val table = s.lengths.filter { it.first.isNotBlank() }.associate { (k, v) -> k.trim().uppercase() to (v.replace(',', '.').toDoubleOrNull() ?: 0.0) }
-        run(SettingsDone.Saved) { shifts.saveSettings(s.person, s.onSheet, table, s.closing) }
+        run(SettingsDone.Saved) {
+            shifts.saveSettings(s.person, s.onSheet, table, s.closing).also {
+                if (it is Outcome.Done) reminders.sync(now = true)
+            }
+        }
     }
 
     override fun feed(on: Boolean) = run(if (on && _state.value.feedUrl.isNotEmpty()) SettingsDone.NewLink else if (on) null else SettingsDone.LinkOff) { shifts.feed(on) }

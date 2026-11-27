@@ -13,6 +13,7 @@ import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.AppLocks
 import com.rudnam.samfran.core.data.LocksRepository
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Reminders
 import com.rudnam.samfran.core.datastore.SessionStore
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +43,8 @@ class PushService : FirebaseMessagingService() {
 
     @Inject lateinit var appLocks: AppLocks
 
+    @Inject lateinit var reminders: Reminders
+
     @Inject lateinit var session: SessionStore
 
     @Inject lateinit var activity: ActivityRepository
@@ -54,6 +57,12 @@ class PushService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
+        if (data["type"] == "shifts_changed") {
+            kotlinx.coroutines.runBlocking {
+                if (session.currentToken() != null) reminders.sync(now = true)
+            }
+            return
+        }
         if (data["type"] == "activity") {
             kotlinx.coroutines.runBlocking { runCatching { ActivityJob.check(this@PushService, session, activity) } }
             return

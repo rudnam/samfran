@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import com.rudnam.samfran.core.designsystem.component.Page
 import com.rudnam.samfran.feature.shifts.ShiftCalendarLinkDestination
 import com.rudnam.samfran.feature.shifts.ShiftEditorDestination
+import com.rudnam.samfran.feature.shifts.ShiftMealRemindersDestination
 import com.rudnam.samfran.feature.shifts.ShiftSettingsDestination
 import com.rudnam.samfran.feature.shifts.ShiftsDestination
 import kotlinx.serialization.Serializable
@@ -22,6 +23,10 @@ data class ShiftEditRoute(val month: String, val fromPhoto: Boolean = false)
 @Serializable
 data object ShiftSettingsRoute
 
+/** Meal reminders per shift (the website's shifts/meals). */
+@Serializable
+data object ShiftMealRemindersRoute
+
 /** Adding the shifts to Google Calendar: the calendar link (the website's shifts/calendar). */
 @Serializable
 data object ShiftCalendarLinkRoute
@@ -37,5 +42,6 @@ fun NavGraphBuilder.shiftsScreens(navigation: ShiftsNavigation, @Suppress("UNUSE
     composable<ShiftsRoute> { Page { ShiftsDestination(navigation) } }
     composable<ShiftEditRoute> { Page { ShiftEditorDestination(navigation) } }
     composable<ShiftSettingsRoute> { Page { ShiftSettingsDestination(navigation) } }
+    composable<ShiftMealRemindersRoute> { Page { ShiftMealRemindersDestination(navigation) } }
     composable<ShiftCalendarLinkRoute> { Page { ShiftCalendarLinkDestination(navigation) } }
 }

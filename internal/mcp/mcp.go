@@ -47,6 +47,8 @@ type Handler struct {
 	store *Store
 	// Log, if set, records changes for the Us tab's history, as made via Claude.
 	Log         func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
+	// Notify, if set, tells phones in the space to re-sync shift reminders.
+	Notify      func(ctx context.Context, spaceID int64)
 	spaces      *space.Store
 	restaurants *restaurant.Store
 	shifts      *shift.Store

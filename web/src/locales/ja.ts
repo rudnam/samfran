@@ -509,6 +509,25 @@ export const ja = {
   // A place's cover photo (Visits.tsx).
   'Cover photo': 'カバー写真',
   'Make cover': 'カバーにする',
+  // Meal reminders
+  'Meal reminders': '食事リマインダー',
+  'Breakfast, lunch and dinner times for each shift.': 'シフトごとの朝食・昼食・夕食の通知時刻。',
+  'Shared meal times for each shift. Turn notifications on or off per phone in the Android app.': 'シフトごとの食事の時刻（ふたりで共有）。通知のオン・オフはAndroidアプリで端末ごとに設定します。',
+  'Early (早番)': '早番',
+  'Middle (中番)': '中番',
+  'Late (遅番)': '遅番',
+  'Night (夜勤)': '夜勤',
+  'Day off (休み・その他)': '休み・その他',
+  Breakfast: '朝食',
+  Lunch: '昼食',
+  Dinner: '夕食',
+  Off: 'オフ',
+  'Next day': '翌日',
+  'Reset to defaults': '初期設定に戻す',
+  '{shift} {meal} time': '{shift}の{meal}の時刻',
+  'Turn off {shift} {meal}': '{shift}の{meal}をオフにする',
+  'Set time': '時刻を設定',
+  'updated meal reminders': '食事リマインダーを更新',
 } as const;
 
 // The server's messages, which are written in English (internal/, the
@@ -605,4 +624,5 @@ export const jaServer = {
   "send the photo as a multipart form": '写真はmultipart形式で送ってください',
   "a thumbnail must be at most {max} KB": 'サムネイルは{max}KBまでです',
   "the thumbnail must be a JPEG, PNG or WebP picture": 'サムネイルはJPEG・PNG・WebPの画像にしてください',
+  'invalid meal reminder time': '食事リマインダーの時刻が正しくありません',
 } as const;

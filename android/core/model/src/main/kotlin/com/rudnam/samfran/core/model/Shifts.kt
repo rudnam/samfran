@@ -102,6 +102,8 @@ data class ShiftSettings(
     val timeZone: String = "",
     /** 締め申請通知: days of the month the hours are sent in; one past the month's end means its last day. */
     val closingDays: List<Int> = listOf(15, 31),
+    /** Breakfast, lunch and dinner rules per shift kind (and "Off"). */
+    val mealReminders: Map<String, DayMeals> = defaultMealReminders(),
     /** The calendar feed's path on the server, or "" while it's off. */
     val feedPath: String = "",
     /** Photos can be read on this server. */
