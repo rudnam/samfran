@@ -171,7 +171,7 @@ export function ShiftMealRemindersPage() {
               </section>
             );
           })}
-          <div className="row wrap sticky-actions">
+          <div className="row wrap">
             <button type="button" className="secondary" disabled={busy} onClick={resetDefaults}>
               {t('Reset to defaults')}
             </button>
