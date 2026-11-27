@@ -102,11 +102,30 @@ internal class ServerUpdateRepository @Inject constructor(
     @Dispatcher(SamFranDispatchers.IO) private val io: CoroutineDispatcher,
 ) : UpdateRepository {
     override suspend fun check(): AppUpdate? = withContext(io) {
+        val installed = installedVersion()
         if (installer() == "com.android.vending") {
-            return@withContext play.available(skipped = preferences.preferences.first().updateLaterVersion)
+            val playUpdate = play.available(skipped = preferences.preferences.first().updateLaterVersion)
+                ?: return@withContext null
+            val apk = try {
+                network.downloads(since = installed).android
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+            val entries = apk?.changelog
+                ?.filter { it.version in (installed + 1)..playUpdate.versionCode }
+                ?.map { it.asModel() }
+                .orEmpty()
+            val name = if (playUpdate.name.isEmpty() && apk?.version == playUpdate.versionCode) {
+                apk.versionName.orEmpty()
+            } else {
+                playUpdate.name
+            }
+            return@withContext playUpdate.copy(name = name, changelog = entries)
         }
         val apk = try {
-            network.downloads().android
+            network.downloads(since = installed).android
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -114,8 +133,9 @@ internal class ServerUpdateRepository @Inject constructor(
         } ?: return@withContext null
         val offered = apk.version ?: return@withContext null
         val skipped = preferences.preferences.first().updateLaterVersion
-        if (offered <= installedVersion() || offered <= skipped) return@withContext null
-        AppUpdate(offered, apk.versionName.orEmpty(), server.resolve(apk.url))
+        if (offered <= installed || offered <= skipped) return@withContext null
+        val entries = apk.changelog.filter { it.version > installed }.map { it.asModel() }
+        AppUpdate(offered, apk.versionName.orEmpty(), server.resolve(apk.url), changelog = entries)
     }
 
     override suspend fun later(update: AppUpdate) = preferences.updateLater(update.versionCode)

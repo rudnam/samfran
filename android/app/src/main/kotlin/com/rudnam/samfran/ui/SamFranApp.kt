@@ -17,10 +17,13 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +37,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -239,12 +245,7 @@ private fun Banners(state: ShellState, onUpdate: () -> Unit, shell: ShellActions
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         state.update?.let { u ->
-            Notice(actions = {
-                LinkButton(stringResource(R.string.update_later), shell::updateLater, quiet = true)
-                PrimaryButton(stringResource(R.string.update_now), onUpdate)
-            }) {
-                Text(if (u.name.isNotEmpty()) stringResource(R.string.update_named, u.name) else stringResource(R.string.update_unnamed))
-            }
+            UpdateNotice(u, onLater = shell::updateLater, onUpdate = onUpdate)
         }
         if (me?.demo == true) {
             Notice(actions = { SecondaryButton(stringResource(R.string.demo_create), onLeaveDemo) }) {
@@ -255,6 +256,48 @@ private fun Banners(state: ShellState, onUpdate: () -> Unit, shell: ShellActions
         if (me?.confirmEmail == true) {
             Notice(actions = { if (!state.confirmSent) LinkButton(stringResource(R.string.confirm_again), shell::resendConfirmation) }) {
                 Text(stringResource(if (state.confirmSent) R.string.confirm_sent else R.string.confirm_email, me.email), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+private const val COLLAPSED_CHANGELOG_ITEMS = 3
+
+@Composable
+internal fun UpdateNotice(update: AppUpdate, onLater: () -> Unit, onUpdate: () -> Unit) {
+    val japanese = LocalConfiguration.current.locales[0]?.language == "ja"
+    val notes = remember(update.changelog, japanese) {
+        update.changelog.flatMap { it.notesFor(japanese) }
+    }
+    var expanded by remember(update.versionCode) { mutableStateOf(false) }
+
+    Notice(actions = {
+        LinkButton(stringResource(R.string.update_later), onLater, quiet = true)
+        PrimaryButton(stringResource(R.string.update_now), onUpdate)
+    }) {
+        Text(
+            if (update.name.isNotEmpty()) stringResource(R.string.update_named, update.name)
+            else stringResource(R.string.update_unnamed),
+            fontWeight = FontWeight.Bold,
+        )
+        if (notes.isNotEmpty()) {
+            val visible = if (expanded || notes.size <= COLLAPSED_CHANGELOG_ITEMS) notes else notes.take(COLLAPSED_CHANGELOG_ITEMS)
+            val listModifier = if (expanded) {
+                Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())
+            } else {
+                Modifier
+            }
+            Column(listModifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                for (note in visible) {
+                    Text("• $note", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            if (notes.size > COLLAPSED_CHANGELOG_ITEMS) {
+                LinkButton(
+                    stringResource(if (expanded) R.string.update_show_less else R.string.update_show_all),
+                    onClick = { expanded = !expanded },
+                    quiet = true,
+                )
             }
         }
     }

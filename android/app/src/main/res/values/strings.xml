@@ -43,6 +43,9 @@
     </plurals>
     <string name="update_named">SamFran %1$s is available.</string>
     <string name="update_unnamed">A new version of SamFran is available.</string>
+    <string name="update_whats_new">What’s new</string>
+    <string name="update_show_all">Show all</string>
+    <string name="update_show_less">Show less</string>
     <string name="update_later">Later</string>
     <string name="update_now">Update</string>
     <string name="demo_title">This is a demo with sample data.</string>

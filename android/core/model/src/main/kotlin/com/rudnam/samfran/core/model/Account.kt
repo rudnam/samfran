@@ -23,6 +23,20 @@ data class AuthOptions(
 )
 
 /**
+ * One release's user-facing notes, baked into the APK's assets/changelog.json
+ * and returned by GET /api/downloads.
+ */
+data class ChangelogEntry(
+    val versionCode: Int,
+    val versionName: String = "",
+    val en: List<String> = emptyList(),
+    val ja: List<String> = emptyList(),
+) {
+    fun notesFor(japanese: Boolean): List<String> =
+        if (japanese && ja.isNotEmpty()) ja else en
+}
+
+/**
  * A newer build of the app: the one the server offers (GET /api/downloads),
  * or for a copy installed from the Play Store, the one Play has.
  */
@@ -34,6 +48,8 @@ data class AppUpdate(
     val url: String,
     /** Installed through Play's own update screen rather than downloaded. */
     val fromPlay: Boolean = false,
+    /** Changes since the installed version, newest first. */
+    val changelog: List<ChangelogEntry> = emptyList(),
 )
 
 /** A connection from Claude (or another MCP client). */
