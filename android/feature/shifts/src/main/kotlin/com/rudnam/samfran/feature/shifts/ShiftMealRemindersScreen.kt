@@ -204,9 +204,9 @@ private fun MealRuleRow(
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(R.string.meal_mode_off), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
-                LinkButton(stringResource(R.string.meal_set_time)) {
+                LinkButton(stringResource(R.string.meal_set_time), onClick = {
                     onChange(MealRule(MealRuleMode.Fixed, time = defaultTime))
-                }
+                })
             }
         }
     }
