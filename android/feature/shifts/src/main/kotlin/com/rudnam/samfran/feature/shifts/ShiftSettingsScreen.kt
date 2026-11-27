@@ -39,6 +39,7 @@ import com.rudnam.samfran.core.designsystem.component.LinkButton
 import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
+import com.rudnam.samfran.core.designsystem.component.SettingRow
 import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
@@ -46,6 +47,7 @@ import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.currentLocale
 import com.rudnam.samfran.core.ui.problem
+import com.rudnam.samfran.feature.shifts.navigation.ShiftMealRemindersRoute
 import com.rudnam.samfran.feature.shifts.navigation.ShiftsNavigation
 
 @Composable
@@ -55,6 +57,7 @@ internal fun ShiftSettingsDestination(navigation: ShiftsNavigation, viewModel: S
         state,
         viewModel,
         onBack = navigation::back,
+        onMealReminders = { navigation.navigate(ShiftMealRemindersRoute) },
     )
 }
 
@@ -67,6 +70,7 @@ fun ShiftSettingsScreen(
     state: ShiftSettingsUiState,
     actions: ShiftSettingsActions,
     onBack: () -> Unit,
+    onMealReminders: () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
     SubPage(onBack = onBack) {
@@ -128,6 +132,13 @@ fun ShiftSettingsScreen(
                 Hint(if (state.done == SettingsDone.Saved) stringResource(R.string.saved) else "", Modifier.weight(1f))
                 PrimaryButton(stringResource(R.string.save), actions::save, enabled = !state.busy)
             }
+        }
+        SamFranCard {
+            SettingRow(
+                stringResource(R.string.meal_reminders),
+                detail = stringResource(if (state.mealRemindersOn) R.string.meal_status_on else R.string.meal_status_off),
+                onClick = onMealReminders,
+            ) { LineIcon(SamFranIcons.bell, null, tint = colors.muted, size = 20.dp) }
         }
 
     }

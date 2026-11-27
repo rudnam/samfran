@@ -126,6 +126,9 @@ object ServerText {
         "this request has expired" to "このリクエストは期限切れです",
         "this request was already answered or cancelled" to "このリクエストはすでに回答済みか、取り消されています",
         "only the one who asked can take a request back" to "リクエストを取り消せるのは送った本人だけです",
+        "invalid meal reminder time" to "食事リマインダーの時刻が正しくありません",
+        "meal offset must be from 1 to 360 minutes" to "シフトとの時間差は1〜360分にしてください",
+        "relative meal times are only for working shifts" to "シフト基準の時刻は勤務日のみ設定できます",
     )
 }
 

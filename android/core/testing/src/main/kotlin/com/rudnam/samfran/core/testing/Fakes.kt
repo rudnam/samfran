@@ -23,6 +23,7 @@ import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.DayMeals
 import com.rudnam.samfran.core.model.FoundStop
 import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
@@ -197,6 +198,8 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
         months.value.values.sortedBy { it.month }.flatMap { it.days }.firstOrNull { it.end?.toInstant()?.isAfter(now) == true }
     override suspend fun upcomingShifts(now: Instant): Outcome<List<ShiftDay>> =
         Outcome.Done(months.value.values.flatMap { it.days }.filter { it.end?.toInstant()?.isAfter(now) == true }.sortedBy { it.end!!.toInstant() })
+    override suspend fun upcomingDays(now: Instant): Outcome<Pair<ShiftSettings, List<ShiftDay>>> =
+        Outcome.Done((settingsFlow.value ?: ShiftSettings()) to months.value.values.flatMap { it.days }.sortedBy { it.date })
     /** The shift [homeShift] answers; by default, worked out from the months. */
     var home: ShiftDay? = null
     override suspend fun homeShift(now: Instant): ShiftDay? = home ?: com.rudnam.samfran.core.model.homeShift(months.value.values.flatMap { it.days }, now)
@@ -220,10 +223,22 @@ class FakeShiftsRepository(months: List<ShiftMonth> = listOf(Samples.november)) 
     override fun takePendingRead(month: YearMonth): ShiftMonth? = pending?.takeIf { it.month == month }.also { pending = null }
     override val settings: Flow<ShiftSettings?> = settingsFlow
     override suspend fun refreshSettings(): Outcome<ShiftSettings> = next ?: Outcome.Done(settingsFlow.value ?: ShiftSettings())
-    override suspend fun saveSettings(personName: String, nameOnSheet: String, lengths: Map<String, Double>, closingDays: List<Int>?): Outcome<ShiftSettings> {
+    override suspend fun saveSettings(
+        personName: String,
+        nameOnSheet: String,
+        lengths: Map<String, Double>,
+        closingDays: List<Int>?,
+        mealReminders: Map<String, DayMeals>?,
+    ): Outcome<ShiftSettings> {
         next?.let { return it }
         val before = settingsFlow.value ?: ShiftSettings()
-        val s = before.copy(personName = personName, nameOnSheet = nameOnSheet, lengths = lengths, closingDays = closingDays?.distinct()?.sorted() ?: before.closingDays)
+        val s = before.copy(
+            personName = personName,
+            nameOnSheet = nameOnSheet,
+            lengths = lengths,
+            closingDays = closingDays?.distinct()?.sorted() ?: before.closingDays,
+            mealReminders = mealReminders ?: before.mealReminders,
+        )
         settingsFlow.value = s
         return Outcome.Done(s)
     }
@@ -356,17 +371,21 @@ class FakeActivityRepository(entries: List<ActivityEntry>? = Samples.activity, s
 
 class FakeReminders : Reminders {
     val alerts = MutableStateFlow(false)
+    val meals = MutableStateFlow(false)
     var allowed = true
     var syncs = 0
 
     override val activityAlerts: StateFlow<Boolean> = alerts
+    override val mealReminders: StateFlow<Boolean> = meals
     override fun notificationsAllowed() = allowed
     override suspend fun setActivityAlerts(on: Boolean) = (on && allowed).also { alerts.value = it }
+    override suspend fun setMealReminders(on: Boolean) = (on && allowed).also { meals.value = it }
     override suspend fun sync(now: Boolean) {
         syncs++
     }
     override fun clearNotifications() {}
     override fun turnOff() {
         alerts.value = false
+        meals.value = false
     }
 }

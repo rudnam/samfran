@@ -52,6 +52,7 @@ class UsScreenshotTest {
         override fun showAll() {}
         override fun disconnect(token: Long) {}
         override fun setAlerts(on: Boolean) {}
+        override fun setMealReminders(on: Boolean) {}
         override fun setAppearance(appearance: Appearance) {}
         override fun signOut() {}
     }

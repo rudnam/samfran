@@ -454,3 +454,38 @@ test('the next shift stays above every month, and opens its day when tapped', as
   await page.getByRole('radio', { name: 'List' }).click();
   await expect(page.getByRole('list', { name: 'Shifts' }).locator('li[aria-current="date"]')).toContainText('13F');
 });
+
+test('customize meal reminders per shift', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: /Meal reminders/ }).click();
+  await expect(page.getByRole('heading', { name: 'Meal reminders' })).toBeVisible();
+
+  // Defaults: Early breakfast is 2 hours before shift; Late dinner and Night lunch/dinner show Next day.
+  const early = page.getByRole('region', { name: 'Early (早番)' });
+  await expect(early.getByLabel('Early (早番) Breakfast mode')).toHaveValue('before_start');
+  await expect(early.getByLabel('Early (早番) Breakfast offset')).toHaveValue('120');
+
+  const late = page.getByRole('region', { name: 'Late (遅番)' });
+  await expect(late.getByLabel('Late (遅番) Dinner time')).toHaveValue('00:00');
+  await expect(late.locator('.meal-next-day')).toHaveCount(1);
+
+  const night = page.getByRole('region', { name: 'Night (夜勤)' });
+  await expect(night.getByLabel('Night (夜勤) Lunch time')).toHaveValue('03:00');
+  await expect(night.getByLabel('Night (夜勤) Dinner time')).toHaveValue('08:00');
+  await expect(night.locator('.meal-next-day')).toHaveCount(2);
+
+  // Edit a rule, save, and reload to confirm persistence.
+  await early.getByLabel('Early (早番) Breakfast offset').selectOption('90');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+  await page.reload();
+  await expect(early.getByLabel('Early (早番) Breakfast offset')).toHaveValue('90');
+
+  // Reset to defaults and save.
+  await page.getByRole('button', { name: 'Reset to defaults' }).click();
+  await expect(early.getByLabel('Early (早番) Breakfast offset')).toHaveValue('120');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+});

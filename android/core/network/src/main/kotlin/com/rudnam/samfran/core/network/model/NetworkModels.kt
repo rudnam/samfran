@@ -14,6 +14,10 @@ import com.rudnam.samfran.core.model.McpToken
 import com.rudnam.samfran.core.model.Me
 import com.rudnam.samfran.core.model.Member
 import com.rudnam.samfran.core.model.Comment
+import com.rudnam.samfran.core.model.DayMeals
+import com.rudnam.samfran.core.model.MEAL_DAY_KEYS
+import com.rudnam.samfran.core.model.MealRule
+import com.rudnam.samfran.core.model.MealRuleMode
 import com.rudnam.samfran.core.model.Rating
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.ShiftCoworker
@@ -25,6 +29,7 @@ import com.rudnam.samfran.core.model.ShiftThere
 import com.rudnam.samfran.core.model.Space
 import com.rudnam.samfran.core.model.Visit
 import com.rudnam.samfran.core.model.VisitNote
+import com.rudnam.samfran.core.model.defaultMealReminders
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -279,6 +284,36 @@ data class NetworkReadProgress(
 )
 
 @Serializable
+data class NetworkMealRule(
+    val mode: String = "off",
+    val time: String? = null,
+    val minutes: Int? = null,
+) {
+    fun asModel() = MealRule(
+        mode = MealRuleMode.fromApi(mode),
+        time = time ?: "12:00",
+        minutes = minutes ?: 120,
+    )
+}
+
+@Serializable
+data class NetworkDayMeals(
+    val breakfast: NetworkMealRule = NetworkMealRule(),
+    val lunch: NetworkMealRule = NetworkMealRule(),
+    val dinner: NetworkMealRule = NetworkMealRule(),
+) {
+    fun asModel() = DayMeals(breakfast.asModel(), lunch.asModel(), dinner.asModel())
+}
+
+fun MealRule.asNetwork() = NetworkMealRule(
+    mode = mode.api,
+    time = if (mode == MealRuleMode.Fixed) time else null,
+    minutes = if (mode == MealRuleMode.BeforeStart || mode == MealRuleMode.AfterEnd) minutes else null,
+)
+
+fun DayMeals.asNetwork() = NetworkDayMeals(breakfast.asNetwork(), lunch.asNetwork(), dinner.asNetwork())
+
+@Serializable
 data class NetworkShiftSettings(
     @SerialName("person_name") val personName: String = "",
     @SerialName("name_on_sheet") val nameOnSheet: String = "",
@@ -286,11 +321,20 @@ data class NetworkShiftSettings(
     @SerialName("time_zone") val timeZone: String = "",
     /** Older servers leave it out: the 15th and the last day. */
     @SerialName("closing_days") val closingDays: List<Int> = listOf(15, 31),
+    @SerialName("meal_reminders") val mealReminders: Map<String, NetworkDayMeals>? = null,
     @SerialName("feed_path") val feedPath: String = "",
     val reader: Boolean = false,
 )
 
-fun NetworkShiftSettings.asModel() = ShiftSettings(personName, nameOnSheet, lengths, timeZone, closingDays, feedPath, reader)
+fun NetworkShiftSettings.asModel(): ShiftSettings {
+    val merged = defaultMealReminders().toMutableMap()
+    if (mealReminders != null) {
+        for (k in MEAL_DAY_KEYS) {
+            mealReminders[k]?.let { merged[k] = it.asModel() }
+        }
+    }
+    return ShiftSettings(personName, nameOnSheet, lengths, timeZone, closingDays, merged, feedPath, reader)
+}
 
 @Serializable
 data class NetworkShiftMonth(
@@ -355,6 +399,7 @@ data class NetworkShiftSettingsInput(
     @SerialName("name_on_sheet") val nameOnSheet: String? = null,
     val lengths: Map<String, Double>? = null,
     @SerialName("closing_days") val closingDays: List<Int>? = null,
+    @SerialName("meal_reminders") val mealReminders: Map<String, NetworkDayMeals>? = null,
 )
 
 @Serializable
@@ -461,6 +506,7 @@ private fun JsonObject.asDetails(): ActivityDetails {
         email = this["email"].string(),
         lengths = lengths,
         settings = settings,
+        mealRemindersChanged = (this["meal_reminders"] as? JsonPrimitive)?.booleanOrNull ?: false,
     )
 }
 

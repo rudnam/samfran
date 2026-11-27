@@ -60,6 +60,14 @@
             </intent-filter>
         </receiver>
 
+        <!-- Meal reminders based on shifts: rescheduled on boot or app update. -->
+        <receiver android:name=".MealPrompt" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- Looks for the other person's changes about every half hour, to notify about them. -->
         <service
             android:name=".ActivityJob"

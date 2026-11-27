@@ -42,6 +42,9 @@ function describe(e: ActivityEntry): string {
         const change = d[key] as [string, string] | undefined;
         if (change) parts.push(t('changed {what} to “{to}”', { what: setting[key](), to: change[1] }));
       }
+      if (d.meal_reminders === true) {
+        parts.push(t('updated meal reminders'));
+      }
       return parts.join(', ');
     }
     case 'calendar_link_new':

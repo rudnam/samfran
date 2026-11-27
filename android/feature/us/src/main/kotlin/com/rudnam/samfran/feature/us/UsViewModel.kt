@@ -43,6 +43,8 @@ data class UsUiState(
     val mcpAddress: String = "",
     val alerts: Boolean = false,
     val alertsBlocked: Boolean = false,
+    val mealReminders: Boolean = false,
+    val mealRemindersBlocked: Boolean = false,
     val appearance: Appearance = Appearance.System,
     /** How many apps this person has locked; null until known. */
     val lockedHere: Int? = null,
@@ -60,6 +62,8 @@ interface UsActions {
     fun disconnect(token: Long)
     /** The screen has asked for notification permission first. */
     fun setAlerts(on: Boolean)
+    /** The screen has asked for notification permission first. */
+    fun setMealReminders(on: Boolean)
     fun setAppearance(appearance: Appearance)
     fun signOut()
 }
@@ -78,9 +82,9 @@ class UsViewModel @Inject constructor(
     val state: StateFlow<UsUiState> = combine(
         local,
         combine(user.me, spaces.space, activity.entries) { me, space, entries -> Triple(me, space, entries) },
-        combine(reminders.activityAlerts, locks.page) { alerts, page -> alerts to page?.mine?.size },
+        combine(reminders.activityAlerts, reminders.mealReminders, locks.page) { alerts, meals, page -> Triple(alerts, meals, page?.mine?.size) },
         preferences.preferences,
-    ) { s, (me, space, entries), (alerts, locked), prefs ->
+    ) { s, (me, space, entries), (alerts, meals, locked), prefs ->
         s.copy(
             lockedHere = locked,
             me = me,
@@ -88,6 +92,7 @@ class UsViewModel @Inject constructor(
             name = s.name ?: space?.members?.firstOrNull { it.me }?.name,
             activity = entries,
             alerts = alerts,
+            mealReminders = meals,
             appearance = prefs.appearance,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
@@ -144,6 +149,14 @@ class UsViewModel @Inject constructor(
         viewModelScope.launch {
             val now = reminders.setActivityAlerts(on)
             local.update { it.copy(alertsBlocked = on && !now) }
+        }
+    }
+
+    override fun setMealReminders(on: Boolean) {
+        local.update { it.copy(mealRemindersBlocked = false) }
+        viewModelScope.launch {
+            val now = reminders.setMealReminders(on)
+            local.update { it.copy(mealRemindersBlocked = on && !now) }
         }
     }
 

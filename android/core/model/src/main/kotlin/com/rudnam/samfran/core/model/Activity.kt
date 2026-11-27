@@ -27,6 +27,7 @@ data class ActivityDetails(
     val lengths: Map<String, Pair<Double?, Double?>> = emptyMap(),
     /** Shift settings changed: person_name, name_on_sheet or time_zone, to (from, to). */
     val settings: Map<String, Pair<String, String>> = emptyMap(),
+    val mealRemindersChanged: Boolean = false,
 )
 
 /** The newest change's id, 0 if there are none. */

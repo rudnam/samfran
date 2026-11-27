@@ -16,11 +16,14 @@ import kotlinx.coroutines.flow.Flow
  */
 interface Reminders {
     val activityAlerts: Flow<Boolean>
+    val mealReminders: Flow<Boolean>
 
     /** Notifications are allowed for the app. */
     fun notificationsAllowed(): Boolean
 
     suspend fun setActivityAlerts(on: Boolean): Boolean
+
+    suspend fun setMealReminders(on: Boolean): Boolean
 
     /**
      * Brings the phone up to date with what's switched on: the shift ends as

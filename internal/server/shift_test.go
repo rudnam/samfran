@@ -41,11 +41,12 @@ func (f *fakeReader) Read(_ context.Context, image []byte, mediaType, name strin
 type monthJSON struct {
 	Month    string
 	Settings struct {
-		PersonName  string `json:"person_name"`
-		NameOnSheet string `json:"name_on_sheet"`
-		FeedPath    string `json:"feed_path"`
-		ClosingDays []int  `json:"closing_days"`
-		Reader      bool
+		PersonName    string                    `json:"person_name"`
+		NameOnSheet   string                    `json:"name_on_sheet"`
+		FeedPath      string                    `json:"feed_path"`
+		ClosingDays   []int                     `json:"closing_days"`
+		MealReminders map[string]shift.DayMeals `json:"meal_reminders"`
+		Reader        bool
 	}
 	Days []struct {
 		Date, Code, Kind, Label, Problem string
@@ -475,4 +476,110 @@ func TestShiftPhotoOnASlowUpload(t *testing.T) {
 	if res.StatusCode != 202 || started.ID == "" {
 		t.Fatalf("slow upload: %d %+v", res.StatusCode, started)
 	}
+}
+
+func TestShiftMealRemindersAndPush(t *testing.T) {
+	push := &fakePush{}
+	ts := newTestServer(t, func(c *config.Config) { c.Push = push })
+	fran := newClient(t, ts)
+	fran.signup("fran@example.com")
+	sam := newClient(t, ts)
+	// Invite Sam to Fran's space.
+	fran.do("POST", "/api/space/invites", map[string]string{"email": "sam@example.com"}, nil)
+	sam.signup("sam@example.com")
+	if code := sam.do("PUT", "/api/push/token", map[string]string{"token": "sam-phone"}, nil); code != 204 {
+		t.Fatalf("register sam push token: %d", code)
+	}
+
+	// Default meal reminders are returned on GET /api/shifts/settings and GET /api/shifts.
+	var st shift.Settings
+	if code := fran.do("GET", "/api/shifts/settings", nil, &st); code != 200 {
+		t.Fatalf("get settings: %d", code)
+	}
+	if st.MealReminders["Early"].Breakfast.Mode != shift.MealBeforeStart || st.MealReminders["Early"].Breakfast.Minutes != 120 {
+		t.Errorf("default Early breakfast: %+v", st.MealReminders["Early"].Breakfast)
+	}
+	if st.MealReminders["Night"].Lunch.Time != "03:00" || st.MealReminders["Off"].Dinner.Time != "19:00" {
+		t.Errorf("default Night/Off: %+v %+v", st.MealReminders["Night"], st.MealReminders["Off"])
+	}
+	var mv monthJSON
+	if code := fran.do("GET", "/api/shifts?month=2026-11", nil, &mv); code != 200 || mv.Settings.MealReminders["Late"].Dinner.Time != "00:00" {
+		t.Fatalf("month settings meal_reminders: %d %+v", code, mv.Settings.MealReminders)
+	}
+
+	// Validation errors.
+	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{
+		"meal_reminders": map[string]any{
+			"Early": map[string]any{
+				"breakfast": map[string]any{"mode": "fixed", "time": "25:00"},
+				"lunch":     map[string]any{"mode": "off"},
+				"dinner":    map[string]any{"mode": "off"},
+			},
+		},
+	}, nil); code != 400 {
+		t.Errorf("bad time: %d, want 400", code)
+	}
+	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{
+		"meal_reminders": map[string]any{
+			"Off": map[string]any{
+				"breakfast": map[string]any{"mode": "before_start", "minutes": 60},
+				"lunch":     map[string]any{"mode": "off"},
+				"dinner":    map[string]any{"mode": "off"},
+			},
+		},
+	}, nil); code != 400 {
+		t.Errorf("relative on Off: %d, want 400", code)
+	}
+
+	// Updating meal reminders saves them, logs meal_reminders: true, and pushes shifts_changed.
+	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{
+		"meal_reminders": map[string]any{
+			"Early": map[string]any{
+				"breakfast": map[string]any{"mode": "before_start", "minutes": 90},
+				"lunch":     map[string]any{"mode": "fixed", "time": "12:00"},
+				"dinner":    map[string]any{"mode": "after_end", "minutes": 60},
+			},
+		},
+	}, &st); code != 200 {
+		t.Fatalf("save meal_reminders: %d", code)
+	}
+	if st.MealReminders["Early"].Breakfast.Minutes != 90 || st.MealReminders["Early"].Dinner.Mode != shift.MealAfterEnd {
+		t.Errorf("saved Early: %+v", st.MealReminders["Early"])
+	}
+	push.waitFor(t, "sam-phone", "shifts_changed")
+
+	// Partial PUT without meal_reminders preserves them.
+	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{"person_name": "Sam"}, &st); code != 200 {
+		t.Fatalf("partial settings: %d", code)
+	}
+	if st.MealReminders["Early"].Breakfast.Minutes != 90 {
+		t.Errorf("meal_reminders lost on partial PUT: %+v", st.MealReminders["Early"])
+	}
+
+	// Activity log has meal_reminders: true.
+	var entries []struct {
+		Kind    string         `json:"kind"`
+		Details map[string]any `json:"details"`
+	}
+	if code := fran.do("GET", "/api/activity", nil, &entries); code != 200 {
+		t.Fatalf("activity: %d", code)
+	}
+	foundMealLog := false
+	for _, e := range entries {
+		if e.Kind == "shift_settings" && e.Details["meal_reminders"] == true {
+			foundMealLog = true
+		}
+	}
+	if !foundMealLog {
+		t.Errorf("expected shift_settings activity with meal_reminders=true, got %+v", entries)
+	}
+
+	// Saving a month of shifts also pushes shifts_changed.
+	if code := fran.do("PUT", "/api/shifts/month", map[string]any{
+		"month": "2026-11",
+		"days":  []map[string]any{{"date": "2026-11-02", "code": "7F"}},
+	}, nil); code != 200 {
+		t.Fatalf("save month: %d", code)
+	}
+	push.waitFor(t, "sam-phone", "shifts_changed")
 }
