@@ -47,6 +47,7 @@ func newTestServerDB(t *testing.T, edit ...func(*config.Config)) (*httptest.Serv
 		"landing.html":         {Data: []byte("<!doctype html><title>Landing</title>")},
 		"privacy.html":         {Data: []byte("<!doctype html><title>Privacy</title>")},
 		"assets/app-1.js":      {Data: []byte("console.log(1)")},
+		"fonts/plus-jakarta-sans-latin.woff2": {Data: []byte("wOF2")},
 		"manifest.webmanifest": {Data: []byte(`{"name":"App"}`)},
 		"map.html": {Data: []byte(`<!doctype html><script type="module" crossorigin src="/assets/map-1.js"></script>` +
 			`<link rel="modulepreload" crossorigin href="/assets/icons-1.js">`)},
