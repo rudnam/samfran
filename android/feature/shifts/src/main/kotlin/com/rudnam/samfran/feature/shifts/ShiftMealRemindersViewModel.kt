@@ -12,11 +12,9 @@ import com.rudnam.samfran.core.model.ShiftSettings
 import com.rudnam.samfran.core.model.defaultMealReminders
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -44,12 +42,12 @@ class ShiftMealRemindersViewModel @Inject constructor(
     private val reminders: Reminders,
 ) : ViewModel(), ShiftMealRemindersActions {
     private val local = MutableStateFlow(ShiftMealRemindersUiState())
-
-    val state: StateFlow<ShiftMealRemindersUiState> = combine(local, reminders.mealReminders) { s, on ->
-        s.copy(enabledOnPhone = on)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
+    val state: StateFlow<ShiftMealRemindersUiState> = local.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            reminders.mealReminders.collect { on -> local.update { it.copy(enabledOnPhone = on) } }
+        }
         viewModelScope.launch {
             shifts.settings.first()?.let(::take)
             when (val r = shifts.refreshSettings()) {

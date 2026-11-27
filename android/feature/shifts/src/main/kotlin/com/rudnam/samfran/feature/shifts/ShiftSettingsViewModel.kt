@@ -56,11 +56,12 @@ class ShiftSettingsViewModel @Inject constructor(
     private val reminders: Reminders,
 ) : ViewModel(), ShiftSettingsActions {
     private val _state = MutableStateFlow(ShiftSettingsUiState())
-    val state: StateFlow<ShiftSettingsUiState> = combine(_state, reminders.mealReminders) { s, on ->
-        s.copy(mealRemindersOn = on)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), _state.value)
+    val state: StateFlow<ShiftSettingsUiState> = _state.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            reminders.mealReminders.collect { on -> _state.update { it.copy(mealRemindersOn = on) } }
+        }
         viewModelScope.launch {
             shifts.settings.first()?.let(::take)
             when (val r = shifts.refreshSettings()) {

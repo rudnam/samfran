@@ -41,7 +41,7 @@ class MealPromptTest {
         val am = context.getSystemService(AlarmManager::class.java)
         val shadowAm = shadowOf(am)
         assertNotNull(shadowAm.nextScheduledAlarm)
-        assertEquals(second.toEpochMilli(), shadowAm.nextScheduledAlarm.triggerAtTime)
+        assertEquals(second.toEpochMilli(), shadowAm.nextScheduledAlarm?.triggerAtTime)
 
         // Simulate firing ACTION_MEAL when `first` is due.
         MealPrompt.save(
@@ -66,7 +66,7 @@ class MealPromptTest {
 
         // After receiving, `first` is pruned and `second` remains scheduled.
         assertEquals(listOf(second), MealPrompt.scheduledInstants(context))
-        assertEquals(second.toEpochMilli(), shadowAm.nextScheduledAlarm.triggerAtTime)
+        assertEquals(second.toEpochMilli(), shadowAm.nextScheduledAlarm?.triggerAtTime)
 
         // Clear and disable.
         MealPrompt.clear(context)
