@@ -43,6 +43,7 @@ internal interface DataModule {
     @Binds fun user(impl: ServerUserRepository): UserRepository
     @Binds fun updates(impl: ServerUpdateRepository): UpdateRepository
     @Binds fun food(impl: OfflineFirstFoodRepository): FoodRepository
+    @Binds fun photos(impl: AndroidPhotos): Photos
     @Binds fun shifts(impl: OfflineFirstShiftsRepository): ShiftsRepository
     @Binds fun bus(impl: OfflineFirstBusRepository): BusRepository
     @Binds fun space(impl: OfflineFirstSpaceRepository): SpaceRepository

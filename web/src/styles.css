@@ -5,7 +5,7 @@
   font-family: 'Plus Jakarta Sans';
   src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
   font-weight: 200 800;
-  font-display: swap;
+  font-display: block;
 }
 
 :root {
@@ -825,3 +825,84 @@ button.end { align-self: flex-end; }
 @media (hover: hover) { .device select.language:hover { background-color: var(--sunken); } }
 .device .row.spread { min-height: 44px; }
 .device select.language:focus-visible { box-shadow: 0 0 0 2.5px var(--accent-ink); }
+
+/* A place's visits (features/restaurants/Visits.tsx): each its date, note and photos. */
+button.small, a.button.small { padding: 7px 12px; font-size: var(--text-label); }
+button.danger-text { color: var(--danger); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.visits { list-style: none; margin: 0; padding: 0; }
+.visit { padding: 14px 0; border-top: 1px solid var(--divider); }
+.visit:first-child { border-top: 0; padding-top: 0; }
+.visit:last-child { padding-bottom: 0; }
+.visit .prewrap { margin: 0; }
+.visit-head { display: flex; align-items: baseline; gap: 10px; margin: 0; }
+.visit-head button.link { padding: 0; margin-left: auto; }
+.visit-form { padding: 12px; border-radius: var(--radius); background: var(--sunken); }
+.card .visit-form input, .card .visit-form textarea { background: var(--surface); }
+.photo-strip { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; }
+@media (min-width: 720px) { .photo-strip { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); } }
+.photo-thumb, .photo-add { position: relative; aspect-ratio: 1; border-radius: var(--radius-xs); overflow: hidden; padding: 0; background: var(--sunken); }
+.photo-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-thumb.sending img { opacity: 0.5; }
+.photo-progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--accent); transition: width 0.2s; }
+.photo-add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer;
+  color: var(--muted); font-size: var(--text-label-s); font-weight: 600; border: 1.5px dashed var(--divider); background: none;
+}
+@media (hover: hover) { .photo-add:hover { color: var(--text); border-color: var(--muted); } }
+.photo-add:focus-within { outline: 2.5px solid var(--accent-ink); outline-offset: 2px; }
+/* The place's cover photo where the category's icon was, with the category
+   in the corner. On the list every tile is big enough to tell a photo apart,
+   and the same size, so the names line up. */
+.tile.photo { position: relative; background: var(--sunken); overflow: visible; }
+.tile.photo img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.spot > .tile { width: 60px; height: 60px; }
+.spot > .tile > svg { width: 28px; height: 28px; }
+.tile-badge {
+  position: absolute; right: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--surface);
+}
+.tile.photo.sm .tile-badge { width: 16px; height: 16px; right: -3px; bottom: -3px; }
+.tile-badge.cat-eat { background: var(--tile-orange); color: var(--tile-orange-ink); }
+.tile-badge.cat-nature { background: var(--tile-green); color: var(--tile-green-ink); }
+.tile-badge.cat-culture { background: var(--tile-red); color: var(--tile-red-ink); }
+.tile-badge.cat-fun { background: var(--tile-blue); color: var(--tile-blue-ink); }
+.tile-badge.cat-relax { background: var(--tile-purple); color: var(--tile-purple-ink); }
+.tile-badge.cat-shopping { background: var(--tile-yellow); color: var(--tile-yellow-ink); }
+.tile-badge.cat-other { background: var(--sunken); color: var(--muted); }
+/* A place's cover photo, big across the top of its page. */
+.place-cover {
+  display: block; width: 100%; aspect-ratio: 16 / 10; max-height: 420px; object-fit: cover;
+  border-radius: var(--radius-lg); background: var(--sunken) center / cover no-repeat;
+}
+/* The photo viewer's ⋮ menu: light, over the dark viewer. */
+.viewer-menu a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-xs); color: var(--text); font-weight: 600; font-size: var(--text-body); text-decoration: none; }
+.viewer-bar .viewer-menu button.danger-text { color: var(--danger); }
+.viewer-menu button:disabled { opacity: 1; color: var(--muted); }
+@media (hover: hover) { .viewer-menu a:hover, .viewer-menu button:hover:not(:disabled) { background: var(--sunken); } }
+.tile.lg { width: 64px; height: 64px; border-radius: var(--radius); }
+
+/* A visit's photos at full size, one at a time. */
+dialog.photo-viewer {
+  border: 0; padding: 0; margin: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none;
+  background: #0d0b09; color: #f4efe8; display: flex; flex-direction: column;
+}
+dialog.photo-viewer:not([open]) { display: none; }
+dialog.photo-viewer::backdrop { background: #0d0b09; }
+.viewer-bar { display: flex; align-items: center; gap: 8px; padding: calc(8px + env(safe-area-inset-top)) 12px 8px 16px; font-size: var(--text-label); }
+.viewer-bar .muted { color: #b9afa3; }
+.viewer-bar .icon-button { color: inherit; }
+/* On the dark bar, hovered, pressed or open shows as a faint light, not the page's pale fill (which hid the icon). */
+.viewer-bar .icon-button:active, .viewer-bar .icon-button[aria-expanded="true"] { background: rgba(255, 255, 255, 0.16); }
+@media (hover: hover) { .viewer-bar .icon-button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); } }
+.viewer-bar a.button.secondary, .viewer-bar button.secondary { background: rgba(255, 255, 255, 0.12); color: inherit; }
+.viewer-bar button.danger-text { color: #ff9c8f; }
+.viewer-stage { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; touch-action: pan-y pinch-zoom; }
+.viewer-stage img { max-width: 100%; max-height: 100%; object-fit: contain; background-size: contain; background-position: center; background-repeat: no-repeat; user-select: none; }
+.viewer-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 48px; padding: 0; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45); color: #fff;
+}
+.viewer-nav.prev { left: 12px; }
+.viewer-nav.next { right: 12px; }
+.viewer-nav:active:not(:disabled) { transform: translateY(-50%) scale(0.95); }

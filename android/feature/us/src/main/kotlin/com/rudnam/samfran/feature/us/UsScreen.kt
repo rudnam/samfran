@@ -134,7 +134,7 @@ fun UsScreen(
                             PendingAvatar()
                             Column(Modifier.weight(1f)) {
                                 Text(inv.email, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                                Hint(stringResource(R.string.invited_hint))
+                                Hint(stringResource(R.string.invited))
                             }
                             LinkButton(stringResource(R.string.cancel), { actions.uninvite(inv.email) }, enabled = !state.busy, quiet = true)
                         }
@@ -158,7 +158,7 @@ fun UsScreen(
                     )
                     PrimaryButton(stringResource(R.string.save), actions::saveName, enabled = !state.busy && state.space != null && state.name != state.myName)
                 }
-                Hint(stringResource(if (state.nameSaved) R.string.saved else R.string.name_hint))
+                if (state.nameSaved) Hint(stringResource(R.string.saved))
             }
         }
 
@@ -200,10 +200,7 @@ fun UsScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(stringResource(R.string.tell_me), style = MaterialTheme.typography.bodyLarge)
-                            Hint(stringResource(R.string.tell_me_hint))
-                        }
+                        Text(stringResource(R.string.tell_me), Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                         Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
                     }
                     if (state.alertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
@@ -278,7 +275,6 @@ private fun InviteLink(state: UsUiState, actions: UsActions, onCopy: (String) ->
             }
             else -> {
                 PrimaryButton(stringResource(R.string.create_invite_link), actions::createInviteLink, enabled = !state.busy)
-                Hint(stringResource(R.string.invite_hint))
             }
         }
     }

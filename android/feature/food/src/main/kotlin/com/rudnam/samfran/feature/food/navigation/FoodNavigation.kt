@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.samfran.core.designsystem.component.Page
 import com.rudnam.samfran.feature.food.FoodListDestination
 import com.rudnam.samfran.feature.food.PlaceDestination
 import com.rudnam.samfran.feature.food.PlaceFormDestination
@@ -34,7 +35,7 @@ interface FoodNavigation {
 }
 
 fun NavGraphBuilder.foodScreens(navigation: FoodNavigation, snackbar: SnackbarHostState) {
-    composable<FoodRoute> { FoodListDestination(navigation) }
-    composable<PlaceRoute> { PlaceDestination(navigation, snackbar) }
-    composable<PlaceFormRoute> { PlaceFormDestination(navigation) }
+    composable<FoodRoute> { Page { FoodListDestination(navigation) } }
+    composable<PlaceRoute> { Page { PlaceDestination(navigation, snackbar) } }
+    composable<PlaceFormRoute> { Page { PlaceFormDestination(navigation) } }
 }

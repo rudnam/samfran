@@ -183,13 +183,13 @@ fun BusScreen(
         TabPage {
             when {
                 all == null -> {
-                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm)) }
                     item(key = "loading") { Skeleton(rows = 3) }
                     return@TabPage
                 }
                 // The first stop: how it works, then where.
                 !state.ready && state.searching -> {
-                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm), subtitle = stringResource(R.string.bus_subtitle)) }
+                    item(key = "head") { PageTitle(stringResource(R.string.bus_alarm)) }
                     problems(state)
                     item(key = "how") { SamFranCard(spacing = 10) { CardTitle(stringResource(R.string.how_it_works)); Steps() } }
                     item(key = "where") { WherePage(state, actions, onHere, map, title = null) }
@@ -220,7 +220,7 @@ fun BusScreen(
             }
             item(key = "head") {
                 Row(verticalAlignment = Alignment.Top) {
-                    PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f), subtitle = stringResource(R.string.bus_subtitle))
+                    PageTitle(stringResource(R.string.bus_alarm), Modifier.weight(1f))
                     if (!state.trip.running && !state.buzzing) {
                         IconButton(onClick = actions::openSettings) { LineIcon(SamFranIcons.settings, stringResource(R.string.settings)) }
                     }
@@ -365,7 +365,6 @@ private fun RideCard(
                 map(stop.lat, stop.lng, stop.name)
                 PrimaryButton(stringResource(if (stop.kind == StopKind.Train) R.string.on_train else R.string.on_bus), onStartTrip, Modifier.fillMaxWidth(), big = true)
                 SecondaryButton(stringResource(R.string.try_it_now), onPractice, Modifier.fillMaxWidth())
-                Hint(stringResource(R.string.on_bus_hint), Modifier.fillMaxWidth())
             }
         }
     }

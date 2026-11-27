@@ -5,6 +5,10 @@ import com.rudnam.samfran.core.data.AuthRepository
 import com.rudnam.samfran.core.data.BusAlarm
 import com.rudnam.samfran.core.data.BusRepository
 import com.rudnam.samfran.core.data.FoodRepository
+import com.rudnam.samfran.core.data.PickedPhoto
+import com.rudnam.samfran.core.data.Photos
+import com.rudnam.samfran.core.data.UnreadablePhotoException
+import com.rudnam.samfran.core.model.Photo
 import com.rudnam.samfran.core.data.GoogleResult
 import com.rudnam.samfran.core.data.GoogleReturn
 import com.rudnam.samfran.core.data.InviteLinkMade
@@ -134,6 +138,51 @@ class FakeFoodRepository(places: List<Restaurant>? = Samples.restaurants) : Food
 
     override suspend fun clearBeen(id: Long) = change(id) { it.copy(visits = emptyList(), visitCount = 0, lastVisit = null) }
 
+    override suspend fun addVisit(id: Long, on: LocalDate, note: String) = change(id) {
+        val visits = (it.visits.orEmpty() + Visit(nextId++, on, note.trim(), "Fran")).sortedByDescending { v -> v.visitedOn }
+        it.copy(visits = visits, visitCount = visits.size, lastVisit = visits.first().visitedOn)
+    }
+
+    override suspend fun updateVisit(id: Long, visit: Long, on: LocalDate, note: String) = change(id) {
+        val visits = it.visits.orEmpty().map { v -> if (v.id == visit) v.copy(visitedOn = on, note = note.trim()) else v }.sortedByDescending { v -> v.visitedOn }
+        it.copy(visits = visits, lastVisit = visits.firstOrNull()?.visitedOn)
+    }
+
+    override suspend fun deleteVisit(id: Long, visit: Long) = change(id) {
+        val visits = it.visits.orEmpty().filter { v -> v.id != visit }
+        it.withPhotos(visits).copy(visitCount = visits.size, lastVisit = visits.firstOrNull()?.visitedOn)
+    }
+
+    /** The photos sent, in order. */
+    val sentPhotos = mutableListOf<PickedPhoto>()
+
+    override suspend fun addPhoto(id: Long, visit: Long, photo: PickedPhoto, onProgress: (Float) -> Unit) = change(id) {
+        sentPhotos += photo
+        onProgress(1f)
+        val n = nextId++
+        val p = Photo(n, "https://samfran.test/api/photos/$n", "https://samfran.test/api/photos/$n/thumb", photo.width, photo.height, "Fran")
+        it.withPhotos(it.visits.orEmpty().map { v -> if (v.id == visit) v.copy(photos = v.photos + p) else v })
+    }
+
+    override suspend fun deletePhoto(id: Long, photo: Long) = change(id) {
+        it.withPhotos(it.visits.orEmpty().map { v -> v.copy(photos = v.photos.filter { p -> p.id != photo }) })
+    }
+
+    override suspend fun setCover(id: Long, photo: Long) = change(id) {
+        chosenCovers[id] = photo
+        it.withPhotos(it.visits.orEmpty())
+    }
+
+    /** The photo chosen as each place's cover. */
+    private val chosenCovers = mutableMapOf<Long, Long>()
+
+    /** With these visits, and the cover (the chosen one, else the newest) and count they make. */
+    private fun Restaurant.withPhotos(visits: List<Visit>): Restaurant {
+        val all = visits.flatMap { it.photos }
+        val c = all.firstOrNull { p -> p.id == chosenCovers[id] } ?: all.maxByOrNull { it.id }
+        return copy(visits = visits, photoCount = all.size, cover = c?.thumbUrl, coverPhotoId = c?.id)
+    }
+
     override suspend fun rate(id: Long, stars: Int) = change(id) { r ->
         val others = r.ratings.filter { !it.me }
         r.copy(ratings = (if (stars > 0) listOf(com.rudnam.samfran.core.model.Rating("Fran", true, stars)) else emptyList()) + others)
@@ -240,6 +289,7 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
     var found: List<FoundStop> = Samples.found
     var next: Outcome<Nothing>? = null
     val used = mutableListOf<Long>()
+    val done = mutableListOf<Pair<Long, Boolean>>()
 
     override val stops: Flow<BusStops?> = stopsFlow
     override suspend fun refresh(): Outcome<BusStops> = next ?: Outcome.Done(stopsFlow.value ?: BusStops())
@@ -288,6 +338,12 @@ class FakeBusRepository(stops: BusStops? = Samples.stops) : BusRepository {
         next?.let { return it }
         used += id
         return set(now().copy(lastId = id))
+    }
+
+    override suspend fun done(id: Long, arrived: Boolean): Outcome<BusStops> {
+        next?.let { return it }
+        done += id to arrived
+        return Outcome.Done(now())
     }
 
     override suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>> =
@@ -368,5 +424,24 @@ class FakeReminders : Reminders {
     override fun clearNotifications() {}
     override fun turnOff() {
         alerts.value = false
+    }
+}
+
+/** Photos "picked": any uri reads as a 4000×3000 JPEG, except one with "unreadable" in it. */
+class FakePhotos : Photos {
+    override suspend fun read(uri: String): PickedPhoto {
+        if ("unreadable" in uri) throw UnreadablePhotoException()
+        return PickedPhoto(uri.substringAfterLast('/'), "image/jpeg", 3, 4000, 3000, byteArrayOf(1)) { byteArrayOf(-1, -40, -1).inputStream() }
+    }
+
+    /** The photos saved to the phone, in order. */
+    val saved = mutableListOf<Photo>()
+
+    /** What the next save answers; done by default. */
+    var nextSave: Outcome<Unit> = Outcome.Done(Unit)
+
+    override suspend fun save(photo: Photo): Outcome<Unit> {
+        if (nextSave is Outcome.Done) saved += photo
+        return nextSave
     }
 }

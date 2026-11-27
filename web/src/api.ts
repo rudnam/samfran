@@ -52,6 +52,19 @@ export interface Visit {
   visited_on: string;
   note: string;
   added_by: string;
+  /** Oldest first; missing from servers before photos. */
+  photos?: Photo[];
+}
+
+/** A photo from a visit: url is the original, exactly as it was taken; thumb_url a small copy. */
+export interface Photo {
+  id: number;
+  url: string;
+  thumb_url: string;
+  /** The original's pixels; 0 when not known. */
+  width: number;
+  height: number;
+  added_by: string;
 }
 
 /** Something one of you said about a place you've been to. */
@@ -87,6 +100,11 @@ export interface Restaurant {
   last_visit: string | null;
   /** The signed-in person's first. */
   ratings: Rating[];
+  /** The cover photo's thumbnail (the one chosen, else the newest), shown instead of the category's icon; null without photos. */
+  cover?: string | null;
+  /** The photo that cover is: the one chosen (setCover), else the newest. Missing from older servers. */
+  cover_photo_id?: number | null;
+  photo_count?: number;
   /** Newest first; only from restaurant(id). */
   visits?: Visit[];
   /** Oldest first; only from restaurant(id), and left out when there are none. */
@@ -156,7 +174,6 @@ export const api = {
   forgotPassword: (email: string) => request<void>('POST', '/api/password/forgot', { email }),
   /** Sets a new password with the emailed link's token, and signs in. */
   resetPassword: (token: string, password: string) => request<Me>('POST', '/api/password/reset', { token, password }),
-  downloads: () => request<Downloads>('GET', '/api/downloads'),
 
   space: () => request<Space>('GET', '/api/space'),
   setMyName: (name: string) => request<Space>('PUT', '/api/space/me', { name }),
@@ -179,6 +196,42 @@ export const api = {
   setBeen: (id: number, visited_on: string) => request<Restaurant>('PUT', `/api/restaurants/${id}/been`, { visited_on }),
   /** Not been yet: back on the want-to-go list. */
   clearBeen: (id: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/been`),
+  /** Another time you went. */
+  addVisit: (id: number, visited_on: string, note = '') => request<Restaurant>('POST', `/api/restaurants/${id}/visits`, { visited_on, note }),
+  updateVisit: (id: number, visit: number, v: { visited_on?: string; note?: string }) =>
+    request<Restaurant>('PATCH', `/api/restaurants/${id}/visits/${visit}`, v),
+  deleteVisit: (id: number, visit: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/visits/${visit}`),
+  /**
+   * Adds a photo to a visit: the original file as it was taken (never a
+   * smaller copy), with a thumbnail made here; onProgress hears how much
+   * has gone (0 to 1).
+   */
+  addPhoto: (id: number, visit: number, photo: Blob, thumb: Blob, size: { width: number; height: number }, onProgress?: (sent: number) => void) => {
+    clearCache();
+    const form = new FormData();
+    form.append('width', String(size.width));
+    form.append('height', String(size.height));
+    form.append('thumb', thumb, 'thumb.jpg');
+    form.append('photo', photo, photo instanceof File ? photo.name : 'photo.jpg');
+    // XMLHttpRequest, not fetch: only it says how much of the photo has gone.
+    return new Promise<Restaurant>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `/api/restaurants/${id}/visits/${visit}/photos`);
+      xhr.setRequestHeader('Accept-Language', language());
+      xhr.responseType = 'json';
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+      xhr.onload = () => {
+        clearCache();
+        if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+        else reject(new ApiError(xhr.response?.error ?? xhr.statusText, xhr.status));
+      };
+      xhr.onerror = () => reject(new TypeError('Failed to fetch'));
+      xhr.send(form);
+    });
+  },
+  deletePhoto: (id: number, photo: number) => request<Restaurant>('DELETE', `/api/restaurants/${id}/photos/${photo}`),
+  /** Makes one of the place's photos the picture the list shows for it. */
+  setCover: (id: number, photo: number) => request<Restaurant>('PUT', `/api/restaurants/${id}/cover`, { photo_id: photo }),
   /** The place's name from a Google Maps link, '' if it can't be read. */
   /** position: also find lat/lng by the place's name when the link has none (found_by_name). */
   lookupMap: (url: string, position = false) =>
@@ -478,11 +531,6 @@ export interface ActivityEntry {
   via: 'app' | 'claude';
   kind: string;
   details: Record<string, unknown>;
-}
-
-/** What the server offers to download: the Android app's APK, or null. */
-export interface Downloads {
-  android: { url: string; size: number; updated: string; version?: number; version_name?: string } | null;
 }
 
 /** A message to show for any thrown value, in the language in use. */

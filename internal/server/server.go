@@ -32,8 +32,9 @@ import (
 const appName = "SamFran"
 
 func init() {
-	// The runtime image has no /etc/mime.types, and Go doesn't know this one.
+	// The runtime image has no /etc/mime.types, and Go doesn't know these.
 	mime.AddExtensionType(".webmanifest", "application/manifest+json")
+	mime.AddExtensionType(".woff2", "font/woff2")
 }
 
 // New returns the app's complete HTTP handler. static is the built web app;
@@ -134,6 +135,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		}
 	}
 	notifier := push.NewNotifier(conn, pushSender)
+	activities.Notify = notifier.Notify
 	push.NewHandler(conn).Register(mux, accounts.RequireUser)
 	lockHandler := applock.NewHandler(applock.NewStore(conn))
 	lockHandler.Notify = notifier.Notify
@@ -172,8 +174,8 @@ func health(conn *sql.DB, version string) http.Handler {
 // webApp serves the built web app. The introduction page (landing.html) is
 // at /, and the single-page app (index.html) at /app/: paths under /app/ that
 // are not files get index.html, so client-side routes survive a reload. Vite
-// puts content-hashed files in assets/, which can be cached for good;
-// everything else is revalidated, so a deploy shows up on the next load.
+// puts content-hashed files in assets/, which—along with fonts/—can be cached
+// for good; everything else is revalidated, so a deploy shows up on the next load.
 func webApp(static fs.FS) http.Handler {
 	files := http.FileServerFS(static)
 	index, err := fs.ReadFile(static, "index.html")
@@ -193,6 +195,8 @@ func webApp(static fs.FS) http.Handler {
 			// own, so its scripts load cross-origin (mappage.go). They're the
 			// same public files for anyone.
 			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if strings.HasPrefix(name, "fonts/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 		} else {
 			w.Header().Set("Cache-Control", "no-cache")
 		}

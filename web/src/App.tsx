@@ -235,7 +235,8 @@ function Page({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () =>
     case 'edit':
       return id > 0 ? <RestaurantForm key={id} id={id} /> : <RestaurantsPage tab="been" />;
     case 'shifts':
-      return <ShiftsPage key={route.params.get('month') ?? ''} month={route.params.get('month') ?? undefined} day={route.params.get('day') ?? undefined} />;
+      // Not keyed by month: another month changes the calendar, not the whole page.
+      return <ShiftsPage month={route.params.get('month') ?? undefined} day={route.params.get('day') ?? undefined} />;
     case 'shifts/edit': {
       const month = route.params.get('month') ?? '';
       return /^\d{4}-\d{2}$/.test(month) ? (

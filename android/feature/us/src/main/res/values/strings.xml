@@ -4,7 +4,6 @@
     <string name="loading">Loading…</string>
     <string name="two_of_you">The two of you</string>
     <string name="you_lower">you</string>
-    <string name="invited_hint">Invited: they can sign in with this email to join you.</string>
     <string name="cancel">Cancel</string>
     <string name="invite_partner">Invite your partner</string>
     <string name="invite_link">Invite link</string>
@@ -12,16 +11,15 @@
     <string name="copy">Copy</string>
     <string name="copied">Copied</string>
     <string name="cancel_link">Cancel link</string>
-    <string name="invite_made_hint">Send it to them only: it works once, until %s. They tap it and sign up with Google or an email and password.</string>
+    <string name="invite_made_hint">Works once, until %s.</string>
     <string name="invite_open_hint">An invite link is open until %s. Make a new one to see its address again (the old one stops working).</string>
     <string name="make_new_link">Make a new link</string>
     <string name="create_invite_link">Create invite link</string>
-    <string name="invite_hint">They open it, sign up, and see everything here.</string>
     <string name="join_me">Join me on SamFran</string>
     <string name="your_name">Your name</string>
     <string name="save">Save</string>
+    <string name="invited">Invited</string>
     <string name="saved">Saved.</string>
-    <string name="name_hint">Shown next to your ratings.</string>
     <string name="recent_changes">Recent changes</string>
     <string name="nothing_yet">Nothing yet. Changes either of you make show up here.</string>
     <string name="new_mark">New</string>
@@ -40,7 +38,6 @@
     <string name="disconnect">Disconnect</string>
     <string name="this_device">This device</string>
     <string name="tell_me">Tell me about changes</string>
-    <string name="tell_me_hint">A notification when the other one of you adds a place, goes to one, rates one, saves the shifts or starts a ride alarm. It can take half an hour.</string>
     <string name="allow_notifications">Allow notifications for SamFran in the phone’s settings, then switch this on again.</string>
     <string name="language">Language</string>
     <string name="appearance">Appearance</string>
@@ -88,7 +85,6 @@
     <string name="setup_overlay">Cover a locked app</string>
     <string name="setup_overlay_hint">Display over other apps</string>
     <string name="setup_notifications">Notifications</string>
-    <string name="setup_notifications_hint">To hear the answer, and when you’re asked</string>
     <string name="allow">Allow</string>
     <string name="deny">Deny</string>
     <string name="waiting_for_you">Waiting for your answer</string>
@@ -152,4 +148,6 @@
     <string name="phone_off_signed_out">Not covered: %s signed out of SamFran</string>
     <string name="phone_quiet">%1$s’s phone hasn’t checked in since %2$s</string>
     <string name="phone_unknown">%s’s phone hasn’t checked in yet</string>
+    <string name="change_photos">added photos of %s</string>
+    <string name="change_commented">commented on %s</string>
 </resources>

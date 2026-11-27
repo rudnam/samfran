@@ -26,9 +26,7 @@
     <string name="maps_link">Googleマップのリンク</string>
     <string name="paste">貼り付け</string>
     <string name="maps_link_hint">任意です。貼り付けると名前が自動で入ります。</string>
-    <string name="maps_link_hint_edit">任意です。なければ「地図で開く」で名前を検索します。</string>
     <string name="looking_up">場所を調べています…</string>
-    <string name="share_hint">Googleマップで場所を「共有」→ SamFran で、すぐに追加できます。</string>
     <string name="notes">メモ</string>
     <string name="notes_hint">おすすめ、行く時期、持ち物など…</string>
     <string name="cancel">キャンセル</string>
@@ -40,13 +38,9 @@
     <string name="you">あなた</string>
     <string name="not_rated_yet">まだ評価していません</string>
     <string name="been_on">行った日 · %s</string>
-    <string name="change">変更</string>
     <string name="mark_as_been">行った</string>
     <string name="when_did_you_go">いつ行きましたか？</string>
-    <string name="not_been_yet">まだ行っていない</string>
     <string name="delete_this_place">この場所を削除</string>
-    <string name="moved_to_want">行きたいリストに戻しました。</string>
-    <string name="undo">元に戻す</string>
     <string name="delete_place_title">%sを削除しますか？</string>
     <string name="delete_place_body">評価も一緒に削除されます。元に戻せません。</string>
     <string name="delete">削除</string>
@@ -65,12 +59,10 @@
     <string name="already_on_list_colon">もう登録済みです:</string>
     <string name="not_this_one">これじゃない</string>
     <string name="check_on_map">地図で確認</string>
-    <string name="maps_link_hint_picked">任意です。選んだ場所はもう地図で開けます。</string>
     <string name="category">カテゴリ</string>
     <string name="category_all">すべて</string>
     <string name="show_all">すべて表示</string>
     <string name="nothing_in_category">ここには「%s」の場所はありません。</string>
-    <string name="category_hint_tie">迷ったら、行く目的で選びましょう。</string>
     <string name="cat_eat">食べる・飲む</string>
     <string name="cat_nature">自然・公園</string>
     <string name="cat_culture">歴史・文化</string>
@@ -128,6 +120,7 @@
     <string name="order">並び順</string>
     <string name="sort_latest">最近</string>
     <string name="sort_newest">新しい順</string>
+    <string name="sort_oldest">古い順</string>
     <string name="sort_nearby">近い順</string>
     <string name="sort_top_rated">評価の高い順</string>
     <string name="sort_name">名前順</string>
@@ -150,4 +143,33 @@
     <string name="add_comment">コメントを書く</string>
     <string name="post">投稿</string>
     <string name="delete_comment_title">コメントを削除しますか？</string>
+    <!-- 訪問と写真 -->
+    <string name="visits">訪問</string>
+    <string name="went_again">また行った</string>
+    <string name="note_optional">メモ（任意）</string>
+    <string name="note_hint">食べたもの、感想など</string>
+    <string name="edit_visit">%sの訪問を編集</string>
+    <string name="delete_visit">この訪問を削除</string>
+    <string name="delete_visit_title">%sの訪問を削除しますか？</string>
+    <plurals name="delete_visit_photos">
+        <item quantity="other">写真%d枚も一緒に削除されます。</item>
+    </plurals>
+    <string name="delete_visit_last">%sは行きたいリストに戻ります。</string>
+    <string name="cant_undo">元に戻せません。</string>
+    <string name="photos_from">%sの写真</string>
+    <string name="photo_n_of">写真 %1$d/%2$d</string>
+    <string name="add_photos">写真を追加</string>
+    <string name="sending_photo">写真を送信中</string>
+    <string name="delete_photo_title">この写真を削除しますか？</string>
+    <string name="is_cover">カバー写真</string>
+    <string name="more">その他</string>
+    <string name="make_cover">カバーにする</string>
+    <string name="download">ダウンロード</string>
+    <string name="photo_saved">写真に保存しました</string>
+    <string name="photo_not_saved">この端末に写真を保存できませんでした。空き容量はありますか？</string>
+    <string name="delete_photo_body">二人とも見られなくなります。元に戻せません。</string>
+    <string name="close">閉じる</string>
+    <string name="been_times">%1$d回行った · 最後は%2$s</string>
+    <string name="times_short">%d回</string>
+    <string name="photo_unreadable">この写真はここでは開けません。JPEG・PNG・WebPの画像を選んでください。</string>
 </resources>

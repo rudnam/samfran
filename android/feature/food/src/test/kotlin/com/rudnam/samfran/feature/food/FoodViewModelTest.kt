@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.food
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Photos
 import com.rudnam.samfran.core.model.PlaceCategory
 import com.rudnam.samfran.core.testing.FakeBusAlarm
 import com.rudnam.samfran.core.testing.FakeBusRepository
@@ -40,6 +41,7 @@ class FoodViewModelTest {
 
     private val clock = Clock.fixed(Instant.parse("2026-11-16T03:00:00Z"), ZoneId.of("Asia/Tokyo"))
     private val food = FakeFoodRepository()
+    private val photos = com.rudnam.samfran.core.testing.FakePhotos()
     private val space = FakeSpaceRepository()
     private val bus = FakeBusRepository()
     private val preferences = TestPreferences.repository()
@@ -59,8 +61,8 @@ class FoodViewModelTest {
         assertTrue(s.searchable)
         vm.setQuery("ramen")
         assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
-        vm.setQuery("miso") // only in an old visit's note, which the app no longer shows
-        assertEquals(emptyList<Long>(), vm.state.value.shown.map { it.id })
+        vm.setQuery("miso") // only in a visit's note: "where did we have that?"
+        assertEquals(listOf(9L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want)
         vm.setQuery("")
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
@@ -113,6 +115,8 @@ class FoodViewModelTest {
         assertEquals(listOf(12L, 9L, 20L, 5L, 7L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Want) // nobody's rated these: newest first
         assertEquals(listOf(23L, 22L, 21L, 15L, 14L), vm.state.value.shown.map { it.id })
+        vm.setOrder(PlaceOrder.Oldest) // the other way round
+        assertEquals(listOf(14L, 15L, 21L, 22L, 23L), vm.state.value.shown.map { it.id })
         vm.setTab(FoodTab.Been)
         vm.setOrder(PlaceOrder.Name)
         assertEquals(listOf("Cafe Lune", "Hanabi Grill", "Menya Kaze", "Sumpu Castle Park", "Trattoria Sole"), vm.state.value.shown.map { it.name })
@@ -161,35 +165,94 @@ class FoodViewModelTest {
     }
 
     @Test
-    fun `changing when you went, rating, and not been yet with undo`() = runTest {
-        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, space, clock, backgroundScope)
+    fun `went again adds a visit with its note, a visit's date and note change, and the last one deleted is not been yet`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
         assertEquals(LocalDate.of(2026, 11, 14), vm.state.value.beenOn)
-        // Change opens on the date it has; going again moves that date, it adds no visit.
-        vm.startPicking()
-        assertEquals(LocalDate.of(2026, 11, 14), vm.state.value.picking)
-        vm.setPicking(LocalDate.of(2026, 11, 15))
-        vm.saveBeen()
-        assertNull(vm.state.value.picking)
+        assertEquals(4, vm.state.value.place?.visits?.size)
+        // Went again: today unless changed, never in the future, with a note.
+        vm.startAdding()
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.adding)
+        vm.setAdding(LocalDate.of(2027, 1, 1))
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.adding)
+        vm.setAddNote("  Shio this time ")
+        vm.saveAdding()
+        assertNull(vm.state.value.adding)
+        assertEquals(5, vm.state.value.place?.visits?.size)
+        assertEquals("Shio this time", vm.state.value.place?.visits?.first()?.note)
+        assertEquals(LocalDate.of(2026, 11, 16), vm.state.value.beenOn)
+
+        // A visit's Edit opens its date and note; saving moves it.
+        val newest = vm.state.value.place!!.visits!!.first()
+        vm.startEditing(newest.id)
+        assertEquals(VisitEdit(newest.id, newest.visitedOn, "Shio this time"), vm.state.value.editing)
+        vm.setEditing(vm.state.value.editing!!.copy(date = LocalDate.of(2026, 11, 15), note = "Shio"))
+        vm.saveEditing()
+        assertNull(vm.state.value.editing)
         assertEquals(LocalDate.of(2026, 11, 15), vm.state.value.beenOn)
-        assertEquals(4, vm.state.value.place?.visitCount)
+        assertEquals("Shio", vm.state.value.place?.visits?.first()?.note)
         vm.rate(3)
         assertEquals(3, vm.state.value.place?.myStars)
 
-        vm.notBeen()
+        // Deleting every visit puts it back on want to go.
+        for (v in vm.state.value.place!!.visits!!) vm.deleteVisit(v.id)
         assertNull(vm.state.value.beenOn)
-        vm.undoNotBeen()
-        assertEquals(LocalDate.of(2026, 11, 15), vm.state.value.beenOn)
-        vm.notBeen()
-        vm.commitNotBeen()
-        testScheduler.runCurrent() // it runs in the app's scope, past the page
-        assertFalse(vm.state.value.clearing)
         assertFalse(food.list.value!!.first { it.id == 12L }.been)
     }
 
     @Test
+    fun `a photo is saved to the phone as it was taken, and a phone that won't keep it says so`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
+        watch(vm.state)
+        val photo = vm.state.value.place!!.visits!!.first().photos.first()
+        vm.savePhoto(photo)
+        testScheduler.runCurrent()
+        assertEquals(listOf(photo), photos.saved)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
+        assertTrue(vm.state.value.saving.isEmpty())
+
+        photos.nextSave = Outcome.Refused(Photos.COULD_NOT_SAVE)
+        val other = vm.state.value.place!!.visits!!.first().photos[1]
+        vm.savePhoto(other)
+        testScheduler.runCurrent()
+        assertEquals(Outcome.Refused(Photos.COULD_NOT_SAVE), vm.state.value.saveProblem)
+        assertEquals(setOf(photo.id), vm.state.value.savedPhotos)
+    }
+
+    @Test
+    fun `photos picked go up as they were taken, one after another, and a photo the phone can't open says so`() = runTest {
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
+        watch(vm.state)
+        val visit = vm.state.value.place!!.visits!!.first().id
+        val before = vm.state.value.place!!.visits!!.first().photos.size // the sample's
+        vm.addPhotos(visit, listOf("content://media/picker/1", "content://media/picker/2"))
+        testScheduler.runCurrent() // they go in the app's scope, past the page
+        assertEquals(2, food.sentPhotos.size)
+        assertEquals("image/jpeg", food.sentPhotos.first().contentType)
+        val place = vm.state.value.place!!
+        val added = place.visits!!.first().photos.drop(before)
+        assertEquals(2, added.size)
+        assertEquals(4000, added.first().width)
+        assertEquals(added.last().thumbUrl, place.cover) // the newest is the place's picture
+        assertTrue(vm.state.value.sending.isEmpty())
+
+        // Any photo can be the cover instead; deleting it goes back to the newest.
+        vm.setCover(added.first().id)
+        assertEquals(added.first().thumbUrl, vm.state.value.place!!.cover)
+        assertEquals(added.first().id, vm.state.value.place!!.coverPhotoId)
+        vm.deletePhoto(added.first().id)
+        assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
+        assertEquals(added.last().id, vm.state.value.place!!.coverPhotoId)
+
+        vm.addPhotos(visit, listOf("content://unreadable/3"))
+        testScheduler.runCurrent()
+        assertEquals(Outcome.Refused(PlaceViewModel.UNREADABLE), vm.state.value.photoProblem[visit])
+        assertEquals(before + 1, vm.state.value.place!!.visits!!.first().photos.size)
+    }
+
+    @Test
     fun `mark as been asks when, today unless changed, and not in the future`() = runTest {
-        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, space, clock, backgroundScope)
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
         assertNull(vm.state.value.beenOn)
         vm.startPicking()
@@ -206,7 +269,7 @@ class FoodViewModelTest {
 
     @Test
     fun `a comment is posted, the box empties, and your own can be deleted`() = runTest {
-        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, space, clock, backgroundScope)
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(12)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
         vm.setDraft("   ")
         vm.postComment() // nothing to say: nothing sent
@@ -223,7 +286,7 @@ class FoodViewModelTest {
 
     @Test
     fun `deleting a place closes its page`() = runTest {
-        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, space, clock, backgroundScope)
+        val vm = PlaceViewModel(SavedStateHandle(PlaceRoute(15)), food, photos, space, clock, backgroundScope)
         watch(vm.state)
         vm.delete()
         assertTrue(vm.state.value.deleted)

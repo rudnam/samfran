@@ -38,10 +38,13 @@ export function ShiftCalendar({
   who,
   everyone,
   pick,
+  onPick,
 }: {
   month: string;
-  /** A day to open with (the next shift's), instead of today. */
+  /** The day picked in the address (the next shift's, or one tapped), instead of today. */
   pick?: string;
+  /** A day tapped: the page puts it in the address, so Next shift can pick its day again. */
+  onPick?: (date: string) => void;
   days: ShiftDay[];
   closing: number[];
   who: string;
@@ -49,6 +52,12 @@ export function ShiftCalendar({
 }) {
   const now = today();
   const [picked, setPicked] = useState(pick?.startsWith(month) ? pick : now.startsWith(month) ? now : '');
+  // The address's day changing (Next shift tapped) picks it.
+  const [lastPick, setLastPick] = useState(pick);
+  if (pick !== lastPick) {
+    setLastPick(pick);
+    if (pick?.startsWith(month)) setPicked(pick);
+  }
   const byDate = new Map(days.map((d) => [d.date, d]));
   const dates = datesOf(month);
   const [y, m] = month.split('-').map(Number);
@@ -82,7 +91,10 @@ export function ShiftCalendar({
               aria-pressed={date === picked}
               aria-current={date === now ? 'date' : undefined}
               aria-label={`${dayName(date)}: ${what}`}
-              onClick={() => setPicked(date)}
+              onClick={() => {
+                setPicked(date);
+                onPick?.(date);
+              }}
             >
               <span className="cal-num">{Number(date.slice(8))}</span>
               <span className="cal-mark">{d ? mark(d) : ''}</span>

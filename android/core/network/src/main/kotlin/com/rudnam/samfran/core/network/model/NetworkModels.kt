@@ -25,6 +25,7 @@ import com.rudnam.samfran.core.model.ShiftSettings
 import com.rudnam.samfran.core.model.ShiftThere
 import com.rudnam.samfran.core.model.Space
 import com.rudnam.samfran.core.model.Visit
+import com.rudnam.samfran.core.model.Photo
 import com.rudnam.samfran.core.model.VisitNote
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -115,7 +116,26 @@ data class NetworkVisit(
     @SerialName("visited_on") val visitedOn: String,
     val note: String = "",
     @SerialName("added_by") val addedBy: String = "",
+    val photos: List<NetworkPhoto> = emptyList(),
 )
+
+/** A visit's photo; the server gives its addresses as paths. */
+@Serializable
+data class NetworkPhoto(
+    val id: Long,
+    val url: String,
+    @SerialName("thumb_url") val thumbUrl: String,
+    val width: Int = 0,
+    val height: Int = 0,
+    @SerialName("added_by") val addedBy: String = "",
+)
+
+/** A path the server gave (/api/photos/1) as a full address. */
+internal fun onServer(path: String): String = if (path.startsWith("/")) com.rudnam.samfran.core.network.BuildConfig.SERVER + path else path
+
+/** A visit's date and note (POST and PATCH /api/restaurants/{id}/visits). */
+@Serializable
+data class NetworkVisitInput(@SerialName("visited_on") val visitedOn: String? = null, val note: String? = null)
 
 @Serializable
 data class NetworkVisitNote(@SerialName("visited_on") val visitedOn: String, val note: String)
@@ -136,6 +156,9 @@ data class NetworkRestaurant(
     @SerialName("visit_count") val visitCount: Int = 0,
     @SerialName("last_visit") val lastVisit: String? = null,
     val ratings: List<NetworkRating> = emptyList(),
+    val cover: String? = null,
+    @SerialName("cover_photo_id") val coverPhotoId: Long? = null,
+    @SerialName("photo_count") val photoCount: Int = 0,
     val visits: List<NetworkVisit>? = null,
     @SerialName("visit_notes") val visitNotes: List<NetworkVisitNote>? = null,
     val comments: List<NetworkComment>? = null,
@@ -149,6 +172,10 @@ data class NetworkComment(
     val me: Boolean = false,
     @SerialName("created_at") val createdAt: String? = null,
 )
+
+/** A place's cover photo (PUT /api/restaurants/{id}/cover). */
+@Serializable
+data class NetworkCoverInput(@SerialName("photo_id") val photoId: Long)
 
 /** A new comment (POST /api/restaurants/{id}/comments). */
 @Serializable
@@ -169,7 +196,12 @@ fun NetworkRestaurant.asModel() = Restaurant(
     visitCount = visitCount,
     lastVisit = lastVisit?.let(LocalDate::parse),
     ratings = ratings.map { Rating(it.name, it.me, it.stars) },
-    visits = visits?.map { Visit(it.id, LocalDate.parse(it.visitedOn), it.note, it.addedBy) },
+    cover = cover?.let(::onServer),
+    coverPhotoId = coverPhotoId,
+    photoCount = photoCount,
+    visits = visits?.map { v ->
+        Visit(v.id, LocalDate.parse(v.visitedOn), v.note, v.addedBy, v.photos.map { Photo(it.id, onServer(it.url), onServer(it.thumbUrl), it.width, it.height, it.addedBy) })
+    },
     visitNotes = visitNotes.orEmpty().map { VisitNote(LocalDate.parse(it.visitedOn), it.note) },
     comments = comments.orEmpty().map { c ->
         Comment(c.id, c.body, c.by, c.me, c.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: Instant.EPOCH)
@@ -194,6 +226,10 @@ data class NetworkRestaurantInput(
 
 @Serializable
 data class NetworkNewVisit(@SerialName("visited_on") val visitedOn: String, val note: String = "")
+
+/** A ride ended (POST /api/bus/stops/{id}/done): whether the phone got to the stop and buzzed. */
+@Serializable
+data class NetworkRideDone(val arrived: Boolean)
 
 /** When you went (PUT /api/restaurants/{id}/been): the one date a place shows. */
 @Serializable
@@ -457,6 +493,7 @@ private fun JsonObject.asDetails(): ActivityDetails {
     return ActivityDetails(
         name = this["name"].string(),
         been = (this["been"] as? JsonPrimitive)?.booleanOrNull ?: false,
+        arrived = (this["arrived"] as? JsonPrimitive)?.booleanOrNull ?: false,
         stars = (this["stars"] as? JsonPrimitive)?.intOrNull ?: 0,
         month = this["month"].string(),
         email = this["email"].string(),

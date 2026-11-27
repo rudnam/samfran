@@ -23,7 +23,8 @@ func SecurityHeaders(next http.Handler) http.Handler {
 		"default-src 'self'",
 		"script-src 'self'",
 		"style-src 'self'",
-		"img-src 'self' data:",
+		// blob: is a photo being sent, shown from the device until it's up.
+		"img-src 'self' data: blob:",
 		// The bus stop's map (web/src/features/bus/StopMap.tsx), and the
 		// places' map, a page of this site's own (internal/server/mappage.go).
 		"frame-src 'self' https://www.google.com",

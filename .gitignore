@@ -38,3 +38,7 @@ android/*.aab
 
 # CI results fetched by ./ci-results.sh
 /ci-results/
+
+# Python bytecode
+__pycache__/
+*.pyc

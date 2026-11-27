@@ -18,6 +18,19 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
   await page.locator('a.back').click();
   await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+  // Reloaded, the title is right before the month arrives: no "Shifts" first.
+  let release = () => {};
+  const held = new Promise((r) => (release = r));
+  await page.route('**/api/shifts**', async (route) => {
+    await held;
+    await route.continue();
+  });
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Sam’s shifts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Shifts', exact: true })).toHaveCount(0);
+  release();
+  await page.unroute('**/api/shifts**');
+  await expect(page.getByText('No shifts for this month')).toBeVisible();
 
   // An empty month: read a photo or enter it by hand; nothing to edit yet.
   await expect(page.getByRole('link', { name: /^Edit / })).toHaveCount(0);
@@ -449,6 +462,18 @@ test('the next shift stays above every month, and opens its day when tapped', as
   await expect(cal.getByRole('button', { name: /^10 / })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.cal-detail')).toContainText('13F');
   await page.screenshot({ path: test.info().outputPath('next-shift-opened.png') });
+
+  // Another day tapped goes in the address, without moving the page; the card picks its day again.
+  await page.evaluate(() => window.scrollTo(0, 200));
+  const scrolled = await page.evaluate(() => window.scrollY);
+  await cal.getByRole('button', { name: /^3 / }).click();
+  await expect(page).toHaveURL(new RegExp(`day=${next}-03`));
+  await expect(cal.getByRole('button', { name: /^3 / })).toHaveAttribute('aria-pressed', 'true');
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrolled);
+  await card.click();
+  await expect(page).toHaveURL(new RegExp(`day=${next}-10`));
+  await expect(cal.getByRole('button', { name: /^10 / })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.cal-detail')).toContainText('13F');
 
   // In the list, its row is the one marked.
   await page.getByRole('radio', { name: 'List' }).click();
