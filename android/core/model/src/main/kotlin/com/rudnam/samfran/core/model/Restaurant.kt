@@ -16,6 +16,22 @@ data class Visit(
     val visitedOn: LocalDate,
     val note: String,
     val addedBy: String,
+    /** Oldest first. */
+    val photos: List<Photo> = emptyList(),
+)
+
+/**
+ * A photo from a visit. [url] is the original, exactly as it was taken;
+ * [thumbUrl] a small copy for strips and cards. Both are full addresses.
+ */
+data class Photo(
+    val id: Long,
+    val url: String,
+    val thumbUrl: String,
+    /** The original's pixels; 0 when not known. */
+    val width: Int = 0,
+    val height: Int = 0,
+    val addedBy: String = "",
 )
 
 /** Something one of you said about a place you've been to. */
@@ -73,6 +89,11 @@ data class Restaurant(
     val lastVisit: LocalDate? = null,
     /** The signed-in person's first. */
     val ratings: List<Rating> = emptyList(),
+    /** Its cover photo's thumbnail (a full address): the one chosen, else the newest; shown instead of its category's icon; null without photos. */
+    val cover: String? = null,
+    /** The photo [cover] is; null without photos (or from a server before covers could be chosen). */
+    val coverPhotoId: Long? = null,
+    val photoCount: Int = 0,
     /** Newest first; only on one place's page. */
     val visits: List<Visit>? = null,
     /** The visits with a note, newest first. */
@@ -94,11 +115,11 @@ data class Restaurant(
     /** Kind and area, as the place's page writes them under its name, after the category. */
     val subtitle: String get() = listOf(cuisine, area).filter { it.isNotBlank() }.joinToString(" · ")
 
-    /** The search matches its name, area, kind or notes. */
+    /** The search matches its name, area, kind, notes or a visit's note ("where did we have that?"). */
     fun matches(query: String): Boolean {
         val q = query.trim()
         if (q.isEmpty()) return true
-        return listOf(name, area, cuisine, notes).any { it.contains(q, ignoreCase = true) }
+        return (listOf(name, area, cuisine, notes) + visitNotes.map { it.note }).any { it.contains(q, ignoreCase = true) }
     }
 
     /** Meters from [here], or null when where it is isn't known. */

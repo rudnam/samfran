@@ -86,7 +86,7 @@ export function useRoute(): Route {
   useEffect(() => {
     const on = () => {
       setRoute(parse());
-      window.scrollTo(0, 0);
+      if (!keepScroll) window.scrollTo(0, 0);
     };
     listeners.add(on);
     return () => {
@@ -105,8 +105,20 @@ export function navigate(page: string, params?: Record<string, string | number>)
   location.hash = href(page, params);
 }
 
-/** navigate, replacing the current history entry, e.g. to drop a used link's token. */
-export function replaceRoute(page: string, params?: Record<string, string | number>) {
+/**
+ * navigate, replacing the current history entry, e.g. to drop a used link's
+ * token. keepScroll leaves the page where it is: the same page, only noting
+ * what's picked on it (a day tapped on the shifts calendar).
+ */
+export function replaceRoute(page: string, params?: Record<string, string | number>, opts?: { keepScroll?: boolean }) {
   history.replaceState({ pos }, '', href(page, params));
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  keepScroll = !!opts?.keepScroll;
+  try {
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } finally {
+    keepScroll = false;
+  }
 }
+
+/** Set while replaceRoute moves without scrolling to the top. */
+let keepScroll = false;

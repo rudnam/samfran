@@ -4,7 +4,6 @@
     <string name="loading">読み込み中…</string>
     <string name="two_of_you">ふたり</string>
     <string name="you_lower">あなた</string>
-    <string name="invited_hint">招待中: このメールアドレスでログインすると参加できます。</string>
     <string name="cancel">キャンセル</string>
     <string name="invite_partner">パートナーを招待</string>
     <string name="invite_link">招待リンク</string>
@@ -12,16 +11,15 @@
     <string name="copy">コピー</string>
     <string name="copied">コピーしました</string>
     <string name="cancel_link">リンクを取り消す</string>
-    <string name="invite_made_hint">相手だけに送ってください。%sまで、1回だけ使えます。タップしてGoogleかメールとパスワードで登録できます。</string>
+    <string name="invite_made_hint">%sまで、1回だけ使えます。</string>
     <string name="invite_open_hint">%sまで有効な招待リンクがあります。アドレスをもう一度見るには新しく作ってください（古いリンクは使えなくなります）。</string>
     <string name="make_new_link">新しいリンクを作る</string>
     <string name="create_invite_link">招待リンクを作成</string>
-    <string name="invite_hint">相手はリンクを開いて登録すると、ここにあるものをすべて見られます。</string>
     <string name="join_me">SamFranで一緒に使おう</string>
     <string name="your_name">あなたの名前</string>
     <string name="save">保存</string>
+    <string name="invited">招待中</string>
     <string name="saved">保存しました。</string>
-    <string name="name_hint">評価の横に表示されます。</string>
     <string name="recent_changes">最近の変更</string>
     <string name="nothing_yet">まだありません。ふたりが変更するとここに表示されます。</string>
     <string name="new_mark">新着</string>
@@ -91,7 +89,6 @@
     <string name="setup_overlay">ロック中のアプリを隠す</string>
     <string name="setup_overlay_hint">他のアプリの上に重ねて表示</string>
     <string name="setup_notifications">通知</string>
-    <string name="setup_notifications_hint">返事や、聞かれたことを知るため</string>
     <string name="allow">許可</string>
     <string name="deny">拒否</string>
     <string name="waiting_for_you">あなたの返事待ち</string>
@@ -155,4 +152,6 @@
     <string name="phone_off_signed_out">隠れていません：%sさんがSamFranからログアウトしました</string>
     <string name="phone_quiet">%1$sさんのスマホから%2$s以降連絡がありません</string>
     <string name="phone_unknown">%sさんのスマホからまだ連絡がありません</string>
+    <string name="change_photos">%sの写真を追加</string>
+    <string name="change_commented">%sにコメント</string>
 </resources>

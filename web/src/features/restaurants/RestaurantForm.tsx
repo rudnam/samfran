@@ -329,15 +329,11 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
           </button>
         )}
       </span>
-      <span className="hint">
-        {id
-          ? t('Optional. Without one, “Open in Maps” searches for the name.')
-          : lookingUp
-            ? t('Looking up the place…')
-            : picked
-              ? t('Optional. The place you picked is already on the map.')
-              : t('Optional. Paste one and the name fills itself in.')}
-      </span>
+      {lookingUp ? (
+        <span className="hint">{t('Looking up the place…')}</span>
+      ) : (
+        !id && !picked && <span className="hint">{t('Optional. Paste one and the name fills itself in.')}</span>
+      )}
     </label>
   );
 
@@ -487,7 +483,7 @@ export function RestaurantForm({ id, want, shared }: { id?: number; want?: boole
               ))}
             </div>
             <span className="hint">
-              {categoryHint(categoryOf(fields.category))}. {t('Two fit? Pick what you’d go there for.')}
+              {categoryHint(categoryOf(fields.category))}
             </span>
           </div>
           <div className="two">

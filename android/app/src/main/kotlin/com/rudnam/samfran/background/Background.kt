@@ -56,6 +56,7 @@ class AndroidBusAlarm @Inject constructor(@ApplicationContext private val contex
             .putExtra(BusTripService.EXTRA_NAME, stop.name)
             .putExtra(BusTripService.EXTRA_BUZZ, stop.buzz.api)
             .putExtra(BusTripService.EXTRA_SOUND_AFTER, stop.soundAfter)
+            .putExtra(BusTripService.EXTRA_STOP_ID, stop.id)
         ContextCompat.startForegroundService(context, i)
     }
 

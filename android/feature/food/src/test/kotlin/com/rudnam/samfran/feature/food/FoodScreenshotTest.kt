@@ -47,9 +47,20 @@ class FoodScreenshotTest {
         override fun setPicking(date: LocalDate) {}
         override fun cancelPicking() {}
         override fun saveBeen() {}
-        override fun notBeen() {}
-        override fun undoNotBeen() {}
-        override fun commitNotBeen() {}
+        override fun startAdding() {}
+        override fun setAdding(date: LocalDate) {}
+        override fun setAddNote(text: String) {}
+        override fun cancelAdding() {}
+        override fun saveAdding() {}
+        override fun startEditing(visit: Long) {}
+        override fun setEditing(edit: VisitEdit) {}
+        override fun cancelEditing() {}
+        override fun saveEditing() {}
+        override fun deleteVisit(visit: Long) {}
+        override fun addPhotos(visit: Long, uris: List<String>) {}
+        override fun deletePhoto(photo: Long) {}
+        override fun setCover(photo: Long) {}
+        override fun savePhoto(photo: com.rudnam.samfran.core.model.Photo) {}
         override fun delete() {}
         override fun setDraft(text: String) {}
         override fun postComment() {}
@@ -102,7 +113,7 @@ class FoodScreenshotTest {
     @Test
     fun offline() = shot("offline") { FoodListScreen(been.copy(problem = Outcome.Offline), list, {}, {}) }
 
-    // Logged four times by an older app: the page shows one date.
+    // Been four times: each visit listed, with its note and photos (which don't load here: grey tiles).
     private val hanabi = PlaceUiState(place = Samples.restaurants.first(), loaded = true, space = Samples.space, today = today)
 
     @Test
@@ -125,7 +136,19 @@ class FoodScreenshotTest {
     }
 
     @Test
-    fun placeChangeDate() = shot("place-change-date") { PlaceScreen(hanabi.copy(picking = hanabi.place!!.lastVisit), place, {}, {}, {}) }
+    fun placeWentAgain() = shot("place-went-again") { PlaceScreen(hanabi.copy(adding = today, addNote = "Shio this time"), place, {}, {}, {}) }
+
+    @Test
+    fun placeEditVisit() = shot("place-edit-visit") {
+        val v = hanabi.place!!.visits!!.first()
+        PlaceScreen(hanabi.copy(editing = VisitEdit(v.id, v.visitedOn, v.note)), place, {}, {}, {})
+    }
+
+    @Test
+    fun placeSendingPhotos() = shot("place-sending") {
+        val v = hanabi.place!!.visits!!.first()
+        PlaceScreen(hanabi.copy(sending = mapOf(v.id to listOf(SendingPhoto("content://x/1", 0.4f), SendingPhoto("content://x/2")))), place, {}, {}, {})
+    }
 
     @Test
     fun placeMarkAsBeen() = shot("place-mark-been") {

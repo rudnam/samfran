@@ -1,4 +1,4 @@
-const { test, expect, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
+const { test, expect, signUp, standAt, pickCategory, pickOrder, photo, addPhoto } = require('./fixtures');
 
 test('add a place, rate it, change when you went, edit and delete it', async ({ page }) => {
   await signUp(page);
@@ -15,15 +15,18 @@ test('add a place, rate it, change when you went, edit and delete it', async ({ 
   await expect(page.getByRole('heading', { name: 'Taco Loco' })).toBeVisible();
   await expect(page.getByText('Eat & drink · Mexican · Station East')).toBeVisible();
   await expect(page.getByRole('button', { name: '4 stars' })).toHaveAttribute('aria-pressed', 'true');
-  // One date, no list of visits.
+  // Been once: one visit, listed.
   await expect(page.getByText(/^Been · /)).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Visits' })).toHaveCount(0);
+  const visits = page.getByRole('list', { name: 'Visits' }).getByRole('listitem');
+  await expect(visits).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Mark as been' })).toHaveCount(0);
 
-  // Change when you went, then the rating.
-  await page.getByRole('button', { name: 'Change' }).click();
+  // Change when you went (the visit's Edit), then the rating.
+  await page.getByRole('button', { name: /^Edit the visit on / }).click();
   await page.getByLabel('When did you go?').fill('2026-01-15');
+  await page.getByLabel('Note (optional)').fill('Al pastor, the best so far');
   await page.getByRole('button', { name: 'Save' }).click();
+  await expect(visits.first()).toContainText('Al pastor, the best so far');
   await expect(page.getByText(/^Been · Jan 15/)).toBeVisible();
   await expect(page.getByLabel('When did you go?')).toHaveCount(0);
   await page.getByRole('button', { name: '5 stars' }).click();
@@ -39,13 +42,13 @@ test('add a place, rate it, change when you went, edit and delete it', async ({ 
   await expect(page.getByText('Eat & drink · Mexican · Station East')).toBeVisible();
   await expect(page.getByText(/^Been · Jan 15/)).toBeVisible();
 
-  // Back on the list, with the rating and the date, and no count of visits.
+  // Back on the list, with the rating and the date; one visit isn't counted.
   await page.getByRole('link', { name: 'Our places' }).click();
   const card = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(card).toHaveCount(1);
   await expect(card).toContainText('★5');
   await expect(card).toContainText('Jan 15');
-  await expect(card).not.toContainText('visit');
+  await expect(card).not.toContainText('×');
 
   // Deleting the place asks first, in the app's own dialog.
   await card.getByRole('link').click();
@@ -60,75 +63,150 @@ test('add a place, rate it, change when you went, edit and delete it', async ({ 
   await expect(page.getByText('No places yet')).toBeVisible();
 });
 
-test('not been yet moves a place back to want to go, with Undo for a few seconds', async ({ page }) => {
+test('went again: visits newest first, each with its note; deleting the last one moves it back to want to go', async ({ page }) => {
   await signUp(page);
-  const res = await page.request.post('/api/restaurants', { data: { name: 'Taco Loco', visit: { visited_on: '2026-10-01' } } });
-  const { id } = await res.json();
-  await page.goto(`/app/#/restaurant?id=${id}`);
-  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
-  // Undo brings it back.
-  await page.getByRole('button', { name: 'Change' }).click();
-  await page.getByRole('button', { name: 'Not been yet' }).click();
-  await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
-  await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
-  // Without Undo, it's saved once the offer ends.
-  await page.getByRole('button', { name: 'Change' }).click();
-  await page.getByRole('button', { name: 'Not been yet' }).click();
-  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Undo' })).toBeHidden({ timeout: 10_000 });
-  await page.reload();
-  await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
-  await expect(page.getByText(/^Been · /)).toHaveCount(0);
-  await page.getByRole('link', { name: 'Our places' }).click();
-  await expect(page.getByRole('list', { name: 'Want to go' })).toContainText('Taco Loco');
-});
-
-test('a place logged several times before shows one date, keeps its visits, and its notes show', async ({ page }) => {
-  await signUp(page);
-  // As an older app (or Claude) left it: two visits, with notes.
   const res = await page.request.post('/api/restaurants', { data: { name: 'Ramen Tsubaki', visit: { visited_on: '2026-10-01', note: 'The tantanmen, extra spicy' } } });
   const { id } = await res.json();
-  expect((await page.request.post(`/api/restaurants/${id}/visits`, { data: { visited_on: '2026-11-02', note: 'Shio this time' } })).status()).toBe(201);
   // More places, so the list offers Search (it does from five).
   for (const [name, on] of [['Gyoza Komachi', '2026-10-05'], ['Hanabi Grill', '2026-09-01'], ['Blue Sky Café', '2026-08-01'], ['Taco Loco', '2026-07-01']]) {
     expect((await page.request.post('/api/restaurants', { data: { name, visit: { visited_on: on } } })).status()).toBe(201);
   }
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
+  const visits = page.getByRole('list', { name: 'Visits' }).getByRole('listitem');
+  await expect(visits).toHaveCount(1);
+  await expect(visits.first()).toContainText('The tantanmen, extra spicy');
+  // A visit's note stays on the visit, not in the place's notes.
+  await expect(page.getByRole('heading', { name: 'Notes' })).toHaveCount(0);
 
-  await page.reload();
+  // Went again: asks when (today unless changed) and an optional note; Cancel leaves it.
+  await page.getByRole('button', { name: 'Went again' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(visits).toHaveCount(1);
+  await page.getByRole('button', { name: 'Went again' }).click();
+  const today = await page.evaluate(() => new Date().toLocaleDateString('en-CA'));
+  await expect(page.getByLabel('When did you go?')).toHaveValue(today);
+  await page.getByLabel('When did you go?').fill('2026-11-02');
+  await page.getByLabel('Note (optional)').fill('Shio this time');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(visits).toHaveCount(2);
+  await expect(visits.first()).toContainText('Nov 2');
+  await expect(visits.first()).toContainText('Shio this time');
+  await expect(page.getByText('Been 2 times · last Nov 2')).toBeVisible();
+
+  // The list: the newest date, how many times, and Search finds a visit's note.
+  await page.getByRole('link', { name: 'Our places' }).click();
   const cards = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
-  await expect(cards).toHaveCount(5);
-  await expect(cards.first()).toContainText('Ramen Tsubaki'); // latest date first
+  await expect(cards.first()).toContainText('Ramen Tsubaki');
   await expect(cards.first()).toContainText('Nov 2');
-  await expect(cards.first()).not.toContainText('visits');
-  // Search is a button until it's wanted; what was written about a visit is in the place's notes, so it finds it.
-  await expect(page.getByRole('searchbox')).toHaveCount(0);
+  await expect(cards.first()).toContainText('2×');
   await page.getByRole('button', { name: 'Search' }).click();
   await page.getByRole('searchbox', { name: 'Search' }).fill('tantan');
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText('Ramen Tsubaki');
-  await page.getByRole('searchbox', { name: 'Search' }).fill('gyoza');
-  await expect(cards).toHaveCount(1);
-  await expect(cards).toContainText('Gyoza Komachi');
 
-  await page.goto(`/app/#/restaurant?id=${id}`);
-  await expect(page.getByText(/^Been · Nov 2/)).toBeVisible();
-  // No list of visits, but what was written about them is in the place's notes.
+  // Deleting a visit asks first; the last one puts the place back on Want to go.
+  await cards.first().getByRole('link').click();
+  await page.getByRole('button', { name: 'Edit the visit on Nov 2' }).click();
+  await page.getByRole('button', { name: 'Delete this visit' }).click();
+  let ask = page.getByRole('dialog', { name: 'Delete the visit on Nov 2?' });
+  await expect(ask).not.toContainText('Want to go');
+  await ask.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(visits).toHaveCount(1);
+  await expect(page.getByText(/^Been · Oct 1/)).toBeVisible();
+  await page.getByRole('button', { name: 'Edit the visit on Oct 1' }).click();
+  await page.getByRole('button', { name: 'Delete this visit' }).click();
+  ask = page.getByRole('dialog', { name: 'Delete the visit on Oct 1?' });
+  await expect(ask).toContainText('Ramen Tsubaki goes back to Want to go.');
+  await ask.getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mark as been' })).toBeVisible();
   await expect(page.getByRole('list', { name: 'Visits' })).toHaveCount(0);
-  await expect(page.getByText('2026-10-01 · The tantanmen, extra spicy')).toBeVisible();
-  await expect(page.getByText('2026-11-02 · Shio this time')).toBeVisible();
-  // Changing the date moves the newest visit; the older one stays in the API.
-  await page.getByRole('button', { name: 'Change' }).click();
-  await page.getByLabel('When did you go?').fill('2026-11-10');
-  await page.getByRole('button', { name: 'Save' }).click();
-  await expect(page.getByText(/^Been · Nov 10/)).toBeVisible();
-  const fresh = await (await page.request.get(`/api/restaurants/${id}`)).json();
-  expect(fresh.visit_count).toBe(2);
-  expect(fresh.last_visit).toBe('2026-11-10');
-  expect(fresh.visits.map((v) => [v.visited_on, v.note])).toEqual([
-    ['2026-11-10', 'Shio this time'],
-    ['2026-10-01', 'The tantanmen, extra spicy'],
-  ]);
+});
+
+test('photos: added to a visit as they were taken, shown in a strip, opened full size, and the newest is the place’s picture', async ({ page }) => {
+  await signUp(page);
+  const res = await page.request.post('/api/restaurants', { data: { name: 'Hanabi Grill', cuisine: 'Hamburg steak', visit: { visited_on: '2026-11-14' } } });
+  const { id } = await res.json();
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  const visit = page.getByRole('list', { name: 'Visits' }).getByRole('listitem').first();
+  const strip = visit.getByLabel('Photos from Nov 14');
+  await expect(strip.getByRole('button', { name: /^Photo / })).toHaveCount(0);
+
+  // Two photos picked at once go up one after the other, untouched.
+  const a = await photo(page, { width: 2400, height: 1800, hue: 20, name: 'steak.jpg' });
+  const b = await photo(page, { width: 1200, height: 1600, hue: 140, name: 'garden.jpg' });
+  await visit.locator('input[type=file]').setInputFiles([a, b]);
+  await expect(strip.getByRole('button', { name: /^Photo / })).toHaveCount(2);
+  await expect(strip.getByRole('progressbar')).toHaveCount(0);
+  const place = await (await page.request.get(`/api/restaurants/${id}`)).json();
+  const photos = place.visits[0].photos;
+  expect(photos.map((p) => [p.width, p.height])).toEqual([[2400, 1800], [1200, 1600]]);
+  const original = await page.request.get(photos[0].url);
+  expect(Buffer.compare(await original.body(), a.buffer)).toBe(0); // byte for byte as it was taken
+  expect(place.cover).toBe(photos[1].thumb_url);
+
+  // A photo opens full size: the original; arrows move between them.
+  await strip.getByRole('button', { name: 'Photo 1 of 2' }).click();
+  const viewer = page.getByRole('dialog', { name: 'Photos from Nov 14' });
+  await expect(viewer).toBeVisible();
+  await expect(viewer.getByRole('img', { name: 'Photo 1 of 2' })).toHaveAttribute('src', photos[0].url);
+  await expect(viewer.getByRole('button', { name: 'Previous photo' })).toHaveCount(0);
+  await viewer.getByRole('button', { name: 'Next photo' }).click();
+  await expect(viewer.getByRole('img', { name: 'Photo 2 of 2' })).toHaveAttribute('src', photos[1].url);
+  await page.keyboard.press('ArrowLeft');
+  await expect(viewer.getByRole('img', { name: 'Photo 1 of 2' })).toBeVisible();
+  // What can be done with a photo is behind ⋮; Escape closes the menu before the viewer.
+  const more = viewer.getByRole('button', { name: 'More' });
+  const menu = viewer.getByRole('menu', { name: 'More' });
+  await more.click();
+  await expect(menu.getByRole('menuitem', { name: 'Download' })).toHaveAttribute('href', photos[0].url);
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+  await expect(viewer).toBeVisible();
+
+  // Any photo can be the place's cover instead of the newest; the menu says which it is.
+  await more.click();
+  await menu.getByRole('menuitem', { name: 'Make cover' }).click();
+  await expect(menu).toHaveCount(0);
+  await more.click();
+  await expect(menu.getByRole('menuitem', { name: 'Cover photo' })).toBeDisabled();
+  await page.screenshot({ path: test.info().outputPath('photo-menu.png') });
+  expect((await (await page.request.get(`/api/restaurants/${id}`)).json()).cover).toBe(photos[0].thumb_url);
+
+  // Deleting one asks first; deleting the cover goes back to the newest.
+  await menu.getByRole('menuitem', { name: 'Delete' }).click();
+  await page.getByRole('dialog', { name: 'Delete this photo?' }).getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(viewer.getByRole('img', { name: 'Photo 1 of 1' })).toHaveAttribute('src', photos[1].url);
+  await page.keyboard.press('Escape');
+  await expect(viewer).toBeHidden();
+  // The cover is big across the top of the page: the original, as taken.
+  await expect(page.locator('img.place-cover')).toHaveAttribute('src', photos[1].url);
+  await expect(strip.getByRole('button', { name: /^Photo / })).toHaveCount(1);
+
+  // On the list, the place's cover photo is where its category's icon was, with the icon in its corner.
+  await page.getByRole('link', { name: 'Our places' }).click();
+  const card = page.getByRole('list', { name: 'Been there' }).getByRole('listitem').first();
+  await expect(card.locator('.tile img')).toHaveAttribute('src', photos[1].thumb_url);
+  await expect(card.locator('.tile img')).toHaveJSProperty('complete', true);
+  await expect(card.locator('.tile .tile-badge')).toBeVisible();
+
+  // A visit with photos says they go with it.
+  await addPhoto(page, id, place.visits[0].id, { hue: 200 });
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  await page.getByRole('button', { name: 'Edit the visit on Nov 14' }).click();
+  await page.getByRole('button', { name: 'Delete this visit' }).click();
+  await expect(page.getByRole('dialog', { name: 'Delete the visit on Nov 14?' })).toContainText('Its 2 photos go with it.');
+});
+
+test('a file that isn’t a picture is refused, with words saying why', async ({ page }) => {
+  await signUp(page);
+  const res = await page.request.post('/api/restaurants', { data: { name: 'Taco Loco', visit: { visited_on: '2026-11-14' } } });
+  const { id } = await res.json();
+  await page.goto(`/app/#/restaurant?id=${id}`);
+  const visit = page.getByRole('list', { name: 'Visits' }).getByRole('listitem').first();
+  await visit.locator('input[type=file]').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('not a photo') });
+  await expect(visit.getByText('That photo can’t be opened here. Choose a JPEG, PNG or WebP picture.')).toBeVisible();
+  await expect(visit.getByRole('button', { name: /^Photo / })).toHaveCount(0);
 });
 
 test('want to go, then been', async ({ page }) => {
@@ -465,7 +543,7 @@ test('without a map key there is no map, and Nearby says why when location is of
   await expect(page.getByRole('list', { name: 'Want to go' }).getByRole('listitem')).toHaveCount(1);
 });
 
-test('order: newest, best rated or by name, and remembered', async ({ page }) => {
+test('order: newest, oldest, best rated or by name, and remembered', async ({ page }) => {
   await signUp(page);
   const today = new Date().toISOString().slice(0, 10);
   // Added in this order, so newest first is the reverse.
@@ -482,6 +560,10 @@ test('order: newest, best rated or by name, and remembered', async ({ page }) =>
   const been = page.getByRole('list', { name: 'Been there' }).getByRole('listitem');
   await expect(been).toHaveText([/Bento Box/, /Unrated Udon/, /Ramen Tsubaki/, /Gyoza Komachi/]);
   await expect(page.getByRole('button', { name: 'Order: Newest' })).toBeVisible();
+
+  // Oldest: the other way round.
+  await pickOrder(page, 'Oldest');
+  await expect(been).toHaveText([/Gyoza Komachi/, /Ramen Tsubaki/, /Unrated Udon/, /Bento Box/]);
 
   // Best rated first; nobody's rated Unrated Udon, so it's last.
   await pickOrder(page, 'Top rated');

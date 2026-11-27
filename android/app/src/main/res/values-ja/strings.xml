@@ -24,7 +24,10 @@
     <string name="notify_change_visit">%1$sさんが%2$sに行きました</string>
     <string name="notify_change_rated">%1$sさんが%2$sを★%3$dと評価しました</string>
     <string name="notify_change_shifts">%1$sさんがシフトを保存しました</string>
+    <string name="notify_change_commented">%1$sさんが%2$sにコメントしました</string>
     <string name="notify_bus_started">%1$sさんが%2$sまでの乗り過ごしアラームを開始しました</string>
+    <string name="notify_bus_arrived">%1$sさんがもうすぐ%2$sに着きます</string>
+    <string name="notify_bus_stopped">%1$sさんが%2$sまでの乗り過ごしアラームを止めました</string>
     <plurals name="notify_change_more">
         <item quantity="other">ほか%d件の変更</item>
     </plurals>
@@ -94,6 +97,7 @@
     <string name="widget_riding">乗車中</string>
     <string name="widget_nearly">次で降ります</string>
     <string name="widget_choose_stop">降りるバス停を選ぶ</string>
+    <string name="notify_change_photos">%1$sさんが%2$sの写真を追加しました</string>
     <!-- Meal reminders -->
     <string name="channel_meal_reminders">食事リマインダー</string>
     <string name="meal_title_breakfast">朝食の時間です</string>

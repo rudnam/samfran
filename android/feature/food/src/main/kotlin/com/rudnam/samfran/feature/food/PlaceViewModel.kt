@@ -7,6 +7,9 @@ import androidx.navigation.toRoute
 import com.rudnam.samfran.core.common.ApplicationScope
 import com.rudnam.samfran.core.data.FoodRepository
 import com.rudnam.samfran.core.data.Outcome
+import com.rudnam.samfran.core.data.Photos
+import com.rudnam.samfran.core.model.Photo
+import com.rudnam.samfran.core.data.UnreadablePhotoException
 import com.rudnam.samfran.core.data.SpaceRepository
 import com.rudnam.samfran.core.model.Restaurant
 import com.rudnam.samfran.core.model.Space
@@ -24,6 +27,12 @@ import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
+/** A visit being changed: its date and note as typed. */
+data class VisitEdit(val id: Long, val date: LocalDate, val note: String)
+
+/** A photo on its way up: where it was picked, and how much has gone (0 to 1). */
+data class SendingPhoto(val uri: String, val sent: Float = 0f)
+
 data class PlaceUiState(
     val place: Restaurant? = null,
     /** True once the server (or the phone's copy) has answered, place or none. */
@@ -31,31 +40,56 @@ data class PlaceUiState(
     val space: Space? = null,
     val busy: Boolean = false,
     val problem: Outcome<Any>? = null,
-    /** The date being picked (Mark as been, or Change), or null when closed. */
+    /** The date being picked for Mark as been, or null when closed. */
     val picking: LocalDate? = null,
-    /** "Not been yet" just chosen: shown so, and saved once Undo's time is up. */
-    val clearing: Boolean = false,
+    /** Went again: the new visit's date (null when closed) and note. */
+    val adding: LocalDate? = null,
+    val addNote: String = "",
+    /** The visit being changed, or null. */
+    val editing: VisitEdit? = null,
+    /** Photos on their way up, by visit. */
+    val sending: Map<Long, List<SendingPhoto>> = emptyMap(),
+    /** What went wrong sending photos, by visit. */
+    val photoProblem: Map<Long, Outcome<Any>> = emptyMap(),
+    /** Photos being saved to the phone, those saved, and what went wrong saving one. */
+    val saving: Set<Long> = emptySet(),
+    val savedPhotos: Set<Long> = emptySet(),
+    val saveProblem: Outcome<Any>? = null,
     /** The comment being written. */
     val draft: String = "",
     /** The place is gone (deleted here): the page closes. */
     val deleted: Boolean = false,
     val today: LocalDate = LocalDate.now(),
 ) {
-    /** When you went, the one date a place shows; null if not yet. */
-    val beenOn: LocalDate? get() = if (clearing) null else place?.lastVisit
+    /** When you last went; null if not yet. */
+    val beenOn: LocalDate? get() = place?.lastVisit
 }
 
 interface PlaceActions {
     fun rate(stars: Int)
-    /** Opens the date: today for Mark as been, else when you went. */
+    /** Mark as been: opens the date, today. */
     fun startPicking()
     fun setPicking(date: LocalDate)
     fun cancelPicking()
     fun saveBeen()
-    /** Shows it as not been yet; [undoNotBeen] brings it back, [commitNotBeen] saves it. */
-    fun notBeen()
-    fun undoNotBeen()
-    fun commitNotBeen()
+    /** Went again: opens a new visit's date (today) and note. */
+    fun startAdding()
+    fun setAdding(date: LocalDate)
+    fun setAddNote(text: String)
+    fun cancelAdding()
+    fun saveAdding()
+    /** Opens a visit's date and note to change. */
+    fun startEditing(visit: Long)
+    fun setEditing(edit: VisitEdit)
+    fun cancelEditing()
+    fun saveEditing()
+    fun deleteVisit(visit: Long)
+    /** Sends photos picked on the phone to a visit, one after another, as they were taken. */
+    fun addPhotos(visit: Long, uris: List<String>)
+    fun deletePhoto(photo: Long)
+    fun setCover(photo: Long)
+    /** Saves a photo's original, as it was taken, to the phone's Pictures. */
+    fun savePhoto(photo: Photo)
     fun delete()
     fun setDraft(text: String)
     /** Posts [PlaceUiState.draft], which empties once it's saved. */
@@ -65,11 +99,13 @@ interface PlaceActions {
 
 /** As the server's. */
 const val MAX_COMMENT = 1000
+const val MAX_NOTE = 1000
 
 @HiltViewModel
 class PlaceViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val food: FoodRepository,
+    private val photos: Photos,
     spaces: SpaceRepository,
     clock: Clock,
     @ApplicationScope private val appScope: CoroutineScope,
@@ -103,7 +139,7 @@ class PlaceViewModel @Inject constructor(
 
     override fun rate(stars: Int) = change({ food.rate(id, stars) })
 
-    override fun startPicking() = local.update { it.copy(picking = state.value.beenOn ?: it.today) }
+    override fun startPicking() = local.update { it.copy(picking = it.today) }
 
     override fun setPicking(date: LocalDate) = local.update { it.copy(picking = minOf(date, it.today)) }
 
@@ -114,23 +150,85 @@ class PlaceViewModel @Inject constructor(
         change({ food.setBeen(id, on) }) { it.copy(picking = null) }
     }
 
-    override fun notBeen() = local.update { it.copy(clearing = true, picking = null) }
+    override fun startAdding() = local.update { it.copy(adding = it.today, addNote = "", editing = null) }
 
-    override fun undoNotBeen() = local.update { it.copy(clearing = false) }
+    override fun setAdding(date: LocalDate) = local.update { it.copy(adding = minOf(date, it.today)) }
 
-    override fun commitNotBeen() {
-        if (!local.value.clearing) return
-        // Outlives the page: leaving it mustn't cancel the change.
+    override fun setAddNote(text: String) = local.update { it.copy(addNote = text.take(MAX_NOTE)) }
+
+    override fun cancelAdding() = local.update { it.copy(adding = null, addNote = "") }
+
+    override fun saveAdding() {
+        val on = local.value.adding ?: return
+        val note = local.value.addNote
+        change({ food.addVisit(id, on, note) }) { it.copy(adding = null, addNote = "") }
+    }
+
+    override fun startEditing(visit: Long) {
+        val v = state.value.place?.visits?.firstOrNull { it.id == visit } ?: return
+        local.update { it.copy(editing = VisitEdit(v.id, v.visitedOn, v.note), adding = null) }
+    }
+
+    override fun setEditing(edit: VisitEdit) =
+        local.update { s -> s.copy(editing = edit.copy(date = minOf(edit.date, s.today), note = edit.note.take(MAX_NOTE))) }
+
+    override fun cancelEditing() = local.update { it.copy(editing = null) }
+
+    override fun saveEditing() {
+        val e = local.value.editing ?: return
+        change({ food.updateVisit(id, e.id, e.date, e.note) }) { it.copy(editing = null) }
+    }
+
+    override fun deleteVisit(visit: Long) = change({ food.deleteVisit(id, visit) }) { it.copy(editing = null) }
+
+    override fun addPhotos(visit: Long, uris: List<String>) {
+        if (uris.isEmpty()) return
+        local.update { s ->
+            s.copy(sending = s.sending + (visit to s.sending[visit].orEmpty() + uris.map { SendingPhoto(it) }), photoProblem = s.photoProblem - visit)
+        }
+        // Outlives the page: leaving it mustn't stop photos half sent.
         appScope.launch {
-            val result = food.clearBeen(id)
-            local.update { it.copy(clearing = false, problem = result.takeIf { r -> r !is Outcome.Done }) }
+            for (uri in uris) {
+                val result = try {
+                    food.addPhoto(id, visit, photos.read(uri)) { sent -> progress(visit, uri, sent) }
+                } catch (e: UnreadablePhotoException) {
+                    Outcome.Refused(UNREADABLE)
+                }
+                local.update { s ->
+                    val left = s.sending[visit].orEmpty().filter { it.uri != uri }
+                    s.copy(
+                        sending = if (left.isEmpty()) s.sending - visit else s.sending + (visit to left),
+                        photoProblem = if (result is Outcome.Done) s.photoProblem else s.photoProblem + (visit to result),
+                    )
+                }
+            }
         }
     }
 
-    override fun delete() {
-        local.update { it.copy(clearing = false) } // a "not been yet" waiting goes with the place
-        change({ food.delete(id) }) { it.copy(deleted = true) }
+    private fun progress(visit: Long, uri: String, sent: Float) = local.update { s ->
+        s.copy(sending = s.sending + (visit to s.sending[visit].orEmpty().map { if (it.uri == uri) it.copy(sent = sent) else it }))
     }
+
+    override fun deletePhoto(photo: Long) = change({ food.deletePhoto(id, photo) })
+    override fun setCover(photo: Long) = change({ food.setCover(id, photo) })
+
+    override fun savePhoto(photo: Photo) {
+        if (photo.id in local.value.saving) return
+        local.update { it.copy(saving = it.saving + photo.id, saveProblem = null) }
+        // Outlives the page, like sending: closing the viewer mustn't stop a save half done.
+        appScope.launch {
+            val result = photos.save(photo)
+            local.update { s ->
+                s.copy(
+                    saving = s.saving - photo.id,
+                    savedPhotos = if (result is Outcome.Done) s.savedPhotos + photo.id else s.savedPhotos,
+                    saveProblem = result.takeIf { it !is Outcome.Done },
+                )
+            }
+        }
+    }
+
+    override fun delete() = change({ food.delete(id) }) { it.copy(deleted = true) }
 
     override fun setDraft(text: String) = local.update { it.copy(draft = text.take(MAX_COMMENT)) }
 
@@ -142,7 +240,8 @@ class PlaceViewModel @Inject constructor(
 
     override fun deleteComment(id: Long) = change({ food.deleteComment(this.id, id) })
 
-    override fun onCleared() {
-        commitNotBeen()
+    companion object {
+        /** The words for a photo the phone can't open; the screen translates them. */
+        const val UNREADABLE = "that photo can't be opened"
     }
 }

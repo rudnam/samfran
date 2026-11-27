@@ -1,16 +1,17 @@
-// One place: both ratings, notes, whether you've been (and when), and, once
-// you have, what each of you said about it.
+// One place: both ratings, notes, whether you've been, and, once you have,
+// each visit (with its photos) and what each of you said about it.
 import { BackLink } from '../../components/BackLink';
 import { useState, type FormEvent } from 'react';
 import { api, errorMessage, type Restaurant } from '../../api';
 import { useCached } from '../../cache';
-import { confirmDialog, dropToast, showToast, Skeleton } from '../../components/Overlay';
+import { confirmDialog, Skeleton } from '../../components/Overlay';
 import { StarPicker } from '../../components/Stars';
-import { t } from '../../i18n';
+import { t, tn } from '../../i18n';
 import { href, replaceRoute } from '../../router';
 import { Avatar, personTone, useSpace } from '../../space';
 import { categoryName, categoryOf, CategoryTile, Icon } from './categories';
 import { Comments } from './Comments';
+import { Visits } from './Visits';
 import { mapLink, shortDate, today } from './format';
 import { ErrorText } from '../../components/ErrorText';
 
@@ -19,9 +20,7 @@ export function RestaurantDetail({ id }: { id: number }) {
   const [changeError, setError] = useState('');
   const error = changeError || loadError;
   const [busy, setBusy] = useState(false);
-  // "Not been yet" just chosen: shown so, and saved once Undo's time is up.
-  const [clearing, setClearing] = useState(false);
-  // The date being picked (Mark as been, or Change), or null when closed.
+  // The date being picked for Mark as been, or null when closed.
   const [picking, setPicking] = useState<string | null>(null);
   const { space } = useSpace();
 
@@ -45,29 +44,6 @@ export function RestaurantDetail({ id }: { id: number }) {
     if (picking && (await change(() => api.setBeen(id, picking)))) setPicking(null);
   }
 
-  /** Back to want to go, with Undo; without it, it's saved when the offer ends. */
-  function notBeen() {
-    setPicking(null);
-    showToast({
-      message: t('Moved to Want to go.'),
-      action: t('Undo'),
-      onAction: () => setClearing(false),
-      onClose: () => {
-        api.clearBeen(id).then(
-          (fresh) => {
-            setR(fresh);
-            setClearing(false);
-          },
-          (err) => {
-            setError(errorMessage(err));
-            setClearing(false);
-          },
-        );
-      },
-    });
-    setClearing(true); // after showToast, which finishes an earlier one first
-  }
-
   async function remove() {
     if (!r) return;
     const yes = await confirmDialog({
@@ -77,11 +53,10 @@ export function RestaurantDetail({ id }: { id: number }) {
       danger: true,
     });
     if (!yes) return;
-    dropToast(); // a 'not been yet' waiting to be saved goes with the place
     setBusy(true);
     try {
       await api.deleteRestaurant(id);
-      replaceRoute(r.visit_count > 0 && !clearing ? 'home' : 'want');
+      replaceRoute(r.visit_count > 0 ? 'home' : 'want');
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
@@ -104,10 +79,23 @@ export function RestaurantDetail({ id }: { id: number }) {
   const mine = r.ratings.find((x) => x.me)?.stars ?? 0;
   const partner = space?.members.find((m) => !m.me);
   const theirs = r.ratings.find((x) => !x.me);
-  const beenOn = clearing ? null : r.last_visit;
+  const beenOn = r.last_visit;
+  // The cover, big across the top: the original as it was taken, over its
+  // thumbnail until it's in (an older server's place without cover_photo_id
+  // shows just the thumbnail).
+  const coverPhoto = (r.visits ?? []).flatMap((v) => v.photos ?? []).find((p) => p.id === r.cover_photo_id);
   return (
     <section className="stack">
       <BackLink href={href(beenOn ? 'home' : 'want')} label="Our places" />
+      {r.cover && (
+        <img
+          className="place-cover"
+          src={coverPhoto?.url ?? r.cover}
+          style={{ backgroundImage: `url("${r.cover}")` }}
+          alt={t('Cover photo')}
+          decoding="async"
+        />
+      )}
       <header className="stack tight">
         <h1 className="display">{r.name}</h1>
         <p className="lead place-kind">
@@ -116,15 +104,9 @@ export function RestaurantDetail({ id }: { id: number }) {
         </p>
         {beenOn && (
           <p className="been-line">
-            {t('Been · {date}', { date: shortDate(beenOn) })}
-            {picking === null && (
-              <>
-                {' · '}
-                <button type="button" className="link" disabled={busy} onClick={() => setPicking(beenOn)}>
-                  {t('Change')}
-                </button>
-              </>
-            )}
+            {r.visit_count > 1
+              ? tn(r.visit_count, 'Been · {date}', 'Been {n} times · last {date}', { date: shortDate(beenOn) })
+              : t('Been · {date}', { date: shortDate(beenOn) })}
           </p>
         )}
         <div className="row wrap">
@@ -157,16 +139,13 @@ export function RestaurantDetail({ id }: { id: number }) {
             <button type="button" className="secondary" disabled={busy} onClick={() => setPicking(null)}>
               {t('Cancel')}
             </button>
-            {beenOn && (
-              <button type="button" className="link quiet" disabled={busy} onClick={notBeen}>
-                {t('Not been yet')}
-              </button>
-            )}
           </div>
         </form>
       )}
 
       <ErrorText message={error} />
+
+      {beenOn && <Visits place={r} onChange={setR} />}
 
       <div className="card stack">
         <h2>{t('Ratings')}</h2>

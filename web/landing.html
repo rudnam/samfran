@@ -10,6 +10,7 @@
 <meta name="robots" content="noindex">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="preload" href="/fonts/plus-jakarta-sans-latin.woff2" as="font" type="font/woff2" crossorigin>
 <!-- The introduction, served at /. The app is at /app/ (index.html).
      Deliberately says nothing about what's inside: it's a private app for
      two. landing.ts shows it in Japanese (data-ja: HTML, ours) and offers
@@ -25,7 +26,8 @@
   <p class="intro-line" data-ja="ふたりのためのアプリ。">An app for two.</p>
   <div class="intro-actions">
     <a class="button intro-primary" href="/app/" data-ja="ログイン">Sign in</a>
-    <a class="button secondary" href="/download/samfran.apk" data-download hidden download data-ja="Android版をダウンロード">Download for Android</a>
+    <!-- The same link as web/src/playStore.ts. -->
+    <a class="button secondary" href="https://play.google.com/apps/internaltest/4700129288045289290" target="_blank" rel="noopener" data-ja="Google Playで入手">Get it on Google Play</a>
   </div>
 </main>
 <footer class="intro-foot">

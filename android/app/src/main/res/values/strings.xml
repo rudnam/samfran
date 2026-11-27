@@ -25,7 +25,10 @@
     <string name="notify_change_visit">%1$s went to %2$s</string>
     <string name="notify_change_rated">%1$s rated %2$s ★%3$d</string>
     <string name="notify_change_shifts">%1$s saved the shifts</string>
+    <string name="notify_change_commented">%1$s commented on %2$s</string>
     <string name="notify_bus_started">%1$s started the ride alarm to %2$s</string>
+    <string name="notify_bus_arrived">%1$s is nearly at %2$s</string>
+    <string name="notify_bus_stopped">%1$s stopped the ride alarm to %2$s</string>
     <plurals name="notify_change_more">
         <item quantity="one">and %d more change</item>
         <item quantity="other">and %d more changes</item>
@@ -99,6 +102,7 @@
     <string name="widget_nearly">Your stop is next</string>
     <string name="widget_preview_times" translatable="false">13:00–22:00</string>
     <string name="widget_choose_stop">Choose your stop</string>
+    <string name="notify_change_photos">%1$s added photos of %2$s</string>
     <!-- Meal reminders -->
     <string name="channel_meal_reminders">Meal reminders</string>
     <string name="meal_title_breakfast">Time for breakfast</string>

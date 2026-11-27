@@ -101,7 +101,6 @@ fun PlaceFormScreen(state: PlaceFormUiState, actions: PlaceFormActions, onBack: 
             state.problem?.problem()?.let { ErrorText(it) } ?: Skeleton(rows = 3)
             return@SubPage
         }
-        if (!state.editing && !state.fromShare) Hint(stringResource(R.string.share_hint))
         SamFranCard(spacing = 14) {
             if (!state.editing) {
                 Segmented(
@@ -198,7 +197,7 @@ private fun CategoryPicker(selected: PlaceCategory, onPick: (PlaceCategory) -> U
                 }
             }
         }
-        Hint(stringResource(selected.hint) + ". " + stringResource(R.string.category_hint_tie))
+        Hint(stringResource(selected.hint))
     }
 }
 
@@ -228,16 +227,10 @@ private fun MapLinkField(state: PlaceFormUiState, actions: PlaceFormActions, onP
                 SecondaryButton(stringResource(R.string.paste), onPaste, Modifier.padding(top = 8.dp))
             }
         }
-        Hint(
-            stringResource(
-                when {
-                    state.editing -> R.string.maps_link_hint_edit
-                    state.lookingUp -> R.string.looking_up
-                    state.picked != null -> R.string.maps_link_hint_picked
-                    else -> R.string.maps_link_hint
-                },
-            ),
-        )
+        when {
+            state.lookingUp -> Hint(stringResource(R.string.looking_up))
+            !state.editing && state.picked == null -> Hint(stringResource(R.string.maps_link_hint))
+        }
     }
 }
 

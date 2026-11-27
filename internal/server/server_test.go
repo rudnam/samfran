@@ -43,6 +43,8 @@ func TestServesWebApp(t *testing.T) {
 		{"/restaurants/42", "404", "", 404},                            // not under /app/
 		{"/assets/app-1.js", "console.log", "immutable", 200},
 		{"/assets/missing.js", "404", "", 404},
+		{"/fonts", "404", "", 404},
+		{"/fonts/plus-jakarta-sans-latin.woff2", "wOF2", "immutable", 200},
 	}
 	for _, c := range cases {
 		resp, body := get(t, ts.URL+c.path)
@@ -56,6 +58,9 @@ func TestServesWebApp(t *testing.T) {
 	}
 	if resp, _ := get(t, ts.URL+"/manifest.webmanifest"); resp.Header.Get("Content-Type") != "application/manifest+json" {
 		t.Errorf("manifest Content-Type = %q", resp.Header.Get("Content-Type"))
+	}
+	if resp, _ := get(t, ts.URL+"/fonts/plus-jakarta-sans-latin.woff2"); resp.Header.Get("Content-Type") != "font/woff2" {
+		t.Errorf("font Content-Type = %q", resp.Header.Get("Content-Type"))
 	}
 	req, _ := http.NewRequest("POST", ts.URL+"/", nil)
 	if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode != 405 {

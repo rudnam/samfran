@@ -19,6 +19,8 @@ data class ActivityEntry(
 data class ActivityDetails(
     val name: String = "",
     val been: Boolean = false,
+    /** A ride ended (bus_ended): the phone got to the stop, rather than being stopped before. */
+    val arrived: Boolean = false,
     val stars: Int = 0,
     /** YYYY-MM, for saved shifts. */
     val month: String = "",

@@ -59,8 +59,10 @@ function describe(e: ActivityEntry): string {
       return t('deleted {name}', { name });
     case 'visit_logged':
       return t('went to {name}', { name });
-    case 'visit_removed': // from older apps, which listed visits
+    case 'visit_removed':
       return t('removed a visit to {name}', { name });
+    case 'photos_added':
+      return t('added photos of {name}', { name });
     case 'been_date_changed':
       return t('changed the date for {name}', { name });
     case 'been_cleared':

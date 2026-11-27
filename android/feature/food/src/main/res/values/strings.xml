@@ -27,9 +27,7 @@
     <string name="maps_link">Google Maps link</string>
     <string name="paste">Paste</string>
     <string name="maps_link_hint">Optional. Paste one and the name fills itself in.</string>
-    <string name="maps_link_hint_edit">Optional. Without one, “Open in Maps” searches for the name.</string>
     <string name="looking_up">Looking up the place…</string>
-    <string name="share_hint">Share a place from Google Maps to SamFran to add it in one tap.</string>
     <string name="notes">Notes</string>
     <string name="notes_hint">What to order, when to go, what to bring…</string>
     <string name="cancel">Cancel</string>
@@ -41,13 +39,9 @@
     <string name="you">You</string>
     <string name="not_rated_yet">Not rated yet</string>
     <string name="been_on">Been · %s</string>
-    <string name="change">Change</string>
     <string name="mark_as_been">Mark as been</string>
     <string name="when_did_you_go">When did you go?</string>
-    <string name="not_been_yet">Not been yet</string>
     <string name="delete_this_place">Delete this place</string>
-    <string name="moved_to_want">Moved to Want to go.</string>
-    <string name="undo">Undo</string>
     <string name="delete_place_title">Delete %s?</string>
     <string name="delete_place_body">Its ratings go with it. This can’t be undone.</string>
     <string name="delete">Delete</string>
@@ -66,12 +60,10 @@
     <string name="already_on_list_colon">Already on your list:</string>
     <string name="not_this_one">Not this one</string>
     <string name="check_on_map">Check on the map</string>
-    <string name="maps_link_hint_picked">Optional. The place you picked is already on the map.</string>
     <string name="category">Category</string>
     <string name="category_all">All</string>
     <string name="show_all">Show all</string>
     <string name="nothing_in_category">Nothing in %s here.</string>
-    <string name="category_hint_tie">Two fit? Pick what you’d go there for.</string>
     <!-- Categories: why you'd go (web/src/features/restaurants/categories.tsx) -->
     <string name="cat_eat">Eat &amp; drink</string>
     <string name="cat_nature">Nature &amp; parks</string>
@@ -131,6 +123,7 @@
     <string name="order">Order</string>
     <string name="sort_latest">Latest</string>
     <string name="sort_newest">Newest</string>
+    <string name="sort_oldest">Oldest</string>
     <string name="sort_nearby">Nearby</string>
     <string name="sort_top_rated">Top rated</string>
     <string name="sort_name">A–Z</string>
@@ -154,4 +147,35 @@
     <string name="add_comment">Add a comment</string>
     <string name="post">Post</string>
     <string name="delete_comment_title">Delete your comment?</string>
+    <!-- A place's visits and photos (web/src/features/restaurants/Visits.tsx). -->
+    <string name="visits">Visits</string>
+    <string name="went_again">Went again</string>
+    <string name="note_optional">Note (optional)</string>
+    <string name="note_hint">What you had, how it was</string>
+    <string name="edit_visit">Edit the visit on %s</string>
+    <string name="delete_visit">Delete this visit</string>
+    <string name="delete_visit_title">Delete the visit on %s?</string>
+    <plurals name="delete_visit_photos">
+        <item quantity="one">Its photo goes with it.</item>
+        <item quantity="other">Its %d photos go with it.</item>
+    </plurals>
+    <string name="delete_visit_last">%s goes back to Want to go.</string>
+    <string name="cant_undo">This can’t be undone.</string>
+    <string name="photos_from">Photos from %s</string>
+    <string name="photo_n_of">Photo %1$d of %2$d</string>
+    <string name="add_photos">Add photos</string>
+    <string name="sending_photo">Sending a photo</string>
+    <string name="delete_photo_title">Delete this photo?</string>
+    <!-- The photo the list shows for a place; any of its photos can be. -->
+    <string name="is_cover">Cover photo</string>
+    <string name="more">More</string>
+    <string name="make_cover">Make cover</string>
+    <string name="download">Download</string>
+    <string name="photo_saved">Saved to Pictures</string>
+    <string name="photo_not_saved">The photo couldn’t be saved on this phone. Is it full?</string>
+    <string name="delete_photo_body">It’s gone for both of you. This can’t be undone.</string>
+    <string name="close">Close</string>
+    <string name="been_times">Been %1$d times · last %2$s</string>
+    <string name="times_short">%d×</string>
+    <string name="photo_unreadable">That photo can’t be opened here. Choose a JPEG, PNG or WebP picture.</string>
 </resources>

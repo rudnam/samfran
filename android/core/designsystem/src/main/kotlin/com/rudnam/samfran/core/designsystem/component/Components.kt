@@ -16,6 +16,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -347,4 +348,13 @@ fun SettingRow(
         }
         trailing()
     }
+}
+
+/**
+ * A page of the app, on the app's background: opaque, so that while the back
+ * gesture slides it away the page under it doesn't show through.
+ */
+@Composable
+fun Page(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxSize().background(SamFranTheme.colors.bg)) { content() }
 }
