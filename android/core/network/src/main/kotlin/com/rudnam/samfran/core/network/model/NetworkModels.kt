@@ -6,6 +6,7 @@ import com.rudnam.samfran.core.model.ActivityEntry
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.BusStops
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.ChangelogEntry
 import com.rudnam.samfran.core.model.SoundAfter
 import com.rudnam.samfran.core.model.StopKind
 import com.rudnam.samfran.core.model.FoundStop
@@ -475,11 +476,22 @@ data class NetworkMcpToken(
 fun NetworkMcpToken.asModel() = McpToken(id, name, Instant.parse(createdAt), lastUsedAt?.let(Instant::parse))
 
 @Serializable
+data class NetworkChangelogEntry(
+    val version: Int,
+    @SerialName("version_name") val versionName: String = "",
+    val en: List<String> = emptyList(),
+    val ja: List<String> = emptyList(),
+)
+
+fun NetworkChangelogEntry.asModel() = ChangelogEntry(version, versionName, en, ja)
+
+@Serializable
 data class NetworkApk(
     val url: String,
     val size: Long = 0,
     val version: Int? = null,
     @SerialName("version_name") val versionName: String? = null,
+    val changelog: List<NetworkChangelogEntry> = emptyList(),
 )
 
 @Serializable

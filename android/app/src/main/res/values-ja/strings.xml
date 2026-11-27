@@ -37,6 +37,9 @@
     </plurals>
     <string name="update_named">SamFran %1$s が公開されました。</string>
     <string name="update_unnamed">SamFran の新しいバージョンが公開されました。</string>
+    <string name="update_whats_new">変更内容</string>
+    <string name="update_show_all">すべて見る</string>
+    <string name="update_show_less">閉じる</string>
     <string name="update_later">あとで</string>
     <string name="update_now">アップデート</string>
     <string name="demo_title">サンプルデータのデモです。</string>

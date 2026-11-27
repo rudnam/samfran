@@ -82,7 +82,7 @@ internal interface SamFranApi {
     @POST("api/logout") suspend fun logout(): Response<Unit>
     @POST("api/verify-email") suspend fun resendConfirmation(): Response<Unit>
     @POST("api/password/forgot") suspend fun forgotPassword(@Body body: NetworkEmail): Response<Unit>
-    @GET("api/downloads") suspend fun downloads(): NetworkDownloads
+    @GET("api/downloads") suspend fun downloads(@Query("since") since: Int? = null): NetworkDownloads
 
     @GET("api/space") suspend fun space(): NetworkSpace
     @PUT("api/space/me") suspend fun setMyName(@Body body: NetworkName): NetworkSpace
@@ -159,7 +159,7 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun logout() = call { api.logout().orThrow() }
     suspend fun resendConfirmation() = call { api.resendConfirmation().orThrow() }
     suspend fun forgotPassword(email: String) = call { api.forgotPassword(NetworkEmail(email)).orThrow() }
-    suspend fun downloads() = call { api.downloads() }
+    suspend fun downloads(since: Int? = null) = call { api.downloads(since) }
 
     suspend fun space() = call { api.space() }
     suspend fun setMyName(name: String) = call { api.setMyName(NetworkName(name)) }

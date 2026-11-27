@@ -249,7 +249,7 @@ The Android app has its own strings, in each module's `res/values/strings.xml` a
 | DELETE | `/api/locks/requests/{id}` | user | Takes back your own request while it waits; the request. Pushes `lock_cancelled`. |
 | PUT | `/api/locks/check-in` | user | `204`. Body `{usage_access, overlay, watching, watching_since?, booted_at?, reason?}`: a phone with locked apps saying, every 15 minutes, whether it can cover them (`reason: "signed_out"` when signing out). The other phone gets `lock_check` when covering stops (`state: "off"`, `reason` `usage_access`, `overlay`, `stopped` or `signed_out`), starts again (`on`), when the watcher started after the last check-in other than by the phone starting (`restarted`, `from`, `to`), and once when a phone that was covering hasn't checked in for a day (`quiet`, `since`; looked for as phones check in). |
 | POST | `/api/locks/{id}/override` | user | Body `{minutes, message?}`: opens one of your locked apps now without asking (an emergency). `201` and the request, allowed at once; pushes `lock_override` to the other phone. |
-| GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. |
+| GET | `/api/downloads` | – | `{android: {url, size, updated, version, version_name, changelog?} \| null}`: the APK, while there is one. `version` is its `versionCode`, which the app compares with its own. Optional `?since=<versionCode>` filters `changelog` to entries newer than `since`. |
 | GET | `/download/samfran.apk` | – | The Android app |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
