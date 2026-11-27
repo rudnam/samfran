@@ -521,18 +521,12 @@ export const ja = {
   Breakfast: '朝食',
   Lunch: '昼食',
   Dinner: '夕食',
-  'At time': '時刻指定',
-  'Before shift': '勤務開始前',
-  'After shift': '勤務終了後',
   Off: 'オフ',
   'Next day': '翌日',
-  '1 hour': '1時間',
-  '{n} hours': '{n}時間',
-  '{n} min': '{n}分',
   'Reset to defaults': '初期設定に戻す',
-  '{shift} {meal} mode': '{shift}の{meal}の決め方',
   '{shift} {meal} time': '{shift}の{meal}の時刻',
-  '{shift} {meal} offset': '{shift}の{meal}の時間差',
+  'Turn off {shift} {meal}': '{shift}の{meal}をオフにする',
+  'Set time': '時刻を設定',
   'updated meal reminders': '食事リマインダーを更新',
 } as const;
 
@@ -631,6 +625,4 @@ export const jaServer = {
   "a thumbnail must be at most {max} KB": 'サムネイルは{max}KBまでです',
   "the thumbnail must be a JPEG, PNG or WebP picture": 'サムネイルはJPEG・PNG・WebPの画像にしてください',
   'invalid meal reminder time': '食事リマインダーの時刻が正しくありません',
-  'meal offset must be from 1 to 360 minutes': 'シフトとの時間差は1〜360分にしてください',
-  'relative meal times are only for working shifts': 'シフト基準の時刻は勤務日のみ設定できます',
 } as const;

@@ -159,13 +159,13 @@ class ShiftsViewModelTest {
         vm.setRule(
             "Early",
             com.rudnam.samfran.core.model.MealKind.Breakfast,
-            com.rudnam.samfran.core.model.MealRule(com.rudnam.samfran.core.model.MealRuleMode.BeforeStart, minutes = 90),
+            com.rudnam.samfran.core.model.MealRule(com.rudnam.samfran.core.model.MealRuleMode.Fixed, time = "05:30"),
         )
         vm.save()
         assertTrue(vm.state.value.saved)
-        assertEquals(90, shifts.settingsFlow.value?.mealReminders?.get("Early")?.breakfast?.minutes)
+        assertEquals("05:30", shifts.settingsFlow.value?.mealReminders?.get("Early")?.breakfast?.time)
         assertEquals(1, reminders.syncs)
         vm.resetDefaults()
-        assertEquals(120, vm.state.value.meals["Early"]?.breakfast?.minutes)
+        assertEquals("05:00", vm.state.value.meals["Early"]?.breakfast?.time)
     }
 }

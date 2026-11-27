@@ -6,16 +6,16 @@ import {
   type MealDayKey,
   type MealReminders,
   type MealRule,
-  type MealRuleMode,
   type ShiftSettings,
 } from '../../api';
 import { BackLink } from '../../components/BackLink';
 import { ErrorText } from '../../components/ErrorText';
+import { Icon } from '../../components/Icon';
 import { useLeaveGuard } from '../../components/LeaveGuard';
 import { Skeleton } from '../../components/Overlay';
 import { t } from '../../i18n';
 import { href } from '../../router';
-import { defaultMealReminders, MEAL_DAY_KEYS, MEAL_KEYS, MEAL_OFFSETS, mergeMealReminders, nextDayMeals, type MealKey } from './meals';
+import { defaultMealReminders, MEAL_DAY_KEYS, MEAL_KEYS, mergeMealReminders, nextDayMeals, type MealKey } from './meals';
 
 const SHIFT_LABEL: Record<MealDayKey, () => string> = {
   Early: () => t('Early (早番)'),
@@ -30,27 +30,6 @@ const MEAL_LABEL: Record<MealKey, () => string> = {
   lunch: () => t('Lunch'),
   dinner: () => t('Dinner'),
 };
-
-function formatOffset(minutes: number): string {
-  if (minutes % 60 === 0) {
-    const h = minutes / 60;
-    return h === 1 ? t('1 hour') : t('{n} hours', { n: h });
-  }
-  return t('{n} min', { n: minutes });
-}
-
-function defaultRuleFor(mode: MealRuleMode, prev: MealRule): MealRule {
-  switch (mode) {
-    case 'fixed':
-      return { mode: 'fixed', time: prev.time || '12:00' };
-    case 'before_start':
-      return { mode: 'before_start', minutes: prev.minutes || 120 };
-    case 'after_end':
-      return { mode: 'after_end', minutes: prev.minutes || 60 };
-    case 'off':
-      return { mode: 'off' };
-  }
-}
 
 export function ShiftMealRemindersPage() {
   const [settings, setSettings] = useState<ShiftSettings | null>(null);
@@ -103,6 +82,8 @@ export function ShiftMealRemindersPage() {
     setMeals(defaultMealReminders());
   }
 
+  const defaults = defaultMealReminders();
+
   return (
     <section className="stack">
       <BackLink href={href('shifts/settings')} label="Shift settings" />
@@ -114,7 +95,6 @@ export function ShiftMealRemindersPage() {
         <form className="stack" onSubmit={save}>
           {MEAL_DAY_KEYS.map((shiftKey) => {
             const dayMeals: DayMeals = meals[shiftKey];
-            const working = shiftKey !== 'Off';
             const nextDays = nextDayMeals(shiftKey, dayMeals);
             const heading = SHIFT_LABEL[shiftKey]();
             return (
@@ -128,17 +108,7 @@ export function ShiftMealRemindersPage() {
                     <div key={mealKey} className="meal-row">
                       <span className="meal-name">{mealLabel}</span>
                       <div className="meal-controls">
-                        <select
-                          aria-label={t('{shift} {meal} mode', { shift: heading, meal: mealLabel })}
-                          value={rule.mode}
-                          onChange={(e) => updateRule(shiftKey, mealKey, defaultRuleFor(e.target.value as MealRuleMode, rule))}
-                        >
-                          <option value="fixed">{t('At time')}</option>
-                          {working && <option value="before_start">{t('Before shift')}</option>}
-                          {working && <option value="after_end">{t('After shift')}</option>}
-                          <option value="off">{t('Off')}</option>
-                        </select>
-                        {rule.mode === 'fixed' && (
+                        {rule.mode === 'fixed' ? (
                           <div className="meal-time-wrap">
                             <input
                               type="time"
@@ -147,22 +117,31 @@ export function ShiftMealRemindersPage() {
                               onChange={(e) => updateRule(shiftKey, mealKey, { mode: 'fixed', time: e.target.value })}
                             />
                             {isNextDay && <span className="meal-next-day">{t('Next day')}</span>}
+                            <button
+                              type="button"
+                              className="link quiet"
+                              aria-label={t('Turn off {shift} {meal}', { shift: heading, meal: mealLabel })}
+                              onClick={() => updateRule(shiftKey, mealKey, { mode: 'off' })}
+                            >
+                              <Icon name="close" size={18} />
+                            </button>
                           </div>
-                        )}
-                        {(rule.mode === 'before_start' || rule.mode === 'after_end') && (
-                          <select
-                            aria-label={t('{shift} {meal} offset', { shift: heading, meal: mealLabel })}
-                            value={rule.minutes ?? 120}
-                            onChange={(e) =>
-                              updateRule(shiftKey, mealKey, { mode: rule.mode, minutes: Number(e.target.value) })
-                            }
-                          >
-                            {MEAL_OFFSETS.map((m) => (
-                              <option key={m} value={m}>
-                                {formatOffset(m)}
-                              </option>
-                            ))}
-                          </select>
+                        ) : (
+                          <div className="meal-time-wrap">
+                            <span className="muted small">{t('Off')}</span>
+                            <button
+                              type="button"
+                              className="link"
+                              onClick={() =>
+                                updateRule(shiftKey, mealKey, {
+                                  mode: 'fixed',
+                                  time: defaults[shiftKey][mealKey].time ?? '12:00',
+                                })
+                              }
+                            >
+                              {t('Set time')}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>

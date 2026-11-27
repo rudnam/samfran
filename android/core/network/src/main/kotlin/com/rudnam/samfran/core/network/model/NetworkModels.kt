@@ -323,12 +323,10 @@ data class NetworkReadProgress(
 data class NetworkMealRule(
     val mode: String = "off",
     val time: String? = null,
-    val minutes: Int? = null,
 ) {
     fun asModel() = MealRule(
         mode = MealRuleMode.fromApi(mode),
         time = time ?: "12:00",
-        minutes = minutes ?: 120,
     )
 }
 
@@ -344,7 +342,6 @@ data class NetworkDayMeals(
 fun MealRule.asNetwork() = NetworkMealRule(
     mode = mode.api,
     time = if (mode == MealRuleMode.Fixed) time else null,
-    minutes = if (mode == MealRuleMode.BeforeStart || mode == MealRuleMode.AfterEnd) minutes else null,
 )
 
 fun DayMeals.asNetwork() = NetworkDayMeals(breakfast.asNetwork(), lunch.asNetwork(), dinner.asNetwork())

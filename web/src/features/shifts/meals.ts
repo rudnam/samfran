@@ -5,12 +5,10 @@ export const MEAL_DAY_KEYS: MealDayKey[] = ['Early', 'Middle', 'Late', 'Night', 
 export const MEAL_KEYS = ['breakfast', 'lunch', 'dinner'] as const;
 export type MealKey = (typeof MEAL_KEYS)[number];
 
-export const MEAL_OFFSETS = [15, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300, 360];
-
 export function defaultMealReminders(): MealReminders {
   return {
     Early: {
-      breakfast: { mode: 'before_start', minutes: 120 },
+      breakfast: { mode: 'fixed', time: '05:00' },
       lunch: { mode: 'fixed', time: '11:00' },
       dinner: { mode: 'fixed', time: '18:00' },
     },
@@ -68,24 +66,12 @@ function parseMinutes(time?: string): number {
 export function nextDayMeals(shiftKey: MealDayKey, dayMeals: DayMeals): Set<MealKey> {
   const startHour = REPRESENTATIVE_START[shiftKey];
   const startMin = startHour === null ? null : startHour * 60;
-  const endMin = startMin === null ? null : startMin + 9 * 60;
   let cursor: number | null = null;
   const next = new Set<MealKey>();
 
   for (const meal of MEAL_KEYS) {
     const rule: MealRule = dayMeals[meal];
-    if (rule.mode === 'off') continue;
-    if (rule.mode === 'before_start') {
-      if (startMin !== null) cursor = startMin - (rule.minutes ?? 120);
-      continue;
-    }
-    if (rule.mode === 'after_end') {
-      if (endMin !== null) {
-        cursor = endMin + (rule.minutes ?? 60);
-        if (cursor >= 24 * 60) next.add(meal);
-      }
-      continue;
-    }
+    if (rule.mode !== 'fixed') continue;
     let candidate = parseMinutes(rule.time);
     if (cursor !== null) {
       while (candidate <= cursor) candidate += 24 * 60;

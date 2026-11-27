@@ -3,7 +3,6 @@ package com.rudnam.samfran.core.model
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 
@@ -15,8 +14,6 @@ enum class MealKind(val api: String) {
 
 enum class MealRuleMode(val api: String) {
     Fixed("fixed"),
-    BeforeStart("before_start"),
-    AfterEnd("after_end"),
     Off("off"),
     ;
 
@@ -29,8 +26,6 @@ data class MealRule(
     val mode: MealRuleMode,
     /** 24h "HH:MM" when [mode] is [MealRuleMode.Fixed]. */
     val time: String = "12:00",
-    /** 1..360 when [mode] is [MealRuleMode.BeforeStart] or [MealRuleMode.AfterEnd]. */
-    val minutes: Int = 120,
 )
 
 data class DayMeals(
@@ -52,11 +47,10 @@ data class DayMeals(
 }
 
 val MEAL_DAY_KEYS = listOf("Early", "Middle", "Late", "Night", "Off")
-val MEAL_OFFSETS = listOf(15, 30, 45, 60, 90, 120, 150, 180, 210, 240, 300, 360)
 
 fun defaultMealReminders(): Map<String, DayMeals> = mapOf(
     "Early" to DayMeals(
-        breakfast = MealRule(MealRuleMode.BeforeStart, minutes = 120),
+        breakfast = MealRule(MealRuleMode.Fixed, time = "05:00"),
         lunch = MealRule(MealRuleMode.Fixed, time = "11:00"),
         dinner = MealRule(MealRuleMode.Fixed, time = "18:00"),
     ),
@@ -102,7 +96,6 @@ private fun parseLocalTime(s: String): LocalTime? = runCatching { LocalTime.pars
 private fun resolveDayMeals(
     date: LocalDate,
     shiftStart: ZonedDateTime?,
-    shiftEnd: ZonedDateTime?,
     dayMeals: DayMeals,
     zone: ZoneId,
 ): List<Pair<MealKind, ZonedDateTime>> {
@@ -110,35 +103,19 @@ private fun resolveDayMeals(
     var cursor: ZonedDateTime? = null
     for (meal in MealKind.entries) {
         val rule = dayMeals[meal]
-        when (rule.mode) {
-            MealRuleMode.Off -> continue
-            MealRuleMode.BeforeStart -> {
-                val start = shiftStart ?: continue
-                val at = start.minusMinutes(rule.minutes.toLong())
-                cursor = at
-                result += meal to at
+        if (rule.mode != MealRuleMode.Fixed) continue
+        val local = parseLocalTime(rule.time) ?: continue
+        var candidate = ZonedDateTime.of(date, local, zone)
+        val c = cursor
+        if (c != null) {
+            while (!candidate.isAfter(c)) {
+                candidate = candidate.plusDays(1)
             }
-            MealRuleMode.AfterEnd -> {
-                val end = shiftEnd ?: continue
-                val at = end.plusMinutes(rule.minutes.toLong())
-                cursor = at
-                result += meal to at
-            }
-            MealRuleMode.Fixed -> {
-                val local = parseLocalTime(rule.time) ?: continue
-                var candidate = ZonedDateTime.of(date, local, zone)
-                val c = cursor
-                if (c != null) {
-                    while (!candidate.isAfter(c)) {
-                        candidate = candidate.plusDays(1)
-                    }
-                } else if (shiftStart != null && candidate.isBefore(shiftStart.minusHours(6))) {
-                    candidate = candidate.plusDays(1)
-                }
-                cursor = candidate
-                result += meal to candidate
-            }
+        } else if (shiftStart != null && candidate.isBefore(shiftStart.minusHours(6))) {
+            candidate = candidate.plusDays(1)
         }
+        cursor = candidate
+        result += meal to candidate
     }
     return result
 }
@@ -162,8 +139,7 @@ fun computeMealReminders(
         }
         val dayMeals = schedule[key] ?: defaults[key] ?: continue
         val shiftStart = day.start?.atZoneSameInstant(zone)
-        val shiftEnd = day.end?.atZoneSameInstant(zone)
-        for ((meal, at) in resolveDayMeals(day.date, shiftStart, shiftEnd, dayMeals, zone)) {
+        for ((meal, at) in resolveDayMeals(day.date, shiftStart, dayMeals, zone)) {
             val instant = at.toInstant()
             if (instant.isAfter(now)) {
                 out += ScheduledMeal(at = instant, meal = meal, shiftKey = key)
@@ -179,8 +155,7 @@ fun nextDayMeals(shiftKey: String, dayMeals: DayMeals): Set<MealKind> {
     val zone = ZoneId.of("UTC")
     val startHour = REPRESENTATIVE_START[shiftKey]
     val start = startHour?.let { ZonedDateTime.of(baseDate, LocalTime.of(it, 0), zone) }
-    val end = start?.plusHours(9)
-    return resolveDayMeals(baseDate, start, end, dayMeals, zone)
+    return resolveDayMeals(baseDate, start, dayMeals, zone)
         .filter { (_, at) -> at.toLocalDate().isAfter(baseDate) }
         .map { (meal, _) -> meal }
         .toSet()

@@ -98,13 +98,9 @@
     <string name="meal_breakfast">朝食</string>
     <string name="meal_lunch">昼食</string>
     <string name="meal_dinner">夕食</string>
-    <string name="meal_mode_fixed">時刻指定</string>
-    <string name="meal_mode_before">勤務開始前</string>
-    <string name="meal_mode_after">勤務終了後</string>
     <string name="meal_mode_off">オフ</string>
     <string name="meal_next_day">翌日</string>
-    <string name="meal_offset_hour_1">1時間</string>
-    <string name="meal_offset_hours">%d時間</string>
-    <string name="meal_offset_minutes">%d分</string>
+    <string name="meal_set_time">時刻を設定</string>
+    <string name="meal_turn_off">%sをオフにする</string>
     <string name="meal_reset_defaults">初期設定に戻す</string>
 </resources>

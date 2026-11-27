@@ -8,18 +8,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -46,17 +43,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.designsystem.component.CardTitle
 import com.rudnam.samfran.core.designsystem.component.ErrorText
 import com.rudnam.samfran.core.designsystem.component.Hint
+import com.rudnam.samfran.core.designsystem.component.LinkButton
 import com.rudnam.samfran.core.designsystem.component.PageTitle
 import com.rudnam.samfran.core.designsystem.component.PrimaryButton
 import com.rudnam.samfran.core.designsystem.component.SamFranCard
 import com.rudnam.samfran.core.designsystem.component.SecondaryButton
 import com.rudnam.samfran.core.designsystem.component.Skeleton
+import com.rudnam.samfran.core.designsystem.icon.LineIcon
+import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.model.MEAL_DAY_KEYS
-import com.rudnam.samfran.core.model.MEAL_OFFSETS
 import com.rudnam.samfran.core.model.MealKind
 import com.rudnam.samfran.core.model.MealRule
 import com.rudnam.samfran.core.model.MealRuleMode
+import com.rudnam.samfran.core.model.defaultMealReminders
 import com.rudnam.samfran.core.model.nextDayMeals
 import com.rudnam.samfran.core.ui.SubPage
 import com.rudnam.samfran.core.ui.problem
@@ -92,6 +92,7 @@ fun ShiftMealRemindersScreen(
     onBack: () -> Unit,
 ) {
     val colors = SamFranTheme.colors
+    val defaults = remember { defaultMealReminders() }
     SubPage(onBack = onBack) {
         PageTitle(stringResource(R.string.meal_reminders))
         SamFranCard {
@@ -126,8 +127,8 @@ fun ShiftMealRemindersScreen(
         Hint(stringResource(R.string.meal_schedule_hint))
         for (shiftKey in MEAL_DAY_KEYS) {
             val dayMeals = state.meals[shiftKey] ?: continue
-            val working = shiftKey != "Off"
             val nextDays = nextDayMeals(shiftKey, dayMeals)
+            val defaultDay = defaults[shiftKey]
             SamFranCard(spacing = 6) {
                 CardTitle(shiftTitle(shiftKey))
                 MealKind.entries.forEachIndexed { idx, meal ->
@@ -135,7 +136,7 @@ fun ShiftMealRemindersScreen(
                     MealRuleRow(
                         meal = meal,
                         rule = dayMeals[meal],
-                        working = working,
+                        defaultTime = defaultDay?.get(meal)?.time ?: "12:00",
                         isNextDay = meal in nextDays,
                         onChange = { actions.setRule(shiftKey, meal, it) },
                     )
@@ -161,90 +162,50 @@ fun ShiftMealRemindersScreen(
 private fun MealRuleRow(
     meal: MealKind,
     rule: MealRule,
-    working: Boolean,
+    defaultTime: String,
     isNextDay: Boolean,
     onChange: (MealRule) -> Unit,
 ) {
     val colors = SamFranTheme.colors
-    var modeOpen by remember { mutableStateOf(false) }
-    var offsetOpen by remember { mutableStateOf(false) }
     var timeOpen by remember { mutableStateOf(false) }
+    val mealName = mealTitle(meal)
 
-    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(mealTitle(meal), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box {
-                    ChipButton(modeLabel(rule.mode)) { modeOpen = true }
-                    DropdownMenu(expanded = modeOpen, onDismissRequest = { modeOpen = false }) {
-                        val modes = buildList {
-                            add(MealRuleMode.Fixed)
-                            if (working) {
-                                add(MealRuleMode.BeforeStart)
-                                add(MealRuleMode.AfterEnd)
-                            }
-                            add(MealRuleMode.Off)
-                        }
-                        for (m in modes) {
-                            DropdownMenuItem(
-                                text = { Text(modeLabel(m)) },
-                                onClick = {
-                                    modeOpen = false
-                                    onChange(
-                                        when (m) {
-                                            MealRuleMode.Fixed -> MealRule(MealRuleMode.Fixed, time = rule.time)
-                                            MealRuleMode.BeforeStart -> MealRule(MealRuleMode.BeforeStart, minutes = rule.minutes)
-                                            MealRuleMode.AfterEnd -> MealRule(MealRuleMode.AfterEnd, minutes = rule.minutes)
-                                            MealRuleMode.Off -> MealRule(MealRuleMode.Off)
-                                        },
-                                    )
-                                },
-                            )
-                        }
-                    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(mealName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+        if (rule.mode == MealRuleMode.Fixed) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (isNextDay) {
+                    Text(
+                        stringResource(R.string.meal_next_day),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.muted,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .border(1.dp, colors.divider, RoundedCornerShape(999.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    )
                 }
-                when (rule.mode) {
-                    MealRuleMode.Fixed -> {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            ChipButton(rule.time) { timeOpen = true }
-                            if (isNextDay) {
-                                Text(
-                                    stringResource(R.string.meal_next_day),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = colors.muted,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(999.dp))
-                                        .border(1.dp, colors.divider, RoundedCornerShape(999.dp))
-                                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                                )
-                            }
-                        }
-                    }
-                    MealRuleMode.BeforeStart, MealRuleMode.AfterEnd -> {
-                        Box {
-                            ChipButton(offsetLabel(rule.minutes)) { offsetOpen = true }
-                            DropdownMenu(expanded = offsetOpen, onDismissRequest = { offsetOpen = false }) {
-                                for (m in MEAL_OFFSETS) {
-                                    DropdownMenuItem(
-                                        text = { Text(offsetLabel(m)) },
-                                        onClick = {
-                                            offsetOpen = false
-                                            onChange(rule.copy(minutes = m))
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    MealRuleMode.Off -> {}
+                ChipButton(rule.time) { timeOpen = true }
+                IconButton(onClick = { onChange(MealRule(MealRuleMode.Off)) }) {
+                    LineIcon(
+                        SamFranIcons.close,
+                        stringResource(R.string.meal_turn_off, mealName),
+                        tint = colors.muted,
+                        size = 18.dp,
+                    )
+                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.meal_mode_off), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+                LinkButton(stringResource(R.string.meal_set_time)) {
+                    onChange(MealRule(MealRuleMode.Fixed, time = defaultTime))
                 }
             }
         }
@@ -306,19 +267,4 @@ private fun mealTitle(meal: MealKind): String = when (meal) {
     MealKind.Breakfast -> stringResource(R.string.meal_breakfast)
     MealKind.Lunch -> stringResource(R.string.meal_lunch)
     MealKind.Dinner -> stringResource(R.string.meal_dinner)
-}
-
-@Composable
-private fun modeLabel(mode: MealRuleMode): String = when (mode) {
-    MealRuleMode.Fixed -> stringResource(R.string.meal_mode_fixed)
-    MealRuleMode.BeforeStart -> stringResource(R.string.meal_mode_before)
-    MealRuleMode.AfterEnd -> stringResource(R.string.meal_mode_after)
-    MealRuleMode.Off -> stringResource(R.string.meal_mode_off)
-}
-
-@Composable
-private fun offsetLabel(minutes: Int): String = when {
-    minutes % 60 == 0 && minutes / 60 == 1 -> stringResource(R.string.meal_offset_hour_1)
-    minutes % 60 == 0 -> stringResource(R.string.meal_offset_hours, minutes / 60)
-    else -> stringResource(R.string.meal_offset_minutes, minutes)
 }

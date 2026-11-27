@@ -496,7 +496,7 @@ func TestShiftMealRemindersAndPush(t *testing.T) {
 	if code := fran.do("GET", "/api/shifts/settings", nil, &st); code != 200 {
 		t.Fatalf("get settings: %d", code)
 	}
-	if st.MealReminders["Early"].Breakfast.Mode != shift.MealBeforeStart || st.MealReminders["Early"].Breakfast.Minutes != 120 {
+	if st.MealReminders["Early"].Breakfast.Mode != shift.MealFixed || st.MealReminders["Early"].Breakfast.Time != "05:00" {
 		t.Errorf("default Early breakfast: %+v", st.MealReminders["Early"].Breakfast)
 	}
 	if st.MealReminders["Night"].Lunch.Time != "03:00" || st.MealReminders["Off"].Dinner.Time != "19:00" {
@@ -519,31 +519,20 @@ func TestShiftMealRemindersAndPush(t *testing.T) {
 	}, nil); code != 400 {
 		t.Errorf("bad time: %d, want 400", code)
 	}
-	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{
-		"meal_reminders": map[string]any{
-			"Off": map[string]any{
-				"breakfast": map[string]any{"mode": "before_start", "minutes": 60},
-				"lunch":     map[string]any{"mode": "off"},
-				"dinner":    map[string]any{"mode": "off"},
-			},
-		},
-	}, nil); code != 400 {
-		t.Errorf("relative on Off: %d, want 400", code)
-	}
 
 	// Updating meal reminders saves them, logs meal_reminders: true, and pushes shifts_changed.
 	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{
 		"meal_reminders": map[string]any{
 			"Early": map[string]any{
-				"breakfast": map[string]any{"mode": "before_start", "minutes": 90},
+				"breakfast": map[string]any{"mode": "fixed", "time": "05:30"},
 				"lunch":     map[string]any{"mode": "fixed", "time": "12:00"},
-				"dinner":    map[string]any{"mode": "after_end", "minutes": 60},
+				"dinner":    map[string]any{"mode": "off"},
 			},
 		},
 	}, &st); code != 200 {
 		t.Fatalf("save meal_reminders: %d", code)
 	}
-	if st.MealReminders["Early"].Breakfast.Minutes != 90 || st.MealReminders["Early"].Dinner.Mode != shift.MealAfterEnd {
+	if st.MealReminders["Early"].Breakfast.Time != "05:30" || st.MealReminders["Early"].Dinner.Mode != shift.MealOff {
 		t.Errorf("saved Early: %+v", st.MealReminders["Early"])
 	}
 	push.waitFor(t, "sam-phone", "shifts_changed")
@@ -552,7 +541,7 @@ func TestShiftMealRemindersAndPush(t *testing.T) {
 	if code := fran.do("PUT", "/api/shifts/settings", map[string]any{"person_name": "Sam"}, &st); code != 200 {
 		t.Fatalf("partial settings: %d", code)
 	}
-	if st.MealReminders["Early"].Breakfast.Minutes != 90 {
+	if st.MealReminders["Early"].Breakfast.Time != "05:30" {
 		t.Errorf("meal_reminders lost on partial PUT: %+v", st.MealReminders["Early"])
 	}
 

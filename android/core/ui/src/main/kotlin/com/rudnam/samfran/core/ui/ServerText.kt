@@ -137,8 +137,6 @@ object ServerText {
         "a thumbnail must be at most {max} KB" to "サムネイルは{max}KBまでです",
         "the thumbnail must be a JPEG, PNG or WebP picture" to "サムネイルはJPEG・PNG・WebPの画像にしてください",
         "invalid meal reminder time" to "食事リマインダーの時刻が正しくありません",
-        "meal offset must be from 1 to 360 minutes" to "シフトとの時間差は1〜360分にしてください",
-        "relative meal times are only for working shifts" to "シフト基準の時刻は勤務日のみ設定できます",
     )
 }
 

@@ -376,12 +376,11 @@ export type ReadProgress =
   | { stage: 'sending'; sent: number }
   | { stage: 'reading'; name_as_read?: string; days_read: number; days_in_month: number };
 
-export type MealRuleMode = 'fixed' | 'before_start' | 'after_end' | 'off';
+export type MealRuleMode = 'fixed' | 'off';
 
 export interface MealRule {
   mode: MealRuleMode;
   time?: string;
-  minutes?: number;
 }
 
 export interface DayMeals {

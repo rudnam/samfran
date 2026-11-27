@@ -98,13 +98,9 @@
     <string name="meal_breakfast">Breakfast</string>
     <string name="meal_lunch">Lunch</string>
     <string name="meal_dinner">Dinner</string>
-    <string name="meal_mode_fixed">At time</string>
-    <string name="meal_mode_before">Before shift</string>
-    <string name="meal_mode_after">After shift</string>
     <string name="meal_mode_off">Off</string>
     <string name="meal_next_day">Next day</string>
-    <string name="meal_offset_hour_1">1 hour</string>
-    <string name="meal_offset_hours">%d hours</string>
-    <string name="meal_offset_minutes">%d min</string>
+    <string name="meal_set_time">Set time</string>
+    <string name="meal_turn_off">Turn off %s</string>
     <string name="meal_reset_defaults">Reset to defaults</string>
 </resources>
