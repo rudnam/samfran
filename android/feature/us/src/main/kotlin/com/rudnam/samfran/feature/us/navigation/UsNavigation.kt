@@ -3,6 +3,7 @@ package com.rudnam.samfran.feature.us.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.samfran.core.designsystem.component.Page
 import com.rudnam.samfran.feature.us.LockAppDestination
 import com.rudnam.samfran.feature.us.LocksDestination
 import com.rudnam.samfran.feature.us.UsDestination
@@ -32,7 +33,7 @@ interface UsNavigation {
 }
 
 fun NavGraphBuilder.usScreen(navigation: UsNavigation, @Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState) {
-    composable<UsRoute> { UsDestination(navigation) }
-    composable<LocksRoute> { LocksDestination(navigation) }
-    composable<LockAppRoute> { LockAppDestination(navigation) }
+    composable<UsRoute> { Page { UsDestination(navigation) } }
+    composable<LocksRoute> { Page { LocksDestination(navigation) } }
+    composable<LockAppRoute> { Page { LockAppDestination(navigation) } }
 }

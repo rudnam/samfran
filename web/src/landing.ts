@@ -12,21 +12,6 @@ else {
     setLanguage(language() === 'ja' ? 'en' : 'ja');
     translate();
   });
-  offerDownload();
-}
-
-// "Download for Android" shows while the server offers the APK (ANDROID_APK).
-function offerDownload() {
-  fetch('/api/downloads')
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d: { android?: { url: string } | null } | null) => {
-      if (!d?.android) return;
-      document.querySelectorAll<HTMLAnchorElement>('[data-download]').forEach((a) => {
-        a.href = d.android!.url;
-        a.hidden = false;
-      });
-    })
-    .catch(() => {}); // without it, the page simply has no download button
 }
 
 // The page is written in English; each text's Japanese is in its data-ja

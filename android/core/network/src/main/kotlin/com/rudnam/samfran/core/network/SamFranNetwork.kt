@@ -20,6 +20,8 @@ import com.rudnam.samfran.core.network.model.NetworkName
 import com.rudnam.samfran.core.network.model.NetworkReadProgress
 import com.rudnam.samfran.core.network.model.NetworkReadStarted
 import com.rudnam.samfran.core.network.model.NetworkBeen
+import com.rudnam.samfran.core.network.model.NetworkVisitInput
+import com.rudnam.samfran.core.network.model.NetworkRideDone
 import com.rudnam.samfran.core.network.model.NetworkRestaurant
 import com.rudnam.samfran.core.network.model.NetworkRestaurantInput
 import com.rudnam.samfran.core.network.model.NetworkSaveShifts
@@ -28,6 +30,7 @@ import com.rudnam.samfran.core.network.model.NetworkShiftSettings
 import com.rudnam.samfran.core.network.model.NetworkShiftSettingsInput
 import com.rudnam.samfran.core.network.model.NetworkSpace
 import com.rudnam.samfran.core.network.model.NetworkCommentInput
+import com.rudnam.samfran.core.network.model.NetworkCoverInput
 import com.rudnam.samfran.core.network.model.NetworkStars
 import com.rudnam.samfran.core.network.model.NetworkLockAnswer
 import com.rudnam.samfran.core.network.model.NetworkLockAsk
@@ -39,6 +42,7 @@ import com.rudnam.samfran.core.network.model.NetworkPushToken
 import com.rudnam.samfran.core.network.model.NetworkCheckIn
 import kotlinx.coroutines.delay
 import kotlinx.serialization.json.Json
+import java.io.InputStream
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -57,9 +61,41 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
 import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** A photo to send as it is: its kind, size and pixels, and a way to read it. */
+class PhotoUpload(
+    val name: String,
+    val contentType: String,
+    /** Bytes; -1 when not known. */
+    val size: Long,
+    val width: Int,
+    val height: Int,
+    val open: () -> java.io.InputStream,
+)
+
+/** [photo] as a request body, read as it's written, telling [onProgress] how far it's got. */
+private class StreamBody(private val photo: PhotoUpload, private val onProgress: (Float) -> Unit) : okhttp3.RequestBody() {
+    override fun contentType() = photo.contentType.toMediaType()
+    override fun contentLength() = photo.size
+    override fun writeTo(sink: okio.BufferedSink) {
+        photo.open().use { input ->
+            val buf = ByteArray(64 * 1024)
+            var sent = 0L
+            while (true) {
+                val n = input.read(buf)
+                if (n < 0) break
+                sink.write(buf, 0, n)
+                sent += n
+                if (photo.size > 0) onProgress((sent.toFloat() / photo.size).coerceAtMost(1f))
+            }
+        }
+    }
+}
 
 /** The session has ended (a 401 on a signed-in request): the app goes back to signing in. */
 class SignedOutException : java.io.IOException("Not signed in")
@@ -97,6 +133,22 @@ internal interface SamFranApi {
     @DELETE("api/restaurants/{id}") suspend fun deleteRestaurant(@Path("id") id: Long): Response<Unit>
     @PUT("api/restaurants/{id}/been") suspend fun setBeen(@Path("id") id: Long, @Body body: NetworkBeen): NetworkRestaurant
     @DELETE("api/restaurants/{id}/been") suspend fun clearBeen(@Path("id") id: Long): NetworkRestaurant
+    @POST("api/restaurants/{id}/visits") suspend fun addVisit(@Path("id") id: Long, @Body body: NetworkVisitInput): NetworkRestaurant
+    @PATCH("api/restaurants/{id}/visits/{visit}") suspend fun updateVisit(@Path("id") id: Long, @Path("visit") visit: Long, @Body body: NetworkVisitInput): NetworkRestaurant
+    @DELETE("api/restaurants/{id}/visits/{visit}") suspend fun deleteVisit(@Path("id") id: Long, @Path("visit") visit: Long): NetworkRestaurant
+    @Multipart
+    @POST("api/restaurants/{id}/visits/{visit}/photos")
+    suspend fun addPhoto(
+        @Path("id") id: Long,
+        @Path("visit") visit: Long,
+        @Part width: MultipartBody.Part,
+        @Part height: MultipartBody.Part,
+        @Part thumb: MultipartBody.Part,
+        @Part photo: MultipartBody.Part,
+    ): NetworkRestaurant
+    @DELETE("api/restaurants/{id}/photos/{photo}") suspend fun deletePhoto(@Path("id") id: Long, @Path("photo") photo: Long): NetworkRestaurant
+    @Streaming @GET suspend fun photo(@Url url: String): ResponseBody
+    @PUT("api/restaurants/{id}/cover") suspend fun setCover(@Path("id") id: Long, @Body body: NetworkCoverInput): NetworkRestaurant
     @POST("api/restaurants/{id}/comments") suspend fun addComment(@Path("id") id: Long, @Body body: NetworkCommentInput): NetworkRestaurant
     @DELETE("api/restaurants/{id}/comments/{comment}") suspend fun deleteComment(@Path("id") id: Long, @Path("comment") comment: Long): NetworkRestaurant
     @PUT("api/restaurants/{id}/rating") suspend fun rate(@Path("id") id: Long, @Body body: NetworkStars): NetworkRestaurant
@@ -122,6 +174,7 @@ internal interface SamFranApi {
     @PUT("api/bus/stops/{id}") suspend fun changeBusStop(@Path("id") id: Long, @Body body: NetworkBusStopInput): NetworkBusStops
     @DELETE("api/bus/stops/{id}") suspend fun deleteBusStop(@Path("id") id: Long): NetworkBusStops
     @POST("api/bus/stops/{id}/use") suspend fun useBusStop(@Path("id") id: Long): NetworkBusStops
+    @POST("api/bus/stops/{id}/done") suspend fun busRideDone(@Path("id") id: Long, @Body body: NetworkRideDone): NetworkBusStops
     @GET("api/bus/search") suspend fun searchStops(@Query("q") q: String, @Query("lat") lat: Double?, @Query("lng") lng: Double?): List<NetworkFoundStop>
 
     @GET("api/activity") suspend fun activity(@Query("bus") bus: Int? = null): List<NetworkActivity>
@@ -174,6 +227,32 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun deleteRestaurant(id: Long) = call { api.deleteRestaurant(id).orThrow() }
     suspend fun setBeen(id: Long, visitedOn: String) = call { api.setBeen(id, NetworkBeen(visitedOn)) }
     suspend fun clearBeen(id: Long) = call { api.clearBeen(id) }
+    suspend fun addVisit(id: Long, visitedOn: String, note: String) = call { api.addVisit(id, NetworkVisitInput(visitedOn, note)) }
+    suspend fun updateVisit(id: Long, visit: Long, visitedOn: String, note: String) = call { api.updateVisit(id, visit, NetworkVisitInput(visitedOn, note)) }
+    suspend fun deleteVisit(id: Long, visit: Long) = call { api.deleteVisit(id, visit) }
+    suspend fun deletePhoto(id: Long, photo: Long) = call { api.deletePhoto(id, photo) }
+    suspend fun setCover(id: Long, photo: Long) = call { api.setCover(id, NetworkCoverInput(photo)) }
+
+    /** Reads a photo's original at [url], as it was taken, handing [write] its kind and bytes as they come. */
+    suspend fun downloadPhoto(url: String, write: (contentType: String?, InputStream) -> Unit) = call {
+        api.photo(url).use { write(it.contentType()?.toString(), it.byteStream()) }
+    }
+
+    /**
+     * Adds a photo to a visit: [original] exactly as it was taken (read as
+     * it's sent, never whole in memory), after [thumb], a small JPEG made on
+     * the phone. [onProgress] hears how much has gone, 0 to 1.
+     */
+    suspend fun addPhoto(id: Long, visit: Long, original: PhotoUpload, thumb: ByteArray, onProgress: (Float) -> Unit = {}) = call {
+        api.addPhoto(
+            id,
+            visit,
+            MultipartBody.Part.createFormData("width", original.width.toString()),
+            MultipartBody.Part.createFormData("height", original.height.toString()),
+            MultipartBody.Part.createFormData("thumb", "thumb.jpg", thumb.toRequestBody("image/jpeg".toMediaType())),
+            MultipartBody.Part.createFormData("photo", original.name, StreamBody(original, onProgress)),
+        )
+    }
     suspend fun rate(id: Long, stars: Int) = call { api.rate(id, NetworkStars(stars)) }
     suspend fun addComment(id: Long, body: String) = call { api.addComment(id, NetworkCommentInput(body)) }
     suspend fun deleteComment(id: Long, comment: Long) = call { api.deleteComment(id, comment) }
@@ -227,6 +306,7 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
     suspend fun changeBusStop(id: Long, body: NetworkBusStopInput) = call { api.changeBusStop(id, body) }
     suspend fun deleteBusStop(id: Long) = call { api.deleteBusStop(id) }
     suspend fun useBusStop(id: Long) = call { api.useBusStop(id) }
+    suspend fun busRideDone(id: Long, arrived: Boolean) = call { api.busRideDone(id, NetworkRideDone(arrived)) }
     suspend fun searchStops(q: String, lat: Double?, lng: Double?) = call { api.searchStops(q, lat, lng) }
 
     suspend fun activity() = call { api.activity() }

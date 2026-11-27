@@ -2,8 +2,9 @@
 // Messaging (FCM): the Android app registers its token here
 // (PUT /api/push/token), and features call Notifier.Notify with a few
 // strings of data, which the app turns into a notification. Locked apps
-// (internal/applock) use it, since asking to open one can't wait for the
-// phone's half-hourly check (internal/activity).
+// (internal/applock) use it, since asking to open one can't wait, and so
+// does the log of changes (internal/activity), so the other person hears
+// of a change at once rather than at the phone's half-hourly check.
 //
 // Without FIREBASE_SERVICE_ACCOUNT nothing is sent; everything else works,
 // and the app finds out when it next asks the server.

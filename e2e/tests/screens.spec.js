@@ -1,7 +1,7 @@
 // Screenshots of the main screens at phone and desktop width. They land in
 // e2e/test-results/ (and in CI's artifacts), so you can look at a change
 // without running anything. Add your own screens here.
-const { test, expect, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
+const { test, expect, addPhoto, signUp, standAt, pickCategory, pickOrder } = require('./fixtures');
 
 for (const [name, viewport] of [
   ['phone', { width: 390, height: 844 }],
@@ -12,8 +12,11 @@ for (const [name, viewport] of [
     await standAt(page, 34.7038, 137.7349); // Hamamatsu Station
     await page.route('**/api/restaurants/map', (route) => route.fulfill({ json: { key: 'test-key' } }));
     // animations: 'disabled' jumps entrances to their end, so each picture shows the settled screen.
-    const shot = (label) =>
-      page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true, animations: 'disabled' });
+    // Photos load lazily: each picture waits for those on the page.
+    const shot = async (label) => {
+      await page.evaluate(() => Promise.all([...document.images].map((i) => (i.loading = 'eager') && i.decode().catch(() => {}))));
+      await page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true, animations: 'disabled' });
+    };
 
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -28,6 +31,7 @@ for (const [name, viewport] of [
     await page.reload();
     await shot('2-empty');
     // Sample places through the API, with visits and a rating.
+    const placeIds = {};
     for (const [name, area, cuisine, category, days, stars, lat, lng] of [
       ['Hanabi Grill', 'Station East', 'Hamburg steak', 'eat', 3, 5, 34.7046, 137.7362],
       ['Gyoza Komachi', 'Station East', 'Gyoza', 'eat', 12, 4, 34.7031, 137.7371],
@@ -43,7 +47,20 @@ for (const [name, viewport] of [
       const visit = days === null ? undefined : { visited_on: new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) };
       const res = await page.request.post('/api/restaurants', { data: { name, area, cuisine, category, visit, stars, lat, lng } });
       expect(res.status()).toBe(201);
+      placeIds[name] = (await res.json()).id;
     }
+    // Photos: the cover (chosen, or else the newest) is the place's picture on the list. Hanabi Grill went twice, with photos each time.
+    const hanabi = placeIds['Hanabi Grill'];
+    const again = await page.request.post(`/api/restaurants/${hanabi}/visits`, {
+      data: { visited_on: new Date(Date.now() - 40 * 864e5).toISOString().slice(0, 10), note: 'First time. The demi-glace hamburg, and a long wait for a table.' },
+    });
+    const visitsOf = (await again.json()).visits;
+    for (const hue of [20, 35, 10, 50]) await addPhoto(page, hanabi, visitsOf[0].id, { hue });
+    const withPhotos = await addPhoto(page, hanabi, visitsOf[1].id, { hue: 160, width: 1200, height: 1600 });
+    // Its cover is chosen: the first photo of its latest visit, not the newest.
+    await page.request.put(`/api/restaurants/${hanabi}/cover`, { data: { photo_id: withPhotos.place.visits[0].photos[0].id } });
+    const castle = await (await page.request.get(`/api/restaurants/${placeIds['Castle Park']}`)).json();
+    await addPhoto(page, castle.id, castle.visits[0].id, { hue: 110 });
     await page.reload();
     await expect(page.getByRole('list', { name: 'Been there' }).getByRole('listitem')).toHaveCount(5);
     // Add says what it does at every width, as on Android: a labelled button, not a bare +.
@@ -83,13 +100,21 @@ for (const [name, viewport] of [
     await expect(page.getByRole('dialog', { name: 'Delete Hanabi Grill?' })).toBeVisible();
     await shot('4b-delete-dialog');
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('button', { name: 'Change' }).click();
+    await page.getByRole('button', { name: 'Went again' }).click();
     await expect(page.getByLabel('When did you go?')).toBeVisible();
-    await shot('4c-been-change');
-    await page.getByRole('button', { name: 'Not been yet' }).click();
-    await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
-    await shot('4d-undo');
-    await page.getByRole('button', { name: 'Undo' }).click();
+    await shot('4c-went-again');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: /^Edit the visit on / }).first().click();
+    await shot('4d-visit-edit');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: /^Photo 1 of 4/ }).click();
+    await expect(page.getByRole('img', { name: 'Photo 1 of 4' })).toHaveJSProperty('complete', true);
+    await shot('4f-photo-viewer');
+    await page.getByRole('button', { name: 'More' }).click();
+    await expect(page.getByRole('menu', { name: 'More' })).toBeVisible();
+    await shot('4g-photo-menu');
+    await page.keyboard.press('Escape'); // the menu first, then the viewer
+    await page.keyboard.press('Escape');
     // A want-to-go place: Mark as been asks when.
     await page.getByRole('link', { name: 'Our places' }).click();
     await page.getByRole('link', { name: /Want to go/ }).click();

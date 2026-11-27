@@ -2,7 +2,9 @@
 // (shifts and their settings, the calendar link, restaurants, invitations):
 // who did it, whether from the app or through Claude, and when. The Us tab
 // shows the latest. Features call Log after a change succeeds; a failure to
-// log is logged and never fails the change.
+// log is logged and never fails the change. Each change also tells the
+// other person's phones at once (Store.Notify, internal/push), which then
+// ask GET /api/activity what's new, as their half-hourly check does.
 package activity
 
 import (
@@ -11,6 +13,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/rudnam/samfran/internal/httpx"
@@ -34,7 +37,14 @@ type Entry struct {
 	Details map[string]any `json:"details"`
 }
 
-type Store struct{ db *sql.DB }
+type Store struct {
+	db *sql.DB
+	// Notify, if set, tells a person's phones at once (internal/push).
+	Notify func(ctx context.Context, userID int64, data map[string]string)
+}
+
+// PushType is the push message's type: "something changed, ask what".
+const PushType = "activity"
 
 func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 
@@ -48,24 +58,58 @@ func (s *Store) Log(ctx context.Context, spaceID, userID int64, via, kind string
 		details = map[string]any{}
 	}
 	b, _ := json.Marshal(details)
-	if _, err := s.db.ExecContext(context.WithoutCancel(ctx),
-		`INSERT INTO activity (space_id, user_id, via, kind, details) VALUES ($1, $2, $3, $4, $5)`,
-		spaceID, userID, via, kind, b); err != nil {
+	ctx = context.WithoutCancel(ctx)
+	var id int64
+	if err := s.db.QueryRowContext(ctx,
+		`INSERT INTO activity (space_id, user_id, via, kind, details) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		spaceID, userID, via, kind, b).Scan(&id); err != nil {
 		slog.WarnContext(ctx, "log activity", "kind", kind, "err", err)
+		return
+	}
+	s.notifyOthers(ctx, spaceID, userID, id, kind)
+}
+
+// notifyOthers tells the space's other members' phones about change id.
+// The message carries no details: the phone asks for them, signed in, and
+// words them itself.
+func (s *Store) notifyOthers(ctx context.Context, spaceID, userID, id int64, kind string) {
+	if s.Notify == nil {
+		return
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT user_id FROM space_members WHERE space_id = $1 AND user_id <> $2`, spaceID, userID)
+	if err != nil {
+		slog.WarnContext(ctx, "activity: members", "err", err)
+		return
+	}
+	var others []int64
+	for rows.Next() {
+		var uid int64
+		if rows.Scan(&uid) == nil {
+			others = append(others, uid)
+		}
+	}
+	rows.Close()
+	data := map[string]string{"type": PushType, "id": strconv.FormatInt(id, 10), "kind": kind}
+	for _, uid := range others {
+		s.Notify(ctx, uid, data)
 	}
 }
 
-// BusStarted is a bus alarm starting: logged so the other person's phone
-// can be told, but not one of the changes the Us tab lists.
-const BusStarted = "bus_started"
+// BusStarted and BusEnded are a ride alarm starting and ending (details:
+// the stop's name, and for BusEnded whether the phone got there): logged so
+// the other person's phone can be told, but not changes the Us tab lists.
+const (
+	BusStarted = "bus_started"
+	BusEnded   = "bus_ended"
+)
 
-// List returns the space's latest changes, newest first; with bus, bus
-// alarms started too.
+// List returns the space's latest changes, newest first; with bus, ride
+// alarms started and ended too.
 func (s *Store) List(ctx context.Context, spaceID, me int64, limit int, bus bool) ([]Entry, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT a.id, a.created_at, coalesce(m.display_name, ''), coalesce(u.email, ''), coalesce(a.user_id, 0), a.via, a.kind, a.details
 		FROM activity a LEFT JOIN users u ON u.id = a.user_id LEFT JOIN space_members m ON m.user_id = a.user_id
-		WHERE a.space_id = $1 AND ($3 OR a.kind <> $4) ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, spaceID, limit, bus, BusStarted)
+		WHERE a.space_id = $1 AND ($3 OR a.kind NOT IN ($4, $5)) ORDER BY a.created_at DESC, a.id DESC LIMIT $2`, spaceID, limit, bus, BusStarted, BusEnded)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +134,7 @@ func (s *Store) List(ctx context.Context, spaceID, me int64, limit int, bus bool
 }
 
 // Handler serves GET /api/activity: the latest 50 changes. With ?bus=1
-// (the phone's notification check), bus alarms started are among them.
+// (the phone's notification check), ride alarms started and ended are among them.
 type Handler struct{ store *Store }
 
 func NewHandler(st *Store) *Handler { return &Handler{store: st} }

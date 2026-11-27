@@ -47,6 +47,9 @@ interface BusRepository {
     /** A trip to it has started: it's the one used last. */
     suspend fun use(id: Long): Outcome<BusStops>
 
+    /** The trip to it has ended: [arrived] when the phone got there and buzzed, so the other person is told. */
+    suspend fun done(id: Long, arrived: Boolean): Outcome<BusStops>
+
     /** Stops and stations whose names match [query] (2+ characters); near ones first when [near] is given. */
     suspend fun search(query: String, near: Pair<Double, Double>?): Outcome<List<FoundStop>>
 }
@@ -74,6 +77,8 @@ internal class OfflineFirstBusRepository @Inject constructor(
     override suspend fun remove(id: Long) = keep { network.deleteBusStop(id) }
 
     override suspend fun use(id: Long) = keep { network.useBusStop(id) }
+
+    override suspend fun done(id: Long, arrived: Boolean) = keep { network.busRideDone(id, arrived) }
 
     override suspend fun search(query: String, near: Pair<Double, Double>?) = outcome(io) {
         network.searchStops(query.trim(), near?.first, near?.second).map { it.asModel() }

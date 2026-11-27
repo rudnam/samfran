@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="bus_alarm">乗り過ごしアラーム</string>
-    <string name="bus_subtitle">降りる駅やバス停の手前で知らせます。乗り過ごし防止に。</string>
     <string name="location_denied">降りる場所に近づいたことを知るために位置情報が必要です。スマホの設定で許可してください。</string>
     <string name="your_stop_is_next">もうすぐ降ります</string>
     <string name="practice_run">練習</string>
@@ -35,7 +34,6 @@
     <string name="early_plenty">余裕をもって起きられます。</string>
     <string name="on_bus">バスに乗った</string>
     <string name="try_it_now">今すぐ試す</string>
-    <string name="on_bus_hint">乗ったらタップ。「今すぐ試す」は6秒の練習です。</string>
     <string name="buzz_how">振動の強さ</string>
     <string name="buzz_gentle">弱め</string>
     <string name="buzz_strong">強め</string>

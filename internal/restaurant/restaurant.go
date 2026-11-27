@@ -1,11 +1,10 @@
 // Package restaurant keeps the places you've been to together, or want to go
 // to: restaurants, parks, shrines, onsen… each in a category (category.go),
-// with when you went, what you thought, and each person's own rating. It
-// began as a list of restaurants, which is why it, its table and its API
-// are named so. A place with no visits is on the want-to-go list. The apps
-// show a place as been there (on its newest visit's date, which PUT .../been
-// sets) or not yet; the visits behind that stay in the API for older apps,
-// which still log and list several. Everything belongs
+// with each time you went (a visit: its date, a note and photos, photo.go),
+// what you thought, and each person's own rating. It began as a list of
+// restaurants, which is why it, its table and its API are named so. A place
+// with no visits is on the want-to-go list. Apps from before visits came back
+// show only the newest visit's date, which PUT .../been sets. Everything belongs
 // to the space (internal/space), so both of you see and change the same list.
 package restaurant
 
@@ -52,6 +51,8 @@ type Visit struct {
 	VisitedOn string `json:"visited_on"` // YYYY-MM-DD
 	Note      string `json:"note"`
 	AddedBy   string `json:"added_by"`
+	// Photos, oldest first (photo.go).
+	Photos []Photo `json:"photos"`
 }
 
 // VisitNote is a visit's date and what was written about it.
@@ -85,6 +86,12 @@ type Restaurant struct {
 	VisitCount int       `json:"visit_count"`
 	LastVisit  *string   `json:"last_visit"` // YYYY-MM-DD, or null if you haven't been
 	Ratings    []Rating  `json:"ratings"`
+	// Cover is the thumbnail of the photo you chose for it (SetCover), or
+	// else its newest, which the apps show instead of its category's icon;
+	// null without photos. CoverPhotoID is that photo's id.
+	Cover        *string `json:"cover"`
+	CoverPhotoID *int64  `json:"cover_photo_id"`
+	PhotoCount   int     `json:"photo_count"`
 	// What was written about visits (those with a note), newest first, so a
 	// search can find "where did we have that?".
 	VisitNotes []VisitNote `json:"visit_notes,omitempty"`
@@ -121,7 +128,9 @@ func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
 const selectRestaurants = `
 	SELECT r.id, r.name, r.area, r.cuisine, r.category, r.lat, r.lng, r.map_url, r.notes, coalesce(m.display_name, ''), coalesce(u.email, ''), r.created_at,
 		(SELECT count(*) FROM restaurant_visits v WHERE v.restaurant_id = r.id),
-		(SELECT to_char(max(v.visited_on), 'YYYY-MM-DD') FROM restaurant_visits v WHERE v.restaurant_id = r.id)
+		(SELECT to_char(max(v.visited_on), 'YYYY-MM-DD') FROM restaurant_visits v WHERE v.restaurant_id = r.id),
+		coalesce(r.cover_photo_id, (SELECT max(p.id) FROM restaurant_photos p WHERE p.restaurant_id = r.id)),
+		(SELECT count(*) FROM restaurant_photos p WHERE p.restaurant_id = r.id)
 	FROM restaurants r
 	LEFT JOIN users u ON u.id = r.added_by
 	LEFT JOIN space_members m ON m.user_id = r.added_by`
@@ -137,9 +146,14 @@ func (s *Store) query(ctx context.Context, me int64, where string, args ...any) 
 	for rows.Next() {
 		var r Restaurant
 		var addedName, addedEmail string
+		var cover sql.NullInt64
 		if err := rows.Scan(&r.ID, &r.Name, &r.Area, &r.Cuisine, &r.Category, &r.Lat, &r.Lng, &r.MapURL, &r.Notes, &addedName, &addedEmail,
-			&r.CreatedAt, &r.VisitCount, &r.LastVisit); err != nil {
+			&r.CreatedAt, &r.VisitCount, &r.LastVisit, &cover, &r.PhotoCount); err != nil {
 			return nil, err
+		}
+		if cover.Valid {
+			u, id := thumbURL(cover.Int64), cover.Int64
+			r.Cover, r.CoverPhotoID = &u, &id
 		}
 		if addedEmail != "" {
 			r.AddedBy = space.DisplayName(addedName, addedEmail)
@@ -216,6 +230,10 @@ func (s *Store) Get(ctx context.Context, spaceID, me, id int64) (Restaurant, err
 		return Restaurant{}, db.ErrNotFound
 	}
 	r := list[0]
+	photos, err := s.photosOf(ctx, id)
+	if err != nil {
+		return r, err
+	}
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT v.id, to_char(v.visited_on, 'YYYY-MM-DD'), v.note, coalesce(m.display_name, ''), coalesce(u.email, '')
 		FROM restaurant_visits v LEFT JOIN users u ON u.id = v.added_by LEFT JOIN space_members m ON m.user_id = v.added_by
@@ -233,6 +251,10 @@ func (s *Store) Get(ctx context.Context, spaceID, me, id int64) (Restaurant, err
 		}
 		if email != "" {
 			v.AddedBy = space.DisplayName(name, email)
+		}
+		v.Photos = photos[v.ID]
+		if v.Photos == nil {
+			v.Photos = []Photo{}
 		}
 		r.Visits = append(r.Visits, v)
 	}
@@ -367,6 +389,14 @@ func (s *Store) AddVisit(ctx context.Context, spaceID, by, id int64, on, note st
 	return oneRow(res, err)
 }
 
+// UpdateVisit changes a visit's date and note.
+func (s *Store) UpdateVisit(ctx context.Context, spaceID, id, visitID int64, on, note string) error {
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE restaurant_visits v SET visited_on = $4, note = $5 FROM restaurants r
+		WHERE v.id = $3 AND v.restaurant_id = r.id AND r.id = $1 AND r.space_id = $2`, id, spaceID, visitID, on, note)
+	return oneRow(res, err)
+}
+
 func (s *Store) DeleteVisit(ctx context.Context, spaceID, id, visitID int64) error {
 	res, err := s.db.ExecContext(ctx, `
 		DELETE FROM restaurant_visits v USING restaurants r
@@ -390,25 +420,6 @@ func (s *Store) SetBeen(ctx context.Context, spaceID, by, id int64, on string) (
 		return false, err
 	}
 	return true, s.AddVisit(ctx, spaceID, by, id, on, "")
-}
-
-// AddToNotes adds a line to the end of one of the space's restaurant's notes
-// (cut to fit their limit), so what Claude was told is where the apps show it.
-func (s *Store) AddToNotes(ctx context.Context, spaceID, id int64, line string) error {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE restaurants SET notes = left(CASE WHEN notes = '' THEN $3 ELSE notes || E'\n' || $3 END, $4)
-		WHERE id = $1 AND space_id = $2`, id, spaceID, line, maxNotes)
-	return oneRow(res, err)
-}
-
-// NoteVisit adds what was written about a visit (if anything) to its place's
-// notes, as "2026-11-14 · note": the apps show the place's notes, not the
-// visits' (migration 024 did the same for the notes written before).
-func (s *Store) NoteVisit(ctx context.Context, spaceID, id int64, on, note string) error {
-	if note = strings.TrimSpace(note); note == "" {
-		return nil
-	}
-	return s.AddToNotes(ctx, spaceID, id, on+" · "+note)
 }
 
 // ClearBeen puts one of the space's restaurants back on the want-to-go list:
@@ -517,7 +528,13 @@ func (h *Handler) Register(mux *http.ServeMux, requireSpace func(http.Handler) h
 	route("PATCH /api/restaurants/{id}", h.update)
 	route("DELETE /api/restaurants/{id}", h.delete)
 	route("POST /api/restaurants/{id}/visits", h.addVisit)
+	route("PATCH /api/restaurants/{id}/visits/{visit}", h.updateVisit)
 	route("DELETE /api/restaurants/{id}/visits/{visit}", h.deleteVisit)
+	route("POST /api/restaurants/{id}/visits/{visit}/photos", h.addPhoto)
+	route("DELETE /api/restaurants/{id}/photos/{photo}", h.deletePhoto)
+	route("PUT /api/restaurants/{id}/cover", h.setCover)
+	route("GET /api/photos/{id}", h.servePhoto(false))
+	route("GET /api/photos/{id}/thumb", h.servePhoto(true))
 	route("PUT /api/restaurants/{id}/been", h.setBeen)
 	route("DELETE /api/restaurants/{id}/been", h.clearBeen)
 	route("PUT /api/restaurants/{id}/rating", h.rate)
@@ -682,9 +699,6 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) error {
 		if err := h.store.AddVisit(r.Context(), sp, me, id, visit.VisitedOn, visit.Note); err != nil {
 			return err
 		}
-		if err := h.store.NoteVisit(r.Context(), sp, id, visit.VisitedOn, visit.Note); err != nil {
-			return err
-		}
 	}
 	if in.Stars > 0 {
 		if err := h.store.Rate(r.Context(), sp, me, id, in.Stars); err != nil {
@@ -786,22 +800,65 @@ func (h *Handler) addVisit(w http.ResponseWriter, r *http.Request) error {
 	} else if err != nil {
 		return err
 	}
-	if err := h.store.NoteVisit(r.Context(), space.SpaceFrom(r), id, v.VisitedOn, v.Note); err != nil {
-		return err
-	}
 	h.log(r, "visit_logged", id, map[string]any{"date": v.VisitedOn})
 	return h.respond(w, r, http.StatusCreated, id)
+}
+
+// updateVisit is PATCH .../visits/{visit}: its date and note; one left out
+// keeps its value.
+func (h *Handler) updateVisit(w http.ResponseWriter, r *http.Request) error {
+	id, ok := pathID(r, "id")
+	visit, ok2 := pathID(r, "visit")
+	if !ok || !ok2 {
+		return errNoVisit
+	}
+	var in struct {
+		VisitedOn *string `json:"visited_on"`
+		Note      *string `json:"note"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	cur, err := h.store.Get(r.Context(), space.SpaceFrom(r), account.UserFrom(r).ID, id)
+	if errors.Is(err, db.ErrNotFound) {
+		return errNoSuch
+	} else if err != nil {
+		return err
+	}
+	i := slices.IndexFunc(cur.Visits, func(v Visit) bool { return v.ID == visit })
+	if i < 0 {
+		return errNoVisit
+	}
+	v := visitIn{VisitedOn: cur.Visits[i].VisitedOn, Note: cur.Visits[i].Note}
+	if in.VisitedOn != nil {
+		v.VisitedOn = *in.VisitedOn
+	}
+	if in.Note != nil {
+		v.Note = *in.Note
+	}
+	if v, err = h.checkVisit(v); err != nil {
+		return err
+	}
+	if err := h.store.UpdateVisit(r.Context(), space.SpaceFrom(r), id, visit, v.VisitedOn, v.Note); errors.Is(err, db.ErrNotFound) {
+		return errNoVisit
+	} else if err != nil {
+		return err
+	}
+	if v.VisitedOn != cur.Visits[i].VisitedOn {
+		h.log(r, "been_date_changed", id, map[string]any{"name": cur.Name, "date": v.VisitedOn})
+	}
+	return h.respond(w, r, http.StatusOK, id)
 }
 
 func (h *Handler) deleteVisit(w http.ResponseWriter, r *http.Request) error {
 	id, ok := pathID(r, "id")
 	visit, ok2 := pathID(r, "visit")
 	if !ok || !ok2 {
-		return httpx.Errorf(http.StatusNotFound, "no such visit")
+		return errNoVisit
 	}
 	err := h.store.DeleteVisit(r.Context(), space.SpaceFrom(r), id, visit)
 	if errors.Is(err, db.ErrNotFound) {
-		return httpx.Errorf(http.StatusNotFound, "no such visit")
+		return errNoVisit
 	} else if err != nil {
 		return err
 	}
