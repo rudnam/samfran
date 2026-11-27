@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import com.rudnam.samfran.ActivityJob
 import com.rudnam.samfran.BusTripService
+import com.rudnam.samfran.MealPrompt
 import com.rudnam.samfran.ShiftPrompt
 import com.rudnam.samfran.core.data.ActivityRepository
 import com.rudnam.samfran.core.data.BusAlarm
@@ -23,6 +24,7 @@ import com.rudnam.samfran.core.data.ShiftsRepository
 import com.rudnam.samfran.core.data.StopInput
 import com.rudnam.samfran.core.model.BusStop
 import com.rudnam.samfran.core.model.Buzz
+import com.rudnam.samfran.core.model.computeMealReminders
 import com.rudnam.samfran.core.model.newestId
 import com.rudnam.samfran.widget.Widgets
 import dagger.Binds
@@ -36,6 +38,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Clock
+import java.time.ZoneId
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
@@ -125,6 +128,9 @@ class AndroidReminders @Inject constructor(
     private val alerts = MutableStateFlow(prefs.getBoolean(ActivityJob.ALERTS, false))
     override val activityAlerts: StateFlow<Boolean> = alerts
 
+    private val meals = MutableStateFlow(MealPrompt.isEnabled(context))
+    override val mealReminders: StateFlow<Boolean> = meals
+
     private val allowed: Boolean get() = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
     override fun notificationsAllowed() = allowed
@@ -157,6 +163,25 @@ class AndroidReminders @Inject constructor(
         return now
     }
 
+    override suspend fun setMealReminders(on: Boolean): Boolean {
+        val now = on && allowed
+        MealPrompt.setEnabled(context, now)
+        meals.value = now
+        if (now) sendMealReminders()
+        return now
+    }
+
+    private suspend fun sendMealReminders() {
+        if (!meals.value || !allowed) {
+            MealPrompt.save(context, emptyList())
+            return
+        }
+        val (settings, days) = (shifts.upcomingDays(clock.instant()) as? Outcome.Done)?.value ?: return
+        val zone = runCatching { ZoneId.of(settings.timeZone) }.getOrElse { ZoneId.systemDefault() }
+        val items = computeMealReminders(days, settings.mealReminders, zone, clock.instant())
+        MealPrompt.save(context, items)
+    }
+
     /**
      * Gives [ShiftPrompt] the times shifts end from now on, each with the stop
      * for that kind of shift (or else the one used last), leaving out those
@@ -186,7 +211,13 @@ class AndroidReminders @Inject constructor(
         if (!now && clock.millis() - last < 5 * 60 * 1000) return
         last = clock.millis()
         movePhoneSwitch()
-        if (allowed) sendShiftEnds() else ShiftPrompt.save(context, emptyList(), 0)
+        if (allowed) {
+            sendShiftEnds()
+            sendMealReminders()
+        } else {
+            ShiftPrompt.save(context, emptyList(), 0)
+            MealPrompt.save(context, emptyList())
+        }
         Widgets.update(context) // with the shifts and stops just fetched
         if (alerts.value) {
             ActivityJob.schedule(context, true)
@@ -200,6 +231,7 @@ class AndroidReminders @Inject constructor(
     override fun clearNotifications() {
         BusTripService.stopBuzz(context)
         ShiftPrompt.clear(context)
+        MealPrompt.clear(context)
         ActivityJob.clear(context)
     }
 
@@ -210,6 +242,8 @@ class AndroidReminders @Inject constructor(
             putLong(ActivityJob.SEEN, 0)
         }
         ShiftPrompt.save(context, emptyList(), 0)
+        MealPrompt.setEnabled(context, false)
+        meals.value = false
         ActivityJob.schedule(context, false)
         alerts.value = false
         Widgets.update(context) // signed out: nothing to show

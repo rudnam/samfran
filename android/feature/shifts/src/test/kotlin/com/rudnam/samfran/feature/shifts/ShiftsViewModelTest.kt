@@ -140,7 +140,7 @@ class ShiftsViewModelTest {
 
     @Test
     fun `settings save the letters' lengths, and the calendar link turns on`() = runTest {
-        val vm = ShiftSettingsViewModel(shifts)
+        val vm = ShiftSettingsViewModel(shifts, reminders)
         assertEquals(listOf("D" to "8", "F" to "9"), vm.state.value.lengths)
         vm.addLetter()
         vm.setLength(2, "z", "7.5")
@@ -149,5 +149,23 @@ class ShiftsViewModelTest {
         assertEquals(SettingsDone.Saved, vm.state.value.done)
         vm.feed(true)
         assertEquals("https://samfran.example/calendar/abc123.ics", vm.state.value.feedUrl)
+    }
+
+    @Test
+    fun `meal reminders toggle, customize, reset, and save`() = runTest {
+        val vm = ShiftMealRemindersViewModel(shifts, reminders)
+        vm.setEnabled(true)
+        assertTrue(reminders.meals.value)
+        vm.setRule(
+            "Early",
+            com.rudnam.samfran.core.model.MealKind.Breakfast,
+            com.rudnam.samfran.core.model.MealRule(com.rudnam.samfran.core.model.MealRuleMode.Fixed, time = "05:30"),
+        )
+        vm.save()
+        assertTrue(vm.state.value.saved)
+        assertEquals("05:30", shifts.settingsFlow.value?.mealReminders?.get("Early")?.breakfast?.time)
+        assertEquals(1, reminders.syncs)
+        vm.resetDefaults()
+        assertEquals("05:00", vm.state.value.meals["Early"]?.breakfast?.time)
     }
 }

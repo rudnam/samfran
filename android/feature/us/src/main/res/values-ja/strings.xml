@@ -38,6 +38,9 @@
     <string name="disconnect">接続を解除</string>
     <string name="this_device">この端末</string>
     <string name="tell_me">変更を知らせる</string>
+    <string name="tell_me_hint">相手が場所を追加したり、行ったり、評価したり、シフトを保存したり、乗り過ごしアラームを開始したりすると通知が届きます。30分ほどかかることがあります。</string>
+    <string name="meal_reminders">食事リマインダー</string>
+    <string name="meal_reminders_hint">シフトに合わせて、このスマホに朝食・昼食・夕食の通知が届きます。</string>
     <string name="allow_notifications">スマホの設定でSamFranの通知を許可してから、もう一度オンにしてください。</string>
     <string name="language">言語</string>
     <string name="appearance">表示モード</string>
@@ -56,6 +59,7 @@
     <string name="change_letter_was">%1$sを%2$s時間に変更（前は%3$s時間）</string>
     <string name="change_letter">%1$sを%2$s時間に設定</string>
     <string name="change_setting">%1$sを「%2$s」に変更</string>
+    <string name="change_meal_reminders">食事リマインダーを更新</string>
     <string name="change_calendar_new">カレンダーのリンクを新しく作成</string>
     <string name="change_calendar_off">カレンダーのリンクをオフに</string>
     <string name="change_added_been">%sを追加（行った）</string>

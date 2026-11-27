@@ -98,4 +98,14 @@
     <string name="widget_nearly">次で降ります</string>
     <string name="widget_choose_stop">降りるバス停を選ぶ</string>
     <string name="notify_change_photos">%1$sさんが%2$sの写真を追加しました</string>
+    <!-- Meal reminders -->
+    <string name="channel_meal_reminders">食事リマインダー</string>
+    <string name="meal_title_breakfast">朝食の時間です</string>
+    <string name="meal_title_lunch">昼食の時間です</string>
+    <string name="meal_title_dinner">夕食の時間です</string>
+    <string name="meal_shift_early">早番</string>
+    <string name="meal_shift_middle">中番</string>
+    <string name="meal_shift_late">遅番</string>
+    <string name="meal_shift_night">夜勤</string>
+    <string name="meal_shift_off">休み</string>
 </resources>

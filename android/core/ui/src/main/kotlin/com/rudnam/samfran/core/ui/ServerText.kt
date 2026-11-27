@@ -136,6 +136,7 @@ object ServerText {
         "send the photo as a multipart form" to "写真はmultipart形式で送ってください",
         "a thumbnail must be at most {max} KB" to "サムネイルは{max}KBまでです",
         "the thumbnail must be a JPEG, PNG or WebP picture" to "サムネイルはJPEG・PNG・WebPの画像にしてください",
+        "invalid meal reminder time" to "食事リマインダーの時刻が正しくありません",
     )
 }
 

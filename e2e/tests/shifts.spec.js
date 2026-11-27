@@ -479,3 +479,42 @@ test('the next shift stays above every month, and opens its day when tapped', as
   await page.getByRole('radio', { name: 'List' }).click();
   await expect(page.getByRole('list', { name: 'Shifts' }).locator('li[aria-current="date"]')).toContainText('13F');
 });
+
+test('customize meal reminders per shift', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('link', { name: 'Shifts', exact: true }).click();
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: /Meal reminders/ }).click();
+  await expect(page.getByRole('heading', { name: 'Meal reminders' })).toBeVisible();
+
+  // Defaults: Early breakfast is 05:00; Late dinner and Night lunch/dinner show Next day.
+  const early = page.getByRole('region', { name: 'Early (早番)' });
+  await expect(early.getByLabel('Early (早番) Breakfast time')).toHaveValue('05:00');
+
+  const late = page.getByRole('region', { name: 'Late (遅番)' });
+  await expect(late.getByLabel('Late (遅番) Dinner time')).toHaveValue('00:00');
+  await expect(late.locator('.meal-next-day')).toHaveCount(1);
+
+  const night = page.getByRole('region', { name: 'Night (夜勤)' });
+  await expect(night.getByLabel('Night (夜勤) Lunch time')).toHaveValue('03:00');
+  await expect(night.getByLabel('Night (夜勤) Dinner time')).toHaveValue('08:00');
+  await expect(night.locator('.meal-next-day')).toHaveCount(2);
+
+  // Edit a time, turn a meal off and back on, save, and reload to confirm persistence.
+  await early.getByLabel('Early (早番) Breakfast time').fill('05:30');
+  await early.getByRole('button', { name: 'Turn off Early (早番) Dinner' }).click();
+  await expect(early.getByText('Off')).toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+  await page.reload();
+  await expect(early.getByLabel('Early (早番) Breakfast time')).toHaveValue('05:30');
+  await expect(early.getByText('Off')).toBeVisible();
+  await early.getByRole('button', { name: 'Set time' }).click();
+  await expect(early.getByLabel('Early (早番) Dinner time')).toHaveValue('18:00');
+
+  // Reset to defaults and save.
+  await page.getByRole('button', { name: 'Reset to defaults' }).click();
+  await expect(early.getByLabel('Early (早番) Breakfast time')).toHaveValue('05:00');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status').getByText('Saved.')).toBeVisible();
+});

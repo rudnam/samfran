@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.MealKind
+import com.rudnam.samfran.core.model.MealRule
 import com.rudnam.samfran.core.model.ReadProgress
 import com.rudnam.samfran.core.model.ShiftCoworker
 import com.rudnam.samfran.core.model.ShiftMonth
@@ -222,5 +224,33 @@ class ShiftsScreenshotTest {
     @Test
     fun googleCalendarOff() = shot("google-calendar-off") {
         ShiftCalendarLinkScreen(settingsState.copy(settings = Samples.settings, feedUrl = ""), settings, {}, {}, {})
+    }
+
+    private val mealActions = object : ShiftMealRemindersActions {
+        override fun setEnabled(on: Boolean) {}
+        override fun setRule(shiftKey: String, meal: MealKind, rule: MealRule) {}
+        override fun resetDefaults() {}
+        override fun save() {}
+    }
+
+    @Test
+    fun mealReminders() = shot("meal-reminders") {
+        ShiftMealRemindersScreen(
+            ShiftMealRemindersUiState(settings = Samples.settings, enabledOnPhone = true),
+            mealActions,
+            {},
+            {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun mealRemindersJapanese() = shot("meal-reminders-ja") {
+        ShiftMealRemindersScreen(
+            ShiftMealRemindersUiState(settings = Samples.settings, enabledOnPhone = true),
+            mealActions,
+            {},
+            {},
+        )
     }
 }

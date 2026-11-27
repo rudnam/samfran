@@ -72,6 +72,7 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val askForAlerts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setAlerts(true) }
+    val askForMeals = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setMealReminders(true) }
     val join = stringResource(R.string.join_me)
     UsScreen(
         state,
@@ -79,6 +80,10 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
         onAlerts = { on ->
             val allowed = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (on && !allowed) askForAlerts.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setAlerts(on)
+        },
+        onMealReminders = { on ->
+            val allowed = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+            if (on && !allowed) askForMeals.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setMealReminders(on)
         },
         onCopy = { context.copyText(it) },
         onShare = { context.shareText("$join\n$it", "SamFran") },
@@ -98,6 +103,7 @@ fun UsScreen(
     onShare: (String) -> Unit,
     onLeaveDemo: () -> Unit,
     onLocks: () -> Unit = {},
+    onMealReminders: (Boolean) -> Unit = {},
     languagePicker: @Composable () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
@@ -204,6 +210,18 @@ fun UsScreen(
                         Switch(state.alerts, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
                     }
                     if (state.alertsBlocked) ErrorText(stringResource(R.string.allow_notifications))
+                    Row(
+                        Modifier.fillMaxWidth().clickable(role = Role.Switch) { onMealReminders(!state.mealReminders) },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(stringResource(R.string.meal_reminders), style = MaterialTheme.typography.bodyLarge)
+                            Hint(stringResource(R.string.meal_reminders_hint))
+                        }
+                        Switch(state.mealReminders, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
+                    }
+                    if (state.mealRemindersBlocked) ErrorText(stringResource(R.string.allow_notifications))
                 }
                 if (!demo) {
                     SettingRow(

@@ -561,6 +561,16 @@ button.everyone-toggle.on { background: var(--accent); color: var(--accent-text)
 .length .letter { width: 2.6rem; flex: none; text-align: center; font-weight: 700; padding: 8px 4px; }
 .length input[type='number'] { padding: 8px; }
 
+/* Meal reminders */
+.meal-section h2 { font-size: 1rem; margin: 0; }
+.meal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 6px 0; border-top: 1px solid var(--divider); }
+.meal-section .meal-row:first-of-type { border-top: 0; }
+.meal-name { font-weight: 600; min-width: 5.5rem; }
+.meal-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; justify-content: flex-end; }
+.meal-controls select, .meal-controls input[type='time'] { width: auto; min-width: 0; padding: 7px 10px; }
+.meal-time-wrap { display: inline-flex; align-items: center; gap: 6px; }
+.meal-next-day { font-size: 0.78rem; font-weight: 600; color: var(--muted); background: var(--bg); border: 1px solid var(--divider); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+
 /* Connecting Claude */
 .connect-list, .steps { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
 .connect .row button { padding: 10px 20px; }

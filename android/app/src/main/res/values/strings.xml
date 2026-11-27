@@ -103,4 +103,14 @@
     <string name="widget_preview_times" translatable="false">13:00–22:00</string>
     <string name="widget_choose_stop">Choose your stop</string>
     <string name="notify_change_photos">%1$s added photos of %2$s</string>
+    <!-- Meal reminders -->
+    <string name="channel_meal_reminders">Meal reminders</string>
+    <string name="meal_title_breakfast">Time for breakfast</string>
+    <string name="meal_title_lunch">Time for lunch</string>
+    <string name="meal_title_dinner">Time for dinner</string>
+    <string name="meal_shift_early">Early shift (早番)</string>
+    <string name="meal_shift_middle">Middle shift (中番)</string>
+    <string name="meal_shift_late">Late shift (遅番)</string>
+    <string name="meal_shift_night">Night shift (夜勤)</string>
+    <string name="meal_shift_off">Day off (休み)</string>
 </resources>

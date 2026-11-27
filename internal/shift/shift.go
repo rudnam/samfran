@@ -38,6 +38,9 @@ type Settings struct {
 	// ClosingDays are the days of the month the hours are sent in (締め申請通知),
 	// marked on the calendar. A day past the month's end means its last day.
 	ClosingDays []int `json:"closing_days"`
+	// MealReminders are the customizable breakfast, lunch and dinner rules
+	// per shift kind (and "Off" for non-working days).
+	MealReminders map[string]DayMeals `json:"meal_reminders"`
 	// FeedPath is the calendar feed's address on this site, or "" while off.
 	FeedPath string `json:"feed_path"`
 	// Reader: photos can be read here (the server has an API key).
@@ -59,12 +62,12 @@ type stored struct {
 
 func (s *Store) settings(ctx context.Context, spaceID int64) (stored, error) {
 	var st stored
-	var lengths []byte
+	var lengths, meals []byte
 	var token sql.NullString
 	var closing []int64
 	err := s.db.QueryRowContext(ctx, `
-		SELECT person_name, name_on_sheet, lengths, time_zone, feed_token, closing_days FROM shift_settings WHERE space_id = $1`, spaceID).
-		Scan(&st.PersonName, &st.NameOnSheet, &lengths, &st.TimeZone, &token, (*pq.Int64Array)(&closing))
+		SELECT person_name, name_on_sheet, lengths, time_zone, feed_token, closing_days, meal_reminders FROM shift_settings WHERE space_id = $1`, spaceID).
+		Scan(&st.PersonName, &st.NameOnSheet, &lengths, &st.TimeZone, &token, (*pq.Int64Array)(&closing), &meals)
 	if errors.Is(err, sql.ErrNoRows) {
 		st.TimeZone, closing, err = "Asia/Tokyo", []int64{15, 31}, nil
 	}
@@ -87,6 +90,9 @@ func (s *Store) settings(ctx context.Context, spaceID int64) (stored, error) {
 		}
 		st.Lengths = saved
 	}
+	if st.MealReminders, err = mergeMealReminders(meals); err != nil {
+		return st, err
+	}
 	st.feedToken = token.String
 	if token.Valid {
 		st.FeedPath = "/api/shifts/feed/" + token.String + ".ics"
@@ -99,10 +105,14 @@ func (s *Store) saveSettings(ctx context.Context, spaceID int64, st Settings) er
 	if err != nil {
 		return err
 	}
+	meals, err := json.Marshal(st.MealReminders)
+	if err != nil {
+		return err
+	}
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO shift_settings (space_id, person_name, name_on_sheet, lengths, time_zone, closing_days) VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (space_id) DO UPDATE SET person_name = $2, name_on_sheet = $3, lengths = $4, time_zone = $5, closing_days = $6, updated_at = now()`,
-		spaceID, st.PersonName, st.NameOnSheet, lengths, st.TimeZone, pq.Array(st.ClosingDays))
+		INSERT INTO shift_settings (space_id, person_name, name_on_sheet, lengths, time_zone, closing_days, meal_reminders) VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (space_id) DO UPDATE SET person_name = $2, name_on_sheet = $3, lengths = $4, time_zone = $5, closing_days = $6, meal_reminders = $7, updated_at = now()`,
+		spaceID, st.PersonName, st.NameOnSheet, lengths, st.TimeZone, pq.Array(st.ClosingDays), meals)
 	return err
 }
 
@@ -238,7 +248,9 @@ func MonthClosing(usual []int, first time.Time) []int {
 
 type Handler struct {
 	// Log, if set, records changes for the Us tab's history (internal/activity).
-	Log    func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
+	Log func(ctx context.Context, spaceID, userID int64, via, kind string, details map[string]any)
+	// Notify, if set, tells phones in the space to re-sync shift reminders.
+	Notify func(ctx context.Context, spaceID int64)
 	store  *Store
 	reader Reader // nil: photos can't be read on this server
 	now    func() time.Time
@@ -298,6 +310,12 @@ func (h *Handler) log(r *http.Request, kind string, details map[string]any) {
 	}
 }
 
+func (h *Handler) notify(ctx context.Context, spaceID int64) {
+	if h.Notify != nil {
+		h.Notify(ctx, spaceID)
+	}
+}
+
 // SettingsChanges describes what changed between two settings, for the
 // history: {"person_name": [old, new], "lengths": {"F": [8, 9]}, …}.
 func SettingsChanges(before, after Settings) map[string]any {
@@ -313,6 +331,9 @@ func SettingsChanges(before, after Settings) map[string]any {
 	}
 	if b, a := daysText(before.ClosingDays), daysText(after.ClosingDays); b != a {
 		d["closing_days"] = []string{b, a}
+	}
+	if !mealRemindersEqual(before.MealReminders, after.MealReminders) {
+		d["meal_reminders"] = true
 	}
 	lengths := map[string]any{}
 	for k, v := range after.Lengths {
@@ -587,6 +608,7 @@ func (h *Handler) saveMonth(w http.ResponseWriter, r *http.Request) error {
 		details["closing_days"] = []string{daysText(before.ClosingDays), daysText(view.ClosingDays)}
 	}
 	h.log(r, "shifts_saved", details)
+	h.notify(r.Context(), space.SpaceFrom(r))
 	view.Settings.Reader = h.reader != nil
 	httpx.WriteJSON(w, http.StatusOK, view)
 	return nil
@@ -778,11 +800,12 @@ func closingDays(in []int) ([]int, error) {
 
 func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 	var in struct {
-		PersonName  *string             `json:"person_name"`
-		NameOnSheet *string             `json:"name_on_sheet"`
-		Lengths     *map[string]float64 `json:"lengths"`
-		TimeZone    *string             `json:"time_zone"`
-		ClosingDays *[]int              `json:"closing_days"`
+		PersonName    *string              `json:"person_name"`
+		NameOnSheet   *string              `json:"name_on_sheet"`
+		Lengths       *map[string]float64  `json:"lengths"`
+		TimeZone      *string              `json:"time_zone"`
+		ClosingDays   *[]int               `json:"closing_days"`
+		MealReminders *map[string]DayMeals `json:"meal_reminders"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
 		return err
@@ -827,11 +850,19 @@ func (h *Handler) putSettings(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
+	if in.MealReminders != nil {
+		if st.MealReminders, err = cleanMealReminders(*in.MealReminders); err != nil {
+			return err
+		}
+	}
 	if err := h.store.saveSettings(r.Context(), space.SpaceFrom(r), st); err != nil {
 		return err
 	}
 	if d := SettingsChanges(before, st); len(d) > 0 {
 		h.log(r, "shift_settings", d)
+		if d["lengths"] != nil || d["time_zone"] != nil || d["meal_reminders"] != nil {
+			h.notify(r.Context(), space.SpaceFrom(r))
+		}
 	}
 	return h.getSettings(w, r)
 }
