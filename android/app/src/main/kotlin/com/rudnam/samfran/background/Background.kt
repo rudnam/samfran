@@ -135,6 +135,8 @@ class AndroidReminders @Inject constructor(
 
     override fun notificationsAllowed() = allowed
 
+    override fun mealsOnTime() = MealPrompt.canBeOnTime(context)
+
     /**
      * The question used to be switched on for the phone ([ShiftPrompt.PROMPTS]);
      * now it's each stop's, off for all until switched on (the server's

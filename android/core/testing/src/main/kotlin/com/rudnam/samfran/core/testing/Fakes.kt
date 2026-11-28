@@ -429,11 +429,13 @@ class FakeReminders : Reminders {
     val alerts = MutableStateFlow(false)
     val meals = MutableStateFlow(false)
     var allowed = true
+    var onTime = true
     var syncs = 0
 
     override val activityAlerts: StateFlow<Boolean> = alerts
     override val mealReminders: StateFlow<Boolean> = meals
     override fun notificationsAllowed() = allowed
+    override fun mealsOnTime() = onTime
     override suspend fun setActivityAlerts(on: Boolean) = (on && allowed).also { alerts.value = it }
     override suspend fun setMealReminders(on: Boolean) = (on && allowed).also { meals.value = it }
     override suspend fun sync(now: Boolean) {

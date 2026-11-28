@@ -60,11 +60,12 @@
             </intent-filter>
         </receiver>
 
-        <!-- Meal reminders based on shifts: rescheduled on boot or app update. -->
+        <!-- Meal reminders based on shifts: rescheduled on boot, app update, and when exact alarms are allowed. -->
         <receiver android:name=".MealPrompt" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 
@@ -175,6 +176,8 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Setting the shift-end alarm and the changes check again after the phone restarts. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Meal reminders on time: exact alarms (Alarms & reminders; the person allows it on Android 14+). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <!-- Locked apps: which app is open (usage access, granted by the person in Settings),
          covering it (display over other apps, likewise), and the watcher's foreground service. -->
     <uses-permission

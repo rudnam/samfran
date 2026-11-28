@@ -1,7 +1,10 @@
 package com.rudnam.samfran.feature.us
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,6 +42,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.samfran.core.datastore.Appearance
 import com.rudnam.samfran.core.designsystem.component.CardTitle
@@ -74,6 +79,7 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
     val askForAlerts = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setAlerts(true) }
     val askForMeals = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { viewModel.setMealReminders(true) }
     val join = stringResource(R.string.join_me)
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.resumed() }
     UsScreen(
         state,
         viewModel,
@@ -84,6 +90,12 @@ internal fun UsDestination(navigation: UsNavigation, viewModel: UsViewModel = hi
         onMealReminders = { on ->
             val allowed = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (on && !allowed) askForMeals.launch(Manifest.permission.POST_NOTIFICATIONS) else viewModel.setMealReminders(on)
+        },
+        onMealsOnTime = {
+            if (Build.VERSION.SDK_INT >= 31) {
+                val open = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
+                runCatching { context.startActivity(open) }
+            }
         },
         onCopy = { context.copyText(it) },
         onShare = { context.shareText("$join\n$it", "SamFran") },
@@ -104,6 +116,7 @@ fun UsScreen(
     onLeaveDemo: () -> Unit,
     onLocks: () -> Unit = {},
     onMealReminders: (Boolean) -> Unit = {},
+    onMealsOnTime: () -> Unit = {},
     languagePicker: @Composable () -> Unit = {},
 ) {
     val colors = SamFranTheme.colors
@@ -222,6 +235,12 @@ fun UsScreen(
                         Switch(state.mealReminders, onCheckedChange = null, colors = SwitchDefaults.colors(checkedTrackColor = colors.accentInk))
                     }
                     if (state.mealRemindersBlocked) ErrorText(stringResource(R.string.allow_notifications))
+                    if (state.mealsLate) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Hint(stringResource(R.string.meals_may_be_late))
+                            LinkButton(stringResource(R.string.meals_on_time), onClick = onMealsOnTime)
+                        }
+                    }
                 }
                 if (!demo) {
                     SettingRow(

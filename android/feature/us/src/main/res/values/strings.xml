@@ -59,6 +59,8 @@
     <string name="change_letter_was">set %1$s to %2$s hours (was %3$s)</string>
     <string name="change_letter">set %1$s to %2$s hours</string>
     <string name="change_setting">changed %1$s to “%2$s”</string>
+    <string name="meals_may_be_late">This phone may send them up to an hour late.</string>
+    <string name="meals_on_time">Allow on-time reminders</string>
     <string name="change_meal_reminders">updated meal reminders</string>
     <string name="change_calendar_new">made a new calendar link</string>
     <string name="change_calendar_off">turned off the calendar link</string>

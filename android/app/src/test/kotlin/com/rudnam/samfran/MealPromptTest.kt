@@ -75,4 +75,33 @@ class MealPromptTest {
         assertFalse(MealPrompt.isEnabled(context))
         assertNull(shadowAm.peekNextScheduledAlarm())
     }
+
+    @Test
+    fun `a reminder the phone held back for up to an hour still shows`() {
+        val now = System.currentTimeMillis()
+        val late = now - 59 * 60 * 1000L // inexact alarms can come an hour late
+        MealPrompt.setEnabled(context, true)
+        ShiftPrompt.prefs(context).edit().putString(
+            MealPrompt.MEALS,
+            """[{"at":$late,"meal":"breakfast","shift":"Night"}]""",
+        ).commit()
+
+        MealPrompt().onReceive(context, Intent(MealPrompt.ACTION_MEAL))
+
+        val notifications = shadowOf(context.getSystemService(NotificationManager::class.java)).allNotifications
+        assertEquals("Time for breakfast", notifications.single().extras.getString("android.title"))
+        MealPrompt.setEnabled(context, false)
+    }
+
+    @Test
+    fun `the alarm is exact when the phone allows it`() {
+        val at = System.currentTimeMillis() + 60 * 60 * 1000L
+        org.robolectric.shadows.ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        MealPrompt.setEnabled(context, true)
+        MealPrompt.save(context, listOf(ScheduledMeal(Instant.ofEpochMilli(at), MealKind.Breakfast, "Night")))
+        val alarm = shadowOf(context.getSystemService(AlarmManager::class.java)).peekNextScheduledAlarm()
+        assertEquals(at, alarm?.triggerAtTime)
+        assertTrue(MealPrompt.canBeOnTime(context))
+        MealPrompt.setEnabled(context, false)
+    }
 }
