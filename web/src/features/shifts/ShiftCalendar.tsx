@@ -63,7 +63,12 @@ export function ShiftCalendar({
   const [y, m] = month.split('-').map(Number);
   const lead = new Date(y, m - 1, 1).getDay(); // squares before the 1st; weeks start on Sunday
   // 4 January 1970 was a Sunday.
-  const weekdays = Array.from({ length: 7 }, (_, i) => new Date(1970, 0, 4 + i).toLocaleDateString(locale(), { weekday: 'narrow' }));
+  // "Su", "Mo", "Tu" (one letter leaves T and S twice); 日, 月, 火 in Japanese.
+  const ja = locale().startsWith('ja');
+  const weekdays = Array.from({ length: 7 }, (_, i) => {
+    const w = new Date(1970, 0, 4 + i).toLocaleDateString(locale(), { weekday: ja ? 'narrow' : 'short' });
+    return ja ? w : w.slice(0, 2);
+  });
   const shown = picked ? byDate.get(picked) : undefined;
 
   return (

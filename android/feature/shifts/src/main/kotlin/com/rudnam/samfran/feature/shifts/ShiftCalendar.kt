@@ -122,7 +122,7 @@ fun ShiftCalendar(
     val cellMark = with(density) { cellText(15.dp.toSp(), FontWeight.ExtraBold) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (w in Dates.narrowWeekdays(locale)) {
+            for (w in Dates.shortWeekdays(locale)) {
                 Text(w, Modifier.weight(1f), color = colors.muted, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         }

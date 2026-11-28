@@ -56,9 +56,12 @@ object Dates {
     fun medium(at: Instant, locale: Locale, zone: ZoneId = ZoneId.systemDefault()): String =
         at.atZone(zone).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))
 
-    /** The weekdays' one-letter names, Sunday first (the calendar's heading). */
-    fun narrowWeekdays(locale: Locale): List<String> =
-        (0..6).map { java.time.DayOfWeek.SUNDAY.plus(it.toLong()).getDisplayName(TextStyle.NARROW, locale) }
+    /** The weekdays' names, Sunday first (the calendar's heading): "Su", "Mo", "Tu" (one letter leaves T and S twice), 日, 月, 火 in Japanese. */
+    fun shortWeekdays(locale: Locale): List<String> =
+        (0..6).map {
+            val day = java.time.DayOfWeek.SUNDAY.plus(it.toLong())
+            if (locale.language == "ja") day.getDisplayName(TextStyle.NARROW, locale) else day.getDisplayName(TextStyle.SHORT, locale).take(2)
+        }
 }
 
 /** Opens a web page in a Custom Tab (Maps links open in Google Maps when it's installed). */
