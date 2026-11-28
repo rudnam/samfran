@@ -278,8 +278,8 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
      */
     suspend fun readPhoto(jpeg: ByteArray, onProgress: (NetworkReadProgress) -> Unit = {}): NetworkShiftMonth = call {
         val id = api.startRead(MultipartBody.Part.createFormData("photo", "sheet.jpg", jpeg.toRequestBody("image/jpeg".toMediaType()))).id
-        // The server gives up after 3 minutes; this waits a little longer.
-        val until = System.currentTimeMillis() + 5 * 60_000
+        // The server gives up after 10 minutes (internal/shift readTimeout); this waits a little longer.
+        val until = System.currentTimeMillis() + 11 * 60_000
         var failures = 0
         while (System.currentTimeMillis() < until) {
             delay(readPollMs)

@@ -108,7 +108,7 @@ func TestAddPeople(t *testing.T) {
 	}}
 	addPeople(&s, []SheetDay{
 		{Day: 1, Same: []Coworker{{Name: "A", Code: "HPA13LE"}, {Name: "B", Code: "9LE"}}},
-		{Day: 2, Same: []Coworker{{Name: "C", Code: "7OE"}}}, // she's off: dropped
+		{Day: 2, Same: []Coworker{{Name: "C", Code: "7OE"}}},  // she's off: dropped
 		{Day: 3, Same: []Coworker{{Name: "D", Code: "13LE"}}}, // taken as leave: dropped
 	})
 	fileOthers(&s)

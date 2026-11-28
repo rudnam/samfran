@@ -10,8 +10,9 @@ import (
 // A shift sheet's codes. Working days are a start hour and a letter for
 // how long the shift is ("13F": from 13:00, F long). Sheets from December
 // 2026 write them with up to three letters and may put a few letters before
-// the hour ("HPA 13LE"): the letters after the hour are what has a length,
-// and those before it are kept as written but don't change the times. The letters' lengths
+// the hour ("HPA 13LE", HPA: 派遣, パート, アルバイト): the letters after the hour
+// are what has a length, and those before it are kept as written but don't
+// change the times. The letters' lengths
 // come from the sheet's key and are a setting (Lengths), because they can
 // change and were read off a photo. Everything else is a day off, leave or
 // training, with no times.

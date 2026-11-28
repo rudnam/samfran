@@ -240,6 +240,7 @@ func progressOf(text string, hint Month) Progress {
 }
 
 func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string, hint Month) (Sheet, error) {
+	start := time.Now()
 	prompt := fmt.Sprintf("Read the row for %q. The sheet is probably for %d-%02d (check its title, e.g. \"2026年 11月度\").", name, hint.Year, hint.Month)
 
 	// Who else is there: started first, as it's the longer read.
@@ -289,8 +290,9 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 		return sheet, nil
 	}
 
-	// The coworkers, if they come before the read has to answer.
-	wait := time.Until(deadlineOf(ctx)) - peopleMargin
+	// The coworkers, if they come in time: by peopleWait after the start (or
+	// at once, if the row took longer), and before the read has to answer.
+	wait := min(time.Until(start.Add(peopleWait)), time.Until(deadlineOf(ctx))-peopleMargin)
 	timer := time.NewTimer(max(wait, 0))
 	defer timer.Stop()
 	var people peopleResult
@@ -308,6 +310,11 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 	fileOthers(&sheet)
 	return sheet, nil
 }
+
+// peopleWait is how long after the start a read waits for the coworkers:
+// inside the 5 minutes app versions from before December 2026 wait, so
+// those still get the row.
+const peopleWait = 4*time.Minute + 30*time.Second
 
 // peopleMargin is how long before the read's deadline it stops waiting for
 // the coworkers, to answer with the row in time.

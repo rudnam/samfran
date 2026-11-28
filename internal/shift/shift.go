@@ -638,9 +638,10 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// readTimeout is how long Claude gets to read a sheet. Installed apps stop
-// asking after 5 minutes, so the read has to answer before that.
-const readTimeout = 4 * time.Minute
+// readTimeout is how long Claude gets to read a sheet's row. The apps wait
+// 11 minutes for it (app versions from before December 2026 only 5, which is
+// why the coworkers aren't waited for past peopleWait).
+const readTimeout = 10 * time.Minute
 
 // uploadTimeout is how long a photo of the sheet may take to arrive.
 const uploadTimeout = 3 * time.Minute
