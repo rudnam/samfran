@@ -130,6 +130,7 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
               {dayName(next.date)} · {labelOf(next.label)} · <span className="nowrap">{timesOf(next)}</span>
             </strong>
           </span>
+          <span className="code-chip">{next.code}</span>
           <span className="chevron"><Icon name="chevronRight" size={18} /></span>
         </a>
       )}
@@ -192,6 +193,7 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
                   {d.problem && <span className="error small block">{t('Unknown length: set it in Settings')}</span>}
                 </span>
                 <span className="shift-time">{timesOf(d)}</span>
+                <span className="code-chip">{d.code}</span>
                 <WhoThere day={d} who={me} everyone={everyone} />
               </li>
             ))}

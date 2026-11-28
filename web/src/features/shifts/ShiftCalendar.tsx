@@ -114,6 +114,7 @@ export function ShiftCalendar({
                 {shown.problem && <span className="error small block">{t('Unknown length: set it in Settings')}</span>}
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
+              <span className="code-chip">{shown.code}</span>
               <WhoThere day={shown} who={who} everyone={everyone} />
             </>
           ) : (
