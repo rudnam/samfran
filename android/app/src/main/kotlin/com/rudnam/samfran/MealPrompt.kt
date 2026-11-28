@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import androidx.core.content.edit
 import com.rudnam.samfran.core.model.MealKind
 import com.rudnam.samfran.core.model.ScheduledMeal
@@ -19,8 +20,10 @@ import java.time.Instant
 
 /**
  * Local meal reminder alarms (breakfast, lunch, dinner) based on the shift
- * schedule. Uses inexact [AlarmManager.setAndAllowWhileIdle] like [ShiftPrompt]
- * so no extra permission is needed, and reschedules on boot or package update.
+ * schedule, rescheduled on boot, package update, and when the phone allows
+ * exact alarms. A meal is due at a time of day, so the alarm is exact when the
+ * phone allows it ([canBeOnTime]): Android delivers an inexact one up to an
+ * hour late. Without it, a late reminder is still shown ([LATE_MS]).
  */
 class MealPrompt : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -42,8 +45,12 @@ class MealPrompt : BroadcastReceiver() {
         private const val NOTIFICATION_BASE = 50
         private const val ALARM_REQUEST_CODE = 20
 
-        /** A meal reminder older than this isn't shown (phone was off). */
-        private const val LATE_MS = 45 * 60 * 1000L
+        /**
+         * A meal reminder older than this isn't shown (phone was off). Longer
+         * than the hour Android may hold back an inexact alarm, so one that
+         * comes late still shows.
+         */
+        internal const val LATE_MS = 90 * 60 * 1000L
 
         /** Notifications auto-dismiss after 2 hours. */
         private const val SHOWN_MS = 2 * 60 * 60 * 1000L
@@ -121,10 +128,19 @@ class MealPrompt : BroadcastReceiver() {
             val next = left.minOfOrNull { it.at }
             if (next == null) {
                 am.cancel(alarm(c))
+            } else if (canBeOnTime(c)) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, alarm(c))
             } else {
                 am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, alarm(c))
             }
         }
+
+        /**
+         * The phone lets the app set exact alarms: always before Android 12;
+         * from 14 only once the person allows it (Alarms & reminders).
+         */
+        fun canBeOnTime(c: Context): Boolean =
+            Build.VERSION.SDK_INT < 31 || c.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
         private fun notifyMeal(c: Context, item: Item) {
             val nm = c.getSystemService(NotificationManager::class.java)

@@ -94,6 +94,9 @@ class UsScreenshotTest {
     fun invitedByEmail() = shot("invited", content = screen(us.copy(space = Samples.spaceInvited)))
 
     @Test
+    fun mealsLate() = shot("meals-late", content = screen(us.copy(mealReminders = true, mealsLate = true)))
+
+    @Test
     fun demo() = shot("demo", content = screen(us.copy(me = Me("demo@example.com", demo = true))))
 }
 
@@ -111,6 +114,18 @@ class UsViewModelTest {
         // The preferences load on their own thread: wait for the page's state to be put together.
         assertEquals(52L, vm.state.first { it.activity != null && it.seenAtOpen != null }.seenAtOpen)
         assertEquals(58L, activity.seenFlow.value)
+    }
+
+    @Test
+    fun `meal reminders that may come late offer on-time ones, until allowed`() = runTest {
+        val reminders = FakeReminders().apply { meals.value = true; onTime = false }
+        val vm = UsViewModel(FakeUserRepository(), FakeSpaceRepository(), FakeActivityRepository(), reminders, TestPreferences.repository(), com.rudnam.samfran.core.testing.FakeLocksRepository())
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect {} }
+        assertTrue(vm.state.first { it.mealReminders }.mealsLate)
+        // Allowed in Settings, then back on the page.
+        reminders.onTime = true
+        vm.resumed()
+        assertEquals(false, vm.state.first { it.mealReminders && !it.mealsLate }.mealsLate)
     }
 
     @Test

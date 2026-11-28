@@ -45,6 +45,8 @@ data class UsUiState(
     val alertsBlocked: Boolean = false,
     val mealReminders: Boolean = false,
     val mealRemindersBlocked: Boolean = false,
+    /** Meal reminders are on but may come late: the phone doesn't allow exact alarms. */
+    val mealsLate: Boolean = false,
     val appearance: Appearance = Appearance.System,
     /** How many apps this person has locked; null until known. */
     val lockedHere: Int? = null,
@@ -64,6 +66,8 @@ interface UsActions {
     fun setAlerts(on: Boolean)
     /** The screen has asked for notification permission first. */
     fun setMealReminders(on: Boolean)
+    /** Back on screen, perhaps from allowing exact alarms in Settings. */
+    fun resumed() {}
     fun setAppearance(appearance: Appearance)
     fun signOut()
 }
@@ -78,11 +82,14 @@ class UsViewModel @Inject constructor(
     private val locks: LocksRepository,
 ) : ViewModel(), UsActions {
     private val local = MutableStateFlow(UsUiState(mcpAddress = spaces.mcpAddress))
+    private val onTime = MutableStateFlow(reminders.mealsOnTime())
 
     val state: StateFlow<UsUiState> = combine(
         local,
         combine(user.me, spaces.space, activity.entries) { me, space, entries -> Triple(me, space, entries) },
-        combine(reminders.activityAlerts, reminders.mealReminders, locks.page) { alerts, meals, page -> Triple(alerts, meals, page?.mine?.size) },
+        combine(reminders.activityAlerts, reminders.mealReminders, onTime, locks.page) { alerts, meals, onTime, page ->
+            Triple(alerts, meals to onTime, page?.mine?.size)
+        },
         preferences.preferences,
     ) { s, (me, space, entries), (alerts, meals, locked), prefs ->
         s.copy(
@@ -92,7 +99,8 @@ class UsViewModel @Inject constructor(
             name = s.name ?: space?.members?.firstOrNull { it.me }?.name,
             activity = entries,
             alerts = alerts,
-            mealReminders = meals,
+            mealReminders = meals.first,
+            mealsLate = meals.first && !meals.second,
             appearance = prefs.appearance,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), local.value)
@@ -158,6 +166,10 @@ class UsViewModel @Inject constructor(
             val now = reminders.setMealReminders(on)
             local.update { it.copy(mealRemindersBlocked = on && !now) }
         }
+    }
+
+    override fun resumed() {
+        onTime.value = reminders.mealsOnTime()
     }
 
     override fun setAppearance(appearance: Appearance) {

@@ -21,6 +21,12 @@ interface Reminders {
     /** Notifications are allowed for the app. */
     fun notificationsAllowed(): Boolean
 
+    /**
+     * Meal reminders come on time: the phone allows exact alarms. Without
+     * that, Android may hold one back up to an hour.
+     */
+    fun mealsOnTime(): Boolean = true
+
     suspend fun setActivityAlerts(on: Boolean): Boolean
 
     suspend fun setMealReminders(on: Boolean): Boolean

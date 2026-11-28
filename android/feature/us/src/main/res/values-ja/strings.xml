@@ -59,6 +59,8 @@
     <string name="change_letter_was">%1$sを%2$s時間に変更（前は%3$s時間）</string>
     <string name="change_letter">%1$sを%2$s時間に設定</string>
     <string name="change_setting">%1$sを「%2$s」に変更</string>
+    <string name="meals_may_be_late">このスマホでは、最大1時間遅れて届くことがあります。</string>
+    <string name="meals_on_time">時間どおりに届くようにする</string>
     <string name="change_meal_reminders">食事リマインダーを更新</string>
     <string name="change_calendar_new">カレンダーのリンクを新しく作成</string>
     <string name="change_calendar_off">カレンダーのリンクをオフに</string>
