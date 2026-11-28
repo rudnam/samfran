@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ShiftDay } from '../../api';
 import { t } from '../../i18n';
 import { locale } from '../../language';
-import { datesOf, dayName, labelOf, timesOf } from './codes';
+import { datesOf, dayName, labelOf, shownCode, timesOf } from './codes';
 import { WhoThere } from './WhoThere';
 
 /** Today as YYYY-MM-DD, on this device. */
@@ -63,7 +63,12 @@ export function ShiftCalendar({
   const [y, m] = month.split('-').map(Number);
   const lead = new Date(y, m - 1, 1).getDay(); // squares before the 1st; weeks start on Sunday
   // 4 January 1970 was a Sunday.
-  const weekdays = Array.from({ length: 7 }, (_, i) => new Date(1970, 0, 4 + i).toLocaleDateString(locale(), { weekday: 'narrow' }));
+  // "Su", "Mo", "Tu" (one letter leaves T and S twice); 日, 月, 火 in Japanese.
+  const ja = locale().startsWith('ja');
+  const weekdays = Array.from({ length: 7 }, (_, i) => {
+    const w = new Date(1970, 0, 4 + i).toLocaleDateString(locale(), { weekday: ja ? 'narrow' : 'short' });
+    return ja ? w : w.slice(0, 2);
+  });
   const shown = picked ? byDate.get(picked) : undefined;
 
   return (
@@ -114,7 +119,7 @@ export function ShiftCalendar({
                 {shown.problem && <span className="error small block">{t('Unknown length: set it in Settings')}</span>}
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
-              <span className="code-chip">{shown.code}</span>
+              <span className="code-chip">{shownCode(shown.code)}</span>
               <WhoThere day={shown} who={who} everyone={everyone} />
             </>
           ) : (

@@ -45,6 +45,7 @@ import com.rudnam.samfran.core.designsystem.component.Dot
 import com.rudnam.samfran.core.designsystem.theme.Pair2
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
 import com.rudnam.samfran.core.designsystem.theme.ShiftDotColors
+import com.rudnam.samfran.core.model.ShiftCodes
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.model.ShiftTone
 import com.rudnam.samfran.core.ui.Dates
@@ -121,7 +122,7 @@ fun ShiftCalendar(
     val cellMark = with(density) { cellText(15.dp.toSp(), FontWeight.ExtraBold) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (w in Dates.narrowWeekdays(locale)) {
+            for (w in Dates.shortWeekdays(locale)) {
                 Text(w, Modifier.weight(1f), color = colors.muted, style = MaterialTheme.typography.labelSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         }
@@ -216,7 +217,7 @@ fun DayLine(
         fun width(text: String, style: TextStyle) = with(density) { measurer.measure(text, style, softWrap = false, maxLines = 1).size.width.toDp() }
         val dateWidth = maxOf(64.dp, width(dayText, type.labelLarge))
         val oneLine = day == null || dateWidth + gap + 10.dp + gap + width(day.workplaceLabel, type.bodyMedium) + gap +
-            width(day.times, type.bodyMedium) + gap + width(day.code, type.labelMedium.copy(fontWeight = FontWeight.Bold)) + 16.dp <= maxWidth
+            width(day.times, type.bodyMedium) + gap + width(ShiftCodes.shown(day.code), type.labelMedium.copy(fontWeight = FontWeight.Bold)) + 16.dp <= maxWidth
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
                 Text(dayText, Modifier.width(dateWidth), style = type.labelLarge, softWrap = false, color = if (day == null || day.kind != com.rudnam.samfran.core.model.ShiftKind.Work) colors.muted else colors.text)
@@ -231,7 +232,7 @@ fun DayLine(
                     if (day.problem != null) Text(stringResource(R.string.unknown_length), color = colors.danger, style = type.bodySmall)
                 }
                 if (oneLine) Text(day.times, style = type.bodyMedium, color = colors.muted, softWrap = false)
-                CodeChip(day.code)
+                CodeChip(ShiftCodes.shown(day.code))
             }
             if (day != null) WhoThere(day, who, everyone, Modifier.padding(start = dateWidth + gap))
         }

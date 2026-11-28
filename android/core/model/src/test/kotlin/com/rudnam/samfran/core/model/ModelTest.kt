@@ -31,6 +31,14 @@ class ShiftCodesTest {
     }
 
     @Test
+    fun `a code is shown without the letters before the hour`() {
+        assertEquals("22LE", ShiftCodes.shown("HPA22LE"))
+        assertEquals("13LE", ShiftCodes.shown("HPA 13LE"))
+        assertEquals("7F", ShiftCodes.shown("7F"))
+        assertEquals("有休", ShiftCodes.shown("有休"))
+    }
+
+    @Test
     fun `days off, leave and training`() {
         assertEquals(ShiftKind.Off, ShiftCodes.explain("普", lengths).kind)
         assertEquals(ShiftKind.Leave, ShiftCodes.explain("有給", lengths).kind)
