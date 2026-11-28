@@ -51,7 +51,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
@@ -303,20 +302,6 @@ fun EmptyState(title: String, body: String?, modifier: Modifier = Modifier) {
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         if (body != null) Text(body, style = MaterialTheme.typography.bodyMedium, color = SamFranTheme.colors.muted, textAlign = TextAlign.Center)
     }
-}
-
-/** A small rounded label, e.g. a shift code (.code-chip). */
-@Composable
-fun CodeChip(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(SamFranTheme.colors.sunken)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
-        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-        color = SamFranTheme.colors.muted,
-    )
 }
 
 /** A dot of colour, e.g. a shift's kind (.shift-dot). */

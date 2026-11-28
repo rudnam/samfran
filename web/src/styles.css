@@ -480,10 +480,6 @@ a.next-shift:active { transform: scale(0.99); }
 .shift-dot.off { background: var(--shift-off); }
 .shift-dot.leave { background: var(--shift-leave); } /* 有休: 休み's calm mint family, a little bluer */
 .shift-dot.training { background: var(--shift-training); }
-.code-chip {
-  font-size: var(--text-label-s); font-weight: 700; padding: 2px 8px; border-radius: var(--radius-xs); white-space: nowrap;
-  background: var(--sunken); color: var(--muted); font-variant-numeric: tabular-nums;
-}
 .shift-list { list-style: none; margin: 0; padding: 0; }
 .shift-list li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--divider); font-size: var(--text-body); }
 .shift-list li.quiet { color: var(--muted); }

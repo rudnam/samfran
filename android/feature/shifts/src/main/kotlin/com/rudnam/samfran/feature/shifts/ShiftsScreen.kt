@@ -33,7 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.YearMonth
 import com.rudnam.samfran.core.data.Outcome
 import com.rudnam.samfran.core.designsystem.component.CardTitle
-import com.rudnam.samfran.core.designsystem.component.CodeChip
 import com.rudnam.samfran.core.designsystem.component.Dot
 import com.rudnam.samfran.core.designsystem.component.EmptyState
 import com.rudnam.samfran.core.designsystem.component.ErrorText
@@ -133,7 +132,6 @@ fun ShiftsScreen(
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                             }
-                            CodeChip(next.code)
                             LineIcon(SamFranIcons.chevronRight, null, tint = yellow.ink.copy(alpha = 0.6f))
                         }
                     }
