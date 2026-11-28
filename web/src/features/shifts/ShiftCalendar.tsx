@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { ShiftDay } from '../../api';
 import { t } from '../../i18n';
 import { locale } from '../../language';
-import { datesOf, dayName, labelOf, timesOf } from './codes';
+import { datesOf, dayName, labelOf, shownCode, timesOf } from './codes';
 import { WhoThere } from './WhoThere';
 
 /** Today as YYYY-MM-DD, on this device. */
@@ -114,7 +114,7 @@ export function ShiftCalendar({
                 {shown.problem && <span className="error small block">{t('Unknown length: set it in Settings')}</span>}
               </span>
               <span className="shift-time">{timesOf(shown)}</span>
-              <span className="code-chip">{shown.code}</span>
+              <span className="code-chip">{shownCode(shown.code)}</span>
               <WhoThere day={shown} who={who} everyone={everyone} />
             </>
           ) : (

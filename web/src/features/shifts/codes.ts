@@ -17,6 +17,12 @@ export function normalize(code: string): string {
     .toUpperCase();
 }
 
+/** A code as shown beside a shift: without the letters before the hour ("HPA 22LE" → "22LE"), which say who's working, not the shift. */
+export function shownCode(code: string): string {
+  const n = normalize(code);
+  return work.test(n) ? n.replace(/^[A-Z]+(?=[0-9])/, '') : code;
+}
+
 /** What a code means: kind, label, and hours for a shift. */
 export function explain(code: string, lengths: Record<string, number>): { kind: ShiftKind; label: string; hours?: [number, number]; problem?: string } {
   code = normalize(code);

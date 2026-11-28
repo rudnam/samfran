@@ -49,6 +49,7 @@ import com.rudnam.samfran.core.designsystem.component.Skeleton
 import com.rudnam.samfran.core.designsystem.icon.LineIcon
 import com.rudnam.samfran.core.designsystem.icon.SamFranIcons
 import com.rudnam.samfran.core.designsystem.theme.SamFranTheme
+import com.rudnam.samfran.core.model.ShiftCodes
 import com.rudnam.samfran.core.ui.Dates
 import com.rudnam.samfran.core.ui.TabPage
 import com.rudnam.samfran.core.ui.copyText
@@ -133,7 +134,7 @@ fun ShiftsScreen(
                                     style = MaterialTheme.typography.titleSmall,
                                 )
                             }
-                            CodeChip(next.code)
+                            CodeChip(ShiftCodes.shown(next.code))
                             LineIcon(SamFranIcons.chevronRight, null, tint = yellow.ink.copy(alpha = 0.6f))
                         }
                     }

@@ -38,7 +38,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await page.getByRole('link', { name: 'Enter by hand' }).click();
   const month = thisMonth();
   const days = page.getByRole('list', { name: 'Days' }).getByRole('listitem');
-  await days.nth(0).getByRole('combobox').fill('22F'); // the 1st
+  await days.nth(0).getByRole('combobox').fill('HPA 22F'); // the 1st, with the sheet's letters before the hour
   await expect(days.nth(0)).toContainText('夜勤 · 22:00–7:00');
   await expect(days.nth(0)).not.toContainText('+1'); // ending next morning is obvious
   await days.nth(1).getByRole('combobox').fill('普');
@@ -57,7 +57,7 @@ test('enter a month of shifts by hand, see them, and turn on the calendar link',
   await expect(cal.getByRole('button')).toHaveCount(new Date(y, m, 0).getDate());
   await expect(cal.locator('[aria-current="date"]')).toHaveCount(1); // today
   await cal.getByRole('button', { name: /^1 \S+: 夜勤 22:00–7:00$/ }).click();
-  await expect(page.locator('.cal-detail')).toContainText('22F');
+  await expect(page.locator('.cal-detail .code-chip')).toHaveText('22F'); // without the HPA
   await cal.getByRole('button', { name: /^2 \S+: 休み$/ }).click();
   await expect(page.locator('.cal-detail')).toContainText('普');
   await cal.getByRole('button', { name: /^9 \S+: Nothing entered$/ }).click();

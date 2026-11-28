@@ -139,6 +139,12 @@ object ShiftCodes {
     // Letters before the hour ("HPA 13LE") are kept but have no length; those after it do.
     private val work = Regex("^[A-Z]{0,4}?([0-9]{1,2})([A-Z]{1,3})$")
 
+    /** A code as shown beside a shift: without the letters before the hour ("HPA 22LE" → "22LE"), which say who's working, not the shift. */
+    fun shown(code: String): String {
+        val n = normalize(code)
+        return if (work.matches(n)) n.replace(Regex("^[A-Z]+(?=[0-9])"), "") else code
+    }
+
     /** The codes offered as one-tap chips while editing. */
     val common = listOf("7F", "9F", "13F", "22F", "普", "法", "有休")
 

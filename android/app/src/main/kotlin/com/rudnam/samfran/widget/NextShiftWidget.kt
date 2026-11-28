@@ -28,6 +28,7 @@ import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import com.rudnam.samfran.R
+import com.rudnam.samfran.core.model.ShiftCodes
 import com.rudnam.samfran.core.model.ShiftDay
 import com.rudnam.samfran.core.ui.Dates
 import java.time.format.TextStyle as DateTextStyle
@@ -129,7 +130,7 @@ private fun FullShift(context: Context, state: ShiftWidgetState.Shifts, week: Bo
     Column(GlanceModifier.fillMaxSize(), verticalAlignment = if (week) Alignment.Top else Alignment.CenterVertically) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             WidgetText(title, 12.sp, WidgetColors.accentInk, bold = true, modifier = GlanceModifier.defaultWeight())
-            if (next != null) CodeChip(next.code)
+            if (next != null) CodeChip(ShiftCodes.shown(next.code))
         }
         Spacer(GlanceModifier.height(4.dp))
         if (next == null) {
