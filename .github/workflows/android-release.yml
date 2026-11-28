@@ -133,7 +133,11 @@ jobs:
 
       - name: Build changelog
         run: |
-          gh release list -R "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 30 --json tagName,name,body > "$RUNNER_TEMP/releases.json"
+          # `gh release list --json` has no body field, so read releases from the REST API
+          # (newest first), in the shape changelog.py expects.
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
+            --jq '[.[] | select(.draft | not) | select(.prerelease | not) | {tagName: .tag_name, name, body}]' \
+            > "$RUNNER_TEMP/releases.json"
           prev_tag=$(jq -r '[.[] | select(.tagName | test("^android-[0-9]+$"))][0].tagName // empty' "$RUNNER_TEMP/releases.json")
           if [[ -n $prev_tag ]]; then
             commits=$(gh api "repos/$GITHUB_REPOSITORY/compare/${prev_tag}...$SHA" --jq '.commits[].sha' 2>/dev/null || echo "$SHA")
