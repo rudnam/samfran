@@ -266,7 +266,7 @@ export const api = {
   shiftFeed: (on: boolean) => request<ShiftSettings>(on ? 'POST' : 'DELETE', '/api/shifts/feed'),
   /**
    * Reads a photo of the sheet; nothing is saved until saveShifts. Reading
-   * takes about a minute, longer than one request may last, so this starts
+   * takes a few minutes, longer than one request may last, so this starts
    * the read and asks after it until it's done, telling onProgress how far
    * it's got: the photo going up, then the days as they're read.
    */
@@ -303,7 +303,16 @@ export const api = {
       }
       if (res.status === 202) {
         const p = await res.json().catch(() => null);
-        if (p) onProgress?.({ stage: 'reading', name_as_read: p.name_as_read, days_read: p.days_read ?? 0, days_in_month: p.days_in_month ?? 0 });
+        if (p)
+          onProgress?.({
+            stage: 'reading',
+            name_as_read: p.name_as_read,
+            days_read: p.days_read ?? 0,
+            days_in_month: p.days_in_month ?? 0,
+            row_done: !!p.row_done,
+            work_days: p.work_days ?? 0,
+            people_read: p.people_read ?? 0,
+          });
         continue;
       }
       const data = await res.json().catch(() => null);
@@ -374,7 +383,16 @@ export interface ShiftThere extends ShiftCoworker {
 /** How far reading a photo has got. */
 export type ReadProgress =
   | { stage: 'sending'; sent: number }
-  | { stage: 'reading'; name_as_read?: string; days_read: number; days_in_month: number };
+  | {
+      stage: 'reading';
+      name_as_read?: string;
+      days_read: number;
+      days_in_month: number;
+      /** The row's read: who else is there on its work_days, people_read of them so far (older servers: never). */
+      row_done?: boolean;
+      work_days?: number;
+      people_read?: number;
+    };
 
 export type MealRuleMode = 'fixed' | 'off';
 

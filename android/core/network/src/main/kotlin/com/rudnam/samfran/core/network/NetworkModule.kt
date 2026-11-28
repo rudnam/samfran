@@ -72,7 +72,7 @@ internal object NetworkModule {
     @Singleton
     fun okHttp(session: SessionStore): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
-        // Reading a photo of the sheet takes about a minute, but in the
+        // Reading a photo of the sheet takes a few minutes, but in the
         // background (SamFranNetwork.readPhoto): no request waits for it.
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor(

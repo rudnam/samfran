@@ -126,7 +126,10 @@ fun WhoThere(day: ShiftDay, who: String, everyone: Boolean, modifier: Modifier =
     }
 }
 
-/** How far reading the photo has got: sent, found, then a square for each day as it's read. */
+/**
+ * How far reading the photo has got: sent, found, the person's days one by one, then who's
+ * working with them (web: ReadingCard). The squares are always the step going now.
+ */
 @Composable
 fun ReadingCard(progress: ReadProgress, modifier: Modifier = Modifier) {
     val colors = SamFranTheme.colors
@@ -134,6 +137,16 @@ fun ReadingCard(progress: ReadProgress, modifier: Modifier = Modifier) {
     val found = reading?.nameAsRead
     val read = reading?.daysRead ?: 0
     val of = reading?.daysInMonth ?: 0
+    val rowDone = reading?.rowDone == true || (of > 0 && read >= of)
+    val workDays = if (reading?.rowDone == true) reading.workDays else 0
+    val people = minOf(reading?.peopleRead ?: 0, workDays)
+    // No coworkers to read on a month without work.
+    val peopleStep = reading?.rowDone != true || workDays > 0
+    val bar = when {
+        rowDone -> if (workDays > 0) people to workDays else null
+        of > 0 -> read to of
+        else -> null
+    }
     val title = stringResource(R.string.reading_sheet)
     SamFranCard(modifier.semantics(mergeDescendants = true) { contentDescription = title }) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -141,12 +154,27 @@ fun ReadingCard(progress: ReadProgress, modifier: Modifier = Modifier) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Step(done = reading != null, now = reading == null, stringResource(R.string.sending_photo))
                 Step(done = found != null, now = reading != null && found == null, if (found != null) stringResource(R.string.found_on_sheet, found) else stringResource(R.string.finding_row))
-                Step(done = false, now = found != null, if (of > 0) stringResource(R.string.reading_days_of, read, of) else stringResource(R.string.reading_days))
+                Step(
+                    done = rowDone,
+                    now = found != null && !rowDone,
+                    when {
+                        rowDone -> stringResource(R.string.read_all_days, of)
+                        of > 0 -> stringResource(R.string.reading_days_of, read, of)
+                        else -> stringResource(R.string.reading_days)
+                    },
+                )
+                if (peopleStep) {
+                    Step(
+                        done = false,
+                        now = rowDone,
+                        if (workDays > 0 && people > 0) stringResource(R.string.who_else_working_of, people, workDays) else stringResource(R.string.who_else_working),
+                    )
+                }
             }
-            if (of > 0) {
+            bar?.let { (n, total) ->
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    repeat(of) { i ->
-                        Box(Modifier.size(width = 14.dp, height = 12.dp).clip(RoundedCornerShape(3.dp)).background(if (i < read) colors.accent else colors.sunken))
+                    repeat(total) { i ->
+                        Box(Modifier.size(width = 14.dp, height = 12.dp).clip(RoundedCornerShape(3.dp)).background(if (i < n) colors.accent else colors.sunken))
                     }
                 }
             }

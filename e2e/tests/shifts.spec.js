@@ -292,11 +292,16 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
     return route.fulfill({ status: 202, json: { id: 'r1' } });
   });
   let asked = 0;
-  let letGo = false;
+  let phase = 'row'; // then 'people', then 'done'
   await page.route('**/api/shifts/reads/r1', async (route) => {
     ++asked;
     if (asked === 1) return route.fulfill({ status: 202, json: { status: 'reading', days_read: 0, days_in_month: 0 } });
-    if (!letGo) return route.fulfill({ status: 202, json: { status: 'reading', name_as_read: 'オトル サマンタ', days_read: 12, days_in_month: 30 } });
+    if (phase === 'row') return route.fulfill({ status: 202, json: { status: 'reading', name_as_read: 'オトル サマンタ', days_read: 12, days_in_month: 30 } });
+    if (phase === 'people')
+      return route.fulfill({
+        status: 202,
+        json: { status: 'reading', name_as_read: 'オトル サマンタ', days_read: 30, days_in_month: 30, row_done: true, work_days: 18, people_read: 7 },
+      });
     const settings = await (await page.request.get('/api/shifts/settings')).json();
     return route.fulfill({
       json: {
@@ -322,7 +327,14 @@ test('read a photo of the sheet: the page waits for the read, then opens the mon
   await expect(progress).not.toContainText('isn’t kept');
   await expect(progress.locator('.day-progress span.on')).toHaveCount(12);
   await page.screenshot({ path: test.info().outputPath('reading-progress.png'), animations: 'disabled' });
-  letGo = true;
+  // Then, the row done, who else is working: the bar starts again, over the working days.
+  phase = 'people';
+  await expect(progress).toContainText('Read all 30 days');
+  await expect(progress).toContainText('Who else is working: 7 of 18 days');
+  await expect(progress.locator('.day-progress span')).toHaveCount(18);
+  await expect(progress.locator('.day-progress span.on')).toHaveCount(7);
+  await page.screenshot({ path: test.info().outputPath('reading-people.png'), animations: 'disabled' });
+  phase = 'done';
 
   await expect(page.getByRole('heading', { name: 'Check the shifts' })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('status')).toContainText('オトル サマンタ');

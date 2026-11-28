@@ -71,6 +71,11 @@ func TestProgressOf(t *testing.T) {
 	if p := progressOf(text, hint); p.NameAsRead != `オトル "サマンタ"` || p.DaysRead != 2 || p.DaysInMonth != 30 {
 		t.Errorf("three days in: %+v", p)
 	}
+	// The last day counts as read once the notes after it start.
+	last := `{"found":true,"name_as_read":"x","year":2026,"month":11,"days":[{"day":1,"code":"普"},{"day":2,"code":"13F","note":"","others":[]}], "notes": "`
+	if p := progressOf(last, hint); p.DaysRead != 2 {
+		t.Errorf("at the notes: %+v", p)
+	}
 }
 
 func TestRegistered(t *testing.T) {

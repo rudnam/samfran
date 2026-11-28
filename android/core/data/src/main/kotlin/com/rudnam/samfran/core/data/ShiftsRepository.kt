@@ -168,7 +168,7 @@ internal class OfflineFirstShiftsRepository @Inject constructor(
 
     override suspend fun readPhoto(jpeg: ByteArray, onProgress: (ReadProgress) -> Unit) = outcome(io) {
         onProgress(ReadProgress.Sending)
-        network.readPhoto(jpeg) { p -> onProgress(ReadProgress.Reading(p.nameAsRead, p.daysRead, p.daysInMonth)) }.asModel()
+        network.readPhoto(jpeg) { p -> onProgress(ReadProgress.Reading(p.nameAsRead, p.daysRead, p.daysInMonth, p.rowDone, p.workDays, p.peopleRead)) }.asModel()
     }.also {
         pending = (it as? Outcome.Done)?.value
     }

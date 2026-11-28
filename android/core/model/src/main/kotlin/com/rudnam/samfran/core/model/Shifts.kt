@@ -87,8 +87,18 @@ data class ShiftThere(
 sealed interface ReadProgress {
     data object Sending : ReadProgress
 
-    /** [nameAsRead] once the row's found, then [daysRead] of [daysInMonth] (both 0 until the days start). */
-    data class Reading(val nameAsRead: String? = null, val daysRead: Int = 0, val daysInMonth: Int = 0) : ReadProgress
+    /**
+     * [nameAsRead] once the row's found, then [daysRead] of [daysInMonth] (both 0 until the days start);
+     * once the row's done ([rowDone]), who else is there on its [workDays], [peopleRead] of them so far.
+     */
+    data class Reading(
+        val nameAsRead: String? = null,
+        val daysRead: Int = 0,
+        val daysInMonth: Int = 0,
+        val rowDone: Boolean = false,
+        val workDays: Int = 0,
+        val peopleRead: Int = 0,
+    ) : ReadProgress
 }
 
 /** The shift colours (web/src/styles.css, .shift-dot and .cal-day). */

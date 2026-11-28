@@ -272,7 +272,7 @@ class SamFranNetwork @Inject constructor(retrofit: Retrofit, private val json: J
 
     /**
      * Reads a photo of the sheet (a JPEG); nothing is saved until [saveShifts].
-     * Reading takes about a minute, longer than one request may last behind
+     * Reading takes a few minutes, longer than one request may last behind
      * the CDN, so this starts the read and asks after it until it's done,
      * telling [onProgress] how far it's got.
      */

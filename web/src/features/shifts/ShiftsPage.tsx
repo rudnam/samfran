@@ -259,34 +259,50 @@ export function ShiftsPage({ month, day }: { month?: string; day?: string }) {
   );
 }
 
-/** How far reading the photo has got: sent, found, then the days one by one. */
+/**
+ * How far reading the photo has got: sent, found, the person's days one by
+ * one, then who's working with them. The bar is always the step going now.
+ */
 function ReadingCard({ progress }: { progress: ReadProgress }) {
   const sending = progress.stage === 'sending';
-  const found = progress.stage === 'reading' ? progress.name_as_read : undefined;
-  const read = progress.stage === 'reading' ? progress.days_read : 0;
-  const of = progress.stage === 'reading' ? progress.days_in_month : 0;
+  const r = progress.stage === 'reading' ? progress : undefined;
+  const found = r?.name_as_read;
+  const read = r?.days_read ?? 0;
+  const of = r?.days_in_month ?? 0;
+  const rowDone = !!r?.row_done || (of > 0 && read >= of);
+  const workDays = r?.row_done ? (r.work_days ?? 0) : 0;
+  const people = Math.min(r?.people_read ?? 0, workDays);
+  // No coworkers to read on a month without work.
+  const peopleStep = !r?.row_done || workDays > 0;
   const step = (done: boolean, now: boolean, text: string) => (
     <li className={done ? 'done' : now ? 'now' : 'later'}>
       <span className="step-mark" aria-hidden="true">{done ? '✓' : now ? '●' : '○'}</span>
       {text}
     </li>
   );
+  const bar = rowDone ? (workDays > 0 ? { n: people, of: workDays } : null) : of > 0 ? { n: read, of } : null;
   return (
     <div className="card stack tight reading" role="status" aria-label={t('Reading the sheet…')}>
       <strong>{t('Reading the sheet…')}</strong>
       <ul className="steps">
         {step(!sending, sending, sending && progress.sent > 0 ? t('Sending the photo: {percent}%', { percent: Math.round(progress.sent * 100) }) : t('Sending the photo'))}
         {step(!!found, !sending && !found, found ? t('Found {name} on the sheet', { name: found }) : t('Finding the row on the sheet'))}
-        {step(false, !!found, of ? t('Reading the days: {read} of {of}', { read, of }) : t('Reading the days'))}
+        {step(rowDone, !!found && !rowDone, rowDone ? t('Read all {of} days', { of }) : of ? t('Reading the days: {read} of {of}', { read, of }) : t('Reading the days'))}
+        {peopleStep &&
+          step(
+            false,
+            rowDone,
+            workDays > 0 && people > 0 ? t('Who else is working: {read} of {of} days', { read: people, of: workDays }) : t('Who else is working'),
+          )}
       </ul>
-      {of > 0 && (
+      {bar && (
         <div className="day-progress" aria-hidden="true">
-          {Array.from({ length: of }, (_, i) => (
-            <span key={i} className={i < read ? 'on' : ''} />
+          {Array.from({ length: bar.of }, (_, i) => (
+            <span key={i} className={i < bar.n ? 'on' : ''} />
           ))}
         </div>
       )}
-      <p className="hint">{t('Usually about a minute.')}</p>
+      <p className="hint">{t('Usually two to four minutes. You can leave this page open.')}</p>
     </div>
   );
 }

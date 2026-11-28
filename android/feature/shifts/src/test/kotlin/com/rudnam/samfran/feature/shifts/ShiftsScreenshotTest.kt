@@ -112,6 +112,13 @@ class ShiftsScreenshotTest {
         ShiftsScreen(month.copy(progress = ReadProgress.Reading("オトル サマンタ", daysRead = 12, daysInMonth = 30)), actions, {}, {}, {}, {})
     }
 
+    /** The row read, then who else is working: the squares start again, over the working days. */
+    @Test
+    fun readingPeople() = shot("reading-people") {
+        val progress = ReadProgress.Reading("オトル サマンタ", daysRead = 30, daysInMonth = 30, rowDone = true, workDays = 18, peopleRead = 7)
+        ShiftsScreen(month.copy(progress = progress), actions, {}, {}, {}, {})
+    }
+
     /** Everyone there during the picked shift (a 13F), not only those on the same one. */
     @Test
     fun everyone() = shot("everyone") { ShiftsScreen(month.copy(everyone = true), actions, {}, {}, {}, {}) }
