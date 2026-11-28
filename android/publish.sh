@@ -41,8 +41,9 @@ done
 published=$(curl -fsS "$site/api/downloads")
 echo "Published: $published"
 # The server reads the version from the APK (once it runs the build that does).
-if [[ -n ${SAMFRAN_VERSION_CODE:-} && $published == *'"version":'* && $published != *"\"version\":$SAMFRAN_VERSION_CODE,"* ]]; then
-  echo "the site offers a different version than $SAMFRAN_VERSION_CODE" >&2
+published_version=$(jq -r '.android.version // empty' <<<"$published")
+if [[ -n ${SAMFRAN_VERSION_CODE:-} && -n $published_version && $published_version != "$SAMFRAN_VERSION_CODE" ]]; then
+  echo "the site offers version $published_version, not $SAMFRAN_VERSION_CODE" >&2
   exit 1
 fi
 echo "Download:  $site/download/samfran.apk"
