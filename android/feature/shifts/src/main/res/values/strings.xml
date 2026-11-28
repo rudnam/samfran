@@ -21,12 +21,15 @@
     <string name="nothing_entered">Nothing entered</string>
     <string name="read_photo">Read a photo of the sheet</string>
     <string name="reading_sheet">Reading the sheet…</string>
-    <string name="reading_hint">Usually about a minute.</string>
+    <string name="reading_hint">Usually two to four minutes. You can leave this screen open.</string>
     <string name="sending_photo">Sending the photo</string>
     <string name="finding_row">Finding the row on the sheet</string>
     <string name="found_on_sheet">Found %s on the sheet</string>
     <string name="reading_days">Reading the days</string>
     <string name="reading_days_of">Reading the days: %1$d of %2$d</string>
+    <string name="read_all_days">Read all %1$d days</string>
+    <string name="who_else_working">Who else is working</string>
+    <string name="who_else_working_of">Who else is working: %1$d of %2$d days</string>
     <string name="everyone_there">Everyone there</string>
     <string name="you">You</string>
     <string name="take_photo">Take a photo</string>

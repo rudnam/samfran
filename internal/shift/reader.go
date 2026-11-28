@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go/v2"
@@ -80,6 +81,12 @@ type Progress struct {
 	// DaysRead of DaysInMonth have been read (both 0 until the days start).
 	DaysRead    int `json:"days_read"`
 	DaysInMonth int `json:"days_in_month"`
+	// RowDone: the person's row is read, and WorkDays of its days are
+	// working days. Who else is there is read alongside, and PeopleRead of
+	// those days are done; the read answers once they all are (or peopleWait).
+	RowDone    bool `json:"row_done"`
+	WorkDays   int  `json:"work_days"`
+	PeopleRead int  `json:"people_read"`
 }
 
 // ErrRefused is a request the model declined to answer.
@@ -212,6 +219,8 @@ var (
 	progressYear  = regexp.MustCompile(`"year"\s*:\s*(\d+)`)
 	progressMonth = regexp.MustCompile(`"month"\s*:\s*(\d+)`)
 	progressDay   = regexp.MustCompile(`"day"\s*:`)
+	// The days are over once the answer moves on to the notes after them.
+	progressNotes = regexp.MustCompile(`\]\s*,\s*"notes"\s*:`)
 )
 
 // progressOf is how far the answer so far has got. The answer is JSON in the
@@ -231,8 +240,13 @@ func progressOf(text string, hint Month) Progress {
 	if month >= 1 && month <= 12 && year > 2000 {
 		p.DaysInMonth = time.Date(year, time.Month(month)+1, 0, 0, 0, 0, 0, time.UTC).Day()
 	}
-	// The day being read now isn't done until the next one starts.
-	p.DaysRead = max(0, len(progressDay.FindAllStringIndex(text, -1))-1)
+	// The day being read now isn't done until the next one starts, or, for
+	// the last day, until the notes do; else the bar stops a day short.
+	days := len(progressDay.FindAllStringIndex(text, -1))
+	p.DaysRead = max(0, days-1)
+	if progressNotes.MatchString(text) {
+		p.DaysRead = days
+	}
 	if p.DaysInMonth > 0 {
 		p.DaysRead = min(p.DaysRead, p.DaysInMonth)
 	}
@@ -250,6 +264,24 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 		days []SheetDay
 		err  error
 	}
+	// Both reads tell how far they've got: the row's days, then (once the
+	// row's done, as the read waits for it) the coworkers' days.
+	var mu sync.Mutex
+	var row, last Progress
+	peopleRead := 0
+	report := func() { // with mu held
+		if hint.Progress == nil {
+			return
+		}
+		p := row
+		if p.RowDone {
+			p.PeopleRead = min(peopleRead, p.WorkDays)
+		}
+		if p != last {
+			last = p
+			hint.Progress(p)
+		}
+	}
 	peopleDone := make(chan peopleResult, 1)
 	go func() {
 		p := prompt
@@ -258,25 +290,33 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 				". When a name is almost one of these, use this spelling; if it's clearly someone else, write it as printed."
 		}
 		// Medium effort: it's a lot to write, and only the row has to be exact.
-		text, err := c.ask(peopleCtx, peoplePrompt, p, image, mediaType, peopleSchema, "medium", nil)
+		text, err := c.ask(peopleCtx, peoplePrompt, p, image, mediaType, peopleSchema, "medium", func(sofar string) {
+			mu.Lock()
+			defer mu.Unlock()
+			// As for the row: a day is done once the next one starts.
+			peopleRead = max(0, len(progressDay.FindAllStringIndex(sofar, -1))-1)
+			report()
+		})
 		var out struct {
 			Days []SheetDay `json:"days"`
 		}
 		if err == nil {
 			err = json.Unmarshal([]byte(text), &out)
 		}
+		if err == nil {
+			mu.Lock()
+			peopleRead = len(out.Days)
+			report()
+			mu.Unlock()
+		}
 		peopleDone <- peopleResult{out.Days, err}
 	}()
 
-	var last Progress
 	onText := func(sofar string) {
-		if hint.Progress == nil {
-			return
-		}
-		if p := progressOf(sofar, hint); p != last {
-			last = p
-			hint.Progress(p)
-		}
+		mu.Lock()
+		defer mu.Unlock()
+		row = progressOf(sofar, hint)
+		report()
 	}
 	text, err := c.ask(ctx, rowPrompt, prompt, image, mediaType, rowSchema, "high", onText)
 	if err != nil {
@@ -289,6 +329,10 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 	if !sheet.Found {
 		return sheet, nil
 	}
+	mu.Lock()
+	row.RowDone, row.DaysRead, row.WorkDays = true, row.DaysInMonth, workDays(sheet.Days)
+	report()
+	mu.Unlock()
 
 	// The coworkers, if they come in time: by peopleWait after the start (or
 	// at once, if the row took longer), and before the read has to answer.
@@ -325,6 +369,18 @@ func deadlineOf(ctx context.Context) time.Time {
 		return d
 	}
 	return time.Now().Add(readTimeout)
+}
+
+// workDays is how many of days are working days, the ones whose coworkers
+// are read (addPeople).
+func workDays(days []SheetDay) int {
+	n := 0
+	for _, d := range days {
+		if workCode.MatchString(normalize(CellCode(d.Code, d.Note))) {
+			n++
+		}
+	}
+	return n
 }
 
 // addPeople puts who else is there, as read on its own, on the row's days.

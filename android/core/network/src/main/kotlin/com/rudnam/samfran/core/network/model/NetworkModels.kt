@@ -318,6 +318,9 @@ data class NetworkReadProgress(
     @SerialName("name_as_read") val nameAsRead: String? = null,
     @SerialName("days_read") val daysRead: Int = 0,
     @SerialName("days_in_month") val daysInMonth: Int = 0,
+    @SerialName("row_done") val rowDone: Boolean = false,
+    @SerialName("work_days") val workDays: Int = 0,
+    @SerialName("people_read") val peopleRead: Int = 0,
 )
 
 @Serializable
