@@ -99,3 +99,23 @@ func TestRegistered(t *testing.T) {
 		t.Errorf("a day off: %+v", got)
 	}
 }
+
+func TestAddPeople(t *testing.T) {
+	s := Sheet{Found: true, Days: []SheetDay{
+		{Day: 1, Code: "HPA 13LE"},
+		{Day: 2, Code: "普"},
+		{Day: 3, Code: "13LE", Note: "有休"},
+	}}
+	addPeople(&s, []SheetDay{
+		{Day: 1, Same: []Coworker{{Name: "A", Code: "HPA13LE"}, {Name: "B", Code: "9LE"}}},
+		{Day: 2, Same: []Coworker{{Name: "C", Code: "7OE"}}},  // she's off: dropped
+		{Day: 3, Same: []Coworker{{Name: "D", Code: "13LE"}}}, // taken as leave: dropped
+	})
+	fileOthers(&s)
+	if got := s.Days[0]; len(got.With) != 1 || got.With[0] != "A" || len(got.Others) != 1 || got.Others[0].Name != "B" {
+		t.Errorf("day 1: %+v", got)
+	}
+	if len(s.Days[1].With)+len(s.Days[1].Others)+len(s.Days[2].With)+len(s.Days[2].Others) != 0 {
+		t.Errorf("days off kept people: %+v", s.Days[1:])
+	}
+}

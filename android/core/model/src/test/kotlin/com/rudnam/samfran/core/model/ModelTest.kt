@@ -25,6 +25,9 @@ class ShiftCodesTest {
         assertEquals(22.0 to 31.0, ShiftCodes.explain("22F", lengths).hours)
         assertEquals("unknown length for Z", ShiftCodes.explain("13Z", lengths).problem)
         assertEquals("no such start hour", ShiftCodes.explain("25F", lengths).problem)
+        // The December 2026 style: letters before the hour, two after it.
+        assertEquals(ShiftCodes.Meaning(ShiftKind.Work, "Late", 13.0 to 22.0), ShiftCodes.explain("HPA 13LE", lengths + ("LE" to 9.0)))
+        assertEquals("unknown length for OE", ShiftCodes.explain("7OE", lengths).problem)
     }
 
     @Test

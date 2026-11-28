@@ -638,8 +638,10 @@ func (h *Handler) read(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// readTimeout is how long Claude gets to read a sheet.
-const readTimeout = 3 * time.Minute
+// readTimeout is how long Claude gets to read a sheet's row. The apps wait
+// 11 minutes for it (app versions from before December 2026 only 5, which is
+// why the coworkers aren't waited for past peopleWait).
+const readTimeout = 10 * time.Minute
 
 // uploadTimeout is how long a photo of the sheet may take to arrive.
 const uploadTimeout = 3 * time.Minute
@@ -764,7 +766,8 @@ func (h *Handler) getSettings(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-var letter = regexp.MustCompile(`^[A-Z]$`)
+// letter is what a length is for: the letters after a code's start hour (F, LE).
+var letter = regexp.MustCompile(`^[A-Z]{1,3}$`)
 
 // daysText writes closing days as the history shows them: "15, 31".
 func daysText(days []int) string {

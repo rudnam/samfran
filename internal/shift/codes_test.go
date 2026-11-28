@@ -22,6 +22,13 @@ func TestExplain(t *testing.T) {
 		{"有休", "leave", "Paid leave", "", "", ""},
 		{"トレ", "training", "Training", "", "", ""},
 		{"出張", "other", "出張", "", "", ""},
+		// From December 2026: letters before the hour, and two after it.
+		{"HPA 13LE", "work", "Late", "2026-11-04T13:00:00+09:00", "2026-11-04T22:00:00+09:00", ""},
+		{"9LE", "work", "Middle", "2026-11-04T09:00:00+09:00", "2026-11-04T18:00:00+09:00", ""},
+		{"ＨＰＡ２２ＬＥ", "work", "Night", "2026-11-04T22:00:00+09:00", "2026-11-05T07:00:00+09:00", ""},
+		{"HPA 7OE", "work", "Early", "2026-11-04T07:00:00+09:00", "2026-11-04T17:00:00+09:00", ""},
+		{"10QE", "work", "Middle", "", "", "unknown length for QE"},
+		{"HPA", "other", "HPA", "", "", ""},
 	} {
 		d := Explain("2026-11-04", c.code, DefaultLengths, tokyo)
 		start, end := "", ""

@@ -556,9 +556,9 @@ button.everyone-toggle.on { background: var(--accent); color: var(--accent-text)
 /* In a card (a place's form, Shift settings): fading into the card, not the page. */
 .card .sticky-actions { background: linear-gradient(to top, var(--surface) 70%, transparent); }
 
-.lengths { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 8px; }
+.lengths { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: 8px; }
 .length { display: flex; align-items: center; gap: 6px; font-weight: 400; }
-.length .letter { width: 2.6rem; flex: none; text-align: center; font-weight: 700; padding: 8px 4px; }
+.length .letter { width: 3.2rem; flex: none; text-align: center; font-weight: 700; padding: 8px 4px; }
 .length input[type='number'] { padding: 8px; }
 
 /* Meal reminders */

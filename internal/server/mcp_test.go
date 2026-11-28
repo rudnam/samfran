@@ -91,7 +91,7 @@ func TestMCPTools(t *testing.T) {
 	if l := st["lengths"].(map[string]any); l["G"] != 9.5 || l["F"] != 9.0 {
 		t.Errorf("set lengths: %v", st)
 	}
-	if _, msg := tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"ab": 3}}); msg == "" {
+	if _, msg := tool(t, ts.URL, token, "set_shift_lengths", map[string]any{"lengths": map[string]float64{"abcd": 3}}); msg == "" {
 		t.Error("a bad letter was accepted")
 	}
 	saved, _ := tool(t, ts.URL, token, "save_month_shifts", map[string]any{"month": "2026-11", "days": []map[string]string{

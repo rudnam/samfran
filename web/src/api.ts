@@ -157,9 +157,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   return data as T;
 }
 
-/** How often a photo being read is asked after, and when to give up on it (the server gives up after 3 minutes). */
+/** How often a photo being read is asked after, and when to give up on it. */
 const readPollMs = 2000;
-const readGiveUpMs = 5 * 60_000;
+const readGiveUpMs = 11 * 60_000; // the server gives up after 10 minutes (internal/shift readTimeout)
 
 export const api = {
   me: () => request<Me>('GET', '/api/me'),

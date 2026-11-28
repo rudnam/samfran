@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,7 +42,7 @@ type SheetDay struct {
 	// who's there during the shift. The reader's own lists are Same,
 	// NightBefore and MorningAfter; Read files them under With and Others.
 	Others []Coworker `json:"-"`
-	// What the model answers (see sheetSchema).
+	// Who else is there, as the model answers it (see peopleSchema).
 	Same         []Coworker `json:"others"`
 	NightBefore  []Coworker `json:"night_before"`
 	MorningAfter []Coworker `json:"morning_after"`
@@ -97,19 +98,29 @@ func NewClaude(apiKey, model string) *Claude {
 	return &Claude{client: anthropic.NewClient(option.WithAPIKey(apiKey)), model: model}
 }
 
-const systemPrompt = `You read photos of printed monthly work schedules (勤務表) from a Japanese workplace. The sheet is a grid: one row per employee (an employee number and a name, often in katakana), one column per day of the month (1, 2, 3…), and a code in each cell.
+// The sheet is read by two calls to Claude side by side: one reads the
+// person's own row (small, so it's quick), the other who else is at work
+// around their shifts (long on a sheet with many people: on December 2026's
+// 22-person sheet one call doing both ran past readTimeout). The row is what
+// counts; the coworkers are added if they arrive in time.
 
-Codes you'll see: a start hour and a letter for a working day, e.g. 7F, 9D, 12G, 13F, 22F; 普 and 法 for days off; 有休 for paid leave; トレ and 研修 for training. A cell can hold a second, smaller note (often 有休) under the code: when it does, report the cell's main code in code and the small note, exactly as printed, in note. Leave note empty when there's none.
+const sheetIntro = `You read photos of printed monthly work schedules (勤務表) from a Japanese workplace. The sheet is a grid: one row per employee (an employee number and a name, often in katakana), one column per day of the month (1, 2, 3…), and a code in each cell.
 
-Read only the one row you're asked for, every day of the month, left to right. Copy each code exactly as printed, with ASCII digits and letters. Photos are often taken at an angle with highlighter on them; follow the row carefully across the page and don't drift into the row above or below. If a cell is empty, give an empty code. If you can't make out a cell, give your best reading and say which day in notes.
+Codes you'll see: a working day is a start hour and one or more letters, sometimes with letters before the hour, e.g. 7F, 9D, 13F, 22F, or 9LE, 13LE, 7OE, HPA 13LE (different people make the sheet, so either style can appear). 普 and 法 are days off; 有休 is paid leave; トレ and 研修 are training. A cell can hold a second, smaller note (often 有休) under the code. Copy each code exactly as printed, with ASCII digits and letters, including any letters before the hour. Photos are often taken at an angle with highlighter on them; follow each row carefully across the page and don't drift into the row above or below.`
 
-For each day the person works (a code like 13F), say who else is at work around their shift, each with their name as printed and the code in their cell:
-- others: everyone else whose cell that same day is a working code (a start hour and a letter).
+const rowPrompt = sheetIntro + `
+
+Read only the one row you're asked for, every day of the month, left to right. When a cell has a smaller note under the code, report the cell's main code in code and the small note, exactly as printed, in note; leave note empty when there's none. If a cell is empty, give an empty code. If you can't make out a cell, give your best reading and say which day in notes. Never report anything about anyone else.`
+
+const peoplePrompt = sheetIntro + `
+
+Find the one row you're asked for. For each day that person works (a working code), say who else is at work around their shift, each with their name as printed and the code in their cell:
+- others: everyone else whose cell that same day is a working code.
 - night_before: everyone whose cell on the day before is a working code starting at 15 or later, since it may run past midnight into this day. Give the code from the day before. Empty for day 1.
 - morning_after: only when the person's own code that day starts at 15 or later, everyone whose cell on the next day is a working code starting before 12, since the person's shift may run into it. Give the code from the next day. Empty otherwise, and for the month's last day.
-Leave out anyone whose cell has a small 有休 under it, and anyone off. Leave all three lists empty on days the person doesn't work. Never report anything else about anyone else: not their days off, their other days or their employee numbers.`
+Leave out anyone whose cell has a small 有休 under it, and anyone off. List only the days the person works. Never report anything else about anyone else: not their days off, their other days or their employee numbers.`
 
-var sheetSchema = map[string]any{
+var rowSchema = map[string]any{
 	"type": "object",
 	"properties": map[string]any{
 		"found":        map[string]any{"type": "boolean", "description": "Whether the person's row was found"},
@@ -121,20 +132,39 @@ var sheetSchema = map[string]any{
 			"items": map[string]any{
 				"type": "object",
 				"properties": map[string]any{
-					"day":           map[string]any{"type": "integer"},
-					"code":          map[string]any{"type": "string"},
-					"note":          map[string]any{"type": "string", "description": "The smaller note under the code, e.g. 有休; empty if none"},
-					"others":        othersSchema("Everyone else working that same day; empty on days off"),
-					"night_before":  othersSchema("Everyone working the day before on a code starting at 15 or later; empty on days off and day 1"),
-					"morning_after": othersSchema("If the person's code starts at 15 or later: everyone working the next day on a code starting before 12; else empty"),
+					"day":  map[string]any{"type": "integer"},
+					"code": map[string]any{"type": "string"},
+					"note": map[string]any{"type": "string", "description": "The smaller note under the code, e.g. 有休; empty if none"},
 				},
-				"required":             []string{"day", "code", "note", "others", "night_before", "morning_after"},
+				"required":             []string{"day", "code", "note"},
 				"additionalProperties": false,
 			},
 		},
 		"notes": map[string]any{"type": "string", "description": "Doubts, e.g. a cell you couldn't make out; empty if none"},
 	},
 	"required":             []string{"found", "name_as_read", "year", "month", "days", "notes"},
+	"additionalProperties": false,
+}
+
+var peopleSchema = map[string]any{
+	"type": "object",
+	"properties": map[string]any{
+		"days": map[string]any{
+			"type": "array",
+			"items": map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"day":           map[string]any{"type": "integer"},
+					"others":        othersSchema("Everyone else working that same day"),
+					"night_before":  othersSchema("Everyone working the day before on a code starting at 15 or later; empty for day 1"),
+					"morning_after": othersSchema("If the person's code starts at 15 or later: everyone working the next day on a code starting before 12; else empty"),
+				},
+				"required":             []string{"day", "others", "night_before", "morning_after"},
+				"additionalProperties": false,
+			},
+		},
+	},
+	"required":             []string{"days"},
 	"additionalProperties": false,
 }
 
@@ -210,22 +240,123 @@ func progressOf(text string, hint Month) Progress {
 }
 
 func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string, hint Month) (Sheet, error) {
+	start := time.Now()
 	prompt := fmt.Sprintf("Read the row for %q. The sheet is probably for %d-%02d (check its title, e.g. \"2026年 11月度\").", name, hint.Year, hint.Month)
-	if len(hint.Names) > 0 {
-		prompt += "\n\nPeople on earlier sheets (spelling already checked): " + strings.Join(hint.Names, "、") +
-			". When a name in with is almost one of these, use this spelling; if it's clearly someone else, write it as printed."
+
+	// Who else is there: started first, as it's the longer read.
+	peopleCtx, stopPeople := context.WithCancel(ctx)
+	defer stopPeople()
+	type peopleResult struct {
+		days []SheetDay
+		err  error
 	}
-	// Streamed, so the apps can show the days as they're read.
+	peopleDone := make(chan peopleResult, 1)
+	go func() {
+		p := prompt
+		if len(hint.Names) > 0 {
+			p += "\n\nPeople on earlier sheets (spelling already checked): " + strings.Join(hint.Names, "、") +
+				". When a name is almost one of these, use this spelling; if it's clearly someone else, write it as printed."
+		}
+		// Medium effort: it's a lot to write, and only the row has to be exact.
+		text, err := c.ask(peopleCtx, peoplePrompt, p, image, mediaType, peopleSchema, "medium", nil)
+		var out struct {
+			Days []SheetDay `json:"days"`
+		}
+		if err == nil {
+			err = json.Unmarshal([]byte(text), &out)
+		}
+		peopleDone <- peopleResult{out.Days, err}
+	}()
+
+	var last Progress
+	onText := func(sofar string) {
+		if hint.Progress == nil {
+			return
+		}
+		if p := progressOf(sofar, hint); p != last {
+			last = p
+			hint.Progress(p)
+		}
+	}
+	text, err := c.ask(ctx, rowPrompt, prompt, image, mediaType, rowSchema, "high", onText)
+	if err != nil {
+		return Sheet{}, err
+	}
+	var sheet Sheet
+	if err := json.Unmarshal([]byte(text), &sheet); err != nil {
+		return Sheet{}, fmt.Errorf("read shift sheet: decode: %w", err)
+	}
+	if !sheet.Found {
+		return sheet, nil
+	}
+
+	// The coworkers, if they come in time: by peopleWait after the start (or
+	// at once, if the row took longer), and before the read has to answer.
+	wait := min(time.Until(start.Add(peopleWait)), time.Until(deadlineOf(ctx))-peopleMargin)
+	timer := time.NewTimer(max(wait, 0))
+	defer timer.Stop()
+	var people peopleResult
+	select {
+	case people = <-peopleDone:
+	case <-timer.C:
+		people.err = context.DeadlineExceeded
+	}
+	if people.err != nil {
+		slog.WarnContext(ctx, "read shift sheet: coworkers", "err", people.err)
+		sheet.Notes = strings.TrimSpace(sheet.Notes + "\nWho else is working couldn't be read this time.")
+	} else {
+		addPeople(&sheet, people.days)
+	}
+	fileOthers(&sheet)
+	return sheet, nil
+}
+
+// peopleWait is how long after the start a read waits for the coworkers:
+// inside the 5 minutes app versions from before December 2026 wait, so
+// those still get the row.
+const peopleWait = 4*time.Minute + 30*time.Second
+
+// peopleMargin is how long before the read's deadline it stops waiting for
+// the coworkers, to answer with the row in time.
+const peopleMargin = 5 * time.Second
+
+func deadlineOf(ctx context.Context) time.Time {
+	if d, ok := ctx.Deadline(); ok {
+		return d
+	}
+	return time.Now().Add(readTimeout)
+}
+
+// addPeople puts who else is there, as read on its own, on the row's days.
+// Days the row says the person doesn't work get no one.
+func addPeople(sheet *Sheet, days []SheetDay) {
+	byDay := map[int]SheetDay{}
+	for _, d := range days {
+		byDay[d.Day] = d
+	}
+	for i := range sheet.Days {
+		d := &sheet.Days[i]
+		if !workCode.MatchString(normalize(CellCode(d.Code, d.Note))) {
+			continue
+		}
+		p := byDay[d.Day]
+		d.Same, d.NightBefore, d.MorningAfter = p.Same, p.NightBefore, p.MorningAfter
+	}
+}
+
+// ask streams one answer in schema's shape, telling onText (if not nil) the
+// text so far as it arrives.
+func (c *Claude) ask(ctx context.Context, system, prompt string, image []byte, mediaType string, schema map[string]any, effort string, onText func(string)) (string, error) {
 	stream := c.client.Beta.Messages.NewStreaming(ctx, anthropic.BetaMessageNewParams{
 		Model:     c.model,
 		MaxTokens: 32000,
 		// A refusal is re-served by another model in the same call.
 		Betas:     []anthropic.AnthropicBeta{anthropic.AnthropicBetaServerSideFallback2026_07_01},
 		Fallbacks: anthropic.BetaFallbacksParamOfDefault(),
-		System:    []anthropic.BetaTextBlockParam{{Text: systemPrompt}},
+		System:    []anthropic.BetaTextBlockParam{{Text: system}},
 		OutputConfig: anthropic.BetaOutputConfigParam{
-			Effort: "high", // a dense grid: worth reading carefully
-			Format: anthropic.BetaJSONOutputFormatParam{Schema: sheetSchema},
+			Effort: anthropic.BetaOutputConfigEffort(effort),
+			Format: anthropic.BetaJSONOutputFormatParam{Schema: schema},
 		},
 		Messages: []anthropic.BetaMessageParam{
 			anthropic.NewBetaUserMessage(
@@ -240,28 +371,21 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 	defer stream.Close()
 	var resp anthropic.BetaMessage
 	var sofar strings.Builder
-	var last Progress
 	for stream.Next() {
 		event := stream.Current()
 		if err := resp.Accumulate(event); err != nil {
-			return Sheet{}, fmt.Errorf("read shift sheet: %w", err)
+			return "", fmt.Errorf("read shift sheet: %w", err)
 		}
-		if hint.Progress == nil || event.Type != "content_block_delta" {
-			continue
-		}
-		if event.Delta.Type == "text_delta" {
+		if onText != nil && event.Type == "content_block_delta" && event.Delta.Type == "text_delta" {
 			sofar.WriteString(event.Delta.Text)
-			if p := progressOf(sofar.String(), hint); p != last {
-				last = p
-				hint.Progress(p)
-			}
+			onText(sofar.String())
 		}
 	}
 	if err := stream.Err(); err != nil {
-		return Sheet{}, fmt.Errorf("read shift sheet: %w", err)
+		return "", fmt.Errorf("read shift sheet: %w", err)
 	}
 	if resp.StopReason == anthropic.BetaStopReasonRefusal {
-		return Sheet{}, ErrRefused
+		return "", ErrRefused
 	}
 	var text strings.Builder
 	for _, block := range resp.Content {
@@ -269,10 +393,8 @@ func (c *Claude) Read(ctx context.Context, image []byte, mediaType, name string,
 			text.WriteString(t.Text)
 		}
 	}
-	var sheet Sheet
-	if err := json.Unmarshal([]byte(text.String()), &sheet); err != nil {
-		return Sheet{}, fmt.Errorf("read shift sheet: decode (stop %s): %w", resp.StopReason, err)
+	if resp.StopReason == anthropic.BetaStopReasonMaxTokens {
+		return "", fmt.Errorf("read shift sheet: answer cut off at max tokens")
 	}
-	fileOthers(&sheet)
-	return sheet, nil
+	return text.String(), nil
 }
