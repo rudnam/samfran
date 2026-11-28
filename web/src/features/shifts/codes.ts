@@ -5,7 +5,8 @@ import type { ShiftDay, ShiftKind } from '../../api';
 import { t } from '../../i18n';
 import { locale } from '../../language';
 
-const work = /^([0-9]{1,2})([A-Z])$/;
+// Letters before the hour ("HPA 13LE") are kept but have no length; those after it do.
+const work = /^[A-Z]{0,4}?([0-9]{1,2})([A-Z]{1,3})$/;
 
 /** Full-width letters and digits as ASCII, upper case, no spaces (as the server does). */
 export function normalize(code: string): string {

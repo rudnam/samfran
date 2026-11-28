@@ -8,7 +8,10 @@ import (
 )
 
 // A shift sheet's codes. Working days are a start hour and a letter for
-// how long the shift is ("13F": from 13:00, F long). The letters' lengths
+// how long the shift is ("13F": from 13:00, F long). Sheets from December
+// 2026 write them with up to three letters and may put a few letters before
+// the hour ("HPA 13LE"): the letters after the hour are what has a length,
+// and those before it are kept as written but don't change the times. The letters' lengths
 // come from the sheet's key and are a setting (Lengths), because they can
 // change and were read off a photo. Everything else is a day off, leave or
 // training, with no times.
@@ -31,9 +34,11 @@ const (
 var DefaultLengths = map[string]float64{
 	"A": 4, "B": 5, "W": 5.5, "D": 8, "E": 8, "F": 9, "G": 10,
 	"H": 10, "I": 11, "J": 11, "K": 12, "L": 12,
+	// The December 2026 sheet's letters: JE is D's length, LE is F's, OE is G's.
+	"JE": 8, "LE": 9, "OE": 10,
 }
 
-var workCode = regexp.MustCompile(`^([0-9]{1,2})([A-Z])$`)
+var workCode = regexp.MustCompile(`^[A-Z]{0,4}?([0-9]{1,2})([A-Z]{1,3})$`)
 
 // Day is one day of the sheet, worked out.
 type Day struct {

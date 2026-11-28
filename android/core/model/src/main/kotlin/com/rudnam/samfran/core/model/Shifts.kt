@@ -136,7 +136,8 @@ data class ShiftMonth(
  * code means while it's typed. The server's reading is the one that counts.
  */
 object ShiftCodes {
-    private val work = Regex("^([0-9]{1,2})([A-Z])$")
+    // Letters before the hour ("HPA 13LE") are kept but have no length; those after it do.
+    private val work = Regex("^[A-Z]{0,4}?([0-9]{1,2})([A-Z]{1,3})$")
 
     /** The codes offered as one-tap chips while editing. */
     val common = listOf("7F", "9F", "13F", "22F", "普", "法", "有休")

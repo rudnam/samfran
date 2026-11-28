@@ -101,7 +101,7 @@ export function ShiftSettingsPage() {
                     <input
                       aria-label={t('Letter')}
                       className="letter"
-                      maxLength={1}
+                      maxLength={3}
                       value={k}
                       onChange={(e) => setLengths((l) => l.map((x, j) => (j === i ? [e.target.value, x[1]] : x)))}
                     />

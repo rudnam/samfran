@@ -89,7 +89,7 @@ class ShiftSettingsViewModel @Inject constructor(
     override fun setOnSheet(name: String) = _state.update { it.copy(onSheet = name.take(80), done = null) }
 
     override fun setLength(index: Int, letter: String, hours: String) = _state.update {
-        it.copy(lengths = it.lengths.mapIndexed { i, l -> if (i == index) letter.take(1).uppercase() to hours else l }, done = null)
+        it.copy(lengths = it.lengths.mapIndexed { i, l -> if (i == index) letter.filter { it.isLetter() }.take(3).uppercase() to hours else l }, done = null)
     }
 
     override fun addLetter() = _state.update { it.copy(lengths = it.lengths + ("" to "8")) }
