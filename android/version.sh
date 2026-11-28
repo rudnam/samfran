@@ -17,8 +17,9 @@ floor=$(sed -n 's/.*SAMFRAN_VERSION_CODE") ?: "\([0-9]*\)".*/\1/p' app/build.gra
 [[ $floor =~ ^[0-9]+$ ]] || { echo "no versionCode floor found in app/build.gradle.kts" >&2; exit 1; }
 
 downloads=$(curl -fsS --retry 3 "$site/api/downloads") || { echo "couldn't ask $site which version it offers" >&2; exit 1; }
-published=$(grep -o '"version":[0-9]*' <<<"$downloads" | cut -d: -f2 || true)
+published=$(jq -r '.android.version // 0' <<<"$downloads") || { echo "couldn't parse version from $site/api/downloads" >&2; exit 1; }
+[[ $published =~ ^[0-9]+$ ]] || { echo "unexpected version from $site/api/downloads: $published" >&2; exit 1; }
 
-next=$(( ${published:-0} + 1 ))
+next=$(( published + 1 ))
 (( next > floor )) || next=$floor
 echo "$next"
